@@ -5,6 +5,7 @@ import { cn } from '../../lib/cn';
 import { requestOpenFile } from '../../stores/workbench-store';
 import { EmptyState } from '../../ui/EmptyState';
 import { FileBadge } from '../../ui/FileBadge';
+import { IconButton } from '../../ui/IconButton';
 import { Input } from '../../ui/Input';
 import { askAiAboutProblem } from '../ai/actions';
 import { type Problem, useProblems } from './problems-store';
@@ -94,18 +95,18 @@ export function ProblemsView(): JSX.Element {
 								<span className='num shrink-0 text-11 text-fg-2'>
 									[{p.line}:{p.column}]
 								</span>
-								<button
-									type='button'
-									title='Fix with AI'
-									aria-label='Fix with AI'
+								<IconButton
+									size='sm'
+									label='Fix with AI'
+									icon={<Sparkles size={12} />}
 									onClick={(e) => {
 										e.stopPropagation();
 										void askAiAboutProblem(p);
 									}}
-									className='invisible shrink-0 rounded-sm p-0.5 text-accent-2 group-hover:visible hover:bg-bg-3'
-								>
-									<Sparkles size={12} />
-								</button>
+									// Enter/Space on the button must not also open the file via the row.
+									onKeyDown={(e) => e.stopPropagation()}
+									className='-my-0.5 shrink-0 text-accent-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100'
+								/>
 							</div>
 						))}
 					</div>
