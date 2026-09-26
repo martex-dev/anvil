@@ -53,6 +53,14 @@ describe('JsonStore', () => {
 		expect(existsSync(`${file}.corrupt`)).toBe(true);
 	});
 
+	it('reports a file that parses but is not an object before moving it aside', () => {
+		writeFileSync(file, '[1, 2]');
+		const issues: string[] = [];
+		new JsonStore(file, (key) => issues.push(key));
+		expect(issues).toEqual(['<file>']);
+		expect(existsSync(`${file}.corrupt`)).toBe(true);
+	});
+
 	it('rejects invalid writes', () => {
 		const store = new JsonStore(file);
 		expect(() => store.set('n', z.number(), 'no' as unknown as number)).toThrow();

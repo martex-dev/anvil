@@ -97,6 +97,7 @@ export class JsonStore implements SettingsStore {
 			if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
 				return parsed as Record<string, unknown>;
 			}
+			this.onInvalid('<file>', 'settings file is not a JSON object');
 		} catch (error) {
 			this.onInvalid('<file>', error instanceof Error ? error.message : String(error));
 		}
