@@ -98,14 +98,14 @@ export function ProblemsView(): JSX.Element {
 								<IconButton
 									size='sm'
 									label='Fix with AI'
-									icon={<Sparkles size={12} />}
+									icon={<Sparkles size={12} className='text-accent-2' />}
 									onClick={(e) => {
 										e.stopPropagation();
 										void askAiAboutProblem(p);
 									}}
 									// Enter/Space on the button must not also open the file via the row.
 									onKeyDown={(e) => e.stopPropagation()}
-									className='-my-0.5 shrink-0 text-accent-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100'
+									className='-my-0.5 shrink-0 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100'
 								/>
 							</div>
 						))}
