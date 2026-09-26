@@ -1,5 +1,6 @@
 import { Check, GitCompare, X } from 'lucide-react';
 import type * as Monaco from 'monaco-editor';
+import { Dialog as RadixDialog } from 'radix-ui';
 import { type JSX, useEffect, useMemo, useRef, useState } from 'react';
 import { create } from 'zustand';
 
@@ -28,6 +29,9 @@ export const useApply = create<{ proposal: Proposal | null; set: (p: Proposal | 
 	}),
 );
 
+/** Set by Accept: closing then returns focus to the editor instead of the Apply button. */
+let focusEditorOnClose = false;
+
 function findModel(path: string): Monaco.editor.ITextModel | null {
 	const monaco = getLoadedMonaco();
 	return monaco?.editor.getModels().find((m) => toWorkspacePath(m.uri) === path) ?? null;
@@ -55,6 +59,8 @@ function Preview({ proposal }: { proposal: Proposal }): JSX.Element {
 			originalEditable: false,
 			renderSideBySide: true,
 			minimap: { enabled: false },
+			// Its menu would render outside the modal, where pointer events are blocked.
+			contextmenu: false,
 			hideUnchangedRegions: { enabled: true },
 		});
 		const left = monaco.editor.createModel(original, proposal.language);
@@ -83,18 +89,21 @@ function Preview({ proposal }: { proposal: Proposal }): JSX.Element {
 			'Applied: review and save',
 			`${proposal.path} (Ctrl+S to save, Ctrl+Z to undo)`,
 		);
-		useApply.getState().set(null);
 		// Straight back to the code, so Ctrl+S / Ctrl+Z act on the change.
-		setTimeout(() => focusedEditor()?.focus(), 0);
+		focusEditorOnClose = true;
+		useApply.getState().set(null);
 	};
 
 	return (
 		<div className='flex h-full flex-col' data-apply-preview={proposal.path}>
 			<header className='flex flex-wrap items-center gap-2 border-b border-glass-edge px-4 py-2.5'>
 				<GitCompare size={15} className='text-accent' />
-				<span className='min-w-0 flex-1 truncate text-13 text-fg-0'>
+				<RadixDialog.Title className='min-w-0 flex-1 truncate text-13 font-normal text-fg-0'>
 					Proposed change to <code className='text-accent'>{proposal.path}</code>
-				</span>
+				</RadixDialog.Title>
+				<RadixDialog.Description className='sr-only'>
+					Review the diff, then accept to edit the file or discard.
+				</RadixDialog.Description>
 				{proposal.selection && (
 					<div
 						role='group'
@@ -147,37 +156,44 @@ function Preview({ proposal }: { proposal: Proposal }): JSX.Element {
 	);
 }
 
-/** Full-screen glass sheet with the diff of an AI code block against the file. */
-export function ApplyDialog(): JSX.Element | null {
+/** Full-screen modal sheet with the diff of an AI code block against the file. */
+export function ApplyDialog(): JSX.Element {
 	const proposal = useApply((s) => s.proposal);
 	useRegisterOverlay(proposal !== null);
-	useEffect(() => {
-		if (!proposal) return;
-		const onKey = (e: KeyboardEvent): void => {
-			if (e.key === 'Escape') useApply.getState().set(null);
-		};
-		window.addEventListener('keydown', onKey);
-		return () => window.removeEventListener('keydown', onKey);
-	}, [proposal]);
 	const missing = proposal !== null && !findModel(proposal.path);
 	useEffect(() => {
 		if (!missing || !proposal) return;
 		toast.info('Open the file first', `${proposal.path} isn't open in the editor anymore.`);
 		useApply.getState().set(null);
 	}, [missing, proposal]);
-	if (!proposal || missing) return null;
+	// Radix traps focus inside, marks the rest of the app inert (aria-modal), closes on Escape
+	// or a scrim click, and puts focus back where it was (the chat's Apply button) on close.
 	return (
-		<div className='animate-fade fixed inset-0 z-40 flex items-center justify-center bg-scrim p-8 backdrop-blur-[2px]'>
-			<div
-				role='dialog'
-				aria-label='Apply AI change'
-				className='glass-strong animate-in h-[80vh] w-[min(1200px,94vw)] overflow-hidden rounded-xl'
-			>
-				<Preview
-					key={`${proposal.path}:${proposal.block.length}:${proposal.block.slice(0, 40)}`}
-					proposal={proposal}
-				/>
-			</div>
-		</div>
+		<RadixDialog.Root
+			open={proposal !== null && !missing}
+			onOpenChange={(open) => {
+				if (!open) useApply.getState().set(null);
+			}}
+		>
+			<RadixDialog.Portal>
+				<RadixDialog.Overlay className='animate-fade fixed inset-0 z-40 bg-scrim backdrop-blur-[2px]' />
+				<RadixDialog.Content
+					className='glass-strong animate-in fixed top-1/2 left-1/2 z-50 h-[80vh] w-[min(1200px,94vw)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl outline-none'
+					onCloseAutoFocus={(e) => {
+						if (!focusEditorOnClose) return;
+						focusEditorOnClose = false;
+						e.preventDefault();
+						focusedEditor()?.focus();
+					}}
+				>
+					{proposal && (
+						<Preview
+							key={`${proposal.path}:${proposal.block.length}:${proposal.block.slice(0, 40)}`}
+							proposal={proposal}
+						/>
+					)}
+				</RadixDialog.Content>
+			</RadixDialog.Portal>
+		</RadixDialog.Root>
 	);
 }
