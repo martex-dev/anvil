@@ -144,7 +144,12 @@ function CursorItems(): JSX.Element | null {
 				<span className='num'>
 					Ln {cursor.line}, Col {cursor.column}
 					{cursor.selected > 0 && (
-						<span className='text-accent'> ({cursor.selected} sel)</span>
+						<span className='text-accent'>
+							{' '}
+							({cursor.selected} sel
+							{cursor.selectedLines > 1 && ` · ${cursor.selectedLines} lines`}
+							{cursor.selectedWords > 0 && ` · ${cursor.selectedWords} words`})
+						</span>
 					)}
 				</span>
 			</Item>

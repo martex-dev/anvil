@@ -7,12 +7,16 @@ import { toMonacoKeybinding } from '../../lib/monaco/keybinding';
 import type { MonacoApi } from '../../lib/monaco/setup';
 import { useTabsStore } from '../../stores/tabs-store';
 import { runCell } from '../python/run';
-import { useEditorStore } from './editor-store';
+import { countWords, useEditorStore } from './editor-store';
 import { attachBookmarks } from './extras/bookmarks';
 import { attachCells } from './extras/cells';
+import { attachClipboard } from './extras/clipboard';
 import { attachGitLines } from './extras/git-lines';
+import { attachLens } from './extras/lens';
 import { attachShield } from './extras/shield';
-import { getModel, getViewState, saveViewState } from './file-ops';
+import { attachSpotlight } from './extras/spotlight';
+import { getModel, getViewState, isScratch, saveViewState } from './file-ops';
+import { navHistory } from './nav-history';
 
 interface CodeEditorProps {
 	monaco: MonacoApi;
@@ -48,6 +52,7 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 			const model = editor.getModel();
 			const pos = editor.getPosition();
 			const sel = editor.getSelection();
+			const selText = model && sel && !sel.isEmpty() ? model.getValueInRange(sel) : '';
 			useEditorStore.getState().setCursor(
 				model && pos
 					? {
@@ -55,7 +60,12 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 							column: pos.column,
 							language: model.getLanguageId(),
 							eol: model.getEOL() === '\r\n' ? 'CRLF' : 'LF',
-							selected: sel && !sel.isEmpty() ? model.getValueInRange(sel).length : 0,
+							selected: selText.length,
+							selectedWords: countWords(selText),
+							selectedLines:
+								sel && !sel.isEmpty()
+									? sel.endLineNumber - sel.startLineNumber + 1
+									: 0,
 							lines: model.getLineCount(),
 							tabSize: model.getOptions().tabSize,
 							insertSpaces: model.getOptions().insertSpaces,
@@ -68,7 +78,26 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 			attachShield(editor, monaco),
 			attachGitLines(editor, monaco),
 			attachBookmarks(editor, monaco),
+			attachLens(editor, monaco),
+			attachSpotlight(editor, monaco),
+			attachClipboard(editor, monaco, () =>
+				isScratch(shown.current) ? 'Scratchpad' : shown.current,
+			),
 		];
+		// Remember where you've been once the cursor settles (for Alt+← / Alt+→).
+		let navTimer: ReturnType<typeof setTimeout> | undefined;
+		const recordPlace = (): void => {
+			clearTimeout(navTimer);
+			navTimer = setTimeout(() => {
+				const pos = editor.getPosition();
+				if (shown.current && pos && editor.hasTextFocus())
+					navHistory.visit({
+						path: shown.current,
+						line: pos.lineNumber,
+						column: pos.column,
+					});
+			}, 350);
+		};
 		let contentTimer: ReturnType<typeof setTimeout> | undefined;
 		const subs = [
 			editor.onDidChangeModelContent(() => {
@@ -76,6 +105,7 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 				contentTimer = setTimeout(() => useEditorStore.getState().bumpContent(), 300);
 			}),
 			editor.onDidChangeCursorPosition(updateCursor),
+			editor.onDidChangeCursorPosition(recordPlace),
 			editor.onDidChangeCursorSelection(updateCursor),
 			editor.onDidChangeModel(updateCursor),
 			editor.onDidChangeModelLanguage(updateCursor),
@@ -109,6 +139,7 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 		}
 		return () => {
 			clearTimeout(contentTimer);
+			clearTimeout(navTimer);
 			if (shown.current) saveViewState(shown.current, editor.saveViewState());
 			for (const x of extras) x.dispose();
 			for (const s of subs) s.dispose();
