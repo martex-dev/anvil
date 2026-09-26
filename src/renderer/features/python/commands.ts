@@ -15,6 +15,7 @@ import { toast } from '../../stores/toast-store';
 import { formatPython } from '../editor/file-ops';
 import { runInTerminal } from '../terminal/terminal-store';
 import { restartRepl, runCell, runPythonFile, runSelection, sendToRepl } from './run';
+import { saveDirtyFiles } from './save-before-run';
 import { pickPythonEnv } from './use-python';
 
 export const PYTHON_COMMANDS: Command[] = [
@@ -107,23 +108,33 @@ export const PYTHON_COMMANDS: Command[] = [
 		title: 'Run Tests (pytest)',
 		category: 'Python',
 		icon: ListChecks,
-		run: () =>
-			runInTerminal({
+		run: async () => {
+			// pytest reads files from disk: run it on the code that is on screen.
+			if (!(await saveDirtyFiles())) return;
+			await runInTerminal({
 				role: 'task:pytest',
 				preset: 'python',
 				title: 'pytest',
 				command: 'python -m pytest -q',
-			}),
+			});
+		},
 	},
 	{
 		id: 'python.pytestFile',
 		title: 'Run Tests in Current File',
 		category: 'Python',
-		run: () => {
+		run: async () => {
 			const model = focusedEditor()?.getModel();
 			const path = model ? toWorkspacePath(model.uri) : null;
-			if (!path) return;
-			return runInTerminal({
+			if (!path?.endsWith('.py')) {
+				toast.info(
+					'Open a Python test file',
+					'Then run this command to test just that file.',
+				);
+				return;
+			}
+			if (!(await saveDirtyFiles())) return;
+			await runInTerminal({
 				role: 'task:pytest',
 				preset: 'python',
 				title: 'pytest',
