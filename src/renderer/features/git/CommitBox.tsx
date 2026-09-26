@@ -6,16 +6,27 @@ import { Button } from '../../ui/Button';
 import { IconButton } from '../../ui/IconButton';
 import { Kbd } from '../../ui/Kbd';
 import { generateCommitMessage } from '../ai/actions';
+import { useCommitDrafts } from './commit-draft-store';
 
 interface CommitBoxProps {
+	/** Workspace root; the unsent message is kept per folder. */
+	root: string;
 	branch: string | null;
 	stagedCount: number;
 	busy: boolean;
 	onCommit: (message: string) => Promise<boolean>;
 }
 
-export function CommitBox({ branch, stagedCount, busy, onCommit }: CommitBoxProps): JSX.Element {
-	const [message, setMessage] = useState('');
+export function CommitBox({
+	root,
+	branch,
+	stagedCount,
+	busy,
+	onCommit,
+}: CommitBoxProps): JSX.Element {
+	const message = useCommitDrafts((s) => s.drafts[root] ?? '');
+	const setDraft = useCommitDrafts((s) => s.setDraft);
+	const setMessage = (text: string): void => setDraft(root, text);
 	const [writing, setWriting] = useState(false);
 	const generate = (): void => {
 		if (stagedCount === 0) {

@@ -139,6 +139,7 @@ export function GitPanel(): JSX.Element {
 				/>
 			</div>
 			<CommitBox
+				root={info.root}
 				branch={status.branch}
 				stagedCount={status.staged.length}
 				busy={actions.busy}
