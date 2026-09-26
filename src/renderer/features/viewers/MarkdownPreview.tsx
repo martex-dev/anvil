@@ -135,7 +135,12 @@ export function MarkdownPreview({ path }: { path: string }): JSX.Element {
 						size='sm'
 						label='Reload from disk'
 						icon={
-							<RotateCw size={14} className={disk.isFetching ? 'animate-spin' : ''} />
+							<RotateCw
+								size={14}
+								className={
+									disk.isFetching ? 'animate-spin motion-reduce:animate-none' : ''
+								}
+							/>
 						}
 						onClick={() => void refetch()}
 					/>
