@@ -1,0 +1,129 @@
+/*
+ * Workbench 95: tab controls. Tabs are raised cards whose bottom edge is the page's highlight
+ * line; the selected card stands 2px taller and covers that line so it joins the page.
+ */
+
+html[data-skin='workbench'] [data-part='tabbar'],
+html[data-skin='workbench'] [data-part='panel'] > [data-part='pane-header'] {
+	height: 24px;
+	padding: 2px 2px 0;
+	border: 0;
+	background: var(--skin-face);
+	box-shadow: inset 0 -1px var(--skin-bevel-light);
+}
+html[data-skin='workbench'] [data-part='tabbar'] [role='tablist'] {
+	padding: 0 2px;
+	scrollbar-width: none;
+}
+
+html[data-skin='workbench'] [data-part='tab'],
+html[data-skin='workbench'] [data-part='panel-tab'] {
+	height: auto;
+	margin-top: 2px;
+	padding: 0 4px 0 8px;
+	gap: 5px;
+	background: var(--skin-face);
+	color: var(--text-1);
+	font-family: var(--font-ui);
+	font-size: 12px;
+	box-shadow:
+		inset 1px 1px var(--skin-bevel-light),
+		inset -1px 0 var(--skin-bevel-dark),
+		inset -2px 0 var(--skin-bevel-shadow),
+		inset 0 -1px var(--skin-bevel-light);
+}
+html[data-skin='workbench'] [data-part='panel-tab'] {
+	padding: 0 10px;
+}
+html[data-skin='workbench'] [data-part='tab']:hover,
+html[data-skin='workbench'] [data-part='panel-tab']:hover {
+	background: var(--skin-face);
+	color: var(--text-0);
+}
+html[data-skin='workbench'] [data-part='tab'][data-active='true'],
+html[data-skin='workbench'] [data-part='panel-tab'][data-active='true'] {
+	z-index: 1;
+	margin: 0 -2px;
+	padding-inline: 10px 6px;
+	background: var(--skin-face);
+	color: var(--text-0);
+	box-shadow:
+		inset 1px 1px var(--skin-bevel-light),
+		inset -1px 0 var(--skin-bevel-dark),
+		inset -2px 0 var(--skin-bevel-shadow);
+}
+html[data-skin='workbench'] [data-part='panel-tab'][data-active='true'] {
+	padding-inline: 12px;
+}
+html[data-skin='workbench'] [data-part='tab']:focus-visible {
+	box-shadow:
+		inset 1px 1px var(--skin-bevel-light),
+		inset -1px 0 var(--skin-bevel-dark),
+		inset -2px 0 var(--skin-bevel-shadow);
+}
+html[data-skin='workbench'] [data-part='tab'] > span.absolute,
+html[data-skin='workbench'] [data-part='panel-tab'] [data-part='tab-marker'] {
+	display: none;
+}
+html[data-skin='workbench'] [data-part='tab'] .italic {
+	font-style: normal;
+	text-decoration: underline dotted;
+	text-underline-offset: 3px;
+}
+
+/* Terminal sessions: small push buttons; the current one stays pressed in. */
+html[data-skin='workbench'] [data-part='terminal-chip'] {
+	height: 18px;
+	border: 0;
+	border-radius: 0;
+	background: var(--skin-face);
+	color: var(--text-1);
+	box-shadow: var(--wb-raised);
+	padding-inline: 6px 2px;
+}
+html[data-skin='workbench'] [data-part='terminal-chip'][data-active='true'] {
+	background: var(--wb-dither);
+	color: var(--text-0);
+	box-shadow: var(--wb-pressed);
+}
+html[data-skin='workbench'] [data-part='terminal-chip'] > span:first-child {
+	border-radius: 0;
+}
+
+/* Breadcrumbs: a plain grey address row between the tabs and the page. */
+html[data-skin='workbench'] [data-part='editor-group'] > [data-part='tabbar'] + div {
+	height: 20px;
+	padding-inline: 6px;
+	font-family: var(--font-ui);
+	font-size: 12px;
+	color: var(--text-1);
+}
+
+/* ---- The AI child window --------------------------------------------------------------- */
+
+html[data-skin='workbench'] [data-part='chat'] {
+	display: flex;
+	flex-direction: column;
+}
+html[data-skin='workbench'] [data-part='chat'] > * {
+	flex: 1;
+	min-height: 0;
+}
+html[data-skin='workbench'] [data-ai-chat] > header {
+	height: 26px;
+	padding-inline: 4px 2px;
+	border: 0;
+}
+html[data-skin='workbench'] [data-ai-chat] > header > .hud {
+	display: none;
+}
+html[data-skin='workbench'] [data-ai-chat] > .overflow-y-auto {
+	margin: 0 0 2px;
+	background: var(--skin-field);
+	color: var(--skin-field-text);
+	box-shadow: var(--wb-sunken);
+}
+html[data-skin='workbench'] [data-ai-chat] > .border-t {
+	border: 0;
+	padding: 4px 0 0;
+}
