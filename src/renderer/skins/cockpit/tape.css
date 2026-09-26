@@ -1,0 +1,124 @@
+/*
+ * Cockpit: the status bar as a tape. Ruled state cells either side of a ticker that quotes each
+ * open file by its problem counts.
+ */
+
+html[data-skin='cockpit'] .ck-tapebar {
+	position: relative;
+	z-index: 10;
+	display: flex;
+	flex-shrink: 0;
+	align-items: stretch;
+	height: 20px;
+	border-top: 1px solid var(--border-strong);
+	background: var(--skin-tape);
+	color: var(--text-1);
+	font-family: var(--font-display);
+	font-size: 11px;
+}
+
+html[data-skin='cockpit'] .ck-tape-tag {
+	display: flex;
+	align-items: center;
+	padding: 0 6px;
+	background: var(--accent);
+	color: var(--on-accent);
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: var(--ck-caps);
+}
+
+html[data-skin='cockpit'] .ck-cell {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	gap: 4px;
+	padding: 0 7px;
+	border-right: 1px solid var(--border);
+	white-space: nowrap;
+	text-transform: uppercase;
+	outline: none;
+}
+html[data-skin='cockpit'] .ck-cell:empty {
+	display: none;
+}
+html[data-skin='cockpit'] .ck-cell-btn:hover {
+	background: var(--bg-3);
+	color: var(--text-0);
+}
+html[data-skin='cockpit'] .ck-cell-btn:focus-visible {
+	box-shadow: inset 0 0 0 1px var(--accent);
+}
+html[data-skin='cockpit'] .ck-cell-strong {
+	color: var(--skin-value);
+	font-weight: 700;
+}
+html[data-skin='cockpit'] .ck-cell .num {
+	font-size: 11px;
+}
+/* Shared items dropped into a cell (language servers, updates) lose their own chrome. */
+html[data-skin='cockpit'] :is(.ck-cell-lsp, .ck-cell-update) {
+	padding: 0 3px;
+}
+html[data-skin='cockpit'] :is(.ck-cell-lsp, .ck-cell-update) > button {
+	height: 100%;
+	padding: 0 4px;
+	color: var(--text-1);
+}
+html[data-skin='cockpit'] :is(.ck-cell-lsp, .ck-cell-update) > button:hover {
+	background: var(--bg-3);
+}
+
+/* ---- Ticker ------------------------------------------------------------------------------- */
+
+html[data-skin='cockpit'] .ck-tape {
+	position: relative;
+	display: flex;
+	flex: 1;
+	align-items: center;
+	min-width: 60px;
+	overflow: hidden;
+	border-right: 1px solid var(--border);
+	mask-image: linear-gradient(
+		90deg,
+		transparent,
+		var(--bg-0) 16px,
+		var(--bg-0) calc(100% - 16px),
+		transparent
+	);
+}
+html[data-skin='cockpit'] .ck-tape-track {
+	display: inline-flex;
+	flex-shrink: 0;
+	white-space: nowrap;
+}
+html[data-skin='cockpit'] .ck-tape-row {
+	display: inline-flex;
+	flex-shrink: 0;
+	padding-right: 24px;
+}
+html[data-skin='cockpit'] .ck-quote {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 0 10px;
+	border-right: 1px dotted var(--border-strong);
+}
+html[data-skin='cockpit'] .ck-quote-sym {
+	color: var(--skin-value);
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+html[data-skin='cockpit'] .ck-quote-fig {
+	font-size: 11px;
+}
+html[data-skin='cockpit'] .ck-quote[data-tone='up'] .ck-quote-fig {
+	color: var(--up);
+}
+html[data-skin='cockpit'] .ck-quote[data-tone='warn'] .ck-quote-fig {
+	color: var(--warn);
+}
+html[data-skin='cockpit'] .ck-quote[data-tone='down'] .ck-quote-fig {
+	color: var(--down);
+}
