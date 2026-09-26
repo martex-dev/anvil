@@ -92,6 +92,20 @@ describe('scanUnifiedDiff', () => {
 	});
 });
 
+describe('scanUnifiedDiff line numbers', () => {
+	it('does not count the "no newline at end of file" marker as a line', () => {
+		const diff = [
+			'+++ b/bot.py',
+			'@@ -3 +3,2 @@',
+			'-last = 1',
+			'\\ No newline at end of file',
+			'+last = 1',
+			`+KEY = "sk-ant-${'q'.repeat(30)}"`,
+		].join('\n');
+		expect(scanUnifiedDiff(diff)[0]).toMatchObject({ path: 'bot.py', line: 4 });
+	});
+});
+
 describe('unquoteGitPath', () => {
 	it('decodes octal UTF-8 escapes and C escapes', () => {
 		expect(

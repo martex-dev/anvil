@@ -259,6 +259,8 @@ export function scanUnifiedDiff(diff: string): SecretFinding[] {
 			line = Number(hunk[1]);
 			continue;
 		}
+		// '\ No newline at end of file' annotates the line before it; it isn't a line itself.
+		if (raw.startsWith('\\')) continue;
 		if (raw.startsWith('+') && !raw.startsWith('+++')) {
 			for (const f of scanText(raw.slice(1), file)) findings.push({ ...f, line });
 			line++;
