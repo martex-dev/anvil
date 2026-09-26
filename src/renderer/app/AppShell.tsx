@@ -5,6 +5,7 @@ import { ApplyDialog } from '../features/ai/ApplyDialog';
 import { InlineEditHost } from '../features/ai/InlineEditHost';
 import { EditorBridge } from '../features/editor/EditorBridge';
 import { LspController } from '../features/lsp/LspController';
+import { PythonController } from '../features/python/PythonController';
 import { SnapDialog } from '../features/snap/SnapDialog';
 import { chromeFor } from '../skins/chrome-registry';
 import { useLook } from '../skins/look-store';
@@ -82,6 +83,7 @@ export function AppShell(): JSX.Element {
 
 			<EditorBridge />
 			<LspController />
+			<PythonController />
 			<AiStreamController />
 			<InlineEditHost />
 			<CommandPalette />

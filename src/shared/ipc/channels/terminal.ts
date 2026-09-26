@@ -48,17 +48,30 @@ export const terminalChannels = defineChannels({
 			running: z.boolean(),
 		}),
 	},
-	/** False when no such session is running (never started, or ended with the app). */
+	/**
+	 * False when nothing was written: no such session (never started, or ended with the app) or
+	 * its process exited. With `restart`, an exited session is started again first.
+	 */
 	'terminal:write': {
-		input: z.object({ sessionId: SessionId, data: z.string().max(1_000_000) }),
+		input: z.object({
+			sessionId: SessionId,
+			data: z.string().max(1_000_000),
+			restart: z.boolean().optional(),
+		}),
 		output: z.boolean(),
 	},
 	'terminal:resize': {
 		input: z.object({ sessionId: SessionId, cols: Size, rows: Size }),
 		output: z.void(),
 	},
+	/** Starts an exited session again (or a fresh one with `preset` if main no longer has it). */
 	'terminal:restart': {
-		input: z.object({ sessionId: SessionId, cols: Size, rows: Size }),
+		input: z.object({
+			sessionId: SessionId,
+			preset: TerminalPresetIdSchema,
+			cols: Size,
+			rows: Size,
+		}),
 		output: z.void(),
 	},
 	'terminal:kill': { input: SessionId, output: z.void() },

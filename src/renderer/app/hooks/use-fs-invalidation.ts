@@ -1,5 +1,6 @@
 import { type Query, useQueryClient } from '@tanstack/react-query';
 
+import { touchesTaskFiles } from '../../features/python/task-files';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { WORKSPACE_KEY } from './use-workspace';
 
@@ -23,11 +24,14 @@ const matches =
 export function useFsInvalidation(): void {
 	const client = useQueryClient();
 	useAnvilEvent('workspace:changed', (info) => client.setQueryData(WORKSPACE_KEY, info));
-	useAnvilEvent('fs:changed', ({ dirs, files }) => {
+	useAnvilEvent('fs:changed', (batch) => {
+		const { dirs, files } = batch;
 		// Watcher paths are relative to the current root; stale roots' queries are unobserved.
 		if (dirs.length > 0)
 			void client.invalidateQueries({ predicate: matches('list', new Set(dirs)) });
 		if (files.length > 0)
 			void client.invalidateQueries({ predicate: matches('file', new Set(files)) });
+		// New or removed scripts must show up in the Run view without a manual rescan.
+		if (touchesTaskFiles(batch)) void client.invalidateQueries({ queryKey: ['tasks'] });
 	});
 }

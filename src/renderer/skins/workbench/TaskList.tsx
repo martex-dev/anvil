@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 
-import { useTerminalStore } from '../../features/terminal/terminal-store';
+import { focusTerminal, useTerminalStore } from '../../features/terminal/terminal-store';
 import { useLayoutStore } from '../../stores/layout-store';
 import { useTabsStore } from '../../stores/tabs-store';
 import { DOCUMENT, PROMPT } from './art-tools';
@@ -44,10 +44,8 @@ export function TaskList(): JSX.Element {
 					label={t.title}
 					title={`Terminal: ${t.title}`}
 					pressed={terminalShown && activeTerm === t.id}
-					onClick={() => {
-						useTerminalStore.getState().setActive(t.id);
-						useLayoutStore.getState().showPanel('terminal');
-					}}
+					// Shows the panel, activates the session and moves keyboard focus into it.
+					onClick={() => focusTerminal(t.id)}
 				/>
 			))}
 		</div>

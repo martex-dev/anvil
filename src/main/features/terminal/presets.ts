@@ -28,8 +28,11 @@ const CLI_PRESETS: Record<
 	gemini: { label: 'Gemini CLI', command: 'gemini', hint: 'npm install -g @google/gemini-cli' },
 };
 
-/** Resolves a command on PATH via where.exe (Windows) / which. Cached briefly. */
-const whichCache = new Map<string, { at: number; path: string | null }>();
+/**
+ * Resolves a command on PATH via where.exe (Windows) / which. Hits are cached briefly; misses
+ * are not, so "Check again" sees a CLI the user has just installed.
+ */
+const whichCache = new Map<string, { at: number; path: string }>();
 export function which(command: string): Promise<string | null> {
 	const hit = whichCache.get(command);
 	if (hit && Date.now() - hit.at < 30_000) return Promise.resolve(hit.path);
@@ -37,7 +40,8 @@ export function which(command: string): Promise<string | null> {
 	return new Promise((resolve) => {
 		execFile(tool, [command], { windowsHide: true, timeout: 5000 }, (error, stdout) => {
 			const path = error ? null : (stdout.split(/\r?\n/).find((l) => l.trim()) ?? null);
-			whichCache.set(command, { at: Date.now(), path });
+			if (path) whichCache.set(command, { at: Date.now(), path });
+			else whichCache.delete(command);
 			resolve(path);
 		});
 	});
