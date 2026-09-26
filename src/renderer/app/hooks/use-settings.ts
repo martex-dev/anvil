@@ -166,13 +166,7 @@ export function applyAppearance(settings: Settings): void {
 	root.dataset['theme'] = theme.id;
 	root.dataset['accent'] = settings.accent;
 	if (settings.accent === 'custom') {
-		root.style.setProperty('--accent', settings.customAccent);
-		root.style.setProperty(
-			'--on-accent',
-			isLightColor(settings.customAccent)
-				? 'var(--on-accent-dark)'
-				: 'var(--on-accent-light)',
-		);
+		paintCustomAccent(settings.customAccent);
 	} else {
 		root.style.removeProperty('--accent');
 		root.style.removeProperty('--on-accent');
@@ -185,6 +179,20 @@ export function applyAppearance(settings: Settings): void {
 	root.dataset['tabTint'] = String(settings.tabTint);
 	// Monaco and xterm take concrete colors, so they rebuild once the new tokens are live.
 	requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('anvil:appearance')));
+}
+
+/**
+ * Paints a custom accent onto the UI's tokens only, without the `anvil:appearance` rebuild of
+ * Monaco and xterm: cheap enough for every step of a color-picker drag.
+ */
+export function paintCustomAccent(hex: string): void {
+	const root = document.documentElement;
+	root.dataset['accent'] = 'custom';
+	root.style.setProperty('--accent', hex);
+	root.style.setProperty(
+		'--on-accent',
+		isLightColor(hex) ? 'var(--on-accent-dark)' : 'var(--on-accent-light)',
+	);
 }
 
 /** Whether dark text reads better than white on this `#rrggbb` (WCAG relative luminance). */
