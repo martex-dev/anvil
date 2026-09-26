@@ -57,6 +57,9 @@ export function useXterm(
 		if (!host || !attach) return;
 		let disposed = false;
 		let exited = false;
+		// Counts exits so a restart that resolves after its new process already died stays exited.
+		let exits = 0;
+		let restarting = false;
 
 		const term = new Terminal({
 			fontFamily:
@@ -145,19 +148,38 @@ export function useXterm(
 		const unsubscribeExit = window.anvil.on('terminal:exit', (m) => {
 			if (m.sessionId !== sessionId) return;
 			exited = true;
+			exits++;
 			setStatus('exited');
 			term.write(
 				`\r\n\x1b[2m[process exited with code ${m.exitCode} — press Enter to restart]\x1b[0m\r\n`,
 			);
 		});
 
-		const input = term.onData((data) => {
-			if (exited) {
-				if (data === '\r') {
+		const restart = (): void => {
+			restarting = true;
+			const before = exits;
+			call('terminal:restart', { sessionId, preset, cols: term.cols, rows: term.rows }).then(
+				() => {
+					restarting = false;
+					if (disposed || exits !== before) return;
 					exited = false;
 					setStatus('running');
-					void call('terminal:restart', { sessionId, cols: term.cols, rows: term.rows });
-				}
+				},
+				(e: unknown) => {
+					restarting = false;
+					rlog.error('terminal', `restart failed (${preset})`, e);
+					if (disposed) return;
+					const reason = e instanceof Error ? e.message : String(e);
+					term.write(
+						`\r\n\x1b[31m[restart failed: ${reason} — press Enter to try again]\x1b[0m\r\n`,
+					);
+				},
+			);
+		};
+
+		const input = term.onData((data) => {
+			if (exited) {
+				if (data === '\r' && !restarting) restart();
 				return;
 			}
 			call('terminal:write', { sessionId, data }).catch((e: unknown) =>

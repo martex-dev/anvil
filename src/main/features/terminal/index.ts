@@ -93,9 +93,13 @@ export const terminalFeature: MainFeature = {
 		ctx.ipc.handle('terminal:resize', ({ sessionId, cols, rows }) =>
 			live.resize(sessionId, cols, rows),
 		);
-		ctx.ipc.handle('terminal:restart', async ({ sessionId, cols, rows }) => {
+		ctx.ipc.handle('terminal:restart', async ({ sessionId, preset, cols, rows }) => {
 			const s = live.get(sessionId);
-			if (!s) return;
+			// Gone from main: start it again rather than leave a pane that looks alive but isn't.
+			if (!s) {
+				await live.ensure(sessionId, () => startSession(sessionId, preset, cols, rows));
+				return;
+			}
 			await live.relaunch(sessionId, () => startSession(sessionId, s.preset, cols, rows));
 		});
 		ctx.ipc.handle('terminal:kill', (sessionId) => live.kill(sessionId));

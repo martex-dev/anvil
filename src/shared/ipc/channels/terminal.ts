@@ -64,8 +64,14 @@ export const terminalChannels = defineChannels({
 		input: z.object({ sessionId: SessionId, cols: Size, rows: Size }),
 		output: z.void(),
 	},
+	/** Starts an exited session again (or a fresh one with `preset` if main no longer has it). */
 	'terminal:restart': {
-		input: z.object({ sessionId: SessionId, cols: Size, rows: Size }),
+		input: z.object({
+			sessionId: SessionId,
+			preset: TerminalPresetIdSchema,
+			cols: Size,
+			rows: Size,
+		}),
 		output: z.void(),
 	},
 	'terminal:kill': { input: SessionId, output: z.void() },
