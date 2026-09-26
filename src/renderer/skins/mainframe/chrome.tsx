@@ -1,4 +1,5 @@
 import type { SkinChrome } from '../types';
+import { FKeyBar } from './FKeyBar';
 import { MfBackdrop } from './MfBackdrop';
 import { MfStatusBar } from './MfStatusBar';
 import { MfTitleBar } from './MfTitleBar';
@@ -9,6 +10,7 @@ const chrome: SkinChrome = {
 	TitleBar: MfTitleBar,
 	WindowControls: MfWindowControls,
 	StatusBar: MfStatusBar,
+	Bottom: FKeyBar,
 	Backdrop: MfBackdrop,
 };
 
