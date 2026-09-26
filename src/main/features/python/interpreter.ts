@@ -11,6 +11,11 @@ import { candidates, envDirOf } from './envs';
 class InterpreterState {
 	private readonly picked = new Map<string, string | null>();
 	private readonly listeners = new Set<() => void>();
+	/**
+	 * System Pythons (PATH, `py -0p`) from the last discovery. Finding them spawns processes, so
+	 * resolve() can't do it synchronously; discovery feeds them in here instead.
+	 */
+	private system: readonly string[] = [];
 	private loadPick: (root: string) => string | null = () => null;
 	private savePick: (root: string, path: string | null) => void = () => undefined;
 
@@ -25,6 +30,20 @@ class InterpreterState {
 	pick(root: string, path: string | null): void {
 		this.picked.set(root.toLowerCase(), path);
 		this.savePick(root, path);
+		this.notify();
+	}
+
+	/**
+	 * Records discovered system interpreters. Listeners hear about it only when that changes the
+	 * folder's interpreter, so a folder with its own venv doesn't restart its language server.
+	 */
+	setSystem(root: string | null, paths: readonly string[]): void {
+		const before = this.resolve(root);
+		this.system = [...paths];
+		if (this.resolve(root) !== before) this.notify();
+	}
+
+	private notify(): void {
 		for (const listener of this.listeners) listener();
 	}
 
@@ -47,7 +66,7 @@ class InterpreterState {
 			const explicit = this.explicit(root);
 			if (explicit) return explicit;
 		}
-		return candidates(root)[0]?.path ?? null;
+		return candidates(root)[0]?.path ?? this.system.find((p) => existsSync(p)) ?? null;
 	}
 }
 

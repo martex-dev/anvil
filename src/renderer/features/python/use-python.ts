@@ -8,6 +8,7 @@ import { queryClient } from '../../lib/query-client';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { toast } from '../../stores/toast-store';
 import { quickPick } from '../../ui/QuickPick';
+import { PRESETS_KEY } from '../terminal/TerminalPane';
 import { resetPythonTools } from './run';
 
 export const pythonKeys = {
@@ -30,6 +31,8 @@ export function useSelectedPython(): { env: PythonEnv | null; isLoading: boolean
 	useAnvilEvent('python:changed', (env) => {
 		client.setQueryData(pythonKeys.selected(info.root), env);
 		void client.invalidateQueries({ queryKey: ['python', info.root] });
+		// The REPL and env-shell presets are only available while an interpreter resolves.
+		void client.invalidateQueries({ queryKey: PRESETS_KEY });
 	});
 	return { env: q.data ?? null, isLoading: q.isLoading };
 }

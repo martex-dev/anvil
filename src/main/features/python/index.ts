@@ -107,6 +107,11 @@ export const pythonFeature: MainFeature = {
 				return cache.envs;
 			const found = await discoverEnvs(root);
 			cache = { root, at: Date.now(), envs: found };
+			// Lets resolve() fall back to a python.org / PATH install when there's no venv.
+			interpreter.setSystem(
+				root,
+				found.filter((e) => e.kind === 'system').map((e) => e.path),
+			);
 			return found;
 		};
 		const current = (): string => {
@@ -140,6 +145,10 @@ export const pythonFeature: MainFeature = {
 				);
 		const off = interpreter.onChange(emitSelected);
 		ctx.onDispose(off);
+		// Discover once at startup so system Pythons are known before the first Run or REPL.
+		void envs(false).catch((e: unknown) =>
+			ctx.log.error('python discovery failed', { message: errorMessage(e) }),
+		);
 		ctx.workspace.onChange(() => {
 			cache = null;
 			emitSelected();
