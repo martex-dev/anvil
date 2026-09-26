@@ -18,6 +18,7 @@ import { LspStatusItem } from '../features/lsp/LspStatusItem';
 import { useProblems } from '../features/problems/problems-store';
 import { PythonEnvChip } from '../features/python/PythonEnvChip';
 import { cn } from '../lib/cn';
+import { everySecond } from '../lib/every-second';
 import { call } from '../lib/ipc';
 import { useLayoutStore } from '../stores/layout-store';
 import { runCommandById } from './commands/run';
@@ -54,10 +55,8 @@ function Item({
 
 function Clock(): JSX.Element {
 	const [now, setNow] = useState(() => new Date());
-	useEffect(() => {
-		const id = setInterval(() => setNow(new Date()), 1000);
-		return () => clearInterval(id);
-	}, []);
+	// Aligned to the second, so it changes together with the Windows clock (candle timing).
+	useEffect(() => everySecond(setNow), []);
 	const utc = now.toISOString().slice(11, 16);
 	return (
 		<Item title={`Local ${now.toLocaleString()}\nUTC ${now.toISOString()}`}>
