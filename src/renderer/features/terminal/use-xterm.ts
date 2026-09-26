@@ -9,6 +9,10 @@ import type { TerminalPresetId } from '@shared/ipc/channels/terminal';
 
 import { call } from '../../lib/ipc';
 import { rlog } from '../../lib/log';
+import { queryClient } from '../../lib/query-client';
+import { requestOpenFile } from '../../stores/workbench-store';
+import { useClipboardHistory } from '../editor/extras/clipboard';
+import { findFileLinks } from './file-links';
 import { buildXtermTheme } from './xterm-theme';
 
 import '@xterm/xterm/css/xterm.css';
@@ -44,7 +48,9 @@ export function useXterm(
 		let exited = false;
 
 		const term = new Terminal({
-			fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+			fontFamily:
+				getComputedStyle(document.documentElement).getPropertyValue('--font-code').trim() ||
+				"'JetBrains Mono', ui-monospace, monospace",
 			fontSize,
 			lineHeight: 1.2,
 			cursorBlink: true,
@@ -66,6 +72,32 @@ export function useXterm(
 			}),
 		);
 		term.open(host);
+		// Theme / accent switches recolor running terminals without restarting them.
+		const recolor = (): void => {
+			term.options.theme = buildXtermTheme();
+			term.options.fontFamily = getComputedStyle(document.documentElement)
+				.getPropertyValue('--font-code')
+				.trim();
+		};
+		window.addEventListener('anvil:appearance', recolor);
+		// Tracebacks and `file.py:12:5` references open the file at that line.
+		const links = term.registerLinkProvider({
+			provideLinks(y, callback) {
+				const root = queryClient.getQueryData<{ root: string | null }>(['workspace'])?.root;
+				const text = term.buffer.active.getLine(y - 1)?.translateToString(true) ?? '';
+				if (!root || !text) return callback(undefined);
+				callback(
+					findFileLinks(text, root).map((l) => ({
+						range: { start: { x: l.start + 1, y }, end: { x: l.end, y } },
+						text: text.slice(l.start, l.end),
+						decorations: { underline: true, pointerCursor: true },
+						activate: () => {
+							requestOpenFile({ path: l.path, line: l.line, column: l.column });
+						},
+					})),
+				);
+			},
+		});
 		try {
 			// GPU rendering is much faster for heavy output; fall back to DOM if WebGL is unavailable.
 			const webgl = new WebglAddon();
@@ -79,6 +111,7 @@ export function useXterm(
 		term.attachCustomKeyEventHandler((e) => {
 			if (e.type !== 'keydown' || !e.ctrlKey || e.shiftKey || e.altKey) return true;
 			if (e.key === 'c' && term.hasSelection()) {
+				useClipboardHistory.getState().push(term.getSelection(), null);
 				void navigator.clipboard.writeText(term.getSelection());
 				term.clearSelection();
 				return false;
@@ -149,6 +182,8 @@ export function useXterm(
 			});
 
 		return () => {
+			window.removeEventListener('anvil:appearance', recolor);
+			links.dispose();
 			disposed = true;
 			clearTimeout(resizeTimer);
 			observer.disconnect();
