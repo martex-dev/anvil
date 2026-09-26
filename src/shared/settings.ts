@@ -89,3 +89,16 @@ export const SettingsSchema = z.object({
 export type Settings = z.infer<typeof SettingsSchema>;
 
 export const DEFAULT_SETTINGS: Settings = SettingsSchema.parse({});
+
+/**
+ * A partial update. Built without the defaults on purpose: zod's `.partial()` keeps them, so a
+ * patch like `{ fx: 'off' }` would parse into a full default object and reset every other setting.
+ */
+export const SettingsPatchSchema = z.object(
+	Object.fromEntries(
+		Object.entries(SettingsSchema.shape).map(([key, field]) => [
+			key,
+			(field instanceof z.ZodDefault ? field.unwrap() : field).optional(),
+		]),
+	),
+) as unknown as z.ZodType<Partial<Settings>, Partial<Settings>>;
