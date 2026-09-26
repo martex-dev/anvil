@@ -1,3 +1,4 @@
+import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { app, BrowserWindow, shell } from 'electron';
@@ -6,6 +7,7 @@ import { z } from 'zod';
 
 import { parseSettings, type Settings, SettingsSchema } from '@shared/settings';
 
+import { AnvilError } from './errors';
 import { emitEvent, router } from './ipc';
 import { openExternalSafely } from './security';
 import type { SettingsStore } from './store/json-store';
@@ -59,7 +61,13 @@ export function registerAppHandlers(store: SettingsStore): void {
 		};
 	});
 	router.handle('app:openLogs', async () => {
-		await shell.openPath(join(app.getPath('userData'), 'logs'));
+		const dir = join(app.getPath('userData'), 'logs');
+		// The folder only exists after the first log write; create it so Explorer has a target.
+		mkdirSync(dir, { recursive: true });
+		// openPath resolves with an error string instead of rejecting.
+		const failure = await shell.openPath(dir);
+		if (failure)
+			throw new AnvilError('OPEN_FAILED', `Could not open the log folder: ${failure}`);
 	});
 	router.handle('app:openExternal', (url) => openExternalSafely(url));
 	router.handle('app:log', ({ level, scope, message, detail }) => {

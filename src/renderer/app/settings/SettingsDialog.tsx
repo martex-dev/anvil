@@ -12,6 +12,7 @@ import {
 	useAiSettings,
 } from '../../features/ai/ai-settings';
 import { call } from '../../lib/ipc';
+import { toast } from '../../stores/toast-store';
 import { type SettingsTab, useUiStore } from '../../stores/ui-store';
 import { Button } from '../../ui/Button';
 import { Dialog } from '../../ui/Dialog';
@@ -147,7 +148,18 @@ function About({
 				<Button size='sm' onClick={() => void call('app:openExternal', REPO_URL)}>
 					Source on GitHub
 				</Button>
-				<Button size='sm' variant='ghost' onClick={() => void call('app:openLogs')}>
+				<Button
+					size='sm'
+					variant='ghost'
+					onClick={() => {
+						call('app:openLogs').catch((error: unknown) => {
+							toast.error(
+								'Could not open the log folder',
+								error instanceof Error ? error.message : undefined,
+							);
+						});
+					}}
+				>
 					Open logs
 				</Button>
 			</div>
