@@ -29,7 +29,14 @@ html[data-skin='concrete'] {
 
 /* The solid bars: title band, status strip, numeral column, pane headers. Inside them the
  * text tokens flip so every shared component reads on the ink. */
-html[data-skin='concrete'] :is(.cc-band, [data-part='pane-header'], [data-ai-chat] > header) {
+html[data-skin='concrete']
+	:is(
+		.cc-band,
+		[data-part='pane-header'],
+		[data-ai-chat] > header,
+		[role='dialog'].glass-strong:not([cmdk-dialog]) > :first-child,
+		[cmdk-root] > :has(> [cmdk-input])
+	) {
 	--text-0: var(--skin-band-text);
 	--text-1: var(--skin-band-text-1);
 	--text-2: var(--skin-band-text-2);
@@ -52,9 +59,12 @@ html[data-skin='concrete'] :is(.cc-band, [data-part='pane-header'], [data-ai-cha
 html[data-skin='concrete'] body {
 	letter-spacing: 0.005em;
 }
-html[data-skin='concrete'] :focus-visible {
-	outline: 3px solid var(--cc-focus);
-	outline-offset: 1px;
+/* In the base layer so components that draw their own focus (utilities) still win. */
+@layer base {
+	html[data-skin='concrete'] :focus-visible {
+		outline: 3px solid var(--cc-focus);
+		outline-offset: 1px;
+	}
 }
 html[data-skin='concrete'] ::selection {
 	background: var(--accent);
