@@ -1,9 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { type JSX, type ReactNode } from 'react';
+import type { JSX, ReactNode } from 'react';
 
 import { REPO_URL } from '@shared/constants';
 import { SECRET_SPECS } from '@shared/secrets';
-import { ACCENTS, type Settings } from '@shared/settings';
+import type { Settings } from '@shared/settings';
 
 import {
 	pickModel,
@@ -11,243 +11,22 @@ import {
 	saveAiSettings,
 	useAiSettings,
 } from '../../features/ai/ai-settings';
-import { repaintShield } from '../../features/editor/extras/shield';
-import { cn } from '../../lib/cn';
 import { call } from '../../lib/ipc';
 import { type SettingsTab, useUiStore } from '../../stores/ui-store';
 import { Button } from '../../ui/Button';
 import { Dialog } from '../../ui/Dialog';
 import { Input } from '../../ui/Input';
-import { Switch } from '../../ui/Switch';
 import { Tabs } from '../../ui/Tabs';
 import { useSettings } from '../hooks/use-settings';
+import { AppearanceSettings } from './AppearanceSettings';
+import { EditorSettings } from './EditorSettings';
 import { SecretRow } from './SecretRow';
 import { SettingRow } from './SettingRow';
+import { SettingStepper } from './SettingStepper';
+import { SettingToggle } from './SettingToggle';
 import { UpdatesSetting } from './UpdatesSetting';
 
 const SAVED_SECRETS_KEY = ['secrets', 'saved'] as const;
-
-function Toggle({
-	label,
-	description,
-	value,
-	onChange,
-}: {
-	label: string;
-	description?: ReactNode;
-	value: boolean;
-	onChange: (v: boolean) => void;
-}): JSX.Element {
-	const id = `set-${label.replace(/\W+/g, '-').toLowerCase()}`;
-	return (
-		<SettingRow label={label} description={description} htmlFor={id}>
-			<Switch id={id} aria-label={label} checked={value} onCheckedChange={onChange} />
-		</SettingRow>
-	);
-}
-
-function Stepper({
-	label,
-	description,
-	value,
-	min,
-	max,
-	onChange,
-}: {
-	label: string;
-	description?: string;
-	value: number;
-	min: number;
-	max: number;
-	onChange: (v: number) => void;
-}): JSX.Element {
-	return (
-		<SettingRow label={label} description={description}>
-			<div className='flex items-center gap-1'>
-				<Button
-					size='sm'
-					variant='ghost'
-					disabled={value <= min}
-					onClick={() => onChange(value - 1)}
-					aria-label={`Decrease ${label}`}
-				>
-					−
-				</Button>
-				<span className='num w-8 text-center text-13 text-fg-0'>{value}</span>
-				<Button
-					size='sm'
-					variant='ghost'
-					disabled={value >= max}
-					onClick={() => onChange(value + 1)}
-					aria-label={`Increase ${label}`}
-				>
-					+
-				</Button>
-			</div>
-		</SettingRow>
-	);
-}
-
-function Segmented<T extends string>({
-	value,
-	options,
-	onChange,
-}: {
-	value: T;
-	options: readonly T[];
-	onChange: (v: T) => void;
-}): JSX.Element {
-	return (
-		<div
-			role='radiogroup'
-			className='flex overflow-hidden rounded-md border border-border-strong'
-		>
-			{options.map((o) => (
-				<button
-					key={o}
-					type='button'
-					role='radio'
-					aria-checked={o === value}
-					onClick={() => onChange(o)}
-					className={cn(
-						'px-2.5 py-1 text-12 capitalize',
-						o === value ? 'bg-accent-soft text-fg-0' : 'text-fg-2 hover:text-fg-1',
-					)}
-				>
-					{o}
-				</button>
-			))}
-		</div>
-	);
-}
-
-function Appearance({
-	s,
-	update,
-}: {
-	s: Settings;
-	update: (p: Partial<Settings>) => void;
-}): JSX.Element {
-	return (
-		<div className='divide-y divide-glass-edge'>
-			<SettingRow
-				label='Accent'
-				description='One neon color drives focus, cursor and highlights.'
-			>
-				<div className='flex gap-1.5'>
-					{ACCENTS.map((a) => (
-						<button
-							key={a}
-							type='button'
-							aria-label={a}
-							aria-pressed={s.accent === a}
-							onClick={() => update({ accent: a })}
-							className={cn(
-								'size-6 rounded-full outline-none transition-transform transition-fast hover:scale-110 focus-visible:shadow-glow',
-								s.accent === a &&
-									'outline-2 outline-offset-2 outline-fg-0 outline-solid',
-							)}
-							style={{
-								background: `var(--accent-${a})`,
-								boxShadow: `0 0 12px -2px var(--accent-${a})`,
-							}}
-						/>
-					))}
-				</div>
-			</SettingRow>
-			<SettingRow
-				label='Glass'
-				description='Blur and translucency on the panes. "Off" is fastest on integrated GPUs and battery.'
-			>
-				<Segmented
-					value={s.glass}
-					options={['full', 'subtle', 'off'] as const}
-					onChange={(glass) => update({ glass })}
-				/>
-			</SettingRow>
-			<Toggle
-				label='Ambient background'
-				description='The glow and drifting grid behind the glass.'
-				value={s.ambient}
-				onChange={(ambient) => update({ ambient })}
-			/>
-			<Toggle
-				label='Reduce motion'
-				description='Turns off animations and smooth scrolling.'
-				value={s.reduceMotion}
-				onChange={(reduceMotion) => update({ reduceMotion })}
-			/>
-			<Stepper
-				label='UI text size'
-				value={s.uiFontSize}
-				min={11}
-				max={15}
-				onChange={(uiFontSize) => update({ uiFontSize })}
-			/>
-		</div>
-	);
-}
-
-function Editor({
-	s,
-	update,
-}: {
-	s: Settings;
-	update: (p: Partial<Settings>) => void;
-}): JSX.Element {
-	return (
-		<div className='divide-y divide-glass-edge'>
-			<Stepper
-				label='Font size'
-				description='Ctrl+= / Ctrl+- also work.'
-				value={s.editorFontSize}
-				min={10}
-				max={24}
-				onChange={(editorFontSize) => update({ editorFontSize })}
-			/>
-			<Stepper
-				label='Tab size'
-				value={s.tabSize}
-				min={1}
-				max={8}
-				onChange={(tabSize) => update({ tabSize })}
-			/>
-			<Toggle
-				label='Font ligatures'
-				description='JetBrains Mono ligatures (=> != >=).'
-				value={s.editorLigatures}
-				onChange={(editorLigatures) => update({ editorLigatures })}
-			/>
-			<Toggle
-				label='Word wrap'
-				value={s.wordWrap}
-				onChange={(wordWrap) => update({ wordWrap })}
-			/>
-			<Toggle label='Minimap' value={s.minimap} onChange={(minimap) => update({ minimap })} />
-			<Toggle
-				label='Format Python on save'
-				description='Runs ruff format from the selected environment (or PATH).'
-				value={s.formatOnSave}
-				onChange={(formatOnSave) => update({ formatOnSave })}
-			/>
-			<Toggle
-				label='Local history'
-				description='Snapshot every save (50 per file, 30 days) so you can roll back without git.'
-				value={s.localHistory}
-				onChange={(localHistory) => update({ localHistory })}
-			/>
-			<Toggle
-				label='Secret shield'
-				description='Blur .env values, flag API keys, private keys and seed phrases in code, and block commits that stage them.'
-				value={s.secretShield}
-				onChange={(secretShield) => {
-					update({ secretShield });
-					setTimeout(repaintShield, 50);
-				}}
-			/>
-		</div>
-	);
-}
 
 function Ai({ s, update }: { s: Settings; update: (p: Partial<Settings>) => void }): JSX.Element {
 	const { settings, keys } = useAiSettings();
@@ -270,13 +49,13 @@ function Ai({ s, update }: { s: Settings; update: (p: Partial<Settings>) => void
 					<span className='font-mono'>{settings.completion.model}</span>
 				</Button>
 			</SettingRow>
-			<Toggle
+			<SettingToggle
 				label='AI autocomplete'
 				description='Suggestions appear in gray; Tab accepts, Esc dismisses.'
 				value={s.ghostText}
 				onChange={(ghostText) => update({ ghostText })}
 			/>
-			<Stepper
+			<SettingStepper
 				label='Autocomplete delay (×50 ms)'
 				description='Wait this long after you stop typing before asking.'
 				value={Math.round(s.ghostDelayMs / 50)}
@@ -396,12 +175,12 @@ export function SettingsDialog(): JSX.Element {
 						{
 							value: 'appearance',
 							label: 'Appearance',
-							content: pane(<Appearance s={settings} update={update} />),
+							content: pane(<AppearanceSettings s={settings} update={update} />),
 						},
 						{
 							value: 'editor',
 							label: 'Editor',
-							content: pane(<Editor s={settings} update={update} />),
+							content: pane(<EditorSettings s={settings} update={update} />),
 						},
 						{
 							value: 'ai',
