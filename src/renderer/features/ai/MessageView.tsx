@@ -147,6 +147,8 @@ export function MessageView({ message }: { message: ChatMessage }): JSX.Element 
 			className='mr-2'
 			data-chat-role='assistant'
 			data-streaming={message.streaming ? 'true' : 'false'}
+			// Screen readers wait for the finished reply instead of reading every token.
+			aria-busy={message.streaming ? true : undefined}
 		>
 			{segments.map((s, i) =>
 				s.kind === 'md' ? (
@@ -164,12 +166,16 @@ export function MessageView({ message }: { message: ChatMessage }): JSX.Element 
 				<p className='shimmer rounded-md px-2 py-1 text-12 text-fg-2'>Thinking…</p>
 			)}
 			{message.error && (
-				<p role='alert' className='mt-1 flex items-start gap-1 text-12 text-down'>
-					<AlertTriangle size={12} className='mt-0.5 shrink-0' /> {message.error}
+				// No role='alert': restored errors would all fire on mount. The Conversation log
+				// announces an error when it arrives.
+				<p className='mt-1 flex items-start gap-1 text-12 text-down'>
+					<AlertTriangle size={12} className='mt-0.5 shrink-0' />
+					<span className='sr-only'>Error: </span>
+					{message.error}
 				</p>
 			)}
 			{message.truncated && !message.streaming && (
-				<p role='status' className='mt-1 flex items-start gap-1 text-12 text-warn'>
+				<p className='mt-1 flex items-start gap-1 text-12 text-warn'>
 					<AlertTriangle size={12} className='mt-0.5 shrink-0' /> Reply was cut off at the
 					model’s token limit. Ask it to continue.
 				</p>

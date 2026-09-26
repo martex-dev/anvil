@@ -147,6 +147,9 @@ export function ChatPanel(): JSX.Element {
 					ref={listRef}
 					onScroll={onListScroll}
 					className='flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3 py-3'
+					// A log announces new messages (and errors) as they arrive, not restored history.
+					role='log'
+					aria-live='polite'
 					aria-label='Conversation'
 				>
 					{messages.length === 0 ? (
