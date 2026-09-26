@@ -3,6 +3,62 @@
 What changed in each release of Anvil. The release workflow publishes a version's section as
 its GitHub release notes.
 
+## [0.2.9] - 2026-09-26
+
+Data and file viewers: 49 fixes from the full bug sweep of 0.2.0.
+
+### Fixed
+
+- **data:** Parse, sort and profile tables in a worker thread
+- **data:** Share one parse between concurrent requests for a file
+- **data:** Drop the cut-off last row of a truncated csv
+- **data:** Show a clear message when a data file is missing or unreadable
+- **data:** Name the failing line in jsonl parse errors
+- **data:** Keep a few filter/sort views per file
+- **data:** Explain python reader timeouts and size limits
+- **data:** Treat pandas na values as missing
+- **data:** Stop mapping pandas interval columns to int
+- **data:** Keep blank lines as missing values in one-column csvs
+- **data:** Only flag truncation when rows were left out
+- **data:** Sort inf and nan consistently in numeric columns
+- **data:** Keep the column profile layout while a column loads
+- **data:** Say when the column profile covers only the loaded rows
+- **data:** Return focus to the profile toggle when the profile closes
+- **data:** Add a grid context menu and row-number selection
+- **data:** Mark the focus cell inside a multi-cell selection
+- **data:** Reach table actions from the command palette
+- **data:** Show the unfiltered row count while a filter is active
+- **data:** Make the truncated badge reachable by keyboard
+- **data:** Re-read a table when its file changes on disk
+- **data:** Keep each table's filter, sort, selection and widths across tab switches
+- **data:** Show a busy state for clipboard copies and block overlapping ones
+- **data:** Copy the visible rows instead of an internal 500-row page
+- **data:** Offer 'Select interpreter' when a table needs Python
+- **data:** Sort and resize columns from the keyboard
+- **ui:** Stop the loading shimmer when motion is reduced
+- **data:** Explain and retry rows whose page failed to load
+- **data:** Colour True/TRUE bool cells like lowercase true
+- **data:** Open wikilinks and search tags from the markdown preview
+- **data:** Re-read the markdown preview after the editor saves and closes
+- **ui:** Stop the live pulse and reload spinner when motion is reduced
+- **editor:** Reset viewer state when a tab shows another file
+- **data:** Name converted scripts by notebook language and clean up failed writes
+- **data:** Resolve progress-bar carriage returns after merging stream chunks
+- **data:** Expose grid cells and the focus cell to screen readers
+- **data:** Show a truncated cell's full value on hover
+- **data:** Describe the value histogram to screen readers
+- **data:** Land the first arrow key on the first cell
+- **data:** Stop a reused viewer showing the previous file's table
+- **editor:** Show loading and error states for diff tabs
+- **data:** Fade the notebook copy button in and out
+- **editor:** Keep the inline diff layout when the diff changes
+- **editor:** Say when a diff has no differences
+- **data:** Show a focus ring on the image, markdown and notebook panes
+- **data:** Keep image zoom shortcuts working after using the toolbar
+- **data:** Flag an image that could not be reloaded
+- **data:** Show full file names on viewer toolbars
+- **data:** Reach image, notebook, markdown and diff actions from the palette
+
 ## [0.2.8] - 2026-09-26
 
 App shell, commands, layout and themes: 60 fixes from the full bug sweep of 0.2.0.
