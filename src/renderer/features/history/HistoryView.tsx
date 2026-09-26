@@ -45,9 +45,26 @@ export function HistoryView(): JSX.Element {
 	const [restore, setRestore] = useState<string | null>(null);
 	const [confirmClear, setConfirmClear] = useState(false);
 
+	/** The snapshot's text, or null after telling the user why it could not be read. */
+	const readSnapshot = async (id: string): Promise<string | null> => {
+		if (!path) return null;
+		try {
+			return (await call('history:read', { path, id })).content;
+		} catch (error) {
+			toast.error(
+				'Could not read snapshot',
+				error instanceof Error ? error.message : undefined,
+			);
+			// It may have been pruned or cleared meanwhile; show what is left.
+			void q.refetch();
+			return null;
+		}
+	};
+
 	const compare = async (id: string, time: number): Promise<void> => {
 		if (!path) return;
-		const { content } = await call('history:read', { path, id });
+		const content = await readSnapshot(id);
+		if (content === null) return;
 		const current = getModel(path)?.getValue() ?? '';
 		const name = path.split('/').at(-1) ?? path;
 		useTabsStore.getState().open({
@@ -69,8 +86,12 @@ export function HistoryView(): JSX.Element {
 	const doRestore = async (id: string): Promise<void> => {
 		if (!path) return;
 		const model = getModel(path);
-		if (!model) return;
-		const { content } = await call('history:read', { path, id });
+		if (!model) {
+			toast.info('Open the file to restore', path);
+			return;
+		}
+		const content = await readSnapshot(id);
+		if (content === null) return;
 		// An edit, not a file write: undo gets you back, and saving is your call.
 		model.pushEditOperations(
 			[],
