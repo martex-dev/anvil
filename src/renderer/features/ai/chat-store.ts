@@ -4,7 +4,7 @@ import type { AiContext, AiModelRef } from '@shared/ipc/channels/ai';
 
 import { call } from '../../lib/ipc';
 import { toast } from '../../stores/toast-store';
-import { buildContext, buildHistory } from './chat-history';
+import { buildContext, buildHistory, MAX_CONTEXT } from './chat-history';
 
 export interface ChatMessage {
 	id: string;
@@ -58,6 +58,7 @@ interface ChatState {
 }
 
 const KEY = 'anvil.chat';
+const MAX_LABEL = 500;
 
 /** A reply that will get no more text; one without any says so as its error. */
 function stoppedReply(m: ChatMessage): ChatMessage {
@@ -119,14 +120,22 @@ export const useChat = create<ChatState>((set, get) => {
 		attached: [],
 		draft: '',
 		setDraft: (draft) => set({ draft }),
-		attach: (item) =>
-			set((s) => ({
-				// One item per kind+label: re-attaching the same file refreshes it.
-				attached: [
-					...s.attached.filter((a) => !(a.kind === item.kind && a.label === item.label)),
-					item,
-				],
-			})),
+		attach: (raw) => {
+			// Labels are capped by the ai:send schema; a longer one would fail the whole request.
+			const item = { ...raw, label: raw.label.slice(0, MAX_LABEL) };
+			// One item per kind+label: re-attaching the same file refreshes it.
+			const others = get().attached.filter(
+				(a) => !(a.kind === item.kind && a.label === item.label),
+			);
+			if (others.length >= MAX_CONTEXT) {
+				toast.warn(
+					`Up to ${MAX_CONTEXT} attachments`,
+					'Remove one before attaching another.',
+				);
+				return;
+			}
+			set({ attached: [...others, item] });
+		},
 		detach: (index) => set((s) => ({ attached: s.attached.filter((_, i) => i !== index) })),
 		send: (text, model) => {
 			if (get().activeRequest || !text.trim()) return false;

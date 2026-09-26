@@ -119,3 +119,24 @@ describe('chat stop', () => {
 		expect(useChat.getState().messages[0]?.stopped).toBeUndefined();
 	});
 });
+
+describe('chat attach', () => {
+	const file = (label: string) => ({ kind: 'file' as const, label, language: null, text: 'x' });
+
+	it('refuses more than 20 attachments with a toast, but still refreshes one', () => {
+		useToastStore.setState({ toasts: [] });
+		useChat.setState({ attached: [] });
+		for (let i = 0; i < 20; i++) useChat.getState().attach(file(`f${i}.py`));
+		useChat.getState().attach(file('one-too-many.py'));
+		expect(useChat.getState().attached).toHaveLength(20);
+		expect(useToastStore.getState().toasts.at(-1)?.title).toBe('Up to 20 attachments');
+		useChat.getState().attach(file('f3.py'));
+		expect(useChat.getState().attached.at(-1)?.label).toBe('f3.py');
+	});
+
+	it('clamps a label to what the request allows', () => {
+		useChat.setState({ attached: [] });
+		useChat.getState().attach(file('x'.repeat(600)));
+		expect(useChat.getState().attached[0]?.label).toHaveLength(500);
+	});
+});
