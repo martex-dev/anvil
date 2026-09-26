@@ -25,14 +25,19 @@ export async function readHead(
 }
 
 /** One JSON value per line; blank lines are skipped, errors name the file's line number. */
-function parseJsonLines(text: string, truncated: boolean, maxRows: number): unknown[] {
+function parseJsonLines(
+	text: string,
+	truncated: boolean,
+	maxRows: number,
+): { records: unknown[]; more: boolean } {
 	const lines = text.split(/\r?\n/);
 	// The last line of a cut-off file is usually partial.
 	if (truncated) lines.pop();
 	const records: unknown[] = [];
-	for (let i = 0; i < lines.length && records.length < maxRows; i++) {
+	for (let i = 0; i < lines.length; i++) {
 		const line = lines[i] ?? '';
 		if (!line.trim()) continue;
+		if (records.length === maxRows) return { records, more: true };
 		try {
 			records.push(JSON.parse(line) as unknown);
 		} catch (error) {
@@ -43,7 +48,7 @@ function parseJsonLines(text: string, truncated: boolean, maxRows: number): unkn
 			);
 		}
 	}
-	return records;
+	return { records, more: false };
 }
 
 /** Parses CSV/TSV/JSON/JSONL text (possibly only the head of the file) into a table. */
@@ -61,8 +66,9 @@ export function tableFromText(
 		return buildTable(parsed.header, parsed.rows, truncated || parsed.truncated, 'built-in');
 	}
 	let records: unknown[];
+	let more = false;
 	if (format === 'jsonl') {
-		records = parseJsonLines(text, truncated, maxRows);
+		({ records, more } = parseJsonLines(text, truncated, maxRows));
 	} else {
 		if (truncated)
 			throw new AnvilError('DATA_TOO_LARGE', 'JSON files over 200 MB are not supported');
@@ -73,6 +79,8 @@ export function tableFromText(
 			throw new AnvilError('DATA_PARSE', `Invalid JSON: ${errorMessage(error)}`, error);
 		}
 		records = Array.isArray(parsed) ? parsed : [parsed];
+		more = records.length > maxRows;
+		if (more) records = records.slice(0, maxRows);
 	}
-	return tableFromRecords(records, truncated || records.length >= maxRows);
+	return tableFromRecords(records, truncated || more);
 }

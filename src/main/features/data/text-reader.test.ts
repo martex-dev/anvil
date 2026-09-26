@@ -22,4 +22,17 @@ describe('tableFromText', () => {
 		);
 		expect(tableFromText('{"a":1}\n\n{"a":2}\n', 'jsonl', false).rows).toEqual([['1'], ['2']]);
 	});
+
+	it('flags truncation only when rows were actually left out', () => {
+		expect(tableFromText('a\n1\n2\n', 'csv', false, 2).truncated).toBe(false);
+		expect(tableFromText('a\n1\n2\n3\n', 'csv', false, 2)).toMatchObject({ truncated: true });
+		expect(tableFromText('{"a":1}\n{"a":2}\n\n', 'jsonl', false, 2).truncated).toBe(false);
+		const jsonl = tableFromText('{"a":1}\n{"a":2}\n{"a":3}\n', 'jsonl', false, 2);
+		expect(jsonl).toMatchObject({ truncated: true, rows: [['1'], ['2']] });
+		expect(tableFromText('[1,2]', 'json', false, 2).truncated).toBe(false);
+		expect(tableFromText('[1,2,3]', 'json', false, 2)).toMatchObject({
+			truncated: true,
+			rows: [['1'], ['2']],
+		});
+	});
 });

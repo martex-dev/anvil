@@ -39,7 +39,8 @@ export function parseDelimited(
 		// A blank line is a missing value in a one-column file, and noise anywhere else.
 		if (!isBlank(record) || records[0]?.length === 1) records.push(record);
 		record = [];
-		if (records.length > maxRows) {
+		// Header + maxRows rows + one more: only then was something actually left out.
+		if (records.length > maxRows + 1) {
 			truncated = true;
 			return false;
 		}
