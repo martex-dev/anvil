@@ -6,11 +6,12 @@ import { utf8Encode } from './encoding';
 import { Field } from './Field';
 import type { Outcome } from './format';
 import { TextArea } from './TextArea';
+import { useToolField } from './toolbox-store';
 import { ToolError } from './ToolError';
 import { sha256Hex } from './tools';
 
 export function HashTool(): JSX.Element {
-	const [input, setInput] = useState('');
+	const [input, setInput] = useToolField('hash.input', '');
 	const [result, setResult] = useState<Outcome<string> | null>(null);
 
 	useEffect(() => {

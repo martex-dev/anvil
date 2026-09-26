@@ -72,6 +72,21 @@ function formatLocal(ms: number): string {
 	}).format(ms);
 }
 
+const ISO_LIKE = /^[+-]?\d{4,6}[-/]\d{1,2}([-/]\d{1,2})?($|[T ]\d)/i;
+const US_SLASHES = /^\d{1,2}\/\d{1,2}\/\d{4}($|[ T]\d)/;
+const MONTH_NAME = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i;
+const YEAR = /\b\d{4}\b/;
+
+/**
+ * V8's Date.parse is lenient enough to read "hello 1" as 2001-01-01, so only hand it strings
+ * shaped like a date: ISO-8601-ish, m/d/yyyy, or RFC 2822 style with a month name and a year.
+ */
+function looksLikeDate(text: string): boolean {
+	return (
+		ISO_LIKE.test(text) || US_SLASHES.test(text) || (MONTH_NAME.test(text) && YEAR.test(text))
+	);
+}
+
 /**
  * Accepts unix seconds/ms/us/ns (unit auto-detected by magnitude) or an ISO-8601/RFC date string.
  * Date strings without a zone are read in local time, as Date.parse does.
@@ -86,7 +101,7 @@ export function convertTimestamp(input: string, now: number = Date.now()): Times
 		detectedUnit = detectUnit(Math.abs(n));
 		ms = toMs(n, detectedUnit);
 	} else {
-		ms = Date.parse(text);
+		ms = looksLikeDate(text) ? Date.parse(text) : NaN;
 		detectedUnit = 'date';
 		if (Number.isNaN(ms)) throw new Error(`Could not parse '${text}' as a date`);
 	}

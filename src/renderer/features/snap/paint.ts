@@ -1,5 +1,5 @@
 import type { SnapPalette } from './backgrounds';
-import { type ChromeId, type SnapLayout, WINDOW_RADIUS, withAlpha } from './snap-layout';
+import { type ChromeId, ellipsize, type SnapLayout, WINDOW_RADIUS, withAlpha } from './snap-layout';
 
 /** One styled piece of a code line, as colorized by Monaco. */
 export interface SnapRun {
@@ -137,7 +137,8 @@ export function paintChrome(
 	ctx.font = `500 12px ${opts.fonts.ui}`;
 	ctx.fillStyle = p.text1;
 	ctx.textAlign = 'left';
-	ctx.fillText(opts.title, bar.x + 36, cy, bar.width - 150);
+	const title = ellipsize(opts.title, bar.width - 150, (t) => ctx.measureText(t).width);
+	ctx.fillText(title, bar.x + 36, cy);
 
 	ctx.font = `500 10px ${opts.fonts.code}`;
 	ctx.letterSpacing = '1.6px';

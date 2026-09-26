@@ -132,7 +132,7 @@ export const TOOL_COMMANDS: Command[] = [
 		category: 'Edit',
 		run: () => {
 			const editor = requireEditor();
-			if (editor) insertAtCursors(editor, uuid());
+			if (editor) insertAtCursors(editor, () => uuid());
 		},
 	},
 	{

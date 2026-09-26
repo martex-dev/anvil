@@ -192,6 +192,9 @@ describe('encode / decode', () => {
 		expect(run('html-unescape', '&lt;&#39;&#x41;&copy;&bogus;&constructor;')).toBe(
 			"<'A©&bogus;&constructor;",
 		);
+		expect(run('html-unescape', '&#X42;&#0;&#xD800;&#x110000;&#9731;')).toBe(
+			'B&#0;&#xD800;&#x110000;☃',
+		);
 	});
 
 	it('hex round-trips UTF-8 and accepts dump formats', () => {

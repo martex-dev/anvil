@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	base58ToHex,
 	compoundGrowth,
+	convertBytes,
 	convertTimestamp,
 	convertUnits,
 	decode,
@@ -11,12 +12,14 @@ import {
 	type EncodingKind,
 	formatJson,
 	hexToBase58,
+	isJwtExpired,
 	MAX_REGEX_MATCHES,
 	positionSize,
 	sha256Hex,
 	testRegex,
 	type UnitId,
 	UNITS,
+	validateRegexFlags,
 } from './tools';
 
 const T = 1_700_000_000;
@@ -46,6 +49,11 @@ describe('convertTimestamp', () => {
 		expect(iso.detectedUnit).toBe('date');
 		expect(iso.unixSeconds).toBe(1_704_067_200);
 		expect(convertTimestamp('Tue, 14 Nov 2023 22:13:20 GMT').unixSeconds).toBe(T);
+		expect(convertTimestamp('2023-11-14 22:13:20Z').unixSeconds).toBe(T);
+		expect(convertTimestamp('14 November 2023 22:13:20 UTC').unixSeconds).toBe(T);
+		for (const date of ['2024-01', '2024-01-15', '2024/01/15', '01/15/2024', 'Jan 15, 2024']) {
+			expect(convertTimestamp(date).detectedUnit).toBe('date');
+		}
 	});
 
 	it('describes time relative to now', () => {
@@ -65,6 +73,10 @@ describe('convertTimestamp', () => {
 	it('rejects garbage and out-of-range input', () => {
 		expect(() => convertTimestamp('')).toThrow(/Enter a unix timestamp/);
 		expect(() => convertTimestamp('not a date')).toThrow(/Could not parse/);
+		// V8's Date.parse reads each of these as a date; they must not get a 'date string' badge.
+		for (const junk of ['hello 1', 'foo 12', 'abc 2024', 'x-1', 'nov']) {
+			expect(() => convertTimestamp(junk)).toThrow(/Could not parse/);
+		}
 		expect(() => convertTimestamp('99999999999999999999999')).toThrow(/outside/);
 	});
 });
@@ -163,6 +175,12 @@ describe('encode / decode', () => {
 });
 
 describe('base58 bytes', () => {
+	it('counts bytes from the decoded input, even with whitespace before 0x', () => {
+		expect(convertBytes(' 0xabcd', 'base58').bytes).toBe(2);
+		expect(convertBytes('0x ab cd', 'base58')).toEqual(convertBytes('abcd', 'base58'));
+		expect(convertBytes('1'.repeat(32), 'hex')).toEqual({ text: '00'.repeat(32), bytes: 32 });
+	});
+
 	it('maps the Solana System Program address to 32 zero bytes', () => {
 		const system = '1'.repeat(32);
 		expect(base58ToHex(system)).toBe('00'.repeat(32));
@@ -193,17 +211,24 @@ describe('decodeJwt', () => {
 
 	it('decodes header and payload and reports expiry', () => {
 		const token = make({ sub: 'marto', exp: T });
-		const expired = decodeJwt(token, T * 1000 + 1);
-		expect(expired.header).toEqual({ alg: 'HS256', typ: 'JWT' });
-		expect(expired.payload).toEqual({ sub: 'marto', exp: T });
-		expect(expired.expiresAt).toBe(T_ISO);
-		expect(expired.expired).toBe(true);
-		expect(decodeJwt(token, T * 1000 - 1).expired).toBe(false);
+		const jwt = decodeJwt(token);
+		expect(jwt.header).toEqual({ alg: 'HS256', typ: 'JWT' });
+		expect(jwt.payload).toEqual({ sub: 'marto', exp: T });
+		expect(jwt.expiresAt).toBe(T_ISO);
+		expect(jwt.expMs).toBe(T * 1000);
+	});
+
+	it('re-checks expiry against the given clock', () => {
+		const jwt = decodeJwt(make({ exp: T }));
+		expect(isJwtExpired(jwt, T * 1000 - 1)).toBe(false);
+		expect(isJwtExpired(jwt, T * 1000)).toBe(true);
+		expect(isJwtExpired(jwt, T * 1000 + 1)).toBe(true);
+		expect(isJwtExpired(decodeJwt(make({ sub: 'x' })), T * 1000)).toBeNull();
 	});
 
 	it('returns nulls without a numeric exp', () => {
-		expect(decodeJwt(make({ sub: 'x' }))).toMatchObject({ expiresAt: null, expired: null });
-		expect(decodeJwt(make({ exp: 'soon' }))).toMatchObject({ expiresAt: null, expired: null });
+		expect(decodeJwt(make({ sub: 'x' }))).toMatchObject({ expiresAt: null, expMs: null });
+		expect(decodeJwt(make({ exp: 'soon' }))).toMatchObject({ expiresAt: null, expMs: null });
 	});
 
 	it('rejects malformed tokens', () => {
@@ -243,6 +268,24 @@ describe('formatJson', () => {
 
 	it('throws on invalid JSON', () => {
 		expect(() => formatJson('{a:1}', 'pretty')).toThrow(/^Invalid JSON/);
+	});
+});
+
+describe('validateRegexFlags', () => {
+	it('accepts every valid flag combination new RegExp accepts', () => {
+		for (const flags of ['', 'g', 'gimsuy', 'dgimsvy']) {
+			expect(validateRegexFlags(flags)).toBeNull();
+			expect(() => new RegExp('a', flags)).not.toThrow();
+		}
+	});
+
+	it('rejects unknown, repeated and conflicting flags', () => {
+		for (const flags of ['gx', 'gg', 'uv']) {
+			expect(validateRegexFlags(flags)).not.toBeNull();
+			expect(() => new RegExp('a', flags)).toThrow();
+		}
+		expect(validateRegexFlags('gx')).toContain("'x'");
+		expect(validateRegexFlags('igi')).toContain("'i'");
 	});
 });
 
@@ -350,6 +393,16 @@ describe('compoundGrowth', () => {
 		).toBe(1300);
 		expect(compoundGrowth({ start: 1000, ratePct: -50, periods: 1 }).final).toBe(500);
 		expect(compoundGrowth({ start: 1000, ratePct: 10, periods: 0 }).final).toBe(1000);
+	});
+
+	it('reports overflow instead of NaN for very long horizons', () => {
+		expect(() => compoundGrowth({ start: 1000, ratePct: 5, periods: 100000 })).toThrow(
+			/too large/,
+		);
+		expect(() =>
+			compoundGrowth({ start: 1000, ratePct: 5, periods: 100000, contribution: 10 }),
+		).toThrow(/too large/);
+		expect(compoundGrowth({ start: 0, ratePct: 5, periods: 100000 }).final).toBe(0);
 	});
 
 	it('validates input', () => {

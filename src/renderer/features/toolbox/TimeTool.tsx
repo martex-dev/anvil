@@ -7,6 +7,7 @@ import { Input } from '../../ui/Input';
 import { Field } from './Field';
 import { attempt } from './format';
 import { ResultRow } from './ResultRow';
+import { useToolField } from './toolbox-store';
 import { ToolError } from './ToolError';
 import { convertTimestamp, type TimestampUnit } from './tools';
 
@@ -19,7 +20,7 @@ const UNIT_LABELS: Record<TimestampUnit, string> = {
 };
 
 export function TimeTool(): JSX.Element {
-	const [input, setInput] = useState('');
+	const [input, setInput] = useToolField('time.input', '');
 	const [now, setNow] = useState(() => Date.now());
 	const filled = input.trim() !== '';
 
