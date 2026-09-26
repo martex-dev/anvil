@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import type { SearchQuery, SearchResult } from '@shared/ipc/channels/search';
 
 import { call, IpcCallError } from '../../lib/ipc';
+import { useLayoutStore } from '../../stores/layout-store';
 
 /** Search box state; kept outside the view so it survives switching side views. */
 export const useSearchParams = create<{
@@ -14,11 +15,29 @@ export const useSearchParams = create<{
 	setParams: (patch) => set((s) => ({ params: { ...s.params, ...patch } })),
 }));
 
-/** Bumped by the "Search in Files" command so the panel focuses its input even if already open. */
-export const useSearchFocus = create<{ tick: number; focus: () => void }>((set) => ({
+/**
+ * Bumped by the "Search in Files" command so the panel focuses its input even if already open.
+ * `query` is set when the request also replaces the search text (searchInFiles), else null.
+ */
+export const useSearchFocus = create<{
+	tick: number;
+	query: string | null;
+	focus: (query?: string) => void;
+}>((set) => ({
 	tick: 0,
-	focus: () => set((s) => ({ tick: s.tick + 1 })),
+	query: null,
+	focus: (query) => set((s) => ({ tick: s.tick + 1, query: query ?? null })),
 }));
+
+/**
+ * Opens the Search view with `query` as a literal search (e.g. a clicked Markdown #tag). The panel
+ * adopts the new query even when it is already open, because the focus tick changes.
+ */
+export function searchInFiles(query: string): void {
+	useSearchParams.getState().setParams({ query, regex: false });
+	useLayoutStore.getState().showView('search');
+	useSearchFocus.getState().focus(query);
+}
 
 export function useFileSearch(
 	root: string | null,
