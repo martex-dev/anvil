@@ -16,27 +16,57 @@ export function requireEditor(): Editor | null {
 	return editor;
 }
 
-/**
- * The text each selection acts on. An empty selection means its whole line, which is what you
- * want for "evaluate this line" or "snake_case this name" without selecting first.
- */
-function targets(editor: Editor): Array<{ range: Monaco.IRange; text: string }> {
-	const model = editor.getModel();
-	if (!model) return [];
-	return (editor.getSelections() ?? []).map((sel) => {
-		const range = sel.isEmpty()
-			? {
-					startLineNumber: sel.startLineNumber,
-					startColumn: 1,
-					endLineNumber: sel.startLineNumber,
-					endColumn: model.getLineMaxColumn(sel.startLineNumber),
-				}
-			: sel;
-		return { range, text: model.getValueInRange(range) };
-	});
+type Target = { range: Monaco.IRange; text: string };
+
+/** a is strictly before b (line, then column). */
+function before(aLine: number, aCol: number, bLine: number, bCol: number): boolean {
+	return aLine < bLine || (aLine === bLine && aCol < bCol);
 }
 
-/** Replaces every target with `fn(text)` as one undo step; returns false if `fn` threw. */
+/** Monaco rejects edits whose ranges overlap; touching ranges are fine. */
+function overlaps(a: Monaco.IRange, b: Monaco.IRange): boolean {
+	const same =
+		a.startLineNumber === b.startLineNumber &&
+		a.startColumn === b.startColumn &&
+		a.endLineNumber === b.endLineNumber &&
+		a.endColumn === b.endColumn;
+	return (
+		same ||
+		(before(a.startLineNumber, a.startColumn, b.endLineNumber, b.endColumn) &&
+			before(b.startLineNumber, b.startColumn, a.endLineNumber, a.endColumn))
+	);
+}
+
+/**
+ * The text each selection acts on. An empty selection means its whole line, which is what you
+ * want for "evaluate this line" or "snake_case this name" without selecting first. A line can be
+ * claimed only once (two cursors on it, or a cursor inside another selection), since overlapping
+ * edits would make Monaco reject the whole transform; real selections win over whole lines.
+ */
+function targets(editor: Editor): Target[] {
+	const model = editor.getModel();
+	if (!model) return [];
+	const selections = editor.getSelections() ?? [];
+	const kept: Monaco.IRange[] = selections.filter((sel) => !sel.isEmpty());
+	const out: Target[] = [];
+	for (const sel of selections) {
+		let range: Monaco.IRange = sel;
+		if (sel.isEmpty()) {
+			range = {
+				startLineNumber: sel.startLineNumber,
+				startColumn: 1,
+				endLineNumber: sel.startLineNumber,
+				endColumn: model.getLineMaxColumn(sel.startLineNumber),
+			};
+			if (kept.some((k) => overlaps(k, range))) continue;
+			kept.push(range);
+		}
+		out.push({ range, text: model.getValueInRange(range) });
+	}
+	return out;
+}
+
+/** Replaces every target with `fn(text)` as one undo step; returns false if it failed. */
 export function replaceTargets(
 	editor: Editor,
 	fn: (text: string) => string,
@@ -48,23 +78,26 @@ export function replaceTargets(
 			const next = fn(t.text);
 			if (next !== t.text) edits.push({ range: t.range, text: next, forceMoveMarkers: true });
 		}
+		if (edits.length === 0) return true;
+		editor.pushUndoStop();
+		editor.executeEdits('anvil.transform', edits);
+		editor.pushUndoStop();
 	} catch (error) {
 		toast.warn(errorTitle, error instanceof Error ? error.message : undefined);
 		return false;
 	}
-	if (edits.length === 0) return true;
-	editor.pushUndoStop();
-	editor.executeEdits('anvil.transform', edits);
-	editor.pushUndoStop();
 	editor.focus();
 	return true;
 }
 
-/** Types `text` at every cursor, replacing selections. */
-export function insertAtCursors(editor: Editor, text: string): void {
-	const edits = (editor.getSelections() ?? []).map((range) => ({
+/**
+ * Types `text` at every cursor, replacing selections. Pass a function to get a fresh value per
+ * cursor (index 0 is the primary one), so "unique" values like UUIDs stay unique.
+ */
+export function insertAtCursors(editor: Editor, text: string | ((index: number) => string)): void {
+	const edits = (editor.getSelections() ?? []).map((range, i) => ({
 		range,
-		text,
+		text: typeof text === 'string' ? text : text(i),
 		forceMoveMarkers: true,
 	}));
 	editor.pushUndoStop();
@@ -86,6 +119,8 @@ export async function transformSelection(): Promise<void> {
 	// Preview each transform on the real selection when it's small enough to run 46 times.
 	const sample = targets(editor)[0]?.text ?? '';
 	const live = sample.length > 0 && sample.length <= 2000;
+	// Kept so random transforms (shuffle) apply the ordering the preview showed.
+	const previews = new Map<string, string>();
 	const picked = await quickPick({
 		title: 'transform',
 		placeholder: 'snake_case, sort lines, base64, JSON pretty…',
@@ -93,7 +128,9 @@ export async function transformSelection(): Promise<void> {
 			let detail = t.example;
 			if (live) {
 				try {
-					detail = clip(t.run(sample), 80);
+					const output = t.run(sample);
+					previews.set(t.id, output);
+					detail = clip(output, 80);
 				} catch {
 					detail = `(${t.example})`;
 				}
@@ -108,7 +145,15 @@ export async function transformSelection(): Promise<void> {
 		}),
 	});
 	const transform = TRANSFORMS.find((t) => t.id === picked);
-	if (transform) replaceTargets(editor, transform.run);
+	if (!transform) return;
+	const preview = previews.get(transform.id);
+	let previewUsed = false;
+	replaceTargets(editor, (text) => {
+		// Only the previewed selection, and only once, so other selections still get their own run.
+		if (preview === undefined || previewUsed || text !== sample) return transform.run(text);
+		previewUsed = true;
+		return preview;
+	});
 }
 
 export function evaluateMath(): void {

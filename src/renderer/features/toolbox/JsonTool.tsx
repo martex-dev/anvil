@@ -1,10 +1,11 @@
-import { type JSX, useMemo, useState } from 'react';
+import { type JSX, useMemo } from 'react';
 
 import { CodeBlock } from './CodeBlock';
 import { Field } from './Field';
 import { attempt } from './format';
 import { Segmented } from './Segmented';
 import { TextArea } from './TextArea';
+import { useToolField } from './toolbox-store';
 import { ToolError } from './ToolError';
 import { formatJson, type JsonFormatMode } from './tools';
 
@@ -15,8 +16,8 @@ const MODES = [
 ] as const;
 
 export function JsonTool(): JSX.Element {
-	const [input, setInput] = useState('');
-	const [mode, setMode] = useState<JsonFormatMode>('pretty');
+	const [input, setInput] = useToolField('json.input', '');
+	const [mode, setMode] = useToolField<JsonFormatMode>('json.mode', 'pretty');
 	const filled = input.trim() !== '';
 	const result = useMemo(
 		() => (filled ? attempt(() => formatJson(input, mode)) : null),

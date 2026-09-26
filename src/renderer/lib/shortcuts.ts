@@ -27,7 +27,8 @@ interface KeyLike {
 	metaKey?: boolean;
 	shiftKey: boolean;
 	altKey: boolean;
-	getModifierState?: (key: string) => boolean;
+	// Method syntax so React's narrower (key: ModifierKey) signature is accepted too.
+	getModifierState?(key: string): boolean;
 }
 
 /**

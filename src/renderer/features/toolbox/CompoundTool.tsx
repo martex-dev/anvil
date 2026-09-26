@@ -1,17 +1,18 @@
-import { type JSX, useMemo, useState } from 'react';
+import { type JSX, useMemo } from 'react';
 
 import { cn } from '../../lib/cn';
 import { attempt, formatGrouped, formatPlain, parseNumber } from './format';
 import { NumberField } from './NumberField';
 import { ResultRow } from './ResultRow';
+import { useToolField } from './toolbox-store';
 import { ToolError } from './ToolError';
 import { compoundGrowth } from './tools';
 
 export function CompoundTool(): JSX.Element {
-	const [start, setStart] = useState('10000');
-	const [rate, setRate] = useState('');
-	const [periods, setPeriods] = useState('');
-	const [contribution, setContribution] = useState('');
+	const [start, setStart] = useToolField('compound.start', '10000');
+	const [rate, setRate] = useToolField('compound.rate', '');
+	const [periods, setPeriods] = useToolField('compound.periods', '');
+	const [contribution, setContribution] = useToolField('compound.contribution', '');
 
 	const result = useMemo(() => {
 		const s = parseNumber(start);
