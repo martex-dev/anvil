@@ -104,21 +104,31 @@ export class FsService {
 		if (!s.isFile()) throw new AnvilError('FS_NOT_A_FILE', `${rel} is not a file`);
 		const base = { path: rel, size: s.size, mtimeMs: s.mtimeMs };
 		if (s.size > MAX_EDITABLE_BYTES) {
-			return { ...base, content: '', binary: false, tooLarge: true, eol: '\n' };
+			return { ...base, content: '', binary: false, tooLarge: true, eol: '\n', bom: false };
 		}
 		const buf = await readFile(abs);
 		if (looksBinary(buf))
-			return { ...base, content: '', binary: true, tooLarge: false, eol: '\n' };
-		// Strip a UTF-8 BOM so the editor doesn't show it; it's rare in source files.
+			return { ...base, content: '', binary: true, tooLarge: false, eol: '\n', bom: false };
+		// Strip a UTF-8 BOM so the editor doesn't show it, but report it so a save writes it
+		// back: Excel CSVs and PowerShell 5 scripts depend on it.
 		const raw = buf.toString('utf8');
-		const text = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw;
-		return { ...base, content: text, binary: false, tooLarge: false, eol: detectEol(text) };
+		const bom = raw.charCodeAt(0) === 0xfeff;
+		const text = bom ? raw.slice(1) : raw;
+		return {
+			...base,
+			content: text,
+			binary: false,
+			tooLarge: false,
+			eol: detectEol(text),
+			bom,
+		};
 	}
 
 	async writeFile(
 		rel: string,
 		content: string,
 		expectedMtimeMs?: number,
+		bom = false,
 	): Promise<{ mtimeMs: number }> {
 		const root = this.root();
 		const abs = toAbsolute(root, rel);
@@ -130,7 +140,7 @@ export class FsService {
 				throw new AnvilError('FS_CONFLICT', `${rel} changed on disk since it was opened`);
 			}
 		}
-		await writeFile(abs, content, 'utf8');
+		await writeFile(abs, bom ? `\ufeff${content}` : content, 'utf8');
 		return { mtimeMs: (await stat(abs)).mtimeMs };
 	}
 

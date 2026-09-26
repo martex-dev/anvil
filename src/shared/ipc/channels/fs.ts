@@ -26,6 +26,8 @@ export const FileContentSchema = z.object({
 	binary: z.boolean(),
 	tooLarge: z.boolean(),
 	eol: z.enum(['\n', '\r\n']),
+	/** Started with a UTF-8 BOM (stripped from content); pass it back on save to keep it. */
+	bom: z.boolean(),
 });
 export type FileContent = z.infer<typeof FileContentSchema>;
 
@@ -38,6 +40,8 @@ export const fsChannels = defineChannels({
 			content: z.string().max(50 * 1024 * 1024),
 			/** If set and the file changed on disk since, the write fails with FS_CONFLICT. */
 			expectedMtimeMs: z.number().optional(),
+			/** Prepend a UTF-8 BOM (the file had one when it was read). */
+			bom: z.boolean().optional(),
 		}),
 		output: z.object({ mtimeMs: z.number() }),
 	},

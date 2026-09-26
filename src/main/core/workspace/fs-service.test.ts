@@ -56,6 +56,15 @@ describe('FsService', () => {
 		expect((await fs.list('linked')).map((e) => e.name)).toEqual(['b.ts']);
 	});
 
+	it('reports a UTF-8 BOM on read and writes it back when asked', async () => {
+		writeFileSync(join(root, 'data.csv'), '\ufeffa,b\r\n1,2\r\n', 'utf8');
+		const csv = await fs.readFile('data.csv');
+		expect(csv).toMatchObject({ bom: true, content: 'a,b\r\n1,2\r\n' });
+		await fs.writeFile('data.csv', 'a,b\r\n3,4\r\n', undefined, csv.bom);
+		expect(readFileSync(join(root, 'data.csv'), 'utf8')).toBe('\ufeffa,b\r\n3,4\r\n');
+		expect((await fs.readFile('README.md')).bom).toBe(false);
+	});
+
 	it('reads text with EOL detection and flags binaries', async () => {
 		const readme = await fs.readFile('README.md');
 		expect(readme).toMatchObject({ binary: false, eol: '\r\n', content: '# hi\r\nthere\r\n' });
