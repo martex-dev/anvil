@@ -49,6 +49,7 @@ export function TabBar({ group, focused }: { group: Group; focused: boolean }): 
 					<IconButton
 						size='sm'
 						label='Open preview to the side'
+						shortcut={shortcutFor('markdown.preview')}
 						icon={<Eye size={13} />}
 						onClick={() => runCommandById('markdown.preview')}
 					/>
