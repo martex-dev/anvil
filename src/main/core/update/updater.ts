@@ -1,11 +1,11 @@
-import { app } from 'electron';
+import { app, powerMonitor } from 'electron';
 import log from 'electron-log/main';
 import { autoUpdater } from 'electron-updater';
 
 import type { UpdateStatus } from '@shared/ipc/channels/update';
 
 import { emitEvent, router } from '../ipc';
-import { describeUpdateError, reduceUpdate, type UpdaterEvent } from './update-state';
+import { describeUpdateError, dueAfterWake, reduceUpdate, type UpdaterEvent } from './update-state';
 
 const ulog = log.scope('update');
 const FIRST_CHECK_MS = 60_000;
@@ -56,7 +56,9 @@ export function registerUpdater(autoUpdate: () => boolean): void {
 		apply({ type: 'error', message: describeUpdateError(error), at: Date.now() });
 	});
 
+	let lastCheckAt: number | null = null;
 	const check = async (): Promise<UpdateStatus> => {
+		lastCheckAt = Date.now();
 		try {
 			await autoUpdater.checkForUpdates();
 		} catch (error) {
@@ -71,4 +73,7 @@ export function registerUpdater(autoUpdate: () => boolean): void {
 	};
 	setTimeout(background, FIRST_CHECK_MS).unref();
 	setInterval(background, EVERY_MS).unref();
+	powerMonitor.on('resume', () => {
+		if (dueAfterWake(lastCheckAt, Date.now())) background();
+	});
 }

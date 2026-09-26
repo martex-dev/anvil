@@ -8,6 +8,17 @@ export type UpdaterEvent =
 	| { type: 'downloaded'; version: string }
 	| { type: 'error'; message: string; at: number };
 
+/** How long after the last check a wake from sleep checks again. */
+export const WAKE_RECHECK_MS = 30 * 60_000;
+
+/**
+ * Whether waking from sleep should check now. A laptop that sleeps overnight would otherwise wait
+ * for the six-hourly timer, which also stood still while it slept.
+ */
+export function dueAfterWake(lastCheckAt: number | null, now: number): boolean {
+	return lastCheckAt === null || now - lastCheckAt >= WAKE_RECHECK_MS;
+}
+
 /** electron-updater's event stream → one status the UI can render. */
 export function reduceUpdate(state: UpdateStatus, event: UpdaterEvent): UpdateStatus {
 	// A downloaded update stays ready: a later background check must not hide the restart button.

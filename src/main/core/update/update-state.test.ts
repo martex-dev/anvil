@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { describeUpdateError, reduceUpdate } from './update-state';
+import { describeUpdateError, dueAfterWake, reduceUpdate, WAKE_RECHECK_MS } from './update-state';
 
 describe('update state', () => {
 	it('walks check → download → ready', () => {
@@ -51,5 +51,11 @@ describe('update state', () => {
 		expect(
 			describeUpdateError(new Error('sha512 mismatch: expected 4040 bytes, got 404')),
 		).toBe('sha512 mismatch: expected 4040 bytes, got 404');
+	});
+
+	it('checks after waking only when the last check is old enough', () => {
+		expect(dueAfterWake(null, 1_000)).toBe(true);
+		expect(dueAfterWake(1_000, 1_000 + WAKE_RECHECK_MS - 1)).toBe(false);
+		expect(dueAfterWake(1_000, 1_000 + WAKE_RECHECK_MS)).toBe(true);
 	});
 });
