@@ -3,6 +3,7 @@ import { History, RotateCcw, Trash2 } from 'lucide-react';
 import { type JSX, useState } from 'react';
 
 import { useSettings } from '../../app/hooks/use-settings';
+import { useWorkspace } from '../../app/hooks/use-workspace';
 import { call } from '../../lib/ipc';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { useTabsStore } from '../../stores/tabs-store';
@@ -28,8 +29,11 @@ const bytes = (n: number): string => (n < 1024 ? `${n} B` : `${(n / 1024).toFixe
 export function HistoryView(): JSX.Element {
 	const path = useEditorStore((s) => s.active);
 	const { settings, update } = useSettings();
+	const { info } = useWorkspace();
 	const q = useQuery({
-		queryKey: ['history', path],
+		// Snapshots are stored per project: the same relative path in another folder is
+		// another file's history.
+		queryKey: ['history', info.root, path],
 		queryFn: () => call('history:list', path ?? ''),
 		enabled: Boolean(path),
 	});
