@@ -100,14 +100,27 @@ export function PackagesSection(): JSX.Element {
 						className='mb-1 h-6 text-12'
 						leading={<FlaskConical size={11} />}
 					/>
-					<ul className='max-h-72 overflow-auto'>
-						{shown.map((p) => (
-							<li key={p.name} className='flex h-6 items-center gap-2 px-1 text-12'>
-								<span className='truncate text-fg-1'>{p.name}</span>
-								<span className='num ml-auto text-11 text-fg-2'>{p.version}</span>
-							</li>
-						))}
-					</ul>
+					{shown.length === 0 ? (
+						<p className='px-1 py-1 text-12 text-fg-2'>
+							{filter.trim()
+								? `No packages match “${filter.trim()}”.`
+								: 'No packages installed in this environment.'}
+						</p>
+					) : (
+						<ul className='max-h-72 overflow-auto'>
+							{shown.map((p) => (
+								<li
+									key={p.name}
+									className='flex h-6 items-center gap-2 px-1 text-12'
+								>
+									<span className='truncate text-fg-1'>{p.name}</span>
+									<span className='num ml-auto text-11 text-fg-2'>
+										{p.version}
+									</span>
+								</li>
+							))}
+						</ul>
+					)}
 				</>
 			)}
 		</RunSection>
