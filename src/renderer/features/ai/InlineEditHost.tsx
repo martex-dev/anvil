@@ -128,7 +128,11 @@ function Box(): JSX.Element {
 									<button
 										key={s}
 										type='button'
-										onClick={() => setText(s)}
+										onClick={() => {
+											setText(s);
+											// The chips unmount once there's text; keep typing (or Enter) in the input.
+											inputRef.current?.focus();
+										}}
 										className='rounded-md border border-glass-edge px-1.5 py-0.5 text-10 text-fg-2 hover:border-accent/40 hover:text-fg-1'
 									>
 										{s}
