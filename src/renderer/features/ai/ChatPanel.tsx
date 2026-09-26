@@ -18,71 +18,16 @@ import { runCommandById } from '../../app/commands/run';
 import { useWorkspace } from '../../app/hooks/use-workspace';
 import { cn } from '../../lib/cn';
 import { call } from '../../lib/ipc';
-import { toast } from '../../stores/toast-store';
 import { useUiStore } from '../../stores/ui-store';
 import { Button } from '../../ui/Button';
 import { FileBadge } from '../../ui/FileBadge';
 import { IconButton } from '../../ui/IconButton';
 import { checkLookahead, explainCode, reviewCode, writeTests } from './actions';
 import { pickModel, PROVIDER_LABEL, useAiSettings } from './ai-settings';
+import { attachCurrent, attachDiff, attachPath } from './chat-attach';
 import { useChatFocus } from './chat-focus';
 import { useChat } from './chat-store';
-import { activeEditor, fileContext, selectionContext } from './editor-context';
 import { MessageView } from './MessageView';
-
-export function attachCurrent(kind: 'file' | 'selection'): boolean {
-	const editor = activeEditor();
-	if (!editor) {
-		toast.warn('No file open', 'Open a file in the editor to attach it.');
-		return false;
-	}
-	const item = kind === 'file' ? fileContext(editor) : selectionContext(editor);
-	if (!item) {
-		toast.warn('Nothing selected', 'Select some code in the editor first.');
-		return false;
-	}
-	useChat.getState().attach(item);
-	return true;
-}
-
-async function attachDiff(): Promise<void> {
-	try {
-		const { diff, truncated } = await call('ai:gitDiff', { staged: false });
-		if (!diff.trim()) {
-			toast.info(
-				'No changes',
-				'Tracked files match HEAD. New untracked files are not part of git diff.',
-			);
-			return;
-		}
-		useChat.getState().attach({
-			kind: 'diff',
-			label: truncated ? 'git diff (truncated)' : 'git diff',
-			language: 'diff',
-			text: diff,
-		});
-	} catch (error) {
-		toast.error(
-			'Could not read git diff',
-			error instanceof Error ? error.message : String(error),
-		);
-	}
-}
-
-async function attachPath(path: string): Promise<void> {
-	try {
-		const file = await call('fs:readFile', path);
-		if (file.binary || file.tooLarge) {
-			toast.warn('Not attached', `${path} is ${file.binary ? 'binary' : 'too large'}.`);
-			return;
-		}
-		useChat
-			.getState()
-			.attach({ kind: 'file', label: path, language: null, text: file.content });
-	} catch (error) {
-		toast.error('Could not attach', error instanceof Error ? error.message : undefined);
-	}
-}
 
 const SLASH: Array<{ cmd: string; hint: string; run: () => void }> = [
 	{ cmd: '/explain', hint: 'explain the selection or function', run: () => void explainCode() },

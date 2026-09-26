@@ -10,7 +10,13 @@ import type { Problem } from '../problems/problems-store';
 import { getAiSettings } from './ai-settings';
 import { useChatFocus } from './chat-focus';
 import { useChat } from './chat-store';
-import { activeEditor, fileContext, problemsContext, selectionContext } from './editor-context';
+import {
+	activeEditor,
+	fileContext,
+	problemsContext,
+	selectionContext,
+	truncateForContext,
+} from './editor-context';
 import { startInlineEdit } from './inline-edit';
 import { streamOnce } from './requests';
 
@@ -125,10 +131,12 @@ export async function fixProblemsHere(): Promise<void> {
 export async function askAiAboutProblem(p: Problem): Promise<void> {
 	requestOpenFile({ path: p.path, line: p.line, column: p.column });
 	const content = await call('fs:readFile', p.path).catch(() => null);
-	const context: AiContext[] =
-		content && !content.binary && !content.tooLarge
-			? [{ kind: 'file', label: p.path, language: null, text: content.content }]
-			: [];
+	const context: AiContext[] = [];
+	if (content && !content.binary && !content.tooLarge) {
+		const { text, truncated } = truncateForContext(content.content);
+		if (truncated) toast.info('Sent part of the file', `${p.path} is too long to send whole.`);
+		context.push({ kind: 'file', label: p.path, language: null, text });
+	}
 	context.push({
 		kind: 'problems',
 		label: `${p.path}:${p.line}`,
