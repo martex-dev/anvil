@@ -11,6 +11,12 @@
 	--accent-lime: #b4ff39;
 	--accent-violet: #9d7bff;
 	--accent-amber: #ffc233;
+	/* Ink versions for light themes: the neon presets read at 1.1-3:1 on white panels. */
+	--accent-cyan-ink: #007383;
+	--accent-magenta-ink: #c70091;
+	--accent-lime-ink: #487400;
+	--accent-violet-ink: #703eff;
+	--accent-amber-ink: #8c6200;
 	--on-accent-dark: #05060a;
 	--on-accent-light: #ffffff;
 
@@ -82,6 +88,36 @@ html[data-accent='amber'] {
 	--accent: var(--accent-amber);
 	--accent-2: var(--accent-magenta);
 	--on-accent: var(--on-accent-dark);
+}
+
+/*
+ * Light themes take the ink version of each preset, with white text on it, so accent labels and
+ * match highlights keep WCAG AA contrast (themes.test.ts checks every preset on every theme).
+ */
+html[data-accent='cyan']:is([data-theme='paper'], [data-theme='latte']) {
+	--accent: var(--accent-cyan-ink);
+	--accent-2: var(--accent-violet-ink);
+	--on-accent: var(--on-accent-light);
+}
+html[data-accent='magenta']:is([data-theme='paper'], [data-theme='latte']) {
+	--accent: var(--accent-magenta-ink);
+	--accent-2: var(--accent-violet-ink);
+	--on-accent: var(--on-accent-light);
+}
+html[data-accent='lime']:is([data-theme='paper'], [data-theme='latte']) {
+	--accent: var(--accent-lime-ink);
+	--accent-2: var(--accent-cyan-ink);
+	--on-accent: var(--on-accent-light);
+}
+html[data-accent='violet']:is([data-theme='paper'], [data-theme='latte']) {
+	--accent: var(--accent-violet-ink);
+	--accent-2: var(--accent-magenta-ink);
+	--on-accent: var(--on-accent-light);
+}
+html[data-accent='amber']:is([data-theme='paper'], [data-theme='latte']) {
+	--accent: var(--accent-amber-ink);
+	--accent-2: var(--accent-magenta-ink);
+	--on-accent: var(--on-accent-light);
 }
 
 /* Glass levels are mixed from the theme's own panel color, so they work for light themes too. */
