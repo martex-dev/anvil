@@ -112,7 +112,10 @@ function Item({
 				{badge !== undefined && badge > 0 && (
 					<span
 						data-part='activity-badge'
-						className='num absolute top-1 right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-0.5 text-[9px] font-bold text-on-accent'
+						className={cn(
+							'num flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-0.5 text-[9px] font-bold text-on-accent',
+							vertical && 'absolute top-1 right-0.5',
+						)}
 					>
 						{badge > 99 ? '99+' : badge}
 					</span>
@@ -144,7 +147,9 @@ export function ActivityBar(): JSX.Element {
 			data-placement={layout.activity}
 			className={cn(
 				'glass flex shrink-0 items-center gap-1',
-				vertical ? 'w-12 flex-col py-2' : 'h-9 flex-row overflow-x-auto px-1.5',
+				vertical
+					? 'w-12 flex-col py-2'
+					: 'h-9 flex-row overflow-x-auto px-1.5 [scrollbar-width:none]',
 			)}
 		>
 			{SIDE_VIEWS.map((view, i) => (
