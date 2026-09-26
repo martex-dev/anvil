@@ -1,6 +1,8 @@
+import { useIsFetching } from '@tanstack/react-query';
 import { FilePlus, FolderMinus, FolderPlus, RefreshCw, X } from 'lucide-react';
 import { type JSX, useRef } from 'react';
 
+import { fsKeys } from '../../app/hooks/use-fs-invalidation';
 import { useWorkspace } from '../../app/hooks/use-workspace';
 import { ErrorState } from '../../ui/ErrorState';
 import { IconButton } from '../../ui/IconButton';
@@ -12,6 +14,12 @@ import { closeFolder } from './workspace-actions';
 export function ExplorerPanel(): JSX.Element {
 	const { info, isLoading, error, refetch } = useWorkspace();
 	const treeRef = useRef<FileTreeHandle | null>(null);
+	// Any folder listing of this root in flight (Refresh, a watcher update): shown on Refresh.
+	const refreshing =
+		useIsFetching({
+			queryKey: [...fsKeys.all, info.root ?? ''],
+			predicate: (q) => q.queryKey[2] === 'list',
+		}) > 0;
 
 	if (isLoading) {
 		return (
@@ -53,7 +61,8 @@ export function ExplorerPanel(): JSX.Element {
 				<IconButton
 					size='sm'
 					label='Refresh'
-					icon={<RefreshCw size={13} />}
+					aria-busy={refreshing}
+					icon={refreshing ? <Spinner size={12} /> : <RefreshCw size={13} />}
 					onClick={() => treeRef.current?.refresh()}
 				/>
 				<IconButton
