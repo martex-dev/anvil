@@ -72,7 +72,7 @@ export const terminalFeature: MainFeature = {
 					sessionId,
 					title: s?.title ?? preset,
 					cwd: s?.cwd ?? cwd(),
-					backlog: fresh ? '' : (s?.backlog ?? ''),
+					backlog: fresh ? '' : live.backlog(sessionId),
 					running: Boolean(s?.pty),
 				};
 			},

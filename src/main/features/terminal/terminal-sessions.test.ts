@@ -71,8 +71,31 @@ describe('TerminalSessions', () => {
 		sessions.start('s1', 'powershell', spec, 'C:/p', 80, 24);
 		ptys[0]?.emit('x'.repeat(BACKLOG_LIMIT));
 		ptys[0]?.emit('tail');
-		expect(sessions.get('s1')?.backlog.length).toBe(BACKLOG_LIMIT);
-		expect(sessions.get('s1')?.backlog.endsWith('tail')).toBe(true);
+		const backlog = sessions.backlog('s1');
+		expect(backlog.length).toBe(BACKLOG_LIMIT);
+		expect(backlog.endsWith('tail')).toBe(true);
+	});
+
+	it('drops whole chunks and replays a trimmed backlog from a full line', () => {
+		sessions.start('s1', 'powershell', spec, 'C:/p', 80, 24);
+		const line = `\x1b[32m${'y'.repeat(4090)}\x1b[0m\r\n`;
+		const count = Math.ceil(BACKLOG_LIMIT / line.length) + 10;
+		for (let i = 0; i < count; i++) ptys[0]?.emit(line);
+		ptys[0]?.emit('prompt> ');
+		const session = sessions.get('s1');
+		expect(session?.backlogSize).toBeLessThan(BACKLOG_LIMIT + line.length);
+		const backlog = sessions.backlog('s1');
+		expect(backlog.length).toBeLessThanOrEqual(BACKLOG_LIMIT);
+		expect(backlog.startsWith('\x1b[32m')).toBe(true);
+		expect(backlog.endsWith('prompt> ')).toBe(true);
+	});
+
+	it('coalesces tiny chunks and replays an untrimmed backlog as is', () => {
+		sessions.start('s1', 'powershell', spec, 'C:/p', 80, 24);
+		for (const ch of 'hello') ptys[0]?.emit(ch);
+		expect(sessions.get('s1')?.backlog).toEqual(['hello']);
+		expect(sessions.backlog('s1')).toBe('hello');
+		expect(sessions.backlog('nope')).toBe('');
 	});
 
 	it('forwards input and reports exit after flushing pending output', () => {
@@ -102,7 +125,7 @@ describe('TerminalSessions', () => {
 		ptys[0]?.exitWith(1);
 		sessions.start('s1', 'powershell', spec, 'C:/p', 80, 24);
 		expect(ptys).toHaveLength(2);
-		expect(sessions.get('s1')?.backlog).toContain('first');
+		expect(sessions.backlog('s1')).toContain('first');
 	});
 
 	it('starts a session once when two opens race', async () => {

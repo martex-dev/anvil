@@ -26,7 +26,11 @@ interface Session {
 	cols: number;
 	rows: number;
 	pty: PtyLike | null;
-	backlog: string;
+	/** Scrollback as the pty's own chunks, so output never re-copies the whole backlog. */
+	backlog: string[];
+	backlogSize: number;
+	/** Old output was dropped, so the backlog may start mid-line (or mid escape sequence). */
+	backlogTrimmed: boolean;
 	pending: string;
 	timer: ReturnType<typeof setTimeout> | null;
 }
@@ -38,6 +42,7 @@ export interface SessionEvents {
 
 /** ~256 KB of scrollback kept in main so a reloaded renderer can reattach with history. */
 export const BACKLOG_LIMIT = 256 * 1024;
+const BACKLOG_CHUNK = 4096;
 const FLUSH_MS = 8;
 
 export class TerminalSessions {
@@ -113,7 +118,9 @@ export class TerminalSessions {
 			cols,
 			rows,
 			pty: null,
-			backlog: '',
+			backlog: [],
+			backlogSize: 0,
+			backlogTrimmed: false,
 			pending: '',
 			timer: null,
 		};
@@ -135,6 +142,19 @@ export class TerminalSessions {
 			session.pty = null;
 			this.events.onExit(id, exitCode);
 		});
+	}
+
+	/**
+	 * The scrollback to replay on reattach. After trimming it starts at the first full line, so
+	 * the replay never begins inside an ANSI escape sequence or a surrogate pair.
+	 */
+	backlog(id: string): string {
+		const session = this.sessions.get(id);
+		if (!session) return '';
+		const text = session.backlog.join('').slice(-BACKLOG_LIMIT);
+		if (!session.backlogTrimmed && text.length === session.backlogSize) return text;
+		const newline = text.indexOf('\n');
+		return newline === -1 ? text : text.slice(newline + 1);
 	}
 
 	/** False when the session doesn't exist or its process has exited (nothing was written). */
@@ -173,7 +193,20 @@ export class TerminalSessions {
 	}
 
 	private push(session: Session, data: string): void {
-		session.backlog = (session.backlog + data).slice(-BACKLOG_LIMIT);
+		// Coalesce keystroke-sized echoes so the chunk list stays short (cheap shift()).
+		const last = session.backlog.length - 1;
+		const tail = session.backlog[last];
+		if (tail !== undefined && tail.length < BACKLOG_CHUNK) session.backlog[last] = tail + data;
+		else session.backlog.push(data);
+		session.backlogSize += data.length;
+		// Drop whole chunks from the front; joining happens only on reattach.
+		let first = session.backlog[0];
+		while (first !== undefined && session.backlogSize - first.length >= BACKLOG_LIMIT) {
+			session.backlog.shift();
+			session.backlogSize -= first.length;
+			session.backlogTrimmed = true;
+			first = session.backlog[0];
+		}
 		session.pending += data;
 		// Batch bursts (npm install, build logs) into ~120 messages/s instead of thousands.
 		session.timer ??= setTimeout(() => this.flush(session), FLUSH_MS);
