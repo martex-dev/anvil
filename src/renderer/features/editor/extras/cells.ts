@@ -74,6 +74,10 @@ export function attachCells(
 		editor.onDidChangeCursorPosition(paintActive),
 		editor.onMouseDown((e) => {
 			if (e.target.type !== monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) return;
+			// Only a plain left click runs code: right-click opens the context menu, and a
+			// modified click (Shift-select, Ctrl) means something else.
+			const { leftButton, ctrlKey, shiftKey, altKey, metaKey } = e.event;
+			if (!leftButton || ctrlKey || shiftKey || altKey || metaKey) return;
 			const line = e.target.position?.lineNumber;
 			const model = editor.getModel();
 			if (!line || !model) return;
