@@ -37,6 +37,15 @@ describe('FsService', () => {
 		expect(await fs.readFile('img.png')).toMatchObject({ binary: true, content: '' });
 	});
 
+	it('stats files and folders without reading them', async () => {
+		expect(await fs.stat('src/b.ts')).toMatchObject({
+			kind: 'file',
+			size: 'export const b = 1;\n'.length,
+		});
+		expect(await fs.stat('src')).toMatchObject({ kind: 'dir' });
+		await expect(fs.stat('missing.py')).rejects.toMatchObject({ code: 'FS_NOT_FOUND' });
+	});
+
 	it('writes, and refuses to overwrite a file changed on disk since it was read', async () => {
 		const file = await fs.readFile('src/b.ts');
 		const { mtimeMs } = await fs.writeFile('src/b.ts', 'export const b = 2;\n', file.mtimeMs);

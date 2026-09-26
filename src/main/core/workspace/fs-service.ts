@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { lstat, mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, extname, join } from 'node:path';
 
-import type { FileContent, FsEntry } from '@shared/ipc/channels/fs';
+import type { FileContent, FsEntry, FsStat } from '@shared/ipc/channels/fs';
 
 import { AnvilError } from '../errors';
 import { assertRealInside, toAbsolute, toRelative, validateName } from './fs-guard';
@@ -85,6 +85,20 @@ export class FsService {
 					a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true })
 				);
 			});
+	}
+
+	/** Follows symlinks, like readFile, so a linked file stats as the file it points to. */
+	async stat(rel: string): Promise<FsStat> {
+		const abs = toAbsolute(this.root(), rel);
+		const s = await stat(abs).catch((error: unknown) => {
+			throw new AnvilError('FS_NOT_FOUND', `Not found: ${rel}`, error);
+		});
+		return {
+			kind: s.isDirectory() ? 'dir' : 'file',
+			size: s.size,
+			mtimeMs: s.mtimeMs,
+			ctimeMs: s.ctimeMs,
+		};
 	}
 
 	async readFile(rel: string): Promise<FileContent> {
