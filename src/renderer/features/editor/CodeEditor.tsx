@@ -108,6 +108,9 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 			editor.onDidChangeCursorPosition(recordPlace),
 			editor.onDidChangeCursorSelection(updateCursor),
 			editor.onDidChangeModel(updateCursor),
+			// The model is swapped in an effect after the tab switch has rendered, so views that
+			// read the focused model (Outline) need a signal once the new file is really shown.
+			editor.onDidChangeModel(() => useEditorStore.getState().bumpContent()),
 			editor.onDidChangeModelLanguage(updateCursor),
 			editor.onDidFocusEditorText(() => {
 				useTabsStore.getState().focus(group);

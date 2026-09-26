@@ -51,7 +51,10 @@ interface EditorState {
 	reveal: RevealRequest | null;
 	/** Dirty file whose close is waiting for Save / Don't Save / Cancel. */
 	closing: string | null;
-	/** Bumped (debounced) when the focused editor's text changes; views like Outline follow it. */
+	/**
+	 * Bumped (debounced) when an editor's text changes, and when an editor swaps to another
+	 * file's model; views like Outline follow it.
+	 */
 	contentVersion: number;
 	bumpContent: () => void;
 	add: (file: OpenFile) => void;
