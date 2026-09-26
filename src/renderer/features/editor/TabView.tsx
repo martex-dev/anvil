@@ -6,6 +6,7 @@ import { cn } from '../../lib/cn';
 import { type Tab, useTabsStore } from '../../stores/tabs-store';
 import { AppContextMenu } from '../../ui/ContextMenu';
 import { badgeFor, FileBadge } from '../../ui/FileBadge';
+import { Tooltip } from '../../ui/Tooltip';
 import { useProblems } from '../problems/problems-store';
 import { useEditorStore } from './editor-store';
 import { isScratch } from './file-ops';
@@ -158,24 +159,39 @@ export function TabView({
 					{label}
 				</span>
 				{changed && <span className='sr-only'>(changed on disk)</span>}
-				<button
-					type='button'
-					aria-label={dirty ? `Close ${label} (unsaved)` : `Close ${label}`}
-					onClick={(e) => {
-						e.stopPropagation();
-						closeTab(group, tab.id);
-					}}
-					className='flex size-5 items-center justify-center rounded-sm text-fg-2 hover:bg-bg-3 hover:text-fg-0'
-				>
-					{dirty ? (
-						<>
-							<span className='size-2 rounded-full bg-accent shadow-glow group-hover:hidden' />
-							<X size={12} className='hidden group-hover:block' />
-						</>
-					) : (
-						<X size={12} className={active ? '' : 'invisible group-hover:visible'} />
-					)}
-				</button>
+				{/* Out of the tab order (Delete on the tab closes it); the X also shows while the
+				tab has keyboard focus, so a dirty tab's dot doesn't hide how to close it. */}
+				<Tooltip content={dirty ? 'Close (unsaved changes)' : 'Close'}>
+					<button
+						type='button'
+						tabIndex={-1}
+						aria-label={dirty ? `Close ${label} (unsaved)` : `Close ${label}`}
+						onClick={(e) => {
+							e.stopPropagation();
+							closeTab(group, tab.id);
+						}}
+						className='flex size-5 items-center justify-center rounded-sm text-fg-2 hover:bg-bg-3 hover:text-fg-0 focus-visible:shadow-glow focus-visible:outline-none'
+					>
+						{dirty ? (
+							<>
+								<span className='size-2 rounded-full bg-accent shadow-glow group-hover:hidden group-focus-visible:hidden' />
+								<X
+									size={12}
+									className='hidden group-hover:block group-focus-visible:block'
+								/>
+							</>
+						) : (
+							<X
+								size={12}
+								className={
+									active
+										? ''
+										: 'invisible group-hover:visible group-focus-visible:visible'
+								}
+							/>
+						)}
+					</button>
+				</Tooltip>
 				<span className='absolute top-2 right-0 bottom-2 w-px bg-glass-edge' />
 			</div>
 		</AppContextMenu>
