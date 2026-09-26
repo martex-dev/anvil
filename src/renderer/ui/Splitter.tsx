@@ -63,16 +63,24 @@ export function Splitter({
 					onEnd?.();
 				} else if (e.key === 'Home') onReset?.();
 			}}
+			data-part='splitter'
+			data-axis={axis}
+			// The gutter is the skin's pane gap (at least 3px so it stays grabbable).
 			className={cn(
 				'group relative z-10 shrink-0 outline-none',
-				axis === 'x' ? 'w-1.5 cursor-col-resize' : 'h-1.5 cursor-row-resize',
+				axis === 'x'
+					? 'w-[max(var(--pane-gap,6px),3px)] cursor-col-resize'
+					: 'h-[max(var(--pane-gap,6px),3px)] cursor-row-resize',
 				className,
 			)}
 		>
 			<span
+				data-part='splitter-handle'
 				className={cn(
 					'pointer-events-none absolute rounded-full opacity-0 transition-opacity transition-fast group-hover:opacity-100 group-focus-visible:opacity-100',
-					axis === 'x' ? 'inset-y-3 left-[2px] w-[2px]' : 'inset-x-3 top-[2px] h-[2px]',
+					axis === 'x'
+						? 'inset-y-3 left-1/2 w-[2px] -translate-x-1/2'
+						: 'inset-x-3 top-1/2 h-[2px] -translate-y-1/2',
 					'accent-gradient',
 					active && 'opacity-100',
 				)}
