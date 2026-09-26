@@ -57,7 +57,8 @@ except ImportError:
 
 export function mapDtype(dtype: string): ColumnType {
 	const d = dtype.toLowerCase();
-	if (/^(u?int|int)\d*/.test(d) || d.startsWith('uint')) return 'int';
+	// Anchored: pandas 'interval[int64, right]' must not count as an integer column.
+	if (/^u?int\d*$/.test(d)) return 'int';
 	if (d.startsWith('float') || d.startsWith('decimal')) return 'float';
 	if (d.startsWith('bool')) return 'bool';
 	if (d.startsWith('date') || d.startsWith('datetime') || d.includes('timestamp')) return 'date';

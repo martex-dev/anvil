@@ -91,6 +91,9 @@ describe('formats', () => {
 		expect(formatOf('x.ndjson')).toBe('jsonl');
 		expect(formatOf('x.py')).toBeNull();
 		expect(mapDtype('Int64')).toBe('int');
+		expect(mapDtype('UInt8')).toBe('int');
+		expect(mapDtype('uint32')).toBe('int');
+		expect(mapDtype('interval[int64, right]')).toBe('string');
 		expect(mapDtype('float32')).toBe('float');
 		expect(mapDtype("Datetime(time_unit='us', time_zone=None)")).toBe('date');
 		expect(mapDtype('datetime64[ns]')).toBe('date');
