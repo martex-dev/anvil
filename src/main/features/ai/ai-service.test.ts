@@ -41,3 +41,32 @@ describe('AiService.complete', () => {
 		await expect(cancelled).resolves.toBe('');
 	});
 });
+
+describe('AiService.stream', () => {
+	it('gives up when the provider goes silent mid-reply', async () => {
+		vi.useFakeTimers();
+		const first = 'data: {"choices":[{"delta":{"content":"Hel"}}]}\n\n';
+		vi.stubGlobal(
+			'fetch',
+			(async () =>
+				new Response(
+					new ReadableStream<Uint8Array>({
+						start(controller) {
+							// Sends one chunk, then never another and never closes.
+							controller.enqueue(new TextEncoder().encode(first));
+						},
+					}),
+				)) as typeof fetch,
+		);
+		const ai = new AiService({ getKey: () => 'k', ollamaUrl: () => '' });
+		const sink = { delta: vi.fn(), done: vi.fn(), error: vi.fn() };
+
+		const run = ai.stream('r1', 'chat', { provider: 'openai', model: 'gpt-5' }, [], [], sink);
+		await vi.advanceTimersByTimeAsync(120_000);
+		await run;
+
+		expect(sink.delta).toHaveBeenCalledWith('Hel');
+		expect(sink.done).not.toHaveBeenCalled();
+		expect(sink.error).toHaveBeenCalledWith(expect.stringMatching(/No response from openai/));
+	});
+});

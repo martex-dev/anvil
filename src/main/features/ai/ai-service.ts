@@ -16,6 +16,8 @@ export interface StreamSink {
 }
 
 const COMPLETION_TIMEOUT_MS = 8_000;
+/** Silence that ends a streaming reply. Generous: reasoning models can think a while between chunks. */
+const STREAM_IDLE_MS = 120_000;
 
 /** Readable message from a provider's error body ({error: {message}} in every API here). */
 export async function describeHttpError(provider: AiProvider, response: Response): Promise<string> {
@@ -94,7 +96,23 @@ export class AiService {
 		this.running.set(requestId, controller);
 		let inputTokens: number | null = null;
 		let outputTokens: number | null = null;
+		// A provider that stops sending without closing the connection would leave the reply
+		// "streaming" forever: give up after a stretch of silence (reset by every chunk).
+		let stalled = false;
+		let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+		let idle: ReturnType<typeof setTimeout> | undefined;
+		const touch = (): void => {
+			clearTimeout(idle);
+			idle = setTimeout(() => {
+				stalled = true;
+				controller.abort();
+				// Releases a pending read even if the body isn't tied to the signal.
+				void reader?.cancel().catch(() => undefined);
+			}, STREAM_IDLE_MS);
+		};
+		const stallMessage = `No response from ${provider} for ${STREAM_IDLE_MS / 1000} s. Try again.`;
 		try {
+			touch();
 			const response = await fetch(this.url(request.url), {
 				method: 'POST',
 				headers: request.headers,
@@ -107,8 +125,9 @@ export class AiService {
 			}
 			const parser = new SseParser();
 			const decoder = new TextDecoder();
-			const reader = response.body.getReader();
+			reader = response.body.getReader();
 			for (;;) {
+				touch();
 				const { value, done } = await reader.read();
 				if (done) break;
 				for (const event of parser.push(decoder.decode(value, { stream: true }))) {
@@ -123,11 +142,14 @@ export class AiService {
 					if (chunk.outputTokens !== undefined) outputTokens = chunk.outputTokens;
 				}
 			}
-			sink.done({ inputTokens, outputTokens }, false);
+			if (stalled) sink.error(stallMessage);
+			else sink.done({ inputTokens, outputTokens }, false);
 		} catch (error) {
-			if (controller.signal.aborted) sink.done({ inputTokens, outputTokens }, true);
+			if (stalled) sink.error(stallMessage);
+			else if (controller.signal.aborted) sink.done({ inputTokens, outputTokens }, true);
 			else sink.error(unreachable(provider, error));
 		} finally {
+			clearTimeout(idle);
 			this.running.delete(requestId);
 		}
 	}
