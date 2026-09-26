@@ -5,6 +5,7 @@ import { cn } from '../../lib/cn';
 import { focusedEditor } from '../../lib/monaco/editors';
 import { requestOpenFile } from '../../stores/workbench-store';
 import { EmptyState } from '../../ui/EmptyState';
+import { IconButton } from '../../ui/IconButton';
 import { Input } from '../../ui/Input';
 import { useEditorStore } from '../editor/editor-store';
 import { useBookmarks } from '../editor/extras/bookmarks';
@@ -137,14 +138,13 @@ export function OutlineView(): JSX.Element {
 										</span>
 									</span>
 								</button>
-								<button
-									type='button'
-									aria-label='Remove bookmark'
+								<IconButton
+									size='sm'
+									label='Remove bookmark'
+									icon={<X size={11} />}
 									onClick={() => useBookmarks.getState().remove(b.path, b.line)}
-									className='mr-2 rounded-sm p-0.5 text-fg-2 opacity-0 group-hover:opacity-100 hover:bg-bg-3 hover:text-fg-0'
-								>
-									<X size={11} />
-								</button>
+									className='mr-1 text-fg-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100'
+								/>
 							</li>
 						))}
 					</ul>
