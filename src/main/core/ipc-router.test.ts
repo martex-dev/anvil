@@ -126,6 +126,14 @@ describe('IpcRouter', () => {
 		});
 	});
 
+	it('names the failed module when its channel has no handler', async () => {
+		const { router } = makeRouter();
+		router.markUnavailable('test', 'git not found');
+		const result = await router.dispatch('test:void', undefined);
+		expect(result).toMatchObject({ error: { code: 'NO_HANDLER' } });
+		expect(result.ok ? '' : result.error.message).toContain('git not found');
+	});
+
 	it('refuses duplicate registration', () => {
 		const { router } = makeRouter();
 		router.handle(ch('test:void'), (() => 'x') as never);

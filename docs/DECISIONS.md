@@ -129,3 +129,11 @@ Short ADRs: the context, what was decided, and what it costs.
 **Decision.** The history was rebuilt into small commits that add the code in dependency order (each commit's imports resolve), with the release tags moved to the equivalent commits and the tree of every tagged commit byte-identical to the original. Commit dates were not backdated.
 
 **Consequences.** The public history was force-pushed once. Some intermediate commits are mid-refactor states; the tagged ones build.
+
+## ADR-017: The workspace TypeScript is opt-in per folder
+
+**Context.** typescript-language-server runs whichever `tsserver.js` it is given with Electron's Node and the user's full environment. Preferring the folder's own `node_modules/typescript` meant that opening a downloaded repository and viewing a `.ts` file ran code from that repository.
+
+**Decision.** The TypeScript server always uses the TypeScript Anvil ships. "Use Workspace TypeScript (trust this folder)" in the palette switches one folder to its own version (stored per folder in settings); "Use Bundled TypeScript" switches back. The status bar tooltip says which version is running and when a workspace version is available.
+
+**Consequences.** Projects that rely on their own TypeScript version or tsserver plugins need one explicit opt-in per folder. Nothing in an untrusted folder runs just by opening it.

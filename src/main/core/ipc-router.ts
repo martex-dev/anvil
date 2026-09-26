@@ -34,6 +34,8 @@ const EXPECTED_ERRORS = new Set(['SIDECAR_UNAVAILABLE', 'SEARCH_CANCELLED', 'AI_
  */
 export class IpcRouter {
 	private readonly handlers = new Map<Channel, AnyHandler>();
+	/** Channel prefix (feature id) -> why that module is down, for clearer NO_HANDLER errors. */
+	private readonly unavailable = new Map<string, string>();
 
 	constructor(
 		private readonly contract: IpcContract,
@@ -52,6 +54,11 @@ export class IpcRouter {
 		};
 	}
 
+	/** Records that the module owning `<prefix>:*` channels failed to start, and why. */
+	markUnavailable(prefix: string, reason: string): void {
+		this.unavailable.set(prefix, reason);
+	}
+
 	has(channel: Channel): boolean {
 		return this.handlers.has(channel);
 	}
@@ -63,7 +70,13 @@ export class IpcRouter {
 		}
 		const handler = this.handlers.get(channel);
 		if (!handler) {
-			return err('NO_HANDLER', `"${channel}" is not available (module disabled?)`);
+			const reason = this.unavailable.get(channel.slice(0, channel.indexOf(':')));
+			return err(
+				'NO_HANDLER',
+				reason === undefined
+					? `"${channel}" is not available (module disabled?)`
+					: `"${channel}" is not available: its module failed to start (${reason})`,
+			);
 		}
 
 		const def = this.contract[channel];

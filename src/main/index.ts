@@ -1,10 +1,11 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, dialog } from 'electron';
 import log from 'electron-log/main';
 
 import { APP_ID } from '@shared/constants';
+import type { FeatureFailure } from '@shared/ipc/channels/app';
 
 import { readSettings, registerAppHandlers } from './core/app-handlers';
 import { registerAppScheme, serveRenderer } from './core/app-protocol';
@@ -12,6 +13,7 @@ import { startFeatures } from './core/features';
 import { attachIpc } from './core/ipc';
 import { createSecretsService, registerSecretsHandlers } from './core/secrets/secrets-handlers';
 import { installGlobalSecurity } from './core/security';
+import { shutdownWithin } from './core/shutdown';
 import { JsonStore } from './core/store/json-store';
 import { registerUpdater } from './core/update/updater';
 import { createMainWindow } from './core/window';
@@ -32,13 +34,33 @@ import { terminalFeature } from './features/terminal';
 // Logs live next to the rest of userData so --user-data-dir (tests) isolates them too.
 log.transports.file.resolvePathFn = () => join(app.getPath('userData'), 'logs', 'main.log');
 log.initialize();
+// A forgotten promise must still leave a trace in the log file.
+process.on('unhandledRejection', (reason) => log.error('[main] unhandled rejection', reason));
 registerAppScheme();
 if (process.platform === 'win32') app.setAppUserModelId(APP_ID);
 
 let store: JsonStore | null = null;
 let features: { stopAll(): Promise<void> } | null = null;
+let featureFailures: readonly FeatureFailure[] = [];
 let watcher: WorkspaceWatcher | null = null;
 let mainWindow: BrowserWindow | null = null;
+
+// One Anvil per profile: a second process would keep its own copy of settings and secrets and
+// overwrite the first one's on save (and run a second updater). Relaunching focuses this window.
+// The lock lives in userData, so e2e runs with their own --user-data-dir stay independent.
+const isPrimary = app.requestSingleInstanceLock();
+if (!isPrimary) app.quit();
+app.on('second-instance', () => {
+	const win = mainWindow;
+	if (!win) {
+		// macOS keeps running with no window; open one once startup has finished.
+		if (store && features) openWindow(store);
+		return;
+	}
+	if (win.isMinimized()) win.restore();
+	win.show();
+	win.focus();
+});
 
 async function start(): Promise<void> {
 	installGlobalSecurity();
@@ -46,12 +68,16 @@ async function start(): Promise<void> {
 	attachIpc();
 
 	const userData = app.getPath('userData');
-	store = new JsonStore(join(userData, 'settings.json'), (key, issues) =>
-		log.warn('[store] invalid value, using default', { key, issues: issues.slice(0, 300) }),
+	store = new JsonStore(
+		join(userData, 'settings.json'),
+		(key, issues) =>
+			log.warn('[store] invalid value, using default', { key, issues: issues.slice(0, 300) }),
+		250,
+		(error) => log.error('[store] saving settings failed, will retry', error),
 	);
 	const settings = store;
 	const secrets = createSecretsService();
-	registerAppHandlers(settings);
+	registerAppHandlers(settings, () => featureFailures);
 	registerWindowHandlers(() => mainWindow);
 	registerSecretsHandlers(secrets);
 	registerUpdater(() => readSettings(settings).autoUpdate);
@@ -70,7 +96,7 @@ async function start(): Promise<void> {
 	});
 	watcher = ws.watcher;
 
-	features = await startFeatures(
+	const started = await startFeatures(
 		[
 			aiFeature,
 			gitFeature,
@@ -85,15 +111,17 @@ async function start(): Promise<void> {
 		],
 		{ settings, secrets, workspace: ws.workspace, dataDir },
 	);
+	features = started;
+	featureFailures = started.failures;
 
-	openWindow();
+	openWindow(settings);
 	app.on('activate', () => {
-		if (BrowserWindow.getAllWindows().length === 0) openWindow();
+		if (BrowserWindow.getAllWindows().length === 0) openWindow(settings);
 	});
 }
 
-function openWindow(): void {
-	const win = createMainWindow();
+function openWindow(settings: JsonStore): void {
+	const win = createMainWindow(settings);
 	mainWindow = win;
 	watchWindowState(win);
 	win.on('closed', () => {
@@ -101,12 +129,19 @@ function openWindow(): void {
 	});
 }
 
-app.whenReady()
-	.then(start)
-	.catch((error: unknown) => {
-		log.error('[main] fatal startup error', error);
-		app.exit(1);
-	});
+if (isPrimary) {
+	app.whenReady()
+		.then(start)
+		.catch((error: unknown) => {
+			log.error('[main] fatal startup error', error);
+			// Without this, Anvil simply never opens and the user has nothing to go on.
+			dialog.showErrorBox(
+				'Anvil failed to start',
+				`${error instanceof Error ? error.message : String(error)}\n\nDetails are in the log: ${join(app.getPath('userData'), 'logs', 'main.log')}`,
+			);
+			app.exit(1);
+		});
+}
 
 app.on('window-all-closed', () => {
 	if (process.platform !== 'darwin') app.quit();
@@ -117,14 +152,12 @@ app.on('before-quit', (event) => {
 	if (shuttingDown) return;
 	shuttingDown = true;
 	event.preventDefault();
-	void (async () => {
-		try {
-			await features?.stopAll();
-			await watcher?.stop();
-			store?.flush();
-		} catch (error) {
-			log.error('[main] error during shutdown', error);
-		}
-		app.quit();
-	})();
+	void shutdownWithin({
+		steps: [() => features?.stopAll(), () => watcher?.stop()],
+		// Settings changed in the last debounce window must reach disk even if cleanup failed.
+		finally: () => store?.flush(),
+		timeoutMs: 5000,
+		logError: (message, error) =>
+			error === undefined ? log.error(message) : log.error(message, error),
+	}).finally(() => app.quit());
 });

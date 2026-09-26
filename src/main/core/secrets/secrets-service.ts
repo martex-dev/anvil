@@ -28,6 +28,8 @@ export class SecretsService {
 		private readonly filePath: string,
 		private readonly encryptor: Encryptor,
 		private readonly isAllowedKey: (key: string) => boolean,
+		/** Called once when an unreadable file was moved aside; saved keys must be re-entered. */
+		private readonly onReset: () => void = () => undefined,
 	) {}
 
 	has(key: string): boolean {
@@ -101,8 +103,17 @@ export class SecretsService {
 					? parsed.entries
 					: {};
 			this.cache = { version: 1, entries: { ...entries } };
-		} catch (error) {
-			throw new AnvilError('SECRETS_CORRUPT', 'The secrets file could not be read', error);
+		} catch {
+			// Unreadable (truncated write, disk error): refusing every call would leave no way to
+			// re-save a key, so keep the file for inspection and start empty. The parse error is
+			// not passed on because its message can quote file contents.
+			try {
+				renameSync(this.filePath, `${this.filePath}.corrupt`);
+			} catch {
+				// Best effort only; the next save replaces the file anyway.
+			}
+			this.cache = { version: 1, entries: {} };
+			this.onReset();
 		}
 		return this.cache;
 	}

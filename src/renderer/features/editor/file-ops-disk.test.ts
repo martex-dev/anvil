@@ -204,4 +204,22 @@ describe('file ops and the disk', () => {
 			mtimeMs: 5,
 		});
 	});
+	it("writes a file back with its BOM and encoding, following the disk version's", async () => {
+		call.mockResolvedValue({ ...text, bom: true, encoding: 'windows-1252' });
+		await openFile(monaco, 'C:/proj', 'prices.csv');
+		call.mockResolvedValue({ mtimeMs: 2 });
+		await saveFile('prices.csv', true);
+		expect(call).toHaveBeenLastCalledWith(
+			'fs:writeFile',
+			expect.objectContaining({ bom: true, encoding: 'windows-1252' }),
+		);
+		call.mockResolvedValue({ ...text, mtimeMs: 3, bom: false, encoding: 'utf8' });
+		await reloadFromDisk('prices.csv');
+		call.mockResolvedValue({ mtimeMs: 4 });
+		await saveFile('prices.csv', true);
+		expect(call).toHaveBeenLastCalledWith(
+			'fs:writeFile',
+			expect.objectContaining({ bom: false, encoding: 'utf8' }),
+		);
+	});
 });

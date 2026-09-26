@@ -17,9 +17,12 @@ export interface PendingCreate {
 	kind: 'file' | 'dir';
 }
 
-/** Folders and links that point at folders (junctions, pnpm links) expand like folders. */
+/**
+ * Folders and links that point at folders (junctions, pnpm links) expand like folders. Main lists
+ * a link with its target's kind (and `isLink`), so only a dangling link is 'symlink'.
+ */
 export function isFolder(entry: FsEntry): boolean {
-	return entry.kind === 'dir' || (entry.kind === 'symlink' && entry.targetKind === 'dir');
+	return entry.kind === 'dir';
 }
 
 /** Flattens the visible part of the tree (root + expanded folders) into rows for rendering. */

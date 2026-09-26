@@ -39,18 +39,59 @@ describe('FsService', () => {
 		]);
 	});
 
-	it('lists links to folders as folders, and says what a link points at', async () => {
-		// 'junction' needs no admin rights on Windows and is ignored elsewhere.
+	it('lists linked folders as expandable folders with a link flag', async () => {
+		// Junctions don't need admin rights on Windows, unlike directory symlinks.
 		symlinkSync(join(root, 'src'), join(root, 'linked'), 'junction');
-		symlinkSync(join(root, 'missing'), join(root, 'broken'), 'junction');
+		symlinkSync(join(root, 'missing'), join(root, 'dangling'), 'junction');
 		const entries = await fs.list('');
-		expect(entries.map((e) => [e.name, e.kind, e.targetKind])).toEqual([
-			['linked', 'symlink', 'dir'],
-			['src', 'dir', undefined],
-			['broken', 'symlink', undefined],
-			['img.png', 'file', undefined],
-			['README.md', 'file', undefined],
+		expect(entries.find((e) => e.name === 'linked')).toMatchObject({
+			kind: 'dir',
+			isLink: true,
+		});
+		expect(entries.find((e) => e.name === 'src')).toMatchObject({ kind: 'dir', isLink: false });
+		expect(entries.find((e) => e.name === 'dangling')).toMatchObject({
+			kind: 'symlink',
+			isLink: true,
+		});
+		expect((await fs.list('linked')).map((e) => e.name)).toEqual(['b.ts']);
+		// Linked folders sort with folders; a dangling link sorts with files.
+		expect(entries.map((e) => e.name)).toEqual([
+			'linked',
+			'src',
+			'dangling',
+			'img.png',
+			'README.md',
 		]);
+	});
+
+	it('reports a UTF-8 BOM on read and writes it back when asked', async () => {
+		writeFileSync(join(root, 'data.csv'), '\ufeffa,b\r\n1,2\r\n', 'utf8');
+		const csv = await fs.readFile('data.csv');
+		expect(csv).toMatchObject({ bom: true, content: 'a,b\r\n1,2\r\n' });
+		await fs.writeFile('data.csv', 'a,b\r\n3,4\r\n', undefined, csv.bom);
+		expect(readFileSync(join(root, 'data.csv'), 'utf8')).toBe('\ufeffa,b\r\n3,4\r\n');
+		expect((await fs.readFile('README.md')).bom).toBe(false);
+	});
+
+	it('reports fs failures with the relative path and a readable code', async () => {
+		await expect(fs.rename('gone.txt', 'other.txt')).rejects.toMatchObject({
+			code: 'FS_NOT_FOUND',
+			message: 'Cannot rename "gone.txt": it no longer exists',
+		});
+		await expect(fs.writeFile('missing-dir/a.txt', 'x')).rejects.toMatchObject({
+			code: 'FS_NOT_FOUND',
+			message: expect.not.stringContaining(root),
+		});
+	});
+
+	it('keeps the bytes of a non-UTF-8 (Windows-1252) file when saving', async () => {
+		writeFileSync(join(root, 'prices.csv'), Buffer.from([0x63, 0x61, 0x66, 0xe9, 0x0a]));
+		const csv = await fs.readFile('prices.csv');
+		expect(csv).toMatchObject({ content: 'café\n', encoding: 'windows-1252' });
+		await fs.writeFile('prices.csv', 'caf\u00e9!\n', undefined, csv.bom, csv.encoding);
+		expect(readFileSync(join(root, 'prices.csv'))).toEqual(
+			Buffer.from([0x63, 0x61, 0x66, 0xe9, 0x21, 0x0a]),
+		);
 	});
 
 	it('reads text with EOL detection and flags binaries', async () => {
@@ -95,6 +136,25 @@ describe('FsService', () => {
 		const renamed = await fs.rename('README.md', 'readme.md');
 		expect(renamed.path).toBe('readme.md');
 		await expect(fs.rename('src', 'README.md')).rejects.toMatchObject({ code: 'FS_EXISTS' });
+	});
+
+	it('trashes or renames a link to an outside folder, but never files through it', async () => {
+		const outside = mkdtempSync(join(tmpdir(), 'anvil-outside-'));
+		try {
+			writeFileSync(join(outside, 'x.txt'), 'x');
+			symlinkSync(outside, join(root, 'ext'), 'junction');
+			const outsideError = { code: 'FS_OUTSIDE_WORKSPACE' };
+			await expect(fs.trash('ext/x.txt')).rejects.toMatchObject(outsideError);
+			await expect(fs.rename('ext/x.txt', 'y.txt')).rejects.toMatchObject(outsideError);
+			expect(trash).not.toHaveBeenCalled();
+			expect(existsSync(join(outside, 'x.txt'))).toBe(true);
+			// The link itself lives in the workspace.
+			await fs.trash('ext');
+			expect(trash).toHaveBeenCalledWith(join(root, 'ext'));
+			expect((await fs.rename('ext', 'ext2')).path).toBe('ext2');
+		} finally {
+			rmSync(outside, { recursive: true, force: true });
+		}
 	});
 
 	it('trashes through the host (recycle bin), never the root', async () => {

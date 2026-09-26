@@ -15,7 +15,14 @@ vi.mock('../editor/compare', () => ({
 	selectForCompare: vi.fn(),
 }));
 
-const file: FsEntry = { name: 'a.py', path: 'src/a.py', kind: 'file', size: 1, mtimeMs: 1 };
+const file: FsEntry = {
+	name: 'a.py',
+	path: 'src/a.py',
+	kind: 'file',
+	isLink: false,
+	size: 1,
+	mtimeMs: 1,
+};
 
 function item(target: FsEntry | null, label: string): MenuItem {
 	const found = explorerMenuItems({

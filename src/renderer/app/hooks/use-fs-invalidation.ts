@@ -2,6 +2,7 @@ import { type Query, useQueryClient } from '@tanstack/react-query';
 
 import { touchesTaskFiles } from '../../features/python/task-files';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
+import { toast } from '../../stores/toast-store';
 import { WORKSPACE_KEY } from './use-workspace';
 
 /**
@@ -33,5 +34,11 @@ export function useFsInvalidation(): void {
 			void client.invalidateQueries({ predicate: matches('file', new Set(files)) });
 		// New or removed scripts must show up in the Run view without a manual rescan.
 		if (touchesTaskFiles(batch)) void client.invalidateQueries({ queryKey: ['tasks'] });
+	});
+	useAnvilEvent('fs:watchError', ({ message }) => {
+		toast.warn(
+			'Explorer may be out of date',
+			`${message}. Changes made outside Anvil may not appear; use Refresh Explorer to retry.`,
+		);
 	});
 }

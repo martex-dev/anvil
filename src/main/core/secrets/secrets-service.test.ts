@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -69,5 +69,16 @@ describe('SecretsService', () => {
 			allowed,
 		);
 		expect(() => svc.set('github.token', SECRET)).toThrow(/unavailable/);
+	});
+
+	it('recovers from a corrupt file so keys can be saved again', () => {
+		writeFileSync(file, '{"version":1,"entries":{"github.tok');
+		let resets = 0;
+		const svc = new SecretsService(file, fakeEncryptor, allowed, () => resets++);
+		expect(svc.savedKeys()).toEqual([]);
+		expect(existsSync(`${file}.corrupt`)).toBe(true);
+		svc.set('github.token', SECRET);
+		expect(new SecretsService(file, fakeEncryptor, allowed).get('github.token')).toBe(SECRET);
+		expect(resets).toBe(1);
 	});
 });

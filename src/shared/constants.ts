@@ -1,8 +1,9 @@
 export const APP_NAME = 'Anvil';
 
 /**
- * Window chrome. The background shows before the renderer paints (it mirrors Cyber Glass
- * --bg-0; main can't read CSS). The title bar height is the default skins build on.
+ * Window chrome. The background shows before the renderer paints until the renderer reports the
+ * active palette's --bg-0 (app:setChrome); it mirrors Cyber Glass --bg-0 because main can't read
+ * CSS. The title bar height is the default skins build on.
  */
 export const WINDOW_CHROME = {
 	background: '#05060A',

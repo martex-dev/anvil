@@ -252,7 +252,7 @@ export const CORE_COMMANDS: Command[] = [
 		id: 'anvil.logs',
 		title: 'Open Log Folder',
 		category: 'Anvil',
-		run: () => void call('app:openLogs'),
+		run: () => call('app:openLogs'),
 	},
 	{
 		id: 'anvil.checkUpdates',

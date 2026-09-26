@@ -19,6 +19,7 @@ const e = (path: string, kind: FsEntry['kind'] = 'file'): FsEntry => ({
 	name: path.split('/').at(-1) ?? path,
 	path,
 	kind,
+	isLink: false,
 	size: 0,
 	mtimeMs: 0,
 });
@@ -136,9 +137,10 @@ describe('newNameProblem', () => {
 });
 
 describe('folder links', () => {
+	// Main lists a link with its target's kind; a dangling link stays 'symlink'.
 	const link = (path: string, targetKind?: 'file' | 'dir'): FsEntry => ({
-		...e(path, 'symlink'),
-		...(targetKind ? { targetKind } : {}),
+		...e(path, targetKind ?? 'symlink'),
+		isLink: true,
 	});
 
 	it('treats a link to a folder as a folder, but not a file link or a broken one', () => {

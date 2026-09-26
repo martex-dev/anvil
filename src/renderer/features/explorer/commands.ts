@@ -16,7 +16,7 @@ import { queryClient } from '../../lib/query-client';
 import { toast } from '../../stores/toast-store';
 import { quickPick } from '../../ui/QuickPick';
 import { withExplorerTree } from './explorer-tree-registry';
-import { openRecentFolder } from './workspace-actions';
+import { openRecentFolder, refreshExplorer } from './workspace-actions';
 
 async function openRecent(): Promise<void> {
 	const info = await queryClient.ensureQueryData({
@@ -83,8 +83,10 @@ export const EXPLORER_COMMANDS: Command[] = [
 		id: 'explorer.refresh',
 		title: 'Refresh Explorer',
 		category: 'View',
+		keywords: ['reload', 'watch', 'out of date'],
 		icon: RefreshCw,
-		run: () => withExplorerTree((tree) => tree.refresh()),
+		// Works with the Explorer hidden too, and restarts file watching after a watch error.
+		run: refreshExplorer,
 	},
 	{
 		id: 'explorer.collapseAll',

@@ -59,4 +59,17 @@ describe('WorkspaceService', () => {
 		expect(listener).toHaveBeenCalledTimes(2);
 		expect(listener.mock.calls[1]?.[0]).toMatchObject({ root: null });
 	});
+
+	it('forgets a recent folder without notifying root listeners', () => {
+		const ws = new WorkspaceService(new JsonStore(settingsFile));
+		ws.open(join(dir, 'a'));
+		ws.open(join(dir, 'b'));
+		const listener = vi.fn();
+		ws.onChange(listener);
+		expect(ws.forgetRecent(join(dir, 'a'))).toMatchObject({
+			root: join(dir, 'b'),
+			recent: [join(dir, 'b')],
+		});
+		expect(listener).not.toHaveBeenCalled();
+	});
 });
