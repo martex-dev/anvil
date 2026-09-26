@@ -53,6 +53,17 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 		setFocused(path);
 	};
 	const focusedPath = focusedEntry?.kind === 'entry' ? focusedEntry.entry.path : null;
+	// Closing an inline name input unmounts the focused element, dropping focus to <body>. Hand
+	// it back to the tree (after the unmount) so arrows, F2 and Delete keep working, unless the
+	// user already moved focus somewhere else, e.g. by clicking the editor.
+	const restoreFocus = (): void => {
+		requestAnimationFrame(() => {
+			const active = document.activeElement;
+			if (!active || active === document.body) {
+				containerRef.current?.focus({ preventScroll: true });
+			}
+		});
+	};
 	const withFocused = (action: (path: string) => void) => (): void => {
 		if (focusedPath) action(focusedPath);
 		else toast.info('Select a file or folder in the Explorer first');
@@ -167,9 +178,13 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 									key={`input-${row.parent}`}
 									initial=''
 									depth={row.depth}
-									onCancel={() => setPending(null)}
+									onCancel={() => {
+										setPending(null);
+										restoreFocus();
+									}}
 									onSubmit={(name) => {
 										setPending(null);
+										restoreFocus();
 										void actions
 											.create(row.parent, name, row.create)
 											.then((created) => {
@@ -211,9 +226,13 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 									key={`rename-${row.entry.path}`}
 									initial={row.entry.name}
 									depth={row.depth}
-									onCancel={() => setRenaming(null)}
+									onCancel={() => {
+										setRenaming(null);
+										restoreFocus();
+									}}
 									onSubmit={(name) => {
 										setRenaming(null);
+										restoreFocus();
 										void actions
 											.rename(row.entry.path, name)
 											.then((renamed) => {
