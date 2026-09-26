@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process';
+import { execFile,type ExecFileException } from 'node:child_process';
 
 import type { ColumnType } from '@shared/ipc/channels/data';
 
@@ -64,6 +64,18 @@ export function mapDtype(dtype: string): ColumnType {
 }
 
 /** `env` is the interpreter's activated environment (see `activatedEnv`). */
+const TIMEOUT_MS = 120_000;
+
+/** Why the reader failed, in words: stderr is empty when the process was killed or never ran. */
+export function pythonFailure(error: ExecFileException, stderr: string): string {
+	if (error.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER')
+		return 'The file is too large to preview';
+	if (error.code === 'ENOENT') return 'Python interpreter not found. Select another one.';
+	if (error.killed || error.signal) return `Reading timed out after ${TIMEOUT_MS / 1000} s`;
+	const last = stderr.trim().split(/\r?\n/).at(-1);
+	return `Python could not read the file: ${last || error.message}`;
+}
+
 export function readWithPython(
 	python: string,
 	env: NodeJS.ProcessEnv,
@@ -77,7 +89,7 @@ export function readWithPython(
 			{
 				env,
 				windowsHide: true,
-				timeout: 120_000,
+				timeout: TIMEOUT_MS,
 				maxBuffer: 512 * 1024 * 1024,
 			},
 			(error, stdout, stderr) => {
@@ -89,7 +101,7 @@ export function readWithPython(
 							'DATA_PYTHON_FAILED',
 							missing
 								? `Reading this file needs ${missing[1]} in the selected Python env (uv add polars, or pip install pandas pyarrow).`
-								: `Python could not read the file: ${stderr.trim().split(/\r?\n/).at(-1) ?? error.message}`,
+								: pythonFailure(error, stderr),
 						),
 					);
 					return;

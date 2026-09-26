@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { formatOf } from './format';
-import { mapDtype } from './python-reader';
+import { mapDtype, pythonFailure } from './python-reader';
 import {
 	buildTable,
 	columnStats,
@@ -95,5 +95,24 @@ describe('formats', () => {
 		expect(mapDtype("Datetime(time_unit='us', time_zone=None)")).toBe('date');
 		expect(mapDtype('datetime64[ns]')).toBe('date');
 		expect(mapDtype('object')).toBe('string');
+	});
+
+	it('explains Python reader failures even without stderr', () => {
+		const fail = (props: object): Error => Object.assign(new Error('Command failed'), props);
+		expect(pythonFailure(fail({ killed: true, signal: 'SIGTERM' }), '')).toBe(
+			'Reading timed out after 120 s',
+		);
+		expect(
+			pythonFailure(fail({ code: 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER', killed: true }), ''),
+		).toBe('The file is too large to preview');
+		expect(pythonFailure(fail({ code: 'ENOENT' }), '')).toMatch(
+			/^Python interpreter not found/,
+		);
+		expect(pythonFailure(fail({ code: 1 }), '')).toBe(
+			'Python could not read the file: Command failed',
+		);
+		expect(pythonFailure(fail({ code: 1 }), 'Traceback\nOSError: bad file\n')).toBe(
+			'Python could not read the file: OSError: bad file',
+		);
 	});
 });
