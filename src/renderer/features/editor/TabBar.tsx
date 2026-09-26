@@ -2,12 +2,15 @@ import { Columns2, Eye, Play, X } from 'lucide-react';
 import { type JSX, useState } from 'react';
 
 import { runCommandById, shortcutFor } from '../../app/commands/run';
+import { useSettings } from '../../app/hooks/use-settings';
 import { cn } from '../../lib/cn';
 import { type Group, type Tab, useTabsStore } from '../../stores/tabs-store';
 import { AppContextMenu } from '../../ui/ContextMenu';
-import { FileBadge } from '../../ui/FileBadge';
+import { badgeFor, FileBadge } from '../../ui/FileBadge';
 import { IconButton } from '../../ui/IconButton';
+import { useProblems } from '../problems/problems-store';
 import { useEditorStore } from './editor-store';
+import { isScratch } from './file-ops';
 import { closeOtherTabs, closeTab } from './open';
 
 function TabView({
@@ -29,6 +32,15 @@ function TabView({
 	const { activate, pin, split } = useTabsStore.getState();
 	const [dragOver, setDragOver] = useState(false);
 	const label = tab.kind === 'welcome' ? 'Welcome' : tab.title;
+	const fileName = isScratch(tab.path)
+		? 'scratch.py'
+		: (tab.path?.split('/').at(-1) ?? tab.title);
+	const tintOn = useSettings().settings.tabTint;
+	// Tinted by file type (the badge color), so a wall of tabs is scannable at a glance.
+	const tint = tintOn && tab.kind === 'code' ? badgeFor(fileName).color : null;
+	const hasError = useProblems((st) =>
+		tab.path ? st.items.some((p) => p.path === tab.path && p.severity === 'error') : false,
+	);
 
 	return (
 		<AppContextMenu
@@ -101,8 +113,14 @@ function TabView({
 						? 'bg-accent-faint text-fg-0'
 						: 'text-fg-2 hover:bg-bg-3/40 hover:text-fg-1',
 					dragOver && 'shadow-[inset_2px_0_0_var(--accent)]',
+					hasError && !active && 'text-down/80',
 					'focus-visible:shadow-[inset_0_0_0_1px_var(--accent)]',
 				)}
+				style={
+					tint && active
+						? { backgroundColor: `color-mix(in oklab, var(${tint}) 9%, transparent)` }
+						: undefined
+				}
 			>
 				{active && (
 					<span
@@ -110,6 +128,19 @@ function TabView({
 							'absolute inset-x-2 top-0 h-[2px] rounded-full',
 							focused ? 'accent-line' : 'bg-border-strong',
 						)}
+						style={
+							tint && focused
+								? {
+										backgroundImage: `linear-gradient(90deg, var(${tint}), var(--accent))`,
+									}
+								: undefined
+						}
+					/>
+				)}
+				{!active && tint && (
+					<span
+						className='absolute inset-x-3 bottom-0 h-px rounded-full opacity-50'
+						style={{ backgroundColor: `var(${tint})` }}
 					/>
 				)}
 				{tab.kind === 'markdown' ? (
@@ -117,7 +148,13 @@ function TabView({
 				) : tab.kind === 'welcome' ? (
 					<span className='size-2 rotate-45 bg-accent' />
 				) : (
-					<FileBadge name={tab.path?.split('/').at(-1) ?? tab.title} />
+					<FileBadge name={fileName} />
+				)}
+				{hasError && (
+					<span
+						title='This file has errors'
+						className='size-1.5 shrink-0 rounded-full bg-down shadow-[0_0_6px_var(--down)]'
+					/>
 				)}
 				<span className={cn('truncate', tab.preview && 'italic', changed && 'text-warn')}>
 					{label}
