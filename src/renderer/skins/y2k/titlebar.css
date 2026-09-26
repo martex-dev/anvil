@@ -75,9 +75,9 @@ html[data-skin='y2k'] .yk-wordmark {
 html[data-skin='y2k'] .yk-wordmark-star {
 	align-self: flex-start;
 	margin: 8px 0 0 -6px;
-	width: 11px;
-	height: 11px;
-	background: var(--accent-2);
+	width: 13px;
+	height: 13px;
+	background: color-mix(in oklab, var(--accent-2) 85%, var(--skin-ink));
 	clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
 }
 html[data-skin='y2k'][data-fx='full'] .yk-wordmark-star {
