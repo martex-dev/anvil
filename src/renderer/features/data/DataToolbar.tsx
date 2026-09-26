@@ -25,6 +25,8 @@ interface DataToolbarProps {
 	busy: boolean;
 	filter: string;
 	onFilterChange: (value: string) => void;
+	/** Clears the filter at once, skipping the typing debounce. */
+	onFilterClear: () => void;
 	onOpenAsText: () => void;
 	onCopyCsv: () => void;
 	copyLabel: string;
@@ -47,6 +49,7 @@ export function DataToolbar({
 	busy,
 	filter,
 	onFilterChange,
+	onFilterClear,
 	onOpenAsText,
 	onCopyCsv,
 	copyLabel,
@@ -109,7 +112,7 @@ export function DataToolbar({
 				onKeyDown={(e) => {
 					if (e.key === 'Escape' && filter) {
 						e.stopPropagation();
-						onFilterChange('');
+						onFilterClear();
 					}
 				}}
 			/>
@@ -118,7 +121,7 @@ export function DataToolbar({
 					size='sm'
 					label='Clear filter'
 					icon={<X size={14} />}
-					onClick={() => onFilterChange('')}
+					onClick={onFilterClear}
 				/>
 			)}
 			<div className='flex shrink-0 items-center gap-0.5'>

@@ -17,7 +17,6 @@ import {
 	computeWindow,
 	gutterWidth,
 	HEADER_HEIGHT,
-	initialColumnWidth,
 	ROW_HEIGHT,
 	scrollTopForRow,
 	visibleColumns,
@@ -41,6 +40,9 @@ interface DataGridProps {
 	totalRows: number;
 	selection: GridSelection | null;
 	onSelectionChange: (selection: GridSelection | null) => void;
+	/** Column widths in px; owned by the viewer so they survive tab switches. */
+	widths: number[];
+	onResize: (column: number, width: number) => void;
 	onSort: (column: number) => void;
 	/** Tab-separated by default; the context menu can ask for CSV and/or a header row. */
 	onCopy: (range: CellRange, options?: CopyOptions) => void;
@@ -57,6 +59,8 @@ export function DataGrid({
 	totalRows,
 	selection,
 	onSelectionChange,
+	widths,
+	onResize,
 	onSort,
 	onCopy,
 	firstRowRef,
@@ -64,7 +68,6 @@ export function DataGrid({
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const [scroll, setScroll] = useState({ top: 0, left: 0 });
 	const [size, setSize] = useState({ width: 0, height: 0 });
-	const [widths, setWidths] = useState(() => columns.map(initialColumnWidth));
 
 	useLayoutEffect(() => {
 		const el = scrollRef.current;
@@ -255,9 +258,7 @@ export function DataGrid({
 						selLeft={range ? range.left : -1}
 						selRight={range ? range.right : -1}
 						onSort={onSort}
-						onResize={(column, width) =>
-							setWidths((prev) => prev.map((w, i) => (i === column ? width : w)))
-						}
+						onResize={onResize}
 					/>
 					{rows}
 					{overlay}

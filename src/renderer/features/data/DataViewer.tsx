@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { SearchX, Table2 } from 'lucide-react';
-import { type JSX, type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type JSX, type KeyboardEvent, useEffect, useMemo, useRef } from 'react';
 
 import { cn } from '../../lib/cn';
 import { call } from '../../lib/ipc';
@@ -16,12 +16,18 @@ import { registerDataViewer } from './data-actions';
 import {
 	fileName,
 	formatCount,
+	initialColumnWidth,
 	isTextFormat,
 	nextSort,
 	PAGE_SIZE,
-	type SortState,
 	toDelimited,
 } from './data-format';
+import {
+	changeFilter,
+	type DataViewPatch,
+	DEFAULT_VIEW,
+	useDataViewStore,
+} from './data-view-store';
 import { DataGrid } from './DataGrid';
 import { DataStatusBar } from './DataStatusBar';
 import { DataToolbar } from './DataToolbar';
@@ -33,34 +39,12 @@ const MAX_COPY_ROWS = 50_000;
 
 export function DataViewer({ path }: { path: string }): JSX.Element {
 	const client = useQueryClient();
-	const [filterInput, setFilterInput] = useState('');
-	const [filter, setFilter] = useState('');
-	const [sort, setSort] = useState<SortState | null>(null);
-	const [selection, setSelection] = useState<GridSelection | null>(null);
-	const [profileColumn, setProfileColumn] = useState<number | null>(null);
-	const [profileOpen, setProfileOpen] = useState(true);
+	const view = useDataViewStore((s) => s.views[path]) ?? DEFAULT_VIEW;
+	const { filterInput, filter, sort, selection, profileColumn, profileOpen } = view;
+	const update = (patch: DataViewPatch): void => useDataViewStore.getState().update(path, patch);
 	const firstRowRef = useRef(0);
 	const profileToggleRef = useRef<HTMLButtonElement>(null);
 	const filterRef = useRef<HTMLInputElement>(null);
-	const [shownPath, setShownPath] = useState(path);
-
-	// A reused preview tab can switch files under us; view state belongs to the old file.
-	if (shownPath !== path) {
-		setShownPath(path);
-		setFilterInput('');
-		setFilter('');
-		setSort(null);
-		setSelection(null);
-		setProfileColumn(null);
-	}
-
-	useEffect(() => {
-		const timer = setTimeout(() => {
-			setFilter(filterInput);
-			setSelection(null);
-		}, 250);
-		return () => clearTimeout(timer);
-	}, [filterInput]);
 
 	const params = useMemo(() => ({ path, filter, sort }), [path, filter, sort]);
 	const meta = useDataMeta(params);
@@ -70,10 +54,15 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 		() => `${path}\u0000${columns.map((c) => c.name).join('\u0000')}`,
 		[path, columns],
 	);
+	// Widths set on this exact column set survive tab switches; a new schema starts afresh.
+	const savedWidths = view.widths;
+	const widths = useMemo(
+		() => (savedWidths?.key === gridKey ? savedWidths.values : columns.map(initialColumnWidth)),
+		[savedWidths, gridKey, columns],
+	);
 
 	const changeSelection = (next: GridSelection | null): void => {
-		setSelection(next);
-		if (next) setProfileColumn(next.focus.col);
+		update(next ? { selection: next, profileColumn: next.focus.col } : { selection: null });
 	};
 
 	const copyRange = async (
@@ -151,15 +140,12 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 	useEffect(() =>
 		registerDataViewer(path, {
 			focusFilter,
-			clearFilter: () => setFilterInput(''),
+			clearFilter: () => changeFilter(path, '', true),
 			copyCsv,
 			reload: () => void reload(),
-			toggleProfile: () => setProfileOpen((open) => !open),
+			toggleProfile: () => update((v) => ({ profileOpen: !v.profileOpen })),
 			openAsText,
-			clearSort: () => {
-				setSort(null);
-				setSelection(null);
-			},
+			clearSort: () => update({ sort: null, selection: null }),
 		}),
 	);
 
@@ -209,7 +195,7 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 				title='No matching rows'
 				description={`No cell contains “${filter}”.`}
 				action={
-					<Button size='sm' onClick={() => setFilterInput('')}>
+					<Button size='sm' onClick={() => changeFilter(path, '', true)}>
 						Clear filter
 					</Button>
 				}
@@ -230,10 +216,18 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 				totalRows={data.totalRows}
 				selection={selection}
 				onSelectionChange={changeSelection}
-				onSort={(column) => {
-					setSort((current) => nextSort(current, column));
-					setSelection(null);
-				}}
+				widths={widths}
+				onResize={(column, width) =>
+					update({
+						widths: {
+							key: gridKey,
+							values: widths.map((w, i) => (i === column ? width : w)),
+						},
+					})
+				}
+				onSort={(column) =>
+					update((v) => ({ sort: nextSort(v.sort, column), selection: null }))
+				}
 				onCopy={(range, options) =>
 					void copyRange(range, options?.csv ? ',' : '\t', options?.header ?? false)
 				}
@@ -249,13 +243,14 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 				meta={data}
 				busy={meta.isFetching && data !== undefined}
 				filter={filterInput}
-				onFilterChange={setFilterInput}
+				onFilterChange={(value) => changeFilter(path, value)}
+				onFilterClear={() => changeFilter(path, '', true)}
 				onOpenAsText={openAsText}
 				onCopyCsv={copyCsv}
 				copyLabel={selection ? 'Copy selection as CSV' : 'Copy current page as CSV'}
 				onReload={() => void reload()}
 				profileOpen={profileOpen}
-				onToggleProfile={() => setProfileOpen((open) => !open)}
+				onToggleProfile={() => update((v) => ({ profileOpen: !v.profileOpen }))}
 				profileToggleRef={profileToggleRef}
 				filterRef={filterRef}
 			/>
@@ -275,7 +270,7 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 						column={profileColumn === null ? undefined : columns[profileColumn]}
 						truncated={data.truncated}
 						onClose={() => {
-							setProfileOpen(false);
+							update({ profileOpen: false });
 							// The close button unmounts with the panel; don't drop focus to <body>.
 							profileToggleRef.current?.focus();
 						}}
