@@ -88,8 +88,6 @@ export function useXterm(
 			cursorBlink: !reducedMotion(),
 			scrollback: 5000,
 			allowProposedApi: true,
-			// The glass pane behind the terminal shows through.
-			allowTransparency: true,
 			theme: buildXtermTheme(),
 		});
 		const fit = new FitAddon();

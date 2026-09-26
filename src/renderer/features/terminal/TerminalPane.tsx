@@ -143,6 +143,8 @@ export function TerminalPane({ tab, visible }: { tab: TermTab; visible: boolean 
 	return (
 		<div
 			className='relative h-full px-2 pt-1'
+			// The same plate the editor sits on, so the terminal reads as a solid surface.
+			style={{ background: 'var(--editor-bg)' }}
 			data-terminal-session={tab.id}
 			data-terminal-status={status}
 		>
