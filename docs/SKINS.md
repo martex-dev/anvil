@@ -108,7 +108,7 @@ Editor: `editor-column`, `editor-group` (+ `data-focused`), `tabbar`, `tab` (+ `
 `tab-label`, `tab-error`, `tab-close` (+ `data-dirty`), `tab-marker`, `breadcrumbs`,
 `editor-surface`, `watermark`, `welcome`.
 
-Lists, chat and menus: `tree-row`, `chat-header`, `chat-input`, `menu` (a title menu's popup).
+Lists, chat and menus: `tree-row`, `chat-header`, `chat-log`, `chat-starter`, `chat-input`, `menu` (a title menu's popup).
 
 Examples: `[data-part='activity-item']::before { content: 'F' attr(data-index); }` prints F-key
 hints; `[data-part='pane-title']::before { content: '┌─ '; }` box-draws a pane title.

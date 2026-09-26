@@ -280,6 +280,12 @@ html[data-skin='zen'] [data-part='statusbar'] .zn-errors {
 html[data-skin='zen'][data-fx='full'] [data-part='statusbar'] .zn-busy {
 	animation: pulse-dot 1.8s ease-in-out infinite;
 }
+/* The OS reduced-motion preference leaves data-fx at full: keep the busy phrase still there too. */
+@media (prefers-reduced-motion: reduce) {
+	html[data-skin='zen'][data-fx='full'] [data-part='statusbar'] .zn-busy {
+		animation: none;
+	}
+}
 
 /* Narrow windows: the margins never run into the colophon; minor phrases give way first. */
 html[data-skin='zen'] [data-part='statusbar'] > [data-zen='margin'] {

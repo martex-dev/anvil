@@ -161,6 +161,7 @@ export function ChatPanel(): JSX.Element {
 			)}
 			<div className='relative flex min-h-0 flex-1 flex-col'>
 				<div
+					data-part='chat-log'
 					ref={listRef}
 					onScroll={onListScroll}
 					className='flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3 py-3'
@@ -186,6 +187,7 @@ export function ChatPanel(): JSX.Element {
 									<button
 										key={s.label}
 										type='button'
+										data-part='chat-starter'
 										onClick={() => runCommandById(s.commandId)}
 										className='rounded-full border border-glass-edge bg-bg-2/40 px-2.5 py-1 text-11 text-fg-1 hover:border-accent/40 hover:text-fg-0'
 									>

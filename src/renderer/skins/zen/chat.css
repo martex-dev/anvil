@@ -68,7 +68,7 @@ html[data-skin='zen'] [data-ai-chat] > header + .bg-warn-soft {
 html[data-skin='zen'] [data-ai-chat] .blur-xl {
 	display: none;
 }
-html[data-skin='zen'] [data-ai-chat] .rounded-full.border {
+html[data-skin='zen'] [data-ai-chat] [data-part='chat-starter'] {
 	border-color: transparent;
 	border-bottom-color: var(--zn-rule);
 	border-radius: 0;
@@ -77,7 +77,7 @@ html[data-skin='zen'] [data-ai-chat] .rounded-full.border {
 	font-size: 12.5px;
 	font-style: italic;
 }
-html[data-skin='zen'] [data-ai-chat] .rounded-full.border:hover {
+html[data-skin='zen'] [data-ai-chat] [data-part='chat-starter']:hover {
 	border-bottom-color: var(--accent);
 	color: var(--text-0);
 }
