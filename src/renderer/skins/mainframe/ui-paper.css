@@ -1,0 +1,45 @@
+/*
+ * Mainframe on paper (the greenbar palette): the window becomes continuous-form printer
+ * paper. Tractor-feed strips with sprocket holes run down both sides behind a perforation,
+ * and list rows print on alternating bands of three, like a 1970s line-printer listing.
+ */
+
+html[data-skin='mainframe'][data-theme='mf-greenbar'] [data-part='shell'] {
+	padding-inline: 22px;
+}
+html[data-skin='mainframe'][data-theme='mf-greenbar'] .mf-backdrop {
+	background:
+		radial-gradient(circle at 11px 12px, var(--skin-hole) 0 4px, transparent 4.5px) left top /
+			22px 24px repeat-y,
+		radial-gradient(circle at 11px 12px, var(--skin-hole) 0 4px, transparent 4.5px) right top /
+			22px 24px repeat-y,
+		linear-gradient(to bottom, var(--border) 0 4px, transparent 4px 8px) 21px 0 / 1px 8px
+			repeat-y,
+		linear-gradient(to bottom, var(--border) 0 4px, transparent 4px 8px) calc(100% - 21px) 0 /
+			1px 8px repeat-y,
+		var(--bg-1);
+}
+html[data-skin='mainframe'][data-theme='mf-greenbar'][data-fx='off'] .mf-backdrop {
+	background: var(--bg-0);
+}
+
+/* Greenbar bands: rows 4-6 of every six. */
+html[data-skin='mainframe'][data-theme='mf-greenbar']
+	:is([role='treeitem'], [cmdk-item], [role='option'], .mf-pulldown-item):is(
+		:nth-child(6n + 4),
+		:nth-child(6n + 5),
+		:nth-child(6n + 6)
+	):not([data-selected='true'], [data-highlighted], [aria-selected='true']) {
+	background-color: var(--skin-bar);
+}
+
+/* Ink doesn't glow; the brand and title block print in red ribbon. */
+html[data-skin='mainframe'][data-theme='mf-greenbar'] .mf-brand {
+	background: var(--accent-2);
+	color: var(--on-accent);
+}
+html[data-skin='mainframe'][data-theme='mf-greenbar'] .mf-titlebar,
+html[data-skin='mainframe'][data-theme='mf-greenbar'] .mf-fkeybar,
+html[data-skin='mainframe'][data-theme='mf-greenbar'] .mf-fkey-word {
+	background: var(--bg-1);
+}
