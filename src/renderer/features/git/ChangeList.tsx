@@ -5,7 +5,7 @@ import type { GitChange, GitChangeKind } from '@shared/ipc/channels/git';
 
 import { cn } from '../../lib/cn';
 import { IconButton } from '../../ui/IconButton';
-import { capRows, refocusIndex } from './change-rows';
+import { capRows, refocusIndex, togglePaths, togglePathsAll } from './change-rows';
 
 const BADGE: Record<GitChangeKind, { letter: string; className: string; label: string }> = {
 	modified: { letter: 'M', className: 'text-warn', label: 'Modified' },
@@ -88,7 +88,7 @@ export function ChangeList({
 					label={`${actionLabel} All`}
 					icon={<ActionIcon size={12} />}
 					disabled={busy}
-					onClick={() => onToggle(changes.map((c) => c.path))}
+					onClick={() => onToggle(togglePathsAll(changes, staged))}
 				/>
 			</div>
 			{!collapsed && (
@@ -133,7 +133,7 @@ export function ChangeList({
 									data-toggle
 									onClick={() => {
 										pendingFocus.current = index;
-										onToggle([change.path]);
+										onToggle(togglePaths(change, staged));
 									}}
 								/>
 								<span

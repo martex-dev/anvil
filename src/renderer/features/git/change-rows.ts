@@ -1,3 +1,5 @@
+import type { GitChange } from '@shared/ipc/channels/git';
+
 /**
  * Rows a change list renders. An un-ignored venv or build folder can put tens of thousands of
  * untracked files in `git status -uall`; rendering them all (and again on every status poll)
@@ -21,4 +23,16 @@ export function capRows<T>(
 export function refocusIndex(index: number, count: number): number | null {
 	if (count === 0) return null;
 	return Math.min(index, count - 1);
+}
+
+/**
+ * Paths to stage or unstage for a row. A staged rename is two index entries (the new path and
+ * the old path's deletion); unstaging only the new path would leave 'D old' staged.
+ */
+export function togglePaths(change: GitChange, staged: boolean): string[] {
+	return staged && change.from ? [change.path, change.from] : [change.path];
+}
+
+export function togglePathsAll(changes: readonly GitChange[], staged: boolean): string[] {
+	return changes.flatMap((c) => togglePaths(c, staged));
 }

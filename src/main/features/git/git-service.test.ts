@@ -97,6 +97,21 @@ describe('GitService', { timeout: 30_000 }, () => {
 		});
 	});
 
+	it('fully unstages a rename when given both paths', async () => {
+		const git = new GitService(() => repo);
+		writeFileSync(join(repo, 'old.txt'), 'same\n');
+		await git.stage(['old.txt']);
+		await git.commit('add old');
+		run('mv', 'old.txt', 'new.txt');
+		await git.unstage(['new.txt', 'old.txt']);
+		const status = await git.status();
+		expect(status.staged).toEqual([]);
+		expect(status.unstaged.map((c) => `${c.path}:${c.kind}`).sort()).toEqual([
+			'new.txt:untracked',
+			'old.txt:deleted',
+		]);
+	});
+
 	it('refuses to commit with nothing staged and rejects paths outside the repo', async () => {
 		const git = new GitService(() => repo);
 		await expect(git.commit('empty')).rejects.toMatchObject({ code: 'GIT_NOTHING_STAGED' });
