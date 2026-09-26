@@ -16,8 +16,16 @@ export function DiffViewer({
 }): JSX.Element {
 	const hostRef = useRef<HTMLDivElement>(null);
 	const [inline, setInline] = useState(false);
-	const [stats, setStats] = useState<{ added: number; removed: number } | null>(null);
+	// Tagged with the diff they were counted for, so a new payload never shows the old counts.
+	const [counted, setCounted] = useState<{
+		diff: DiffPayload;
+		added: number;
+		removed: number;
+	} | null>(null);
+	const stats = counted?.diff === diff ? counted : null;
 	const editorRef = useRef<Monaco.editor.IStandaloneDiffEditor | null>(null);
+	// Read when the editor is recreated for a new diff, so it keeps the chosen layout.
+	const inlineRef = useRef(inline);
 
 	useEffect(() => {
 		if (!hostRef.current) return;
@@ -25,7 +33,7 @@ export function DiffViewer({
 			automaticLayout: true,
 			readOnly: true,
 			originalEditable: false,
-			renderSideBySide: true,
+			renderSideBySide: !inlineRef.current,
 			ignoreTrimWhitespace: false,
 			renderOverviewRuler: true,
 			hideUnchangedRegions: { enabled: true },
@@ -44,7 +52,7 @@ export function DiffViewer({
 				if (c.originalEndLineNumber >= c.originalStartLineNumber)
 					removed += c.originalEndLineNumber - c.originalStartLineNumber + 1;
 			}
-			setStats({ added, removed });
+			setCounted({ diff, added, removed });
 		});
 		return () => {
 			sub.dispose();
@@ -56,6 +64,7 @@ export function DiffViewer({
 	}, [monaco, diff]);
 
 	useEffect(() => {
+		inlineRef.current = inline;
 		editorRef.current?.updateOptions({ renderSideBySide: !inline });
 	}, [inline]);
 
