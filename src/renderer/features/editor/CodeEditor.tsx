@@ -102,7 +102,7 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 			attachBookmarks(editor, monaco),
 			attachLens(editor, monaco),
 			attachSpotlight(editor, monaco),
-			attachClipboard(editor, monaco, () =>
+			attachClipboard(editor, () =>
 				isScratch(shown.current) ? 'Scratchpad' : shown.current,
 			),
 		];
