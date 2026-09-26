@@ -1,4 +1,6 @@
+import { fsKeys } from '../../app/hooks/use-fs-invalidation';
 import { call } from '../../lib/ipc';
+import { queryClient } from '../../lib/query-client';
 import { toast } from '../../stores/toast-store';
 import { reasonNotToLeaveWorkspace } from '../../stores/workbench-store';
 
@@ -24,4 +26,18 @@ export function openRecentFolder(path: string): void {
 
 export function closeFolder(): void {
 	guarded(() => call('workspace:close'), 'Could not close folder');
+}
+
+/**
+ * Re-lists every folder and file view and restarts the file watcher, which recovers from a
+ * watch error (network share, too many files) without reopening the folder.
+ */
+export function refreshExplorer(): void {
+	void queryClient.invalidateQueries({ queryKey: fsKeys.all });
+	call('fs:rewatch').catch((error: unknown) =>
+		toast.error(
+			'Could not restart file watching',
+			error instanceof Error ? error.message : undefined,
+		),
+	);
 }

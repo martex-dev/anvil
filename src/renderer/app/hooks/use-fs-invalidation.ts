@@ -1,6 +1,7 @@
 import { type Query, useQueryClient } from '@tanstack/react-query';
 
 import { useAnvilEvent } from '../../lib/use-anvil-event';
+import { toast } from '../../stores/toast-store';
 import { WORKSPACE_KEY } from './use-workspace';
 
 /**
@@ -29,5 +30,11 @@ export function useFsInvalidation(): void {
 			void client.invalidateQueries({ predicate: matches('list', new Set(dirs)) });
 		if (files.length > 0)
 			void client.invalidateQueries({ predicate: matches('file', new Set(files)) });
+	});
+	useAnvilEvent('fs:watchError', ({ message }) => {
+		toast.warn(
+			'Explorer may be out of date',
+			`${message}. Changes made outside Anvil may not appear; use Refresh Explorer to retry.`,
+		);
 	});
 }

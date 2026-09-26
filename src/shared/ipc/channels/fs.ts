@@ -68,6 +68,8 @@ export const fsChannels = defineChannels({
 		input: RelPathSchema.min(1),
 		output: z.object({ url: z.string(), size: z.number() }),
 	},
+	/** Restarts the file watcher (after a watch error, from Refresh in the explorer). */
+	'fs:rewatch': { input: z.void(), output: z.void() },
 	'fs:copyPath': {
 		input: z.object({ path: RelPathSchema, absolute: z.boolean() }),
 		output: z.string(),
@@ -77,4 +79,6 @@ export const fsChannels = defineChannels({
 export const fsEvents = {
 	/** Directories whose listing changed and files whose content changed, workspace-relative. */
 	'fs:changed': z.object({ dirs: z.array(z.string()), files: z.array(z.string()) }),
+	/** Watching failed, so outside changes may not show; once per watcher start, no paths. */
+	'fs:watchError': z.object({ message: z.string() }),
 };

@@ -15,7 +15,11 @@ import {
 } from 'lucide-react';
 
 import { VIEW_META } from '../../app/ActivityBar';
-import { closeFolder, openFolderDialog } from '../../features/explorer/workspace-actions';
+import {
+	closeFolder,
+	openFolderDialog,
+	refreshExplorer,
+} from '../../features/explorer/workspace-actions';
 import { useSearchFocus } from '../../features/search/use-search';
 import { call } from '../../lib/ipc';
 import { SIDE_VIEWS, type SideView, useLayoutStore } from '../../stores/layout-store';
@@ -99,6 +103,14 @@ export const CORE_COMMANDS: Command[] = [
 		category: 'File',
 		icon: FolderX,
 		run: closeFolder,
+	},
+	{
+		id: 'file.refreshExplorer',
+		title: 'Refresh Explorer',
+		category: 'File',
+		keywords: ['reload', 'watch', 'out of date'],
+		icon: RefreshCw,
+		run: refreshExplorer,
 	},
 	{
 		id: 'file.newProject',

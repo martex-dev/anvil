@@ -4,7 +4,7 @@ import log from 'electron-log/main';
 import { emitEvent, router } from '../ipc';
 import type { SettingsStore } from '../store/json-store';
 import { FsService } from './fs-service';
-import { WorkspaceWatcher } from './watcher';
+import { describeWatchError, WorkspaceWatcher } from './watcher';
 import { WorkspaceService } from './workspace-service';
 
 export interface WorkspaceServices {
@@ -28,12 +28,20 @@ export function createWorkspace(
 		trash: (abs) => shell.trashItem(abs),
 		reveal: (abs) => shell.showItemInFolder(abs),
 	});
+	// One notice per watcher start: chokidar can report the same failure for many folders.
+	let watchErrorShown = false;
 	const watcher = new WorkspaceWatcher(
 		(batch) => emitEvent('fs:changed', batch),
-		(error) => log.scope('watcher').warn('watch error', error),
+		(error) => {
+			log.scope('watcher').warn('watch error', error);
+			if (watchErrorShown) return;
+			watchErrorShown = true;
+			emitEvent('fs:watchError', { message: describeWatchError(error) });
+		},
 	);
 
 	const restartWatcher = (root: string | null): void => {
+		watchErrorShown = false;
 		if (root) watcher.start(root);
 		else void watcher.stop();
 	};
@@ -80,6 +88,7 @@ export function createWorkspace(
 	router.handle('fs:trash', (rel) => fs.trash(rel));
 	router.handle('fs:reveal', (rel) => fs.reveal(rel));
 	router.handle('fs:readDataUrl', (rel) => fs.readDataUrl(rel));
+	router.handle('fs:rewatch', () => restartWatcher(workspace.getRoot()));
 	router.handle('fs:copyPath', ({ path, absolute }) => (absolute ? fs.absolute(path) : path));
 
 	return { workspace, fs, watcher };

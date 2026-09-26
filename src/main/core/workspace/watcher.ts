@@ -26,6 +26,19 @@ export function isIgnoredPath(root: string, abs: string): boolean {
 	return rel.split(sep).some((part) => IGNORED_DIRS.has(part));
 }
 
+/** A user-facing reason for a watch error. Never includes paths (they can be absolute). */
+export function describeWatchError(error: unknown): string {
+	const code =
+		error instanceof Error && 'code' in error && typeof error.code === 'string'
+			? error.code
+			: '';
+	if (code === 'EPERM' || code === 'EACCES')
+		return 'A folder could not be watched (no permission)';
+	if (code === 'EMFILE' || code === 'ENFILE' || code === 'ENOSPC')
+		return 'The folder has too many files to watch';
+	return code ? `Watching for changes failed (${code})` : 'Watching for changes failed';
+}
+
 export interface WatchBatch {
 	dirs: string[];
 	files: string[];
