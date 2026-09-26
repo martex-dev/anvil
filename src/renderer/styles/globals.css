@@ -560,3 +560,9 @@ html[data-neon-cursor='true'] .monaco-editor .cursors-layer .cursor {
 	opacity: 0.28;
 	transition: opacity var(--dur-base) var(--ease-out);
 }
+
+/* Writer-style skins center the code in a column; Monaco keeps its own scrollbars inside it. */
+[data-editor-column] [data-editor-host] {
+	left: max(0px, calc((100% - var(--editor-column)) / 2));
+	right: max(0px, calc((100% - var(--editor-column)) / 2));
+}

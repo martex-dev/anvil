@@ -1,4 +1,4 @@
-import { type ComponentType, type JSX, lazy, Suspense, useRef } from 'react';
+import { type ComponentType, type JSX, lazy, Suspense, useEffect, useRef } from 'react';
 
 import { EditorArea } from '../features/editor/EditorArea';
 import { cn } from '../lib/cn';
@@ -118,6 +118,10 @@ export function Workbench({ Activity }: { Activity: ComponentType }): JSX.Elemen
 	const aiOpen = useLayoutStore((s) => s.aiOpen);
 	const showSide = sideOpen && !zen;
 	const docked = layout.sidebar !== 'drawer';
+	// A drawer starts put away: a side bar left open by a docked skin would cover the editor.
+	useEffect(() => {
+		if (!docked) useLayoutStore.setState({ sideOpen: false });
+	}, [docked]);
 	const gap = <span data-part='pane-gap' className='w-[var(--pane-gap)] shrink-0' />;
 	return (
 		<div

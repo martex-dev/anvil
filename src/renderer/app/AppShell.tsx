@@ -54,8 +54,14 @@ export function AppShell(): JSX.Element {
 	return (
 		<div
 			data-part='shell'
+			data-editor-column={layout.editorColumn ? true : undefined}
 			className='relative flex h-full flex-col'
-			style={{ '--pane-gap': `${layout.gap}px` } as CSSProperties}
+			style={
+				{
+					'--pane-gap': `${layout.gap}px`,
+					'--editor-column': `${layout.editorColumn ?? 0}px`,
+				} as CSSProperties
+			}
 		>
 			<Backdrop />
 			<Title />
