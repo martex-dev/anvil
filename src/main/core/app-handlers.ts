@@ -1,0 +1,66 @@
+import { join } from 'node:path';
+
+import { app, BrowserWindow, shell } from 'electron';
+import log from 'electron-log/main';
+import { z } from 'zod';
+
+import { DEFAULT_SETTINGS, type Settings, SettingsSchema } from '@shared/settings';
+
+import { emitEvent, router } from './ipc';
+import { openExternalSafely } from './security';
+import type { SettingsStore } from './store/json-store';
+
+const UiStateSchema = z.record(z.string(), z.unknown());
+
+const window = (): BrowserWindow | undefined =>
+	BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+
+export function readSettings(store: SettingsStore): Settings {
+	return store.get('settings', SettingsSchema, DEFAULT_SETTINGS);
+}
+
+export function registerAppHandlers(store: SettingsStore): void {
+	router.handle('app:getVersion', () => app.getVersion());
+	router.handle('app:getPlatform', () => process.platform);
+	router.handle('app:reloadWindow', () => {
+		window()?.webContents.reload();
+	});
+	router.handle('app:toggleFullScreen', () => {
+		const win = window();
+		if (!win) return false;
+		win.setFullScreen(!win.isFullScreen());
+		return win.isFullScreen();
+	});
+	router.handle('app:toggleDevTools', () => {
+		window()?.webContents.toggleDevTools();
+	});
+	router.handle('app:metrics', () => {
+		// CPU percent is per core, as in Task Manager's per-process view before normalising.
+		const metrics = app.getAppMetrics();
+		const memoryKb = metrics.reduce((sum, m) => sum + m.memory.workingSetSize, 0);
+		const cpu = metrics.reduce((sum, m) => sum + m.cpu.percentCPUUsage, 0);
+		return {
+			memoryMb: Math.round(memoryKb / 1024),
+			cpuPercent: Math.round(cpu * 10) / 10,
+			processes: metrics.length,
+		};
+	});
+	router.handle('app:openLogs', async () => {
+		await shell.openPath(join(app.getPath('userData'), 'logs'));
+	});
+	router.handle('app:openExternal', (url) => openExternalSafely(url));
+	router.handle('app:log', ({ level, scope, message, detail }) => {
+		log.scope(`renderer:${scope}`)[level](message, detail ?? '');
+	});
+
+	router.handle('settings:get', () => readSettings(store));
+	router.handle('settings:update', (patch) => {
+		const next = store.set('settings', SettingsSchema, { ...readSettings(store), ...patch });
+		emitEvent('settings:changed', next);
+		return next;
+	});
+	router.handle('ui:getState', () => store.get('ui', UiStateSchema, {}));
+	router.handle('ui:setState', (state) => {
+		store.set('ui', UiStateSchema, state);
+	});
+}
