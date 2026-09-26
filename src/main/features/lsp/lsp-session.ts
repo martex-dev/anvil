@@ -35,15 +35,20 @@ export class LspSession {
 				for (const message of this.decoder.push(chunk)) events.message(message);
 			} catch (error) {
 				// Garbage on stdout (a print() in a server plugin): the stream can't be trusted now.
-				this.stderrTail += `\n[anvil] ${String(error)}`;
+				this.appendStderr(`\n[anvil] ${String(error)}`);
 				void this.dispose();
 			}
 		});
 		this.child.stderr.on('data', (chunk: Buffer) => {
-			this.stderrTail = (this.stderrTail + chunk.toString('utf8')).slice(-4_000);
+			this.appendStderr(chunk.toString('utf8'));
+		});
+		// A crashing server closes its pipe before 'exit' arrives; writing then fails with EPIPE,
+		// which without a listener is an uncaught exception that takes down the main process.
+		this.child.stdin.on('error', (error) => {
+			this.appendStderr(`\n[anvil] stdin: ${error.message}`);
 		});
 		this.child.on('error', (error) => {
-			this.stderrTail += `\n${error.message}`;
+			this.appendStderr(`\n${error.message}`);
 		});
 		this.child.on('exit', (code) => {
 			this.exited = true;
@@ -57,7 +62,16 @@ export class LspSession {
 
 	send(message: unknown): void {
 		if (this.exited || !this.child.stdin.writable) return;
-		this.child.stdin.write(encodeMessage(message));
+		try {
+			this.child.stdin.write(encodeMessage(message));
+		} catch (error) {
+			// The stream was destroyed between the check and the write; 'exit' reports the crash.
+			this.appendStderr(`\n[anvil] stdin: ${String(error)}`);
+		}
+	}
+
+	private appendStderr(text: string): void {
+		this.stderrTail = (this.stderrTail + text).slice(-4_000);
 	}
 
 	async dispose(): Promise<void> {
