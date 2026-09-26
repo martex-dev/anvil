@@ -1,10 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ListTodo, RefreshCw } from 'lucide-react';
 import { type JSX, useMemo, useState } from 'react';
 
 import { useWorkspace } from '../../app/hooks/use-workspace';
 import { cn } from '../../lib/cn';
 import { call } from '../../lib/ipc';
+import { useFsRefresh } from '../../lib/use-fs-refresh';
 import { requestOpenFile } from '../../stores/workbench-store';
 import { EmptyState } from '../../ui/EmptyState';
 import { ErrorState } from '../../ui/ErrorState';
@@ -23,6 +24,9 @@ export function TodoView(): JSX.Element {
 		enabled: Boolean(info.root),
 		staleTime: 30_000,
 	});
+	// Adding or resolving a TODO shows up without a manual rescan.
+	const client = useQueryClient();
+	useFsRefresh(() => void client.invalidateQueries({ queryKey: ['todos', info.root] }));
 	const items = useMemo(() => parseTodos(q.data?.files ?? []), [q.data]);
 	const counts = useMemo(() => {
 		const c = new Map<Tag, number>();
@@ -66,6 +70,13 @@ export function TodoView(): JSX.Element {
 					onClick={() => void q.refetch()}
 				/>
 			</div>
+			{q.data?.truncated && (
+				<p className='num px-3 pb-1 text-11 text-warn'>
+					{q.data.timedOut
+						? `Stopped after 20 s: showing the first ${items.length}.`
+						: `Showing the first ${items.length}: the folder has more.`}
+				</p>
+			)}
 			<div className='min-h-0 flex-1 overflow-auto pb-2'>
 				{q.isLoading ? (
 					<div className='flex h-20 items-center justify-center'>
