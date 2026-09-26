@@ -62,8 +62,10 @@ export const terminalFeature: MainFeature = {
 				const fresh = !live.has(sessionId);
 				if (fresh) await startSession(sessionId, preset, cols, rows);
 				else live.resize(sessionId, cols, rows);
+				// Only into a session this call started: reattaching (a font-size change or StrictMode
+				// remounts the pane) must not run the file or task again.
 				// ConPTY buffers input typed before the shell's first prompt, so this is safe to send now.
-				if (initialCommand) live.write(sessionId, `${initialCommand}\r`);
+				if (initialCommand && fresh) live.write(sessionId, `${initialCommand}\r`);
 				const s = live.get(sessionId);
 				return {
 					sessionId,
