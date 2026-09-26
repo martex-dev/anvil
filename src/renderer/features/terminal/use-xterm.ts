@@ -10,6 +10,7 @@ import type { TerminalPresetId } from '@shared/ipc/channels/terminal';
 import { call } from '../../lib/ipc';
 import { rlog } from '../../lib/log';
 import { queryClient } from '../../lib/query-client';
+import { toast } from '../../stores/toast-store';
 import { requestOpenFile } from '../../stores/workbench-store';
 import { useClipboardHistory } from '../editor/extras/clipboard';
 import { findFileLinks } from './file-links';
@@ -66,9 +67,10 @@ export function useXterm(
 		term.unicode.activeVersion = '11';
 		term.loadAddon(
 			new WebLinksAddon((_event, uri) => {
-				call('app:openExternal', uri).catch((e: unknown) =>
-					rlog.warn('terminal', 'open link failed', e),
-				);
+				call('app:openExternal', uri).catch((e: unknown) => {
+					rlog.warn('terminal', 'open link failed', e);
+					toast.error('Could not open link', uri);
+				});
 			}),
 		);
 		term.open(host);

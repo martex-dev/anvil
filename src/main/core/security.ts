@@ -1,23 +1,20 @@
 import { app, type BrowserWindow, session, shell } from 'electron';
 import log from 'electron-log/main';
 
+import { isSafeExternalUrl } from '@shared/external-url';
+
 import { AnvilError } from './errors';
 
-/** Only plain https links may leave the app, and only into the system browser. */
-export function isSafeExternalUrl(raw: string): boolean {
-	try {
-		const url = new URL(raw);
-		return url.protocol === 'https:' && url.username === '' && url.password === '';
-	} catch {
-		return false;
-	}
-}
+export { isSafeExternalUrl };
 
 /** Opens a safe link in the system browser; throws AnvilError when refused or it fails. */
 export async function openExternalSafely(raw: string): Promise<void> {
 	if (!isSafeExternalUrl(raw)) {
-		log.warn('[security] refused to open non-https external url', { url: raw.slice(0, 200) });
-		throw new AnvilError('URL_REFUSED', 'Only https links can be opened');
+		log.warn('[security] refused to open unsafe external url', { url: raw.slice(0, 200) });
+		throw new AnvilError(
+			'URL_REFUSED',
+			'Only https links, or http links to this computer, can be opened',
+		);
 	}
 	try {
 		await shell.openExternal(raw);

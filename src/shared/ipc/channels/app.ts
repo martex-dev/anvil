@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { isSafeExternalUrl } from '../../external-url';
 import { defineChannels } from '../define';
 
 export const AppMetricsSchema = z.object({
@@ -33,7 +34,13 @@ export const appChannels = defineChannels({
 	'app:setChrome': { input: WindowChromeSchema, output: z.void() },
 	/** Opens Anvil's log folder in Explorer. */
 	'app:openLogs': { input: z.void(), output: z.void() },
-	'app:openExternal': { input: z.url({ protocol: /^https$/ }), output: z.void() },
+	/** https anywhere, or http to localhost (notebook and dashboard servers); see external-url.ts. */
+	'app:openExternal': {
+		input: z
+			.url()
+			.refine(isSafeExternalUrl, 'Only https links, or http links to this computer'),
+		output: z.void(),
+	},
 	/** Renderer has no file logger; it forwards warnings/errors to main's electron-log. */
 	'app:log': {
 		input: z.object({
