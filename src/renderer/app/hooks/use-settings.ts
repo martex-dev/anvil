@@ -11,6 +11,7 @@ import { useEffect } from 'react';
 import { DEFAULT_SETTINGS, editorFontFamily, type Settings } from '@shared/settings';
 
 import { call } from '../../lib/ipc';
+import { rlog } from '../../lib/log';
 import { queryClient } from '../../lib/query-client';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { toast } from '../../stores/toast-store';
@@ -120,17 +121,40 @@ export function watchSetting<K extends keyof Settings>(
 	});
 }
 
+/** The settings `paintSavedAppearance` put on <html> before React mounted. */
+let bootPainted: Settings | undefined;
+
+/**
+ * Loads the saved settings and paints them before the first React render, so launching never
+ * flashes the default theme, accent or glass. A failure is logged; the UI then shows its own
+ * error state.
+ */
+export async function paintSavedAppearance(): Promise<void> {
+	try {
+		const settings = await queryClient.fetchQuery({
+			queryKey: SETTINGS_KEY,
+			queryFn: () => call('settings:get'),
+		});
+		bootPainted = settings;
+		applyAppearance(settings);
+	} catch (error) {
+		rlog.error('settings', 'could not load settings before the first paint', error);
+	}
+}
+
 /** Mounted once: applies appearance settings to <html> and follows changes from main. */
 export function useApplySettings(): void {
 	const client = useQueryClient();
-	const { settings } = useSettings();
+	const { data } = useQuery({ queryKey: SETTINGS_KEY, queryFn: () => call('settings:get') });
 	useAnvilEvent('settings:changed', (next) => {
 		// Our own saves echo back before they resolve; the mutation reconciles those itself.
 		if (!isSavingSettings(client)) client.setQueryData(SETTINGS_KEY, next);
 	});
 	useEffect(() => {
-		applyAppearance(settings);
-	}, [settings]);
+		// Defaults are never painted over the real theme while settings are still loading, and
+		// the boot paint is not repeated (each paint makes Monaco and xterm rebuild their themes).
+		if (data && data !== bootPainted) applyAppearance(data);
+	}, [data]);
 }
 
 /** Theme, accent, glass and fonts onto <html>; editors and terminals re-read the tokens after. */

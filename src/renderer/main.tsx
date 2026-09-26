@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { App } from './app/App';
+import { paintSavedAppearance } from './app/hooks/use-settings';
 import { installGlobalErrorHandlers } from './lib/global-errors';
 
 import './styles/globals.css';
@@ -11,8 +12,11 @@ if (!root) throw new Error('Root element #root not found');
 
 installGlobalErrorHandlers();
 
-createRoot(root).render(
-	<StrictMode>
-		<App />
-	</StrictMode>,
+// One local IPC round trip, so the first frame already wears the saved theme.
+void paintSavedAppearance().then(() =>
+	createRoot(root).render(
+		<StrictMode>
+			<App />
+		</StrictMode>,
+	),
 );
