@@ -34,6 +34,11 @@ interface ChatState {
 	detach: (index: number) => void;
 	/** Starts a reply; false (nothing sent) while another reply is streaming or text is empty. */
 	send: (text: string, model: AiModelRef) => boolean;
+	/**
+	 * Asks again for the failed last reply: resends the question before it, with its context,
+	 * and replaces the failed reply. False when nothing was sent.
+	 */
+	retry: (replyId: string, model: AiModelRef) => boolean;
 	stop: () => void;
 	/** Starts a new conversation; an Undo toast brings the old messages back. */
 	clear: () => void;
@@ -71,32 +76,15 @@ function load(): ChatMessage[] {
 	}
 }
 
-export const useChat = create<ChatState>((set, get) => ({
-	messages: load(),
-	activeRequest: null,
-	attached: [],
-	draft: '',
-	setDraft: (draft) => set({ draft }),
-	attach: (item) =>
-		set((s) => ({
-			// One item per kind+label: re-attaching the same file refreshes it.
-			attached: [
-				...s.attached.filter((a) => !(a.kind === item.kind && a.label === item.label)),
-				item,
-			],
-		})),
-	detach: (index) => set((s) => ({ attached: s.attached.filter((_, i) => i !== index) })),
-	send: (text, model) => {
-		if (get().activeRequest || !text.trim()) return false;
+export const useChat = create<ChatState>((set, get) => {
+	/** Appends `user` and a streaming reply after `before`, and sends the request. */
+	const startReply = (
+		before: ChatMessage[],
+		user: ChatMessage,
+		context: AiContext[],
+		model: AiModelRef,
+	): void => {
 		const requestId = crypto.randomUUID();
-		const context = get().attached;
-		const user: ChatMessage = {
-			id: crypto.randomUUID(),
-			role: 'user',
-			content: text,
-			context,
-			at: Date.now(),
-		};
 		const reply: ChatMessage = {
 			id: requestId,
 			role: 'assistant',
@@ -105,77 +93,121 @@ export const useChat = create<ChatState>((set, get) => ({
 			streaming: true,
 			at: Date.now(),
 		};
-		const history = [...get().messages, user]
+		const history = [...before, user]
 			.filter((m) => !m.error && m.content)
 			.slice(-HISTORY)
 			.map((m) => ({ role: m.role, content: m.content }));
-		set((s) => ({
-			messages: [...s.messages, user, reply],
-			activeRequest: requestId,
-			attached: [],
-		}));
+		set({ messages: [...before, user, reply], activeRequest: requestId });
 		call('ai:send', { requestId, mode: 'chat', model, messages: history, context }).catch(
 			(error: unknown) =>
 				get().onError(requestId, error instanceof Error ? error.message : String(error)),
 		);
-		return true;
-	},
-	stop: () => {
-		const id = get().activeRequest;
-		if (id) void call('ai:cancel', id).catch(() => undefined);
-	},
-	clear: () => {
-		const previous = get().messages;
-		get().stop();
-		set({ messages: [], activeRequest: null, attached: [] });
-		// One click on + (or /clear) shouldn't lose a conversation for good.
-		if (previous.length > 0)
-			toast.info('Conversation cleared', undefined, {
-				label: 'Undo',
-				run: () => get().restore(previous),
-			});
-	},
-	restore: (messages) =>
-		set((s) => ({
-			messages: [
-				// The reply that was streaming was cancelled by clear().
-				...messages.map((m) =>
-					m.streaming
-						? { ...m, streaming: false, ...(m.content ? {} : { error: 'Stopped' }) }
+	};
+
+	return {
+		messages: load(),
+		activeRequest: null,
+		attached: [],
+		draft: '',
+		setDraft: (draft) => set({ draft }),
+		attach: (item) =>
+			set((s) => ({
+				// One item per kind+label: re-attaching the same file refreshes it.
+				attached: [
+					...s.attached.filter((a) => !(a.kind === item.kind && a.label === item.label)),
+					item,
+				],
+			})),
+		detach: (index) => set((s) => ({ attached: s.attached.filter((_, i) => i !== index) })),
+		send: (text, model) => {
+			if (get().activeRequest || !text.trim()) return false;
+			const user: ChatMessage = {
+				id: crypto.randomUUID(),
+				role: 'user',
+				content: text,
+				context: get().attached,
+				at: Date.now(),
+			};
+			set({ attached: [] });
+			startReply(get().messages, user, user.context ?? [], model);
+			return true;
+		},
+		retry: (replyId, model) => {
+			const { messages, activeRequest } = get();
+			const index = messages.findIndex((m) => m.id === replyId);
+			const reply = messages[index];
+			const user = messages[index - 1];
+			// Only the latest reply: retrying an old one would reorder the conversation.
+			if (
+				activeRequest ||
+				index !== messages.length - 1 ||
+				reply?.role !== 'assistant' ||
+				!reply.error ||
+				user?.role !== 'user'
+			)
+				return false;
+			// Context restored after a restart has no text (it isn't persisted): don't send it empty.
+			const context = (user.context ?? []).filter((c) => c.text);
+			startReply(messages.slice(0, index - 1), user, context, model);
+			return true;
+		},
+		stop: () => {
+			const id = get().activeRequest;
+			if (id) void call('ai:cancel', id).catch(() => undefined);
+		},
+		clear: () => {
+			const previous = get().messages;
+			get().stop();
+			set({ messages: [], activeRequest: null, attached: [] });
+			// One click on + (or /clear) shouldn't lose a conversation for good.
+			if (previous.length > 0)
+				toast.info('Conversation cleared', undefined, {
+					label: 'Undo',
+					run: () => get().restore(previous),
+				});
+		},
+		restore: (messages) =>
+			set((s) => ({
+				messages: [
+					// The reply that was streaming was cancelled by clear().
+					...messages.map((m) =>
+						m.streaming
+							? { ...m, streaming: false, ...(m.content ? {} : { error: 'Stopped' }) }
+							: m,
+					),
+					...s.messages,
+				],
+			})),
+		onDelta: (requestId, text) =>
+			set((s) => ({
+				messages: s.messages.map((m) =>
+					m.id === requestId ? { ...m, content: m.content + text } : m,
+				),
+			})),
+		onDone: (requestId, usage, cancelled, truncated = false) =>
+			set((s) => ({
+				activeRequest: s.activeRequest === requestId ? null : s.activeRequest,
+				messages: s.messages.map((m) =>
+					m.id === requestId
+						? {
+								...m,
+								streaming: false,
+								usage,
+								...(truncated ? { truncated } : {}),
+								...(cancelled && !m.content ? { error: 'Stopped' } : {}),
+							}
 						: m,
 				),
-				...s.messages,
-			],
-		})),
-	onDelta: (requestId, text) =>
-		set((s) => ({
-			messages: s.messages.map((m) =>
-				m.id === requestId ? { ...m, content: m.content + text } : m,
-			),
-		})),
-	onDone: (requestId, usage, cancelled, truncated = false) =>
-		set((s) => ({
-			activeRequest: s.activeRequest === requestId ? null : s.activeRequest,
-			messages: s.messages.map((m) =>
-				m.id === requestId
-					? {
-							...m,
-							streaming: false,
-							usage,
-							...(truncated ? { truncated } : {}),
-							...(cancelled && !m.content ? { error: 'Stopped' } : {}),
-						}
-					: m,
-			),
-		})),
-	onError: (requestId, message) =>
-		set((s) => ({
-			activeRequest: s.activeRequest === requestId ? null : s.activeRequest,
-			messages: s.messages.map((m) =>
-				m.id === requestId ? { ...m, streaming: false, error: message } : m,
-			),
-		})),
-}));
+			})),
+		onError: (requestId, message) =>
+			set((s) => ({
+				activeRequest: s.activeRequest === requestId ? null : s.activeRequest,
+				messages: s.messages.map((m) =>
+					m.id === requestId ? { ...m, streaming: false, error: message } : m,
+				),
+			})),
+	};
+});
 
 // Keep the conversation across restarts, without the (possibly large) attached context.
 let saveTimer: ReturnType<typeof setTimeout> | null = null;

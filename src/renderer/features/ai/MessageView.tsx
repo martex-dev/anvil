@@ -1,4 +1,4 @@
-import { AlertTriangle, Copy, FileDiff, TextCursorInput } from 'lucide-react';
+import { AlertTriangle, Copy, FileDiff, RotateCcw, TextCursorInput } from 'lucide-react';
 import { type JSX, useMemo } from 'react';
 
 import { cn } from '../../lib/cn';
@@ -123,7 +123,14 @@ function Prose({ text }: { text: string }): JSX.Element {
 	);
 }
 
-export function MessageView({ message }: { message: ChatMessage }): JSX.Element {
+export function MessageView({
+	message,
+	onRetry,
+}: {
+	message: ChatMessage;
+	/** Offered on a failed latest reply: asks the same question again. */
+	onRetry?: () => void;
+}): JSX.Element {
 	const segments = useMemo(() => splitFences(message.content), [message.content]);
 	if (message.role === 'user') {
 		return (
@@ -179,7 +186,19 @@ export function MessageView({ message }: { message: ChatMessage }): JSX.Element 
 				<p className='mt-1 flex items-start gap-1 text-12 text-down'>
 					<AlertTriangle size={12} className='mt-0.5 shrink-0' />
 					<span className='sr-only'>Error: </span>
-					{message.error}
+					<span className='min-w-0 flex-1 break-words'>{message.error}</span>
+					{onRetry && (
+						<Button
+							size='sm'
+							variant='ghost'
+							icon={<RotateCcw size={11} />}
+							onClick={onRetry}
+							title='Send the question again'
+							className='-my-0.5 shrink-0'
+						>
+							Retry
+						</Button>
+					)}
 				</p>
 			)}
 			{message.truncated && !message.streaming && (

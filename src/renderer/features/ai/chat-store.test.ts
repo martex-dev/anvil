@@ -49,3 +49,48 @@ describe('chat clear', () => {
 		expect(useToastStore.getState().toasts).toHaveLength(0);
 	});
 });
+
+describe('chat retry', () => {
+	const model = { provider: 'openai' as const, model: 'gpt-5' };
+
+	it('resends the question with its context and replaces the failed reply', () => {
+		const context = [{ kind: 'file' as const, label: 'a.py', language: null, text: 'x = 1' }];
+		useChat.setState({
+			activeRequest: null,
+			attached: [],
+			messages: [
+				{ id: 'u1', role: 'user', content: 'why?', context },
+				{ id: 'a1', role: 'assistant', content: '', error: 'Rate limited' },
+			],
+		});
+		expect(useChat.getState().retry('a1', model)).toBe(true);
+		const { messages, activeRequest } = useChat.getState();
+		expect(messages[0]?.id).toBe('u1');
+		expect(messages).toHaveLength(2);
+		expect(messages[1]).toMatchObject({ role: 'assistant', streaming: true, model });
+		expect(messages[1]?.id).toBe(activeRequest);
+		expect(messages[0]?.context).toEqual(context);
+	});
+
+	it('only retries the latest failed reply, and not while another is streaming', () => {
+		useChat.setState({
+			activeRequest: null,
+			messages: [
+				{ id: 'u1', role: 'user', content: 'q1' },
+				{ id: 'a1', role: 'assistant', content: '', error: 'Failed' },
+				{ id: 'u2', role: 'user', content: 'q2' },
+				{ id: 'a2', role: 'assistant', content: 'ok' },
+			],
+		});
+		expect(useChat.getState().retry('a1', model)).toBe(false);
+		expect(useChat.getState().retry('a2', model)).toBe(false);
+		useChat.setState({
+			activeRequest: 'busy',
+			messages: [
+				{ id: 'u1', role: 'user', content: 'q1' },
+				{ id: 'a1', role: 'assistant', content: '', error: 'Failed' },
+			],
+		});
+		expect(useChat.getState().retry('a1', model)).toBe(false);
+	});
+});
