@@ -51,3 +51,32 @@ export function currentRange(
 		endColumn: model.getLineMaxColumn(now.endLineNumber),
 	};
 }
+
+/**
+ * The text an edit put in the file, so Reject can take exactly that back out. A line edit
+ * replaced whole lines, so it spans them; an insert covers only the inserted characters and
+ * leaves whatever followed the cursor alone.
+ */
+export function appliedRange(
+	start: Monaco.IRange,
+	code: string,
+	insert: boolean,
+	model: Pick<Monaco.editor.ITextModel, 'getLineMaxColumn'>,
+): Monaco.IRange {
+	const lines = code.split('\n');
+	const endLineNumber = start.startLineNumber + lines.length - 1;
+	if (!insert)
+		return {
+			startLineNumber: start.startLineNumber,
+			startColumn: 1,
+			endLineNumber,
+			endColumn: model.getLineMaxColumn(endLineNumber),
+		};
+	const last = lines.at(-1) ?? '';
+	return {
+		startLineNumber: start.startLineNumber,
+		startColumn: start.startColumn,
+		endLineNumber,
+		endColumn: lines.length === 1 ? start.startColumn + last.length : last.length + 1,
+	};
+}

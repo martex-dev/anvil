@@ -8,7 +8,7 @@ import { toast } from '../../stores/toast-store';
 import { activeEditor, fileContext, problemsContext } from './editor-context';
 import { splitFences } from './fences';
 import { bindInlineEditKeys } from './inline-edit-keys';
-import { currentRange, trackRange } from './inline-range';
+import { appliedRange, currentRange, trackRange } from './inline-range';
 import { streamOnce } from './requests';
 
 export type InlinePhase = 'prompt' | 'generating' | 'review';
@@ -267,15 +267,9 @@ export async function submitInlineEdit(instruction: string): Promise<void> {
 		s.model.pushEditOperations([], [{ range: s.range, text: code }], () => null);
 		s.model.pushStackElement();
 		s.ownEdit = false;
-		const endLine = s.range.startLineNumber + Math.max(0, lineCount(code) - 1);
-		s.applied = {
-			startLineNumber: s.range.startLineNumber,
-			startColumn: insert ? s.range.startColumn : 1,
-			endLineNumber: endLine,
-			endColumn: s.model.getLineMaxColumn(endLine),
-		};
+		s.applied = appliedRange(s.range, code, insert, s.model);
 		s.decorations.set([
-			{ range: s.applied, options: { isWholeLine: true, className: 'anvil-ai-added' } },
+			{ range: s.applied, options: { isWholeLine: !insert, className: 'anvil-ai-added' } },
 		]);
 		useInlineEdit.setState({
 			phase: 'review',
