@@ -6,16 +6,28 @@ import { Button } from '../../ui/Button';
 import { IconButton } from '../../ui/IconButton';
 import { Kbd } from '../../ui/Kbd';
 import { generateCommitMessage } from '../ai/actions';
+import { useCommitDraft } from './commit-draft';
 
 interface CommitBoxProps {
+	/** The workspace root the draft belongs to. */
+	root: string;
 	branch: string | null;
 	stagedCount: number;
 	busy: boolean;
 	onCommit: (message: string) => Promise<boolean>;
 }
 
-export function CommitBox({ branch, stagedCount, busy, onCommit }: CommitBoxProps): JSX.Element {
-	const [message, setMessage] = useState('');
+export function CommitBox({
+	root,
+	branch,
+	stagedCount,
+	busy,
+	onCommit,
+}: CommitBoxProps): JSX.Element {
+	const message = useCommitDraft((s) => s.drafts[root] ?? '');
+	// Bound to this root: a streamed AI message keeps landing in the right draft even if the
+	// view is hidden or the folder changes mid-stream.
+	const setMessage = (text: string): void => useCommitDraft.getState().setDraft(root, text);
 	const [writing, setWriting] = useState(false);
 	const generate = (): void => {
 		if (stagedCount === 0) {
