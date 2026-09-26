@@ -138,7 +138,7 @@ function semanticRules(c: (token: string) => string): Record<string, unknown> {
  */
 export function buildUserConfiguration(prefs: EditorPrefs): string {
 	const c = (token: string): string => resolveToken(token);
-	const clear = '#00000000';
+	const clear = c('--editor-surface');
 	const colors = {
 		'editor.background': clear,
 		'editorGutter.background': clear,

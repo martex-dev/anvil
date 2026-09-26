@@ -60,3 +60,22 @@ describe('buildUserConfiguration motion', () => {
 		expect(motion(false)).toEqual({ smooth: false, blink: 'solid', caret: 'off' });
 	});
 });
+
+describe('buildUserConfiguration colors', () => {
+	beforeEach(() => {
+		vi.stubGlobal('document', { documentElement: { dataset: {} } });
+		vi.stubGlobal('window', { matchMedia: () => ({ matches: false }) });
+	});
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('takes the editor surface from a token, not a hard-coded color', () => {
+		const config = JSON.parse(buildUserConfiguration(prefs(false))) as {
+			'workbench.colorCustomizations': Record<string, string>;
+		};
+		const colors = config['workbench.colorCustomizations'];
+		expect(colors['editor.background']).toBe('color(--editor-surface)');
+		expect(colors['editorGutter.background']).toBe('color(--editor-surface)');
+	});
+});
