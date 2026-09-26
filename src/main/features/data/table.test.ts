@@ -76,6 +76,20 @@ describe('types and views', () => {
 		expect(view(table, '', { column: 1, desc: true })).toEqual([3, 1, 0, 2]);
 	});
 
+	it('sorts inf and nan consistently in a float column', () => {
+		const t = buildTable(
+			['r'],
+			[['1.5'], ['nan'], ['-inf'], [null], ['inf'], ['0'], ['NaN']],
+			false,
+			'built-in',
+		);
+		expect(t.columns[0]?.type).toBe('float');
+		const order = (desc: boolean): unknown[] =>
+			view(t, '', { column: 0, desc }).map((i) => t.rows[i]?.[0]);
+		expect(order(false)).toEqual(['-inf', '0', '1.5', 'inf', 'nan', 'NaN', null]);
+		expect(order(true)).toEqual(['inf', '1.5', '0', '-inf', 'nan', 'NaN', null]);
+	});
+
 	it('computes numeric and categorical stats', () => {
 		const s = columnStats(table, 1);
 		expect(s).toMatchObject({ count: 3, nulls: 1, unique: 3, min: '3000', max: '65010' });

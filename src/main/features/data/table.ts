@@ -161,6 +161,12 @@ export function tableFromRecords(records: unknown[], truncated: boolean): Table 
 
 const NUMERIC: ReadonlySet<ColumnType> = new Set(['int', 'float']);
 
+/** Like Number(), but also reads the 'inf' / '-inf' spellings that FLOAT accepts. */
+function toNumber(v: string): number {
+	if (/^[+-]?inf$/i.test(v)) return v.startsWith('-') ? -Infinity : Infinity;
+	return Number(v);
+}
+
 /** Row indices after filtering and sorting (numbers compare numerically, missing last). */
 export function view(
 	table: Table,
@@ -184,7 +190,15 @@ export function view(
 			const x = key(a);
 			const y = key(b);
 			if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1;
-			if (numeric) return (Number(x) - Number(y)) * dir;
+			if (numeric) {
+				const a = toNumber(x);
+				const b = toNumber(y);
+				// NaN has no order: keep it after the numbers (like missing) so the sort stays consistent.
+				const aNaN = Number.isNaN(a);
+				const bNaN = Number.isNaN(b);
+				if (aNaN || bNaN) return aNaN === bNaN ? 0 : aNaN ? 1 : -1;
+				return a === b ? 0 : (a < b ? -1 : 1) * dir;
+			}
 			return collator.compare(x, y) * dir;
 		});
 	}
