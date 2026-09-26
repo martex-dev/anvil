@@ -75,8 +75,14 @@ function fakeModel(initial: string): {
 function fakeEditor(
 	model: Monaco.editor.ITextModel,
 	selection: Monaco.IRange,
-): { editor: Monaco.editor.IStandaloneCodeEditor; dispose: () => void; viewCalls: string[] } {
+): {
+	editor: Monaco.editor.IStandaloneCodeEditor;
+	dispose: () => void;
+	layout: (info: object) => void;
+	viewCalls: string[];
+} {
 	const didDispose: Listener[] = [];
+	const didLayout: Array<(info: object) => void> = [];
 	const viewCalls: string[] = [];
 	const collection = (items: Array<{ range: Monaco.IRange }>) => ({
 		getRange: () => items[0]?.range ?? null,
@@ -98,7 +104,10 @@ function fakeEditor(
 			cb({ addZone: () => 'zone', removeZone: () => viewCalls.push('removeZone') }),
 		createDecorationsCollection: collection,
 		onDidChangeModel: () => ({ dispose: () => undefined }),
-		onDidLayoutChange: () => ({ dispose: () => undefined }),
+		onDidLayoutChange: (l: (info: object) => void) => {
+			didLayout.push(l);
+			return { dispose: () => undefined };
+		},
 		onDidDispose: (l: Listener) => {
 			didDispose.push(l);
 			return { dispose: () => undefined };
@@ -106,7 +115,12 @@ function fakeEditor(
 		revealLineInCenterIfOutsideViewport: () => undefined,
 		focus: () => viewCalls.push('focus'),
 	} as unknown as Monaco.editor.IStandaloneCodeEditor;
-	return { editor, viewCalls, dispose: () => didDispose.forEach((l) => l()) };
+	return {
+		editor,
+		viewCalls,
+		dispose: () => didDispose.forEach((l) => l()),
+		layout: (info) => didLayout.forEach((l) => l(info)),
+	};
 }
 
 const range = (sl: number, sc: number, el: number, ec: number): Monaco.IRange => ({
@@ -166,5 +180,15 @@ describe('inline edit', () => {
 			phase: 'prompt',
 			error: 'The model returned no code. Try rephrasing the instruction.',
 		});
+	});
+
+	it('refits the box when the editor is resized', () => {
+		const { editor } = open('x = 1\n', range(1, 1, 1, 1));
+		const host = useInlineEdit.getState().host;
+		expect(host?.style.width).toBe('760px');
+
+		editor.layout({ contentLeft: 40, contentWidth: 400, verticalScrollbarWidth: 14 });
+
+		expect(host?.style).toMatchObject({ left: '40px', width: '362px' });
 	});
 });

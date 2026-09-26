@@ -83,6 +83,12 @@ function teardown(editorGone = false): void {
 	s.editor.focus();
 }
 
+/** Sizes the box to the code area; re-run on layout changes (side bar, split, AI pane). */
+function fitHost(host: HTMLElement, layout: Monaco.editor.EditorLayoutInfo): void {
+	host.style.left = `${layout.contentLeft}px`;
+	host.style.width = `${Math.max(320, Math.min(760, layout.contentWidth - layout.verticalScrollbarWidth - 24))}px`;
+}
+
 /** Opens the Ctrl+I box over the selection (whole lines) or at the cursor. */
 export function startInlineEdit(preset = ''): void {
 	const ctx = activeEditor();
@@ -114,13 +120,8 @@ export function startInlineEdit(preset = ''): void {
 		getDomNode: () => host,
 		getPosition: () => null,
 	};
-	const layout = editor.getLayoutInfo();
-	Object.assign(host.style, {
-		position: 'absolute',
-		left: `${layout.contentLeft}px`,
-		width: `${Math.max(320, Math.min(760, layout.contentWidth - layout.verticalScrollbarWidth - 24))}px`,
-		zIndex: '20',
-	});
+	Object.assign(host.style, { position: 'absolute', zIndex: '20' });
+	fitHost(host, editor.getLayoutInfo());
 	editor.addOverlayWidget(widget);
 	let zoneId: string | null = null;
 	editor.changeViewZones((a) => {
@@ -163,6 +164,7 @@ export function startInlineEdit(preset = ''): void {
 	}
 	session.disposables.push(
 		editor.onDidChangeModel(() => teardown()),
+		editor.onDidLayoutChange((info) => fitHost(host, info)),
 		// Closing the split must stop the request too, or it keeps spending tokens.
 		editor.onDidDispose(() => teardown(true)),
 		model.onWillDispose(() => teardown()),
