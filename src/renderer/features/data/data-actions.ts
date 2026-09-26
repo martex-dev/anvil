@@ -9,6 +9,8 @@ export interface DataViewerActions {
 	toggleProfile: () => void;
 	openAsText: () => void;
 	clearSort: () => void;
+	/** Sorts by the selected cell's column (ascending, then descending on repeat). */
+	sortBySelection: () => void;
 }
 
 /**

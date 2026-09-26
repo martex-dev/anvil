@@ -1,4 +1,5 @@
 import {
+	ArrowDownUp,
 	ArrowUpDown,
 	ClipboardCopy,
 	FileText,
@@ -38,6 +39,14 @@ export const DATA_COMMANDS: Command[] = [
 		keywords: KEYWORDS,
 		icon: X,
 		run: onActiveTable((v) => v.clearFilter()),
+	},
+	{
+		id: 'data.sortBySelection',
+		title: 'Sort Table by Selected Column',
+		category: 'Data',
+		keywords: [...KEYWORDS, 'order', 'ascending', 'descending'],
+		icon: ArrowDownUp,
+		run: onActiveTable((v) => v.sortBySelection()),
 	},
 	{
 		id: 'data.clearSort',

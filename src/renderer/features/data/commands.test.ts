@@ -14,6 +14,7 @@ function fakeViewer(): DataViewerActions {
 		toggleProfile: vi.fn(),
 		openAsText: vi.fn(),
 		clearSort: vi.fn(),
+		sortBySelection: vi.fn(),
 	};
 }
 
@@ -60,7 +61,9 @@ describe('data commands', () => {
 		unregisterFirst();
 		useTabsStore.getState().open({ id: 'data:a.csv', kind: 'data', path: 'a.csv', title: 'a' });
 		run('data.clearSort');
+		run('data.sortBySelection');
 		expect(second.clearSort).toHaveBeenCalledOnce();
+		expect(second.sortBySelection).toHaveBeenCalledOnce();
 		unregisterSecond();
 	});
 });

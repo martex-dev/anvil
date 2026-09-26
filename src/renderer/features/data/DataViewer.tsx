@@ -112,6 +112,19 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 			toast.error('No editor is available to open this file');
 	};
 
+	const sortBySelection = (): void => {
+		if (!selection) {
+			toast.info('Select a cell in the column to sort by');
+			return;
+		}
+		const col = selection.focus.col;
+		// Rows reorder, so keep only the column selected: running it again flips the order.
+		update((v) => ({
+			sort: nextSort(v.sort, col),
+			selection: { anchor: { row: 0, col }, focus: { row: 0, col } },
+		}));
+	};
+
 	const focusFilter = (): void => {
 		filterRef.current?.focus();
 		filterRef.current?.select();
@@ -127,6 +140,7 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 			toggleProfile: () => update((v) => ({ profileOpen: !v.profileOpen })),
 			openAsText,
 			clearSort: () => update({ sort: null, selection: null }),
+			sortBySelection,
 		}),
 	);
 
