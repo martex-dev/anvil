@@ -4,6 +4,7 @@ import type { FsEntry } from '@shared/ipc/channels/fs';
 
 import { call } from '../../lib/ipc';
 import { toast } from '../../stores/toast-store';
+import { selectedForCompare } from '../editor/compare';
 import { explorerMenuItems } from './explorer-menu';
 import type { MenuItem } from './ExplorerContextMenu';
 
@@ -87,5 +88,14 @@ describe('explorer menu: reveal', () => {
 			'Could not reveal in File Explorer',
 			'Explorer is not available',
 		);
+	});
+});
+
+describe('explorer menu: compare', () => {
+	it('enables Compare with Selected only for a different file', () => {
+		const other: FsEntry = { ...file, name: 'b.py', path: 'src/b.py' };
+		vi.mocked(selectedForCompare).mockReturnValue('src/a.py');
+		expect(item(file, 'Compare with Selected').disabled).toBe(true);
+		expect(item(other, 'Compare with Selected').disabled).toBe(false);
 	});
 });

@@ -76,7 +76,10 @@ export function explorerMenuItems({
 		},
 		{
 			label: 'Compare with Selected',
-			disabled: target?.kind !== 'file' || !selectedForCompare(),
+			disabled:
+				target?.kind !== 'file' ||
+				!selectedForCompare() ||
+				selectedForCompare() === target.path,
 			onSelect: () => target && void compareWithSelected(target.path),
 		},
 	];
