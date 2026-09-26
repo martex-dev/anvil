@@ -10,34 +10,12 @@ import {
 
 import type { Command } from '../../app/commands/types';
 import { call } from '../../lib/ipc';
-import { queryClient } from '../../lib/query-client';
 import { useLayoutStore } from '../../stores/layout-store';
 import { focusedTab, useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
 import { quickPick } from '../../ui/QuickPick';
-import { invalidateGitLines } from '../editor/extras/git-lines';
 import { useCommitFocus } from './commit-focus';
-import { GIT_STATUS_KEY } from './use-git';
-
-const refresh = (): void => {
-	void queryClient.invalidateQueries({ queryKey: GIT_STATUS_KEY });
-	invalidateGitLines();
-};
-
-/** Resolves to whether the operation succeeded; failures are toasted, never thrown. */
-const runGit =
-	(label: string, op: () => Promise<{ summary: string }>) => async (): Promise<boolean> => {
-		try {
-			const { summary } = await op();
-			toast.success(label, summary);
-			return true;
-		} catch (error) {
-			toast.error(`${label} failed`, error instanceof Error ? error.message : undefined);
-			return false;
-		} finally {
-			refresh();
-		}
-	};
+import { refreshGit, runRemote } from './git-ops';
 
 async function switchBranch(): Promise<void> {
 	const picked = await quickPick({
@@ -63,7 +41,7 @@ async function switchBranch(): Promise<void> {
 	} catch (error) {
 		toast.error('Checkout failed', error instanceof Error ? error.message : undefined);
 	} finally {
-		refresh();
+		void refreshGit();
 	}
 }
 
@@ -144,7 +122,7 @@ export const GIT_COMMANDS: Command[] = [
 		category: 'Git',
 		icon: ArrowDown,
 		run: async () => {
-			await runGit('Pulled', () => call('git:pull'))();
+			await runRemote('pull', { announce: true });
 		},
 	},
 	{
@@ -153,7 +131,7 @@ export const GIT_COMMANDS: Command[] = [
 		category: 'Git',
 		icon: ArrowUp,
 		run: async () => {
-			await runGit('Pushed', () => call('git:push'))();
+			await runRemote('push', { announce: true });
 		},
 	},
 	{
@@ -163,8 +141,8 @@ export const GIT_COMMANDS: Command[] = [
 		icon: ArrowDownUp,
 		run: async () => {
 			// A failed pull (conflicts, divergence) must be resolved before anything is pushed.
-			if (await runGit('Pulled', () => call('git:pull'))())
-				await runGit('Pushed', () => call('git:push'))();
+			if (await runRemote('pull', { announce: true }))
+				await runRemote('push', { announce: true });
 		},
 	},
 	{ id: 'git.log', title: 'Show Recent Commits', category: 'Git', icon: History, run: showLog },

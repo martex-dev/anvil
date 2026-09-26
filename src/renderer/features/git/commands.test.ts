@@ -33,7 +33,7 @@ describe('git.sync', () => {
 		call.mockRejectedValueOnce(new Error('merge conflict'));
 		await run('git.sync');
 		expect(call.mock.calls.map((c) => c[0])).toEqual(['git:pull']);
-		expect(useToastStore.getState().toasts.map((t) => t.title)).toEqual(['Pulled failed']);
+		expect(useToastStore.getState().toasts.map((t) => t.title)).toEqual(['Pull failed']);
 	});
 });
 
