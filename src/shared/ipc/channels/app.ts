@@ -10,6 +10,12 @@ export const AppMetricsSchema = z.object({
 });
 export type AppMetrics = z.infer<typeof AppMetricsSchema>;
 
+const HexColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Expected #rrggbb');
+
+/** Colors of the native caption buttons and window background, taken from the active theme. */
+export const WindowChromeSchema = z.object({ background: HexColorSchema, symbol: HexColorSchema });
+export type WindowChrome = z.infer<typeof WindowChromeSchema>;
+
 /** A main-process module that threw while starting; its panels will not work this session. */
 export const FeatureFailureSchema = z.object({ id: z.string(), message: z.string() });
 export type FeatureFailure = z.infer<typeof FeatureFailureSchema>;
@@ -23,6 +29,8 @@ export const appChannels = defineChannels({
 	'app:metrics': { input: z.void(), output: AppMetricsSchema },
 	/** Modules that failed to start, so the shell can say which integration is down and why. */
 	'app:featureErrors': { input: z.void(), output: z.array(FeatureFailureSchema) },
+	/** Recolors the native title bar buttons to match the theme (and remembers it for launch). */
+	'app:setChrome': { input: WindowChromeSchema, output: z.void() },
 	/** Opens Anvil's log folder in Explorer. */
 	'app:openLogs': { input: z.void(), output: z.void() },
 	'app:openExternal': { input: z.url({ protocol: /^https$/ }), output: z.void() },

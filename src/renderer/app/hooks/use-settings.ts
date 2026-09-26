@@ -8,6 +8,7 @@ import { queryClient } from '../../lib/query-client';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { toast } from '../../stores/toast-store';
 import { themeById } from '../../styles/theme-list';
+import { syncWindowChrome } from '../window-chrome';
 
 export const SETTINGS_KEY = ['settings'] as const;
 
@@ -48,6 +49,19 @@ export function useApplySettings(): void {
 	useEffect(() => {
 		applyAppearance(settings);
 	}, [settings]);
+	useEffect(() => {
+		// Coalesced like the editor refresh: the theme picker fires one event per keypress.
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const sync = (): void => {
+			clearTimeout(timer);
+			timer = setTimeout(syncWindowChrome, 60);
+		};
+		window.addEventListener('anvil:appearance', sync);
+		return () => {
+			clearTimeout(timer);
+			window.removeEventListener('anvil:appearance', sync);
+		};
+	}, []);
 }
 
 /** Theme, accent, glass and fonts onto <html>; editors and terminals re-read the tokens after. */

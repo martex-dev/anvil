@@ -12,6 +12,7 @@ import { AnvilError } from './errors';
 import { emitEvent, router } from './ipc';
 import { openExternalSafely } from './security';
 import type { SettingsStore } from './store/json-store';
+import { applyWindowChrome } from './window';
 
 const UiStateSchema = z.record(z.string(), z.unknown());
 
@@ -73,6 +74,10 @@ export function registerAppHandlers(
 		const failure = await shell.openPath(dir);
 		if (failure)
 			throw new AnvilError('OPEN_FAILED', `Could not open the log folder: ${failure}`);
+	});
+	router.handle('app:setChrome', (chrome) => {
+		const win = window();
+		if (win) applyWindowChrome(win, chrome, store);
 	});
 	router.handle('app:openExternal', (url) => openExternalSafely(url));
 	router.handle('app:log', ({ level, scope, message, detail }) => {
