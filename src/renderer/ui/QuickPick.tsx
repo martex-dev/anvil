@@ -159,17 +159,29 @@ export function QuickPickHost(): JSX.Element {
 							</span>
 						)}
 						<span className='flex min-w-0 flex-1 flex-col'>
-							<span className='flex items-center gap-2 truncate'>
-								{item.label}
+							{/* Ellipsis needs a block-level text box: truncate on the flex row itself
+							    only clips. Titles expose the full branch, model or path. */}
+							<span className='flex min-w-0 items-center gap-2'>
+								<span className='min-w-0 truncate' title={item.label}>
+									{item.label}
+								</span>
 								{item.description && (
-									<span className='truncate text-12 text-fg-2'>
+									<span
+										className='min-w-0 truncate text-12 text-fg-2'
+										title={item.description}
+									>
 										{item.description}
 									</span>
 								)}
-								{item.current && <span className='hud text-accent'>current</span>}
+								{item.current && (
+									<span className='hud shrink-0 text-accent'>current</span>
+								)}
 							</span>
 							{item.detail && (
-								<span className='truncate font-mono text-11 text-fg-2'>
+								<span
+									className='truncate font-mono text-11 text-fg-2'
+									title={item.detail}
+								>
 									{item.detail}
 								</span>
 							)}
