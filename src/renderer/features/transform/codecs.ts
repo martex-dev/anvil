@@ -127,13 +127,15 @@ const NAMED_ENTITIES: Record<string, string> = {
 };
 
 export function htmlUnescape(text: string): string {
-	return text.replace(/&(#x[0-9a-fA-F]+|#\d+|[a-zA-Z]+);/g, (entity, body: string) => {
+	return text.replace(/&(#[xX][0-9a-fA-F]+|#\d+|[a-zA-Z]+);/g, (entity, body: string) => {
 		if (body.startsWith('#')) {
 			const code =
 				body[1] === 'x' || body[1] === 'X'
 					? parseInt(body.slice(2), 16)
 					: Number(body.slice(1));
-			return code <= 0x10ffff ? String.fromCodePoint(code) : entity;
+			// NUL, lone surrogates and out-of-range codes would inject invisible junk; keep them as text.
+			const invalid = code === 0 || (code >= 0xd800 && code <= 0xdfff) || code > 0x10ffff;
+			return invalid ? entity : String.fromCodePoint(code);
 		}
 		// Unknown names stay verbatim rather than being silently dropped.
 		return Object.hasOwn(NAMED_ENTITIES, body) ? (NAMED_ENTITIES[body] ?? entity) : entity;

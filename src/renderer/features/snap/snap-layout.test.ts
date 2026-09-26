@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	clipRuns,
 	dedent,
+	ellipsize,
 	expandTabs,
 	exportScale,
 	gradientLine,
@@ -188,6 +189,31 @@ describe('snapFileName', () => {
 		expect(snapFileName('.env')).toBe('.env-snap.png');
 		expect(snapFileName('')).toBe('code-snap.png');
 	});
+
+	it('keeps non-ASCII letters and replaces only unsafe characters', () => {
+		expect(snapFileName('données.py')).toBe('données-snap.png');
+		expect(snapFileName('стратегия.py')).toBe('стратегия-snap.png');
+		expect(snapFileName('a<b>:c"d|e?f*g.py')).toBe('a-b-c-d-e-f-g-snap.png');
+	});
+});
+
+describe('ellipsize', () => {
+	// One unit per code point, so widths read as character counts.
+	const measure = (s: string): number => Array.from(s).length;
+
+	it('leaves text that fits alone', () => {
+		expect(ellipsize('main.py', 7, measure)).toBe('main.py');
+	});
+
+	it('keeps the longest prefix that fits with an ellipsis', () => {
+		expect(ellipsize('a-very-long-name.py', 8, measure)).toBe('a-very-…');
+		expect(ellipsize('abc', 1, measure)).toBe('…');
+		expect(ellipsize('abc', 0, measure)).toBe('…');
+	});
+
+	it('never splits a surrogate pair', () => {
+		expect(ellipsize('😀😀😀😀', 3, measure)).toBe('😀😀…');
+	});
 });
 
 describe('withAlpha', () => {
@@ -222,5 +248,22 @@ describe('clipRuns', () => {
 			{ text: 'de…', c: 2 },
 		]);
 		expect(out.map((r) => r.text).join('')).toHaveLength(6);
+	});
+
+	it('stays within the limit when the cut falls on a run boundary', () => {
+		const out = clipRuns(
+			[
+				{ text: 'abc', c: 1 },
+				{ text: 'def', c: 2 },
+			],
+			3,
+		);
+		expect(out).toEqual([{ text: 'ab…', c: 1 }]);
+	});
+
+	it('counts code points and never splits a surrogate pair', () => {
+		const out = clipRuns([{ text: 'a😀😀😀' }], 3);
+		expect(out).toEqual([{ text: 'a😀…' }]);
+		expect(clipRuns([{ text: '😀😀😀' }], 3)).toEqual([{ text: '😀😀😀' }]);
 	});
 });

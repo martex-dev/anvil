@@ -151,6 +151,14 @@ function extractRuns(html: string, lineCount: number): SnapRun[][] {
 
 let cache: { key: string; lines: SnapRun[][] } | null = null;
 
+// Cached runs carry the syntax colors of the theme they were colorized under, so any theme or
+// accent change (use-settings fires 'anvil:appearance' once the new tokens are live) drops them.
+if (typeof window !== 'undefined') {
+	window.addEventListener('anvil:appearance', () => {
+		cache = null;
+	});
+}
+
 async function colorizedLines(
 	code: string,
 	language: string,

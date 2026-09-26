@@ -102,6 +102,12 @@ export function hexToBase58(s: string): string {
 	return bytesToBase58(hexToBytes(s));
 }
 
+/** Re-encodes raw bytes and reports how many there are, counted from the decoded bytes. */
+export function convertBytes(input: string, to: 'hex' | 'base58'): { text: string; bytes: number } {
+	const bytes = to === 'hex' ? base58ToBytes(input) : hexToBytes(input);
+	return { text: to === 'hex' ? bytesToHex(bytes) : bytesToBase58(bytes), bytes: bytes.length };
+}
+
 export function encode(kind: EncodingKind, text: string): string {
 	switch (kind) {
 		case 'base64':

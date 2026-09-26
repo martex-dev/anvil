@@ -1,18 +1,7 @@
-import {
-	Binary,
-	Braces,
-	Clock,
-	Crosshair,
-	Hash,
-	KeyRound,
-	type LucideIcon,
-	Regex,
-	Ruler,
-	TrendingUp,
-} from 'lucide-react';
-import { type ComponentType, type JSX, type KeyboardEvent, useRef, useState } from 'react';
+import { type ComponentType, type JSX, type KeyboardEvent, useRef } from 'react';
 
 import { cn } from '../../lib/cn';
+import { Tooltip } from '../../ui/Tooltip';
 import { CompoundTool } from './CompoundTool';
 import { EncodeTool } from './EncodeTool';
 import { HashTool } from './HashTool';
@@ -21,99 +10,27 @@ import { JwtTool } from './JwtTool';
 import { PositionSizeTool } from './PositionSizeTool';
 import { RegexTool } from './RegexTool';
 import { TimeTool } from './TimeTool';
+import { type ToolId, TOOLS } from './tool-list';
+import { useToolboxStore } from './toolbox-store';
 import { UnitsTool } from './UnitsTool';
 
-interface ToolDef {
-	id: string;
-	label: string;
-	hint: string;
-	icon: LucideIcon;
-	Component: ComponentType;
-}
-
-const TOOLS: readonly ToolDef[] = [
-	{
-		id: 'time',
-		label: 'Time',
-		hint: 'Unix timestamps and dates',
-		icon: Clock,
-		Component: TimeTool,
-	},
-	{
-		id: 'units',
-		label: 'Units',
-		hint: 'bps, wei/gwei, lamports, sats',
-		icon: Ruler,
-		Component: UnitsTool,
-	},
-	{
-		id: 'encode',
-		label: 'Encode',
-		hint: 'Base64, hex, base58, URL',
-		icon: Binary,
-		Component: EncodeTool,
-	},
-	{
-		id: 'jwt',
-		label: 'JWT',
-		hint: 'Inspect header and claims',
-		icon: KeyRound,
-		Component: JwtTool,
-	},
-	{
-		id: 'json',
-		label: 'JSON',
-		hint: 'Pretty, minify, sort keys',
-		icon: Braces,
-		Component: JsonTool,
-	},
-	{ id: 'regex', label: 'Regex', hint: 'Test a pattern live', icon: Regex, Component: RegexTool },
-	{ id: 'hash', label: 'Hash', hint: 'SHA-256 of text', icon: Hash, Component: HashTool },
-	{
-		id: 'position',
-		label: 'Size',
-		hint: 'Position size from risk and stop',
-		icon: Crosshair,
-		Component: PositionSizeTool,
-	},
-	{
-		id: 'compound',
-		label: 'Compound',
-		hint: 'Compound growth with contributions',
-		icon: TrendingUp,
-		Component: CompoundTool,
-	},
-];
-
-const STORAGE_KEY = 'anvil.toolbox.lastTool';
-
-function loadLastTool(): string {
-	try {
-		const saved = localStorage.getItem(STORAGE_KEY);
-		if (saved && TOOLS.some((t) => t.id === saved)) return saved;
-	} catch {
-		// Storage can be unavailable (blocked or quota); the first tool is a fine default.
-	}
-	return TOOLS[0]?.id ?? 'time';
-}
-
-function saveLastTool(id: string): void {
-	try {
-		localStorage.setItem(STORAGE_KEY, id);
-	} catch {
-		// Remembering the tool is a convenience; losing it is harmless.
-	}
-}
+const COMPONENTS: Record<ToolId, ComponentType> = {
+	time: TimeTool,
+	units: UnitsTool,
+	encode: EncodeTool,
+	jwt: JwtTool,
+	json: JsonTool,
+	regex: RegexTool,
+	hash: HashTool,
+	position: PositionSizeTool,
+	compound: CompoundTool,
+};
 
 export function ToolboxView(): JSX.Element {
-	const [active, setActive] = useState(loadLastTool);
+	const active = useToolboxStore((s) => s.activeTool);
+	const select = useToolboxStore((s) => s.setActiveTool);
 	const tabRefs = useRef(new Map<string, HTMLButtonElement>());
 	const current = TOOLS.find((t) => t.id === active) ?? TOOLS[0];
-
-	const select = (id: string): void => {
-		setActive(id);
-		saveLastTool(id);
-	};
 
 	// Roving focus: arrows move between tools like a native tab strip.
 	const onKeyDown = (e: KeyboardEvent<HTMLDivElement>): void => {
@@ -140,34 +57,36 @@ export function ToolboxView(): JSX.Element {
 					onKeyDown={onKeyDown}
 					className='grid grid-cols-[repeat(auto-fill,minmax(76px,1fr))] gap-1'
 				>
-					{TOOLS.map(({ id, label, icon: Icon }) => {
+					{TOOLS.map(({ id, label, hint, icon: Icon }) => {
 						const selected = id === current?.id;
+						// Labels truncate in a narrow side bar; the tooltip names every tab in full.
 						return (
-							<button
-								key={id}
-								ref={(el) => {
-									if (el) tabRefs.current.set(id, el);
-									else tabRefs.current.delete(id);
-								}}
-								type='button'
-								role='tab'
-								id={`toolbox-tab-${id}`}
-								aria-selected={selected}
-								aria-controls={`toolbox-panel-${id}`}
-								tabIndex={selected ? 0 : -1}
-								onClick={() => select(id)}
-								className={cn(
-									'flex h-7 min-w-0 items-center gap-1.5 rounded-sm border px-2 text-12',
-									'transition-[background-color,border-color,color] transition-fast',
-									'focus-visible:shadow-glow focus-visible:outline-none',
-									selected
-										? 'border-accent/40 bg-accent-soft text-accent'
-										: 'border-transparent text-fg-1 hover:bg-bg-3 hover:text-fg-0',
-								)}
-							>
-								<Icon size={12} className='shrink-0' aria-hidden />
-								<span className='truncate'>{label}</span>
-							</button>
+							<Tooltip key={id} content={`${label}: ${hint}`}>
+								<button
+									ref={(el) => {
+										if (el) tabRefs.current.set(id, el);
+										else tabRefs.current.delete(id);
+									}}
+									type='button'
+									role='tab'
+									id={`toolbox-tab-${id}`}
+									aria-selected={selected}
+									aria-controls={`toolbox-panel-${id}`}
+									tabIndex={selected ? 0 : -1}
+									onClick={() => select(id)}
+									className={cn(
+										'flex h-7 min-w-0 items-center gap-1.5 rounded-sm border px-2 text-12',
+										'transition-[background-color,border-color,color] transition-fast',
+										'focus-visible:shadow-glow focus-visible:outline-none',
+										selected
+											? 'border-accent/40 bg-accent-soft text-accent'
+											: 'border-transparent text-fg-1 hover:bg-bg-3 hover:text-fg-0',
+									)}
+								>
+									<Icon size={12} className='shrink-0' aria-hidden />
+									<span className='truncate'>{label}</span>
+								</button>
+							</Tooltip>
 						);
 					})}
 				</div>
@@ -179,19 +98,23 @@ export function ToolboxView(): JSX.Element {
 				)}
 			</div>
 			<div className='min-h-0 flex-1 overflow-auto'>
-				{/* Tools stay mounted while hidden so inputs survive switching back and forth. */}
-				{TOOLS.map(({ id, Component }) => (
-					<div
-						key={id}
-						role='tabpanel'
-						id={`toolbox-panel-${id}`}
-						aria-labelledby={`toolbox-tab-${id}`}
-						hidden={id !== current?.id}
-						className='animate-in p-3'
-					>
-						<Component />
-					</div>
-				))}
+				{/* Tools stay mounted while hidden, and their inputs live in toolbox-store, so they
+				    survive both tab switches and the side bar leaving the toolbox view. */}
+				{TOOLS.map(({ id }) => {
+					const Component = COMPONENTS[id];
+					return (
+						<div
+							key={id}
+							role='tabpanel'
+							id={`toolbox-panel-${id}`}
+							aria-labelledby={`toolbox-tab-${id}`}
+							hidden={id !== current?.id}
+							className='animate-in p-3'
+						>
+							<Component />
+						</div>
+					);
+				})}
 			</div>
 		</div>
 	);

@@ -21,7 +21,8 @@ export function openSnapFromEditor(): void {
 	let start = 1;
 	let end = model.getLineCount();
 	const selection = editor.getSelection();
-	if (selection && !selection.isEmpty()) {
+	const fromSelection = selection !== null && !selection.isEmpty();
+	if (fromSelection) {
 		start = selection.startLineNumber;
 		end = selection.endLineNumber;
 		// A drag that ends at column 1 of the next line didn't mean to include that line.
@@ -34,7 +35,10 @@ export function openSnapFromEditor(): void {
 	for (let line = start; line <= end; line++) lines.push(model.getLineContent(line));
 	const { code, startLine } = prepareSnapCode(lines, start, model.getOptions().tabSize);
 	if (code === '') {
-		toast.info('Nothing to snap', 'The selection is empty.');
+		toast.info(
+			'Nothing to snap',
+			fromSelection ? 'The selection is blank.' : 'The file is empty.',
+		);
 		return;
 	}
 	if (capped) toast.info(`Snap capped at ${MAX_LINES} lines`);

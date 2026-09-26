@@ -12,8 +12,11 @@ import {
 } from '../transform/generate';
 import { insertAtCursors, requireEditor } from './edit-actions';
 
-/** Runs one of Monaco's built-in actions on the focused editor. */
-export function runEditorAction(id: string): void {
+/**
+ * Runs one of Monaco's built-in actions on the focused editor. The action's promise is returned
+ * so a failure reaches runCommand, which logs it and shows a toast.
+ */
+export async function runEditorAction(id: string): Promise<void> {
 	const editor = requireEditor();
 	if (!editor) return;
 	const action = editor.getAction(id);
@@ -21,7 +24,7 @@ export function runEditorAction(id: string): void {
 		toast.warn('Not available here', id);
 		return;
 	}
-	void action.run();
+	await action.run();
 }
 
 export async function changeLanguage(): Promise<void> {
@@ -49,13 +52,21 @@ export async function changeLanguage(): Promise<void> {
 	editor.focus();
 }
 
-const GENERATORS: ReadonlyArray<{ id: string; label: string; make: () => string }> = [
-	{ id: 'uuid', label: 'UUID v4', make: uuid },
-	{ id: 'nanoid', label: 'Nano ID', make: () => nanoid() },
+interface Generator {
+	id: string;
+	label: string;
+	make: () => string;
+	/** Each cursor gets its own value; the same id twice would defeat the point. */
+	unique?: boolean;
+}
+
+const GENERATORS: readonly Generator[] = [
+	{ id: 'uuid', label: 'UUID v4', make: () => uuid(), unique: true },
+	{ id: 'nanoid', label: 'Nano ID', make: () => nanoid(), unique: true },
 	{ id: 'iso', label: 'ISO timestamp (UTC)', make: () => isoNow() },
 	{ id: 'unix', label: 'Unix timestamp (seconds)', make: () => unixSeconds() },
 	{ id: 'unixms', label: 'Unix timestamp (ms)', make: () => unixMillis() },
-	{ id: 'hex', label: 'Random hex (32 bytes)', make: () => randomHex() },
+	{ id: 'hex', label: 'Random hex (32 bytes)', make: () => randomHex(), unique: true },
 	{ id: 'lorem', label: 'Lorem ipsum (30 words)', make: () => loremIpsum() },
 ];
 
@@ -73,6 +84,9 @@ export async function insertGenerated(): Promise<void> {
 			detail: (samples.get(g.id) ?? '').slice(0, 80),
 		})),
 	});
+	const generator = GENERATORS.find((g) => g.id === picked);
 	const value = picked ? samples.get(picked) : undefined;
-	if (value) insertAtCursors(editor, value);
+	if (!generator || !value) return;
+	// The primary cursor gets the previewed value; other cursors get fresh ones when unique.
+	insertAtCursors(editor, generator.unique ? (i) => (i === 0 ? value : generator.make()) : value);
 }

@@ -44,8 +44,9 @@ export function CopyValue({
 		<button
 			type='button'
 			onClick={copy}
-			title='Click to copy'
-			aria-label={`Copy ${label}`}
+			// Single-line values truncate, so the tooltip is the only way to read them in full.
+			title={multiline ? 'Click to copy' : `${value}\n(click to copy)`}
+			aria-label={copied ? `Copied ${label}` : `Copy ${label}`}
 			className={cn(
 				'group flex w-full min-w-0 items-start gap-1.5 rounded-sm px-1.5 py-0.5 text-left',
 				'transition-[background-color] transition-fast hover:bg-bg-3',
@@ -57,10 +58,15 @@ export function CopyValue({
 				className={cn(
 					'selectable min-w-0 flex-1 text-12 text-fg-0',
 					mono && 'num',
-					multiline ? 'break-all whitespace-pre-wrap' : 'truncate',
+					// JSON output is tab-indented; the browser default of 8 columns is too wide here.
+					multiline ? '[tab-size:2] break-all whitespace-pre-wrap' : 'truncate',
 				)}
 			>
 				{display ?? value}
+			</span>
+			{/* The check icon is visual only; announce the copy for screen readers too. */}
+			<span className='sr-only' aria-live='polite'>
+				{copied ? 'Copied' : ''}
 			</span>
 			{copied ? (
 				<Check size={12} className='mt-0.5 shrink-0 text-up' aria-hidden />
