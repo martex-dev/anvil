@@ -1,5 +1,7 @@
-import { useQueries } from '@tanstack/react-query';
+import { useQueries, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
+
+import type { FsEntry } from '@shared/ipc/channels/fs';
 
 import { fsKeys } from '../../app/hooks/use-fs-invalidation';
 import { call } from '../../lib/ipc';
@@ -16,17 +18,34 @@ export interface FileTree {
 	refetchAll: () => void;
 }
 
+interface Listing {
+	data: FsEntry[] | undefined;
+	error: Error | null;
+	isLoading: boolean;
+}
+
+/**
+ * Keeps only what the tree reads. `useQueries` returns a new array every render, but a
+ * `combine` result is structurally shared, so the memoized rows below only rebuild when a
+ * listing actually changes (not on every focus move). Module-level so its identity is stable.
+ */
+function pickListing(results: UseQueryResult<FsEntry[]>[]): Listing[] {
+	return results.map((q) => ({ data: q.data, error: q.error, isLoading: q.isLoading }));
+}
+
 /** Lazily lists the root and every expanded folder, and flattens them into rows. */
 export function useFileTree(root: string, pending: PendingCreate | null): FileTree {
 	const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
 	const dirs = useMemo(() => ['', ...expanded], [expanded]);
 
+	const client = useQueryClient();
 	const queries = useQueries({
 		queries: dirs.map((dir) => ({
 			queryKey: fsKeys.list(root, dir),
 			queryFn: () => call('fs:list', dir),
 			staleTime: Infinity,
 		})),
+		combine: pickListing,
 	});
 
 	const states = useMemo(() => {
@@ -70,7 +89,9 @@ export function useFileTree(root: string, pending: PendingCreate | null): FileTr
 		isRootLoading: queries[0]?.isLoading ?? true,
 		rootError: queries[0]?.error ?? null,
 		refetchAll: () => {
-			for (const q of queries) void q.refetch();
+			for (const dir of dirs) {
+				void client.refetchQueries({ queryKey: fsKeys.list(root, dir), exact: true });
+			}
 		},
 	};
 }

@@ -30,6 +30,22 @@ export const TemplateSchema = z.object({
 });
 export type Template = z.infer<typeof TemplateSchema>;
 
+/**
+ * A new project's folder name, which uv also uses as the PEP 508 package name: it must start
+ * and end with a letter or digit (Windows strips a trailing dot) and can't be a reserved
+ * Windows device name. The dialog validates with this same schema.
+ */
+export const ProjectNameSchema = z
+	.string()
+	.min(1, 'Enter a project name')
+	.max(64, 'At most 64 characters')
+	.regex(/^[A-Za-z0-9._-]*$/, 'Letters, digits, dot, dash and underscore only')
+	.regex(/^[A-Za-z0-9](?:.*[A-Za-z0-9])?$/, 'Start and end with a letter or digit')
+	.refine(
+		(name) => !/^(con|prn|aux|nul|com\d|lpt\d)(\..*)?$/i.test(name),
+		'That name is reserved by Windows',
+	);
+
 const RelPath = z.string().min(1).max(4096);
 
 export const toolsChannels = defineChannels({
@@ -43,15 +59,11 @@ export const toolsChannels = defineChannels({
 	'tasks:list': { input: z.void(), output: z.array(TaskSchema) },
 
 	'templates:list': { input: z.void(), output: z.array(TemplateSchema) },
-	/** Asks for a parent folder, creates `<parent>/<name>` from the template and opens it. */
+	/** Asks for a parent folder and creates `<parent>/<name>` from the template; the renderer opens it. */
 	'templates:create': {
 		input: z.object({
 			templateId: z.string().min(1).max(64),
-			name: z
-				.string()
-				.min(1)
-				.max(64)
-				.regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/, 'Letters, digits, . _ - only'),
+			name: ProjectNameSchema,
 		}),
 		output: z.object({ root: z.string().nullable() }),
 	},

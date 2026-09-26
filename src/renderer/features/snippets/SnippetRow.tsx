@@ -47,6 +47,7 @@ export function SnippetRow({
 						'min-w-0 flex-1 truncate text-12',
 						selected ? 'text-fg-0' : 'text-fg-1',
 					)}
+					title={snippet.name}
 				>
 					{snippet.name}
 				</span>
