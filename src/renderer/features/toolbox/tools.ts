@@ -22,7 +22,16 @@ export interface DecodedJwt {
 	header: unknown;
 	payload: unknown;
 	expiresAt: string | null;
-	expired: boolean | null;
+	/** The exp claim in epoch ms, or null without a numeric exp. */
+	expMs: number | null;
+}
+
+/**
+ * Whether the token has expired at `now`, or null without an exp claim. Kept separate from
+ * decoding so the view can re-check against a ticking clock instead of the decode-time one.
+ */
+export function isJwtExpired(jwt: DecodedJwt, now: number): boolean | null {
+	return jwt.expMs === null ? null : jwt.expMs <= now;
 }
 
 function decodeJwtPart(part: string, name: string): unknown {
@@ -37,7 +46,7 @@ function decodeJwtPart(part: string, name: string): unknown {
  * Decodes a JWT's header and payload for inspection. The signature is NOT verified, so nothing
  * read here can be trusted as authentic.
  */
-export function decodeJwt(token: string, now: number = Date.now()): DecodedJwt {
+export function decodeJwt(token: string): DecodedJwt {
 	const parts = token.trim().split('.');
 	if (parts.length !== 3) throw new Error('Invalid JWT: expected three dot-separated parts');
 	const [headerPart = '', payloadPart = ''] = parts;
@@ -48,11 +57,11 @@ export function decodeJwt(token: string, now: number = Date.now()): DecodedJwt {
 			? payload.exp
 			: undefined;
 	if (typeof exp !== 'number' || !Number.isFinite(exp)) {
-		return { header, payload, expiresAt: null, expired: null };
+		return { header, payload, expiresAt: null, expMs: null };
 	}
 	const expMs = exp * 1000;
 	const expiresAt = Math.abs(expMs) <= 8.64e15 ? new Date(expMs).toISOString() : null;
-	return { header, payload, expiresAt, expired: expMs <= now };
+	return { header, payload, expiresAt, expMs };
 }
 
 export type JsonFormatMode = 'pretty' | 'minify' | 'sort';

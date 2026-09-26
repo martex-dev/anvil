@@ -9,12 +9,12 @@ import { ResultRow } from './ResultRow';
 import { TextArea } from './TextArea';
 import { formatRelative } from './time';
 import { ToolError } from './ToolError';
-import { type DecodedJwt, decodeJwt } from './tools';
+import { decodeJwt, isJwtExpired } from './tools';
 import { useNow } from './use-now';
 
-function ExpiryBadge({ jwt }: { jwt: DecodedJwt }): JSX.Element {
-	if (jwt.expired === null) return <Badge>No exp claim</Badge>;
-	return jwt.expired ? <Badge tone='down'>Expired</Badge> : <Badge tone='up'>Not expired</Badge>;
+function ExpiryBadge({ expired }: { expired: boolean | null }): JSX.Element {
+	if (expired === null) return <Badge>No exp claim</Badge>;
+	return expired ? <Badge tone='down'>Expired</Badge> : <Badge tone='up'>Not expired</Badge>;
 }
 
 export function JwtTool(): JSX.Element {
@@ -24,7 +24,8 @@ export function JwtTool(): JSX.Element {
 		() => (filled ? attempt(() => decodeJwt(token)) : null),
 		[filled, token],
 	);
-	const now = useNow(Boolean(result?.ok && result.value.expiresAt));
+	// The clock ticks while an exp claim is present so the badge flips the moment it passes.
+	const now = useNow(Boolean(result?.ok && result.value.expMs !== null));
 
 	return (
 		<div className='flex flex-col gap-3'>
@@ -47,7 +48,7 @@ export function JwtTool(): JSX.Element {
 				<>
 					<div className='flex flex-col gap-0.5'>
 						<div className='mb-1'>
-							<ExpiryBadge jwt={result.value} />
+							<ExpiryBadge expired={isJwtExpired(result.value, now)} />
 						</div>
 						{result.value.expiresAt && (
 							<>

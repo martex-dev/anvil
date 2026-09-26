@@ -12,6 +12,7 @@ import {
 	type EncodingKind,
 	formatJson,
 	hexToBase58,
+	isJwtExpired,
 	MAX_REGEX_MATCHES,
 	positionSize,
 	sha256Hex,
@@ -200,17 +201,24 @@ describe('decodeJwt', () => {
 
 	it('decodes header and payload and reports expiry', () => {
 		const token = make({ sub: 'marto', exp: T });
-		const expired = decodeJwt(token, T * 1000 + 1);
-		expect(expired.header).toEqual({ alg: 'HS256', typ: 'JWT' });
-		expect(expired.payload).toEqual({ sub: 'marto', exp: T });
-		expect(expired.expiresAt).toBe(T_ISO);
-		expect(expired.expired).toBe(true);
-		expect(decodeJwt(token, T * 1000 - 1).expired).toBe(false);
+		const jwt = decodeJwt(token);
+		expect(jwt.header).toEqual({ alg: 'HS256', typ: 'JWT' });
+		expect(jwt.payload).toEqual({ sub: 'marto', exp: T });
+		expect(jwt.expiresAt).toBe(T_ISO);
+		expect(jwt.expMs).toBe(T * 1000);
+	});
+
+	it('re-checks expiry against the given clock', () => {
+		const jwt = decodeJwt(make({ exp: T }));
+		expect(isJwtExpired(jwt, T * 1000 - 1)).toBe(false);
+		expect(isJwtExpired(jwt, T * 1000)).toBe(true);
+		expect(isJwtExpired(jwt, T * 1000 + 1)).toBe(true);
+		expect(isJwtExpired(decodeJwt(make({ sub: 'x' })), T * 1000)).toBeNull();
 	});
 
 	it('returns nulls without a numeric exp', () => {
-		expect(decodeJwt(make({ sub: 'x' }))).toMatchObject({ expiresAt: null, expired: null });
-		expect(decodeJwt(make({ exp: 'soon' }))).toMatchObject({ expiresAt: null, expired: null });
+		expect(decodeJwt(make({ sub: 'x' }))).toMatchObject({ expiresAt: null, expMs: null });
+		expect(decodeJwt(make({ exp: 'soon' }))).toMatchObject({ expiresAt: null, expMs: null });
 	});
 
 	it('rejects malformed tokens', () => {
