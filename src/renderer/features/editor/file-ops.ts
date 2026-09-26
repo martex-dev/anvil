@@ -215,31 +215,37 @@ export async function reloadFromDisk(path: string): Promise<void> {
 /** Same mtime as the version we hold (1 ms tolerance: some filesystems round mtimes). */
 const sameMtime = (a: number, b: number): boolean => Math.abs(a - b) <= 1;
 
-/** A clean buffer follows disk, except for the watcher's echo of Anvil's own save. */
+/**
+ * A watcher report for an open file. The echo of Anvil's own save (same mtime as the version we
+ * hold) is ignored; otherwise a clean buffer follows disk and a dirty one gets flagged.
+ */
 async function followDisk(path: string): Promise<void> {
-	const t = tracked.get(path);
-	if (!t) return;
-	const version = t.model.getAlternativeVersionId();
 	try {
+		// Judge a save's echo against the mtime that save writes, not the one before it.
+		await saving.get(path);
+		const t = tracked.get(path);
+		if (!t) return;
+		const version = t.model.getAlternativeVersionId();
 		const file = await call('fs:readFile', path);
 		const known = useEditorStore.getState().files.find((f) => f.path === path);
-		if (!known || sameMtime(file.mtimeMs, known.mtimeMs)) return;
-		if (file.binary || file.tooLarge) return;
+		if (!known || known.state !== 'ready' || sameMtime(file.mtimeMs, known.mtimeMs)) return;
+		if (known.dirty || file.binary || file.tooLarge) {
+			useEditorStore.getState().update(path, { changedOnDisk: true });
+			return;
+		}
 		applyDiskVersion(path, t, file, version);
 	} catch (error) {
+		// Deleted or unreadable: keep the buffer and flag it.
 		rlog.warn('editor', `reload failed: ${path}`, error);
 		useEditorStore.getState().update(path, { changedOnDisk: true });
 	}
 }
 
-/** Called for files the watcher reports as changed. Clean buffers follow disk; dirty ones get flagged. */
+/** Called for files the watcher reports as changed. */
 export function onExternalChange(paths: readonly string[]): void {
-	const store = useEditorStore.getState();
+	const { files } = useEditorStore.getState();
 	for (const path of paths) {
-		const file = store.files.find((f) => f.path === path);
-		if (!file || file.state !== 'ready') continue;
-		if (file.dirty) store.update(path, { changedOnDisk: true });
-		else void followDisk(path);
+		if (files.some((f) => f.path === path && f.state === 'ready')) void followDisk(path);
 	}
 }
 

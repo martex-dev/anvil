@@ -354,4 +354,58 @@ describe('file ops', () => {
 		closeFile('a.py');
 		expect(useEditorStore.getState().conflicts).toEqual(['b.py']);
 	});
+
+	it('does not flag an edited file for the watcher echo of its own save', async () => {
+		call.mockResolvedValue(text);
+		await openFile(monaco, 'C:/proj', 'a.py');
+		useEditorStore.getState().update('a.py', { dirty: true });
+		call.mockImplementation((channel: string) =>
+			Promise.resolve(channel === 'fs:writeFile' ? { mtimeMs: 5 } : { ...text, mtimeMs: 5 }),
+		);
+		await saveFile('a.py');
+		// You keep typing right after Ctrl+S; then the watcher reports the save.
+		useEditorStore.getState().update('a.py', { dirty: true });
+		call.mockClear();
+		onExternalChange(['a.py']);
+		await vi.waitFor(() => expect(call).toHaveBeenCalledWith('fs:readFile', 'a.py'));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(useEditorStore.getState().files[0]).toMatchObject({
+			changedOnDisk: false,
+			dirty: true,
+		});
+		// A real change by another program still flags it.
+		call.mockResolvedValue({ ...text, mtimeMs: 9 });
+		onExternalChange(['a.py']);
+		await vi.waitFor(() =>
+			expect(useEditorStore.getState().files[0]?.changedOnDisk).toBe(true),
+		);
+	});
+
+	it('judges an echo that arrives mid-save against the mtime the save writes', async () => {
+		call.mockResolvedValue(text);
+		await openFile(monaco, 'C:/proj', 'a.py');
+		useEditorStore.getState().update('a.py', { dirty: true });
+		let finishWrite = (): void => undefined;
+		call.mockImplementation((channel: string) =>
+			channel === 'fs:writeFile'
+				? new Promise((resolve) => {
+						finishWrite = () => resolve({ mtimeMs: 5 });
+					})
+				: Promise.resolve({ ...text, mtimeMs: 5 }),
+		);
+		const saved = saveFile('a.py');
+		await vi.waitFor(() =>
+			expect(call).toHaveBeenCalledWith('fs:writeFile', expect.anything()),
+		);
+		call.mockClear();
+		onExternalChange(['a.py']);
+		finishWrite();
+		await saved;
+		await vi.waitFor(() => expect(call).toHaveBeenCalledWith('fs:readFile', 'a.py'));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(useEditorStore.getState().files[0]).toMatchObject({
+			changedOnDisk: false,
+			mtimeMs: 5,
+		});
+	});
 });
