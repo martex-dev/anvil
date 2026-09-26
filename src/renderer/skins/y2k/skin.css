@@ -1,0 +1,214 @@
+/*
+ * Y2K Chrome: base shape, type and the candy panes. Chrome (title bar, launcher, status pill),
+ * controls (tabs, buttons, menus) and the sky live in their own sheets in this folder.
+ * Raw colors live only in palettes.css; everything here mixes the palette's variables.
+ */
+
+html[data-skin='y2k'] {
+	--r-sm: 8px;
+	--r-md: 12px;
+	--r-lg: 22px;
+	--r-xl: 28px;
+
+	/* A candy focus ring: a white gap, then the accent. */
+	--glow:
+		0 0 0 2px var(--bg-1), 0 0 0 4px color-mix(in oklab, var(--accent) 75%, transparent),
+		0 4px 14px -4px color-mix(in oklab, var(--accent) 60%, transparent);
+	--glow-soft: 0 10px 26px -12px color-mix(in oklab, var(--accent) 65%, transparent);
+	--shadow-panel: inset 0 1px 0 var(--skin-gloss), 0 12px 28px -14px var(--skin-shadow);
+	--shadow-float: 0 22px 48px -16px var(--skin-shadow);
+
+	/* The white band across the top half of every jelly surface. */
+	--yk-band: linear-gradient(
+		180deg,
+		color-mix(in oklab, var(--skin-gloss) 85%, transparent) 0%,
+		color-mix(in oklab, var(--skin-gloss) 18%, transparent) 100%
+	);
+	/* Jelly in the accent: dark rim at the top, glowing caustic at the bottom. */
+	--yk-jelly:
+		radial-gradient(
+			90% 60% at 50% 105%,
+			color-mix(in oklab, var(--accent) 45%, var(--skin-gloss)) 0%,
+			transparent 70%
+		),
+		linear-gradient(
+			180deg,
+			color-mix(in oklab, var(--accent) 78%, var(--skin-ink)) 0%,
+			var(--accent) 55%,
+			color-mix(in oklab, var(--accent) 82%, var(--skin-gloss)) 100%
+		);
+	/* A pearly white bubble for resting buttons. */
+	--yk-pearl:
+		radial-gradient(
+			100% 70% at 50% 110%,
+			color-mix(in oklab, var(--accent-2) 22%, transparent) 0%,
+			transparent 70%
+		),
+		linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 60%, var(--bg-3) 100%);
+	/* The liquid metal of the title bar and wordmark. */
+	--yk-metal: linear-gradient(
+		180deg,
+		var(--skin-chrome-1) 0%,
+		var(--skin-chrome-2) 46%,
+		color-mix(in oklab, var(--skin-chrome-3) 45%, var(--skin-chrome-2)) 50%,
+		var(--skin-chrome-4) 100%
+	);
+}
+
+html[data-skin='y2k'] body {
+	background: var(--skin-sky-2);
+	letter-spacing: 0.005em;
+}
+
+html[data-skin='y2k'] :focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+html[data-skin='y2k'] ::selection {
+	background: color-mix(in oklab, var(--accent) 32%, transparent);
+}
+
+/* Micro-labels speak in bubbly Baloo, not a HUD mono. */
+html[data-skin='y2k'] .hud {
+	font-family: var(--font-display);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.01em;
+	text-transform: none;
+	color: var(--text-1);
+}
+
+html[data-skin='y2k'] .text-gradient {
+	background-image: linear-gradient(100deg, var(--accent) 10%, var(--accent-2) 90%);
+}
+
+/* ---- Panes: rounded candy shells with a white inner lip and a colored drop shadow ----- */
+
+html[data-skin='y2k'] .glass {
+	background: var(--glass);
+	backdrop-filter: none;
+	border: 1px solid var(--skin-rim);
+	border-radius: var(--r-lg);
+	isolation: isolate;
+	box-shadow:
+		inset 0 1px 0 var(--skin-gloss),
+		inset 0 0 0 2px color-mix(in oklab, var(--skin-gloss) 45%, transparent),
+		0 3px 0 -1px color-mix(in oklab, var(--skin-rim) 80%, transparent),
+		0 14px 30px -14px var(--skin-shadow);
+}
+html[data-skin='y2k'] .glass::before,
+html[data-skin='y2k'] .brackets-frame {
+	display: none;
+}
+html[data-skin='y2k'] .pane-focus:focus-within {
+	border-color: color-mix(in oklab, var(--accent) 55%, var(--skin-rim));
+	box-shadow:
+		inset 0 1px 0 var(--skin-gloss),
+		inset 0 0 0 2px color-mix(in oklab, var(--skin-gloss) 45%, transparent),
+		0 0 0 3px color-mix(in oklab, var(--accent) 22%, transparent),
+		0 16px 32px -14px color-mix(in oklab, var(--accent) 45%, var(--skin-shadow));
+}
+
+/* Headers are glossy candy strips tucked inside the top of the pane. */
+html[data-skin='y2k'] [data-part='pane-header'],
+html[data-skin='y2k'] [data-ai-chat] > header {
+	position: relative;
+	height: 38px;
+	margin: 6px 6px 0;
+	padding-right: 6px;
+	border: 1px solid var(--glass-edge);
+	border-radius: 16px;
+	background-image:
+		var(--yk-band),
+		linear-gradient(
+			180deg,
+			color-mix(in oklab, var(--skin-header) 70%, var(--bg-1)) 0%,
+			var(--skin-header) 100%
+		);
+	background-size:
+		calc(100% - 10px) 46%,
+		100% 100%;
+	background-position:
+		50% 2px,
+		0 0;
+	background-repeat: no-repeat;
+	box-shadow:
+		inset 0 -2px 4px -2px color-mix(in oklab, var(--accent) 22%, transparent),
+		0 2px 5px -3px var(--skin-shadow);
+}
+
+/* The view number becomes a jelly dot, the title a white pill. */
+html[data-skin='y2k'] [data-part='pane-index'] {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 22px;
+	height: 22px;
+	padding: 0 5px;
+	border-radius: 999px;
+	background-image: var(--yk-jelly);
+	color: var(--on-accent);
+	font-family: var(--font-display);
+	font-size: 11px;
+	font-weight: 800;
+	box-shadow:
+		inset 0 1px 1px var(--skin-gloss-soft),
+		0 2px 4px -1px color-mix(in oklab, var(--accent) 50%, transparent);
+}
+html[data-skin='y2k'] [data-part='pane-rule'] {
+	display: none;
+}
+html[data-skin='y2k'] [data-part='pane-title'] {
+	padding: 1px 12px 0;
+	height: 24px;
+	display: inline-flex;
+	align-items: center;
+	border-radius: 999px;
+	background: var(--bg-1);
+	color: var(--text-0);
+	font-size: 13px;
+	box-shadow:
+		inset 0 1px 2px color-mix(in oklab, var(--skin-ink) 14%, transparent),
+		0 1px 0 var(--skin-gloss);
+}
+
+html[data-skin='y2k'] [data-part='pane-body'] {
+	padding-top: 4px;
+}
+html[data-skin='y2k'] [data-part='panel'] [data-part='pane-body'] {
+	margin: 0 6px 6px;
+}
+
+/* ---- Workbench spacing and splitters ------------------------------------------------- */
+
+html[data-skin='y2k'] [data-part='workbench'] {
+	padding-top: 10px;
+}
+
+html[data-skin='y2k'] [data-part='splitter-handle'] {
+	border-radius: 999px;
+	background-image: var(--yk-jelly);
+	box-shadow: 0 0 8px color-mix(in oklab, var(--accent) 50%, transparent);
+}
+html[data-skin='y2k'] [data-part='splitter'][data-axis='x'] [data-part='splitter-handle'] {
+	width: 5px;
+}
+html[data-skin='y2k'] [data-part='splitter'][data-axis='y'] [data-part='splitter-handle'] {
+	height: 5px;
+}
+
+/* ---- Editor ------------------------------------------------------------------------ */
+
+/* The code sits in a clean well, inset from the candy shell. */
+html[data-skin='y2k'] [data-part='editor-surface'] {
+	margin: 0 6px 6px;
+	border-radius: 16px;
+	overflow: hidden;
+	box-shadow: inset 0 0 0 1px var(--border);
+}
+
+/* The specular arc drawn into round icons. */
+html[data-skin='y2k'] .yk-shine {
+	stroke: var(--skin-gloss);
+}
