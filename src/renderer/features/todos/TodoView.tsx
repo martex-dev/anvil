@@ -29,7 +29,9 @@ export function TodoView(): JSX.Element {
 		for (const i of items) c.set(i.tag, (c.get(i.tag) ?? 0) + 1);
 		return c;
 	}, [items]);
-	const shown = only ? items.filter((i) => i.tag === only) : items;
+	// A filter whose tag is gone (last FIXME fixed, other folder) has no chip to turn it off.
+	const active = only && counts.has(only) ? only : null;
+	const shown = active ? items.filter((i) => i.tag === active) : items;
 
 	if (!info.root) return <EmptyState icon={<ListTodo size={20} />} title='No folder open' />;
 	if (q.error) return <ErrorState message={q.error.message} onRetry={() => void q.refetch()} />;
@@ -40,10 +42,10 @@ export function TodoView(): JSX.Element {
 					<button
 						key={t}
 						type='button'
-						onClick={() => setOnly(only === t ? null : t)}
+						onClick={() => setOnly(active === t ? null : t)}
 						className={cn(
 							'flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-mono text-10 outline-none focus-visible:shadow-glow',
-							only === t
+							active === t
 								? 'border-accent/50 bg-accent-faint text-fg-0'
 								: 'border-glass-edge text-fg-2 hover:text-fg-1',
 						)}
