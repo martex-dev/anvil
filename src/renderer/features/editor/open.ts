@@ -41,7 +41,6 @@ export function tabFor(path: string, kind: TabKind, preview = false): Tab {
 
 export const editorPrefs = (): Parameters<typeof loadMonaco>[0] => getSettings();
 
-/** Opens a file in the right viewer: text in Monaco, tables in the grid, images, notebooks. */
 /** Opens (or focuses) the scratchpad tab. */
 export async function openScratchTab(): Promise<void> {
 	try {
@@ -54,6 +53,7 @@ export async function openScratchTab(): Promise<void> {
 			title: 'Scratchpad',
 		});
 	} catch (error) {
+		rlog.error('editor', 'scratchpad failed to open', error);
 		toast.error(
 			'The editor failed to load',
 			error instanceof Error ? error.message : undefined,
@@ -75,6 +75,7 @@ export function takeQuietOpen(path: string): boolean {
 	return quietOpens.delete(path);
 }
 
+/** Opens a file in the right viewer: text in Monaco, tables in the grid, images, notebooks. */
 export async function openPath(root: string, request: OpenFileRequest): Promise<void> {
 	if (isScratch(request.path)) return openScratchTab();
 	const kind: TabKind = request.as ?? kindForPath(request.path);
