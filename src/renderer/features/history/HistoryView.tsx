@@ -142,7 +142,9 @@ export function HistoryView(): JSX.Element {
 	return (
 		<div className='flex h-full flex-col'>
 			<div className='flex items-center gap-2 px-3 py-2'>
-				<span className='truncate font-mono text-11 text-fg-1'>{path}</span>
+				<span className='truncate font-mono text-11 text-fg-1' title={path}>
+					{path}
+				</span>
 				<span className='flex-1' />
 				{items.length > 0 && (
 					<IconButton
@@ -168,8 +170,9 @@ export function HistoryView(): JSX.Element {
 					No snapshots yet. One is kept every time you save (up to 50, 30 days).
 				</p>
 			) : (
-				<ol className='relative min-h-0 flex-1 overflow-auto pb-3 pl-3'>
-					<span className='absolute top-2 bottom-3 left-[17px] w-px bg-glass-edge' />
+				// The timeline rail is a pseudo-element: a child <span> would be an invalid, announced
+				// list item.
+				<ol className="relative min-h-0 flex-1 overflow-auto pb-3 pl-3 before:absolute before:top-2 before:bottom-3 before:left-[17px] before:w-px before:bg-glass-edge before:content-['']">
 					{items.map((s, i) => (
 						<li key={s.id} className='group relative flex items-center gap-3 py-1 pr-2'>
 							<span
