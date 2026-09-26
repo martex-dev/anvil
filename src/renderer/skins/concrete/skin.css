@@ -158,10 +158,33 @@ html[data-skin='concrete'] [data-part='pane-title'] {
 	color: var(--skin-band-text);
 }
 
-/* The chat pane's own header gets the same bar treatment. */
+/* The chat and the panel continue the magazine numbering: AI and 10, set like the 01-09. */
 html[data-skin='concrete'] [data-ai-chat] > header {
 	height: 40px;
+	gap: 10px;
+	padding-left: 10px;
 	border-bottom: 0;
+}
+html[data-skin='concrete'] [data-ai-chat] > header > svg:first-child {
+	display: none;
+}
+html[data-skin='concrete']
+	:is([data-ai-chat] > header, [data-part='panel'] > [data-part='pane-header'])::before {
+	font-family: 'Bebas Neue', var(--font-display);
+	font-size: 34px;
+	line-height: 1;
+	padding: 4px 10px 0 0;
+	border-right: var(--cc-rule) solid var(--skin-band-text);
+	color: var(--skin-band-accent);
+}
+html[data-skin='concrete'] [data-ai-chat] > header::before {
+	content: 'AI';
+}
+html[data-skin='concrete'] [data-part='panel'] > [data-part='pane-header']::before {
+	content: '10';
+	margin-right: 4px;
+	padding-right: 10px;
+	line-height: 22px;
 }
 html[data-skin='concrete'] [data-ai-chat] > header > .hud {
 	font-family: var(--font-display);
