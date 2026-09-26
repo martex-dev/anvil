@@ -182,13 +182,22 @@ export async function reloadFromDisk(path: string): Promise<void> {
 	const t = tracked.get(path);
 	if (!t) return;
 	const version = t.model.getAlternativeVersionId();
+	const name = path.split('/').at(-1) ?? path;
 	try {
 		const file = await call('fs:readFile', path);
-		if (file.binary || file.tooLarge) return;
+		if (file.binary || file.tooLarge) {
+			toast.warn(
+				`Couldn't reload ${name}`,
+				`The file on disk is now ${file.binary ? 'binary' : 'too large to edit'}. Your version is kept.`,
+			);
+			useEditorStore.getState().update(path, { changedOnDisk: true });
+			return;
+		}
 		applyDiskVersion(path, t, file, version);
 	} catch (error) {
 		// The file was deleted or became unreadable; keep the buffer so nothing is lost.
 		rlog.warn('editor', `reload failed: ${path}`, error);
+		toast.error(`Couldn't reload ${name}`, error instanceof Error ? error.message : undefined);
 		useEditorStore.getState().update(path, { changedOnDisk: true });
 	}
 }

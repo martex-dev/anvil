@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { MonacoApi } from '../../lib/monaco/setup';
 import { codeTabId, useTabsStore } from '../../stores/tabs-store';
+import { useToastStore } from '../../stores/toast-store';
 import { useEditorStore } from './editor-store';
 
 const call = vi.fn();
@@ -297,5 +298,24 @@ describe('file ops', () => {
 		await Promise.resolve();
 		expect(pushEditOperations).not.toHaveBeenCalled();
 		expect(useEditorStore.getState().files[0]?.changedOnDisk).toBe(false);
+	});
+
+	it('says why Load Disk Version changed nothing', async () => {
+		call.mockResolvedValue(text);
+		await openFile(monaco, 'C:/proj', 'src/a.py');
+		call.mockRejectedValueOnce(new Error('ENOENT: no such file'));
+		await reloadFromDisk('src/a.py');
+		expect(useToastStore.getState().toasts.at(-1)).toMatchObject({
+			tone: 'error',
+			title: "Couldn't reload a.py",
+			description: 'ENOENT: no such file',
+		});
+		call.mockResolvedValueOnce({ ...text, content: '', binary: true });
+		await reloadFromDisk('src/a.py');
+		expect(useToastStore.getState().toasts.at(-1)).toMatchObject({
+			tone: 'warn',
+			title: "Couldn't reload a.py",
+		});
+		expect(useEditorStore.getState().files[0]?.changedOnDisk).toBe(true);
 	});
 });
