@@ -60,7 +60,13 @@ export function explorerMenuItems({
 		},
 		{
 			label: 'Reveal in File Explorer',
-			onSelect: () => void call('fs:reveal', target?.path ?? '').catch(() => undefined),
+			onSelect: () =>
+				void call('fs:reveal', target?.path ?? '').catch((error: unknown) =>
+					toast.error(
+						'Could not reveal in File Explorer',
+						error instanceof Error ? error.message : undefined,
+					),
+				),
 		},
 		'separator',
 		{

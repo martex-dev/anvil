@@ -2,6 +2,7 @@ import { FolderOpen, History, X } from 'lucide-react';
 import type { JSX } from 'react';
 
 import { call } from '../../lib/ipc';
+import { toast } from '../../stores/toast-store';
 import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
 import { IconButton } from '../../ui/IconButton';
@@ -10,7 +11,12 @@ import { openFolderDialog, openRecentFolder } from './workspace-actions';
 export function NoFolder({ recent }: { recent: string[] }): JSX.Element {
 	const open = openRecentFolder;
 	const forget = (path: string): void => {
-		call('workspace:forgetRecent', path).catch(() => undefined);
+		call('workspace:forgetRecent', path).catch((error: unknown) =>
+			toast.error(
+				'Could not remove from recent',
+				error instanceof Error ? error.message : undefined,
+			),
+		);
 	};
 
 	return (

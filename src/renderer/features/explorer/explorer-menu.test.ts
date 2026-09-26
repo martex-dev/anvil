@@ -75,3 +75,17 @@ describe('explorer menu: copy paths', () => {
 		expect(item(null, 'Copy Relative Path').disabled).toBe(true);
 	});
 });
+
+describe('explorer menu: reveal', () => {
+	it('reports a failed reveal', async () => {
+		vi.mocked(call).mockRejectedValue(new Error('Explorer is not available'));
+		const error = vi.spyOn(toast, 'error');
+		item(file, 'Reveal in File Explorer').onSelect();
+		await flush();
+		expect(call).toHaveBeenCalledWith('fs:reveal', 'src/a.py');
+		expect(error).toHaveBeenCalledWith(
+			'Could not reveal in File Explorer',
+			'Explorer is not available',
+		);
+	});
+});
