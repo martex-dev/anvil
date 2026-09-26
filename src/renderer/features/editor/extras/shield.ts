@@ -42,10 +42,33 @@ export function envValueRanges(
 	return out;
 }
 
+interface Secret {
+	line: number;
+	/** 1-based columns, end exclusive. */
+	start: number;
+	end: number;
+	/** A .env value (hover explains the blur) rather than a key found in code. */
+	env: boolean;
+}
+
 /**
- * Secret shield: blurs values in .env files (hover to peek) and flags API keys, private keys,
- * keypairs and seed phrases in code, as problems in the Problems panel. Nothing leaves the
- * renderer; the scan is local regexes.
+ * The secrets to blur: all but those on lines a cursor or selection touches, so the line being
+ * edited (or reached with the keyboard) reads in clear.
+ */
+export function hiddenSecrets<T extends { line: number }>(
+	secrets: readonly T[],
+	selections: ReadonlyArray<{ startLineNumber: number; endLineNumber: number }>,
+): T[] {
+	return secrets.filter(
+		(s) =>
+			!selections.some((sel) => s.line >= sel.startLineNumber && s.line <= sel.endLineNumber),
+	);
+}
+
+/**
+ * Secret shield: blurs values in .env files (hover, or move the cursor to the line, to peek)
+ * and flags API keys, private keys, keypairs and seed phrases in code, as problems in the
+ * Problems panel. Nothing leaves the renderer; the scan is local regexes.
  */
 export function attachShield(
 	editor: Monaco.editor.IStandaloneCodeEditor,
@@ -53,8 +76,48 @@ export function attachShield(
 ): Monaco.IDisposable {
 	const blur = editor.createDecorationsCollection();
 	let timer: ReturnType<typeof setTimeout> | null = null;
+	/** What the last scan found; the cursor's lines are left out when blurring. */
+	let secrets: Secret[] = [];
+	/** The text changed since the scan: its ranges are out of date until the next paint. */
+	let stale = false;
+	/**
+	 * The user put the cursor somewhere (keyboard or mouse) in the focused editor. Opening a
+	 * file or restoring its position doesn't count: a .env must open fully blurred, even
+	 * though the cursor starts on a value.
+	 */
+	let peeking = false;
+
+	const applyBlur = (): void => {
+		if (stale) return;
+		blur.set(
+			hiddenSecrets(secrets, peeking ? (editor.getSelections() ?? []) : []).map((r) => ({
+				range: new monaco.Range(r.line, r.start, r.line, r.end),
+				options: {
+					inlineClassName: 'anvil-secret-blur',
+					...(r.env
+						? {
+								hoverMessage: {
+									value: 'Secret shield: value hidden. Hover or move the cursor to the line to reveal.',
+								},
+							}
+						: {}),
+				},
+			})),
+		);
+	};
+
+	const onSelection = (e: Monaco.editor.ICursorSelectionChangedEvent): void => {
+		peeking = e.source === 'keyboard' || e.source === 'mouse';
+		applyBlur();
+	};
+	const hide = (): void => {
+		peeking = false;
+		applyBlur();
+	};
 
 	const paint = (): void => {
+		stale = false;
+		secrets = [];
 		const model = editor.getModel();
 		if (!model) return blur.clear();
 		if (!getSettings().secretShield) {
@@ -67,27 +130,16 @@ export function attachShield(
 			return;
 		}
 		const path = toWorkspacePath(model.uri) ?? model.uri.path;
-		const decorations: Monaco.editor.IModelDeltaDecoration[] = [];
 		if (isEnvFile(path)) {
-			for (const r of envValueRanges(model.getLinesContent())) {
-				decorations.push({
-					range: new monaco.Range(r.line, r.start, r.line, r.end),
-					options: {
-						inlineClassName: 'anvil-secret-blur',
-						hoverMessage: { value: 'Secret shield: value hidden. Hover to reveal.' },
-					},
-				});
-			}
+			for (const r of envValueRanges(model.getLinesContent()))
+				secrets.push({ ...r, env: true });
 		}
 		const text = model.getValueLength() <= MAX_SCAN ? model.getValue() : '';
 		const findings = scanText(text);
 		for (const f of findings) {
-			decorations.push({
-				range: new monaco.Range(f.line, f.column, f.line, f.column + f.length),
-				options: { inlineClassName: 'anvil-secret-blur' },
-			});
+			secrets.push({ line: f.line, start: f.column, end: f.column + f.length, env: false });
 		}
-		blur.set(decorations);
+		applyBlur();
 		monaco.editor.setModelMarkers(
 			model,
 			OWNER,
@@ -106,10 +158,20 @@ export function attachShield(
 		);
 	};
 	const schedule = (): void => {
+		stale = true;
 		if (timer) clearTimeout(timer);
 		timer = setTimeout(paint, 400);
 	};
-	const subs = [editor.onDidChangeModel(paint), editor.onDidChangeModelContent(schedule)];
+	const subs = [
+		editor.onDidChangeModel(() => {
+			peeking = false;
+			paint();
+		}),
+		editor.onDidChangeModelContent(schedule),
+		// Keyboard users can't hover: the line they move the cursor to shows its value in clear.
+		editor.onDidChangeCursorSelection(onSelection),
+		editor.onDidBlurEditorText(hide),
+	];
 	window.addEventListener('anvil:shield', paint);
 	paint();
 	return {

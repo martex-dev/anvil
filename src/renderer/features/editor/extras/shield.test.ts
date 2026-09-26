@@ -6,7 +6,7 @@ import type { MonacoApi } from '../../../lib/monaco/setup';
 let secretShield = true;
 vi.mock('../../../app/hooks/use-settings', () => ({ getSettings: () => ({ secretShield }) }));
 
-const { attachShield, envValueRanges } = await import('./shield');
+const { attachShield, envValueRanges, hiddenSecrets } = await import('./shield');
 
 /** The blurred text of each line. */
 const blurred = (lines: string[]): string[] =>
@@ -59,6 +59,9 @@ describe('attachShield', () => {
 			getModel: () => shown,
 			onDidChangeModel: () => noop,
 			onDidChangeModelContent: () => noop,
+			onDidChangeCursorSelection: () => noop,
+			onDidBlurEditorText: () => noop,
+			getSelections: () => [],
 		} as unknown as Monaco.editor.IStandaloneCodeEditor;
 		secretShield = false;
 		attachShield(editor, monaco).dispose();
@@ -66,5 +69,23 @@ describe('attachShield', () => {
 		// Files that had nothing flagged aren't touched (no marker-change churn).
 		expect(setModelMarkers).toHaveBeenCalledTimes(2);
 		vi.unstubAllGlobals();
+	});
+});
+
+describe('hiddenSecrets', () => {
+	const secrets = [{ line: 2 }, { line: 5 }, { line: 9 }];
+
+	it('reveals the lines a cursor or selection is on', () => {
+		expect(hiddenSecrets(secrets, [{ startLineNumber: 5, endLineNumber: 5 }])).toEqual([
+			{ line: 2 },
+			{ line: 9 },
+		]);
+		expect(hiddenSecrets(secrets, [{ startLineNumber: 1, endLineNumber: 6 }])).toEqual([
+			{ line: 9 },
+		]);
+	});
+
+	it('hides everything without a cursor', () => {
+		expect(hiddenSecrets(secrets, [])).toEqual(secrets);
 	});
 });
