@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FilePenLine, FileText, RotateCw } from 'lucide-react';
 import { type JSX, useEffect, useState } from 'react';
 
@@ -52,15 +52,19 @@ function wordCount(text: string): number {
 
 export function MarkdownPreview({ path }: { path: string }): JSX.Element {
 	const live = useLiveBuffer(path);
+	const client = useQueryClient();
+	const diskKey = ['fs-text', path];
 	const disk = useQuery({
-		queryKey: ['fs-text', path],
+		queryKey: diskKey,
 		queryFn: () => call('fs:readFile', path),
 		enabled: live === null,
 	});
 	const { refetch } = disk;
 
+	// Invalidate even while the editor buffer is shown: the disabled query is then marked stale,
+	// so closing the editor re-reads the saved file instead of showing the pre-edit cache.
 	useAnvilEvent('fs:changed', ({ files }) => {
-		if (live === null && files.includes(path)) void refetch();
+		if (files.includes(path)) void client.invalidateQueries({ queryKey: diskKey });
 	});
 
 	const text =
