@@ -20,6 +20,7 @@ import {
 	ROW_HEIGHT,
 	scrollTopForRow,
 	visibleColumns,
+	visibleRowRange,
 } from './data-format';
 import {
 	type CellPos,
@@ -46,8 +47,8 @@ interface DataGridProps {
 	onSort: (column: number) => void;
 	/** Tab-separated by default; the context menu can ask for CSV and/or a header row. */
 	onCopy: (range: CellRange, options?: CopyOptions) => void;
-	/** Written with the first visible row so "Copy as CSV" can export the current page. */
-	firstRowRef: RefObject<number>;
+	/** Written with the rows on screen so "Copy visible rows as CSV" copies what you see. */
+	visibleRowsRef: RefObject<{ top: number; bottom: number }>;
 }
 
 /** Horizontal overscan so fast sideways scrolling doesn't reveal blank columns. */
@@ -63,7 +64,7 @@ export function DataGrid({
 	onResize,
 	onSort,
 	onCopy,
-	firstRowRef,
+	visibleRowsRef,
 }: DataGridProps): JSX.Element {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const [scroll, setScroll] = useState({ top: 0, left: 0 });
@@ -102,8 +103,8 @@ export function DataGrid({
 	);
 
 	useEffect(() => {
-		firstRowRef.current = firstVisible;
-	}, [firstRowRef, firstVisible]);
+		visibleRowsRef.current = visibleRowRange(firstVisible, viewportHeight, totalRows);
+	}, [visibleRowsRef, firstVisible, viewportHeight, totalRows]);
 
 	const reveal = (pos: CellPos): void => {
 		const el = scrollRef.current;

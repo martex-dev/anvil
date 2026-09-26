@@ -49,7 +49,7 @@ export const DATA_COMMANDS: Command[] = [
 	},
 	{
 		id: 'data.copyCsv',
-		title: 'Copy Table Selection as CSV',
+		title: 'Copy Table Selection (or Visible Rows) as CSV',
 		category: 'Data',
 		keywords: [...KEYWORDS, 'clipboard', 'export'],
 		icon: ClipboardCopy,

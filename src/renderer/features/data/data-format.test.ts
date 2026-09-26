@@ -18,6 +18,7 @@ import {
 	toDelimited,
 	typeTag,
 	visibleColumns,
+	visibleRowRange,
 } from './data-format';
 
 describe('labels and numbers', () => {
@@ -128,5 +129,16 @@ describe('rowCountLabel', () => {
 	it('says how many rows a filter kept', () => {
 		expect(rowCountLabel(12, 1204331)).toBe('12 of 1,204,331 rows');
 		expect(rowCountLabel(1204331, 1204331)).toBe('1,204,331 rows');
+	});
+});
+
+describe('visibleRowRange', () => {
+	it('spans the rows on screen, including a partly shown last one', () => {
+		expect(visibleRowRange(495, 24 * 35 + 10, 10_000)).toEqual({ top: 495, bottom: 530 });
+	});
+
+	it('stops at the last row', () => {
+		expect(visibleRowRange(8, 24 * 20, 10)).toEqual({ top: 8, bottom: 9 });
+		expect(visibleRowRange(0, 0, 1)).toEqual({ top: 0, bottom: 0 });
 	});
 });

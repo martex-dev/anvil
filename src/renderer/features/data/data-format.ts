@@ -162,6 +162,18 @@ export function computeWindow(
 	return { start, end, top: clamped - (virtualTop - start * rowHeight), height, ratio };
 }
 
+/** Rows [top, bottom] on screen, counting a partly shown last row; what "copy visible" copies. */
+export function visibleRowRange(
+	firstVisible: number,
+	viewportHeight: number,
+	totalRows: number,
+	rowHeight = ROW_HEIGHT,
+): { top: number; bottom: number } {
+	const top = Math.min(Math.max(0, firstVisible), Math.max(0, totalRows - 1));
+	const count = Math.max(1, Math.ceil(viewportHeight / rowHeight));
+	return { top, bottom: Math.max(top, Math.min(totalRows - 1, top + count - 1)) };
+}
+
 /** Smallest scroll change that brings `row` fully into view. */
 export function scrollTopForRow(
 	row: number,

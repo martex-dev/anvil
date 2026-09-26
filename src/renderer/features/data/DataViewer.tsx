@@ -13,7 +13,7 @@ import { ErrorState } from '../../ui/ErrorState';
 import { Spinner } from '../../ui/Spinner';
 import { ColumnProfile } from './ColumnProfile';
 import { registerDataViewer } from './data-actions';
-import { fileName, initialColumnWidth, isTextFormat, nextSort, PAGE_SIZE } from './data-format';
+import { fileName, initialColumnWidth, isTextFormat, nextSort } from './data-format';
 import {
 	changeFilter,
 	type DataViewPatch,
@@ -32,7 +32,7 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 	const view = useDataViewStore((s) => s.views[path]) ?? DEFAULT_VIEW;
 	const { filterInput, filter, sort, selection, profileColumn, profileOpen } = view;
 	const update = (patch: DataViewPatch): void => useDataViewStore.getState().update(path, patch);
-	const firstRowRef = useRef(0);
+	const visibleRowsRef = useRef({ top: 0, bottom: 0 });
 	const profileToggleRef = useRef<HTMLButtonElement>(null);
 	const filterRef = useRef<HTMLInputElement>(null);
 
@@ -63,8 +63,8 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 			copy(selectionRange(selection), { csv: true, header: true });
 			return;
 		}
-		const top = Math.floor(firstRowRef.current / PAGE_SIZE) * PAGE_SIZE;
-		const bottom = Math.min(data.totalRows, top + PAGE_SIZE) - 1;
+		// No selection: copy exactly the rows on screen, every column.
+		const { top, bottom } = visibleRowsRef.current;
 		copy({ top, bottom, left: 0, right: columns.length - 1 }, { csv: true, header: true });
 	};
 
@@ -197,7 +197,7 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 					update((v) => ({ sort: nextSort(v.sort, column), selection: null }))
 				}
 				onCopy={copy}
-				firstRowRef={firstRowRef}
+				visibleRowsRef={visibleRowsRef}
 			/>
 		);
 	}
@@ -214,7 +214,7 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 				onOpenAsText={openAsText}
 				onCopyCsv={copyCsv}
 				copying={copying}
-				copyLabel={selection ? 'Copy selection as CSV' : 'Copy current page as CSV'}
+				copyLabel={selection ? 'Copy selection as CSV' : 'Copy visible rows as CSV'}
 				onReload={() => void reload()}
 				profileOpen={profileOpen}
 				onToggleProfile={() => update((v) => ({ profileOpen: !v.profileOpen }))}
