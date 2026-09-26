@@ -7,6 +7,7 @@ import { getLoadedMonaco } from '../../lib/monaco/load';
 import { toast } from '../../stores/toast-store';
 import { activeEditor, fileContext, problemsContext } from './editor-context';
 import { splitFences } from './fences';
+import { bindInlineEditKeys } from './inline-edit-keys';
 import { streamOnce } from './requests';
 
 export type InlinePhase = 'prompt' | 'generating' | 'review';
@@ -142,6 +143,15 @@ export function startInlineEdit(preset = ''): void {
 		disposables: [],
 		ownEdit: false,
 	};
+	const monaco = getLoadedMonaco();
+	if (monaco) {
+		const keys = bindInlineEditKeys(monaco, editor, {
+			cancel: cancelInlineEdit,
+			accept: acceptInlineEdit,
+		});
+		const unsubscribe = useInlineEdit.subscribe((st) => keys.setReview(st.phase === 'review'));
+		session.disposables.push({ dispose: unsubscribe }, keys);
+	}
 	session.disposables.push(
 		editor.onDidChangeModel(() => teardown()),
 		model.onDidChangeContent(() => {
