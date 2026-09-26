@@ -27,7 +27,7 @@ interface KeyLike {
 	metaKey?: boolean;
 	shiftKey: boolean;
 	altKey: boolean;
-	getModifierState?: (key: string) => boolean;
+	getModifierState?: (key: 'AltGraph') => boolean;
 }
 
 /**
