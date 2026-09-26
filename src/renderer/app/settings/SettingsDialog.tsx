@@ -15,6 +15,7 @@ import { call } from '../../lib/ipc';
 import { type SettingsTab, useUiStore } from '../../stores/ui-store';
 import { Button } from '../../ui/Button';
 import { Dialog } from '../../ui/Dialog';
+import { ErrorState } from '../../ui/ErrorState';
 import { Input } from '../../ui/Input';
 import { Tabs } from '../../ui/Tabs';
 import { useSettings } from '../hooks/use-settings';
@@ -160,8 +161,25 @@ export function SettingsDialog(): JSX.Element {
 	const setOpen = useUiStore((st) => st.setSettingsOpen);
 	const tab = useUiStore((st) => st.settingsTab);
 	const setTab = useUiStore((st) => st.setSettingsTab);
-	const { settings, update } = useSettings();
+	const { settings, update, isLoading, error, refetch } = useSettings();
 	const pane = (node: ReactNode): JSX.Element => <div className='px-5 py-2'>{node}</div>;
+	// Editing defaults shown in place of unloaded settings would overwrite the real ones.
+	if (error || isLoading)
+		return (
+			<Dialog open={open} onOpenChange={setOpen} title='Settings' width='lg'>
+				<div className='-mx-4 -my-3 h-[62vh] px-5 py-4'>
+					{error ? (
+						<ErrorState
+							title='Could not load settings'
+							message={error.message}
+							onRetry={refetch}
+						/>
+					) : (
+						<div className='shimmer h-full rounded-md' />
+					)}
+				</div>
+			</Dialog>
+		);
 	return (
 		<Dialog open={open} onOpenChange={setOpen} title='Settings' width='lg'>
 			<div className='-mx-4 -my-3 h-[62vh]'>

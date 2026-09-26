@@ -1,4 +1,11 @@
-import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+	MutationObserver,
+	type MutationObserverOptions,
+	type QueryClient,
+	useMutation,
+	useQuery,
+	useQueryClient,
+} from '@tanstack/react-query';
 import { useEffect } from 'react';
 
 import { DEFAULT_SETTINGS, editorFontFamily, type Settings } from '@shared/settings';
@@ -10,22 +17,74 @@ import { toast } from '../../stores/toast-store';
 import { themeById } from '../../styles/theme-list';
 
 export const SETTINGS_KEY = ['settings'] as const;
+const SETTINGS_MUTATION_KEY = ['settings', 'update'] as const;
+
+interface SettingsSnapshot {
+	previous: Settings | undefined;
+}
+
+/**
+ * `settings:update` as an optimistic mutation: the patch lands in the cache at once, so a second
+ * click (a stepper's +, a status bar toggle) builds on the first instead of on the stale value.
+ * While several saves are in flight, their responses and `settings:changed` events are ignored
+ * (they may be older than the optimistic state); the last one to settle refetches the truth.
+ */
+export function settingsMutationOptions(
+	client: QueryClient,
+): MutationObserverOptions<Settings, Error, Partial<Settings>, SettingsSnapshot> {
+	const onlyPending = (): boolean =>
+		client.isMutating({ mutationKey: SETTINGS_MUTATION_KEY }) === 1;
+	return {
+		mutationKey: SETTINGS_MUTATION_KEY,
+		mutationFn: (patch) => call('settings:update', patch),
+		onMutate: async (patch) => {
+			await client.cancelQueries({ queryKey: SETTINGS_KEY });
+			const previous = client.getQueryData<Settings>(SETTINGS_KEY);
+			// Without loaded settings there is nothing real to merge into; the response fills it.
+			if (previous) client.setQueryData<Settings>(SETTINGS_KEY, { ...previous, ...patch });
+			return { previous };
+		},
+		onSuccess: (next) => {
+			if (onlyPending()) client.setQueryData(SETTINGS_KEY, next);
+		},
+		onError: (_error, _patch, snapshot) => {
+			if (onlyPending() && snapshot?.previous)
+				client.setQueryData(SETTINGS_KEY, snapshot.previous);
+		},
+		onSettled: async (_data, error) => {
+			// A failed save among several leaves the cache unknowable locally: ask main.
+			if (onlyPending() && error) await client.invalidateQueries({ queryKey: SETTINGS_KEY });
+		},
+	};
+}
+
+/** Whether a settings save is still in flight, so pushed snapshots may be stale. */
+export function isSavingSettings(client: QueryClient = queryClient): boolean {
+	return client.isMutating({ mutationKey: SETTINGS_MUTATION_KEY }) > 0;
+}
 
 export function useSettings(): {
 	settings: Settings;
 	isLoading: boolean;
+	error: Error | null;
+	refetch: () => void;
 	update: (patch: Partial<Settings>) => void;
 } {
 	const client = useQueryClient();
 	const query = useQuery({ queryKey: SETTINGS_KEY, queryFn: () => call('settings:get') });
+	const options = settingsMutationOptions(client);
 	const mutation = useMutation({
-		mutationFn: (patch: Partial<Settings>) => call('settings:update', patch),
-		onSuccess: (next) => client.setQueryData(SETTINGS_KEY, next),
-		onError: (error) => toast.error('Could not save settings', error.message),
+		...options,
+		onError: (error, patch, snapshot, context) => {
+			void options.onError?.(error, patch, snapshot, context);
+			toast.error('Could not save settings', error.message);
+		},
 	});
 	return {
 		settings: query.data ?? DEFAULT_SETTINGS,
 		isLoading: query.isLoading,
+		error: query.data ? null : query.error,
+		refetch: () => void query.refetch(),
 		update: mutation.mutate,
 	};
 }
@@ -35,9 +94,9 @@ export function getSettings(): Settings {
 	return queryClient.getQueryData<Settings>(SETTINGS_KEY) ?? DEFAULT_SETTINGS;
 }
 
+/** Saves a patch outside React, optimistically like `useSettings().update`; rejects on failure. */
 export async function updateSettings(patch: Partial<Settings>): Promise<void> {
-	const next = await call('settings:update', patch);
-	queryClient.setQueryData(SETTINGS_KEY, next);
+	await new MutationObserver(queryClient, settingsMutationOptions(queryClient)).mutate(patch);
 }
 
 /**
@@ -65,7 +124,10 @@ export function watchSetting<K extends keyof Settings>(
 export function useApplySettings(): void {
 	const client = useQueryClient();
 	const { settings } = useSettings();
-	useAnvilEvent('settings:changed', (next) => client.setQueryData(SETTINGS_KEY, next));
+	useAnvilEvent('settings:changed', (next) => {
+		// Our own saves echo back before they resolve; the mutation reconciles those itself.
+		if (!isSavingSettings(client)) client.setQueryData(SETTINGS_KEY, next);
+	});
 	useEffect(() => {
 		applyAppearance(settings);
 	}, [settings]);
