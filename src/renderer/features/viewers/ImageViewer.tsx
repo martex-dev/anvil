@@ -176,8 +176,12 @@ export function ImageViewer({ path }: { path: string }): JSX.Element {
 		setDragging(false);
 	};
 
+	// Handled on the whole viewer, not just the image pane, so the advertised shortcuts keep
+	// working after a toolbar button was clicked (focus stays on the button).
 	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
 		if (event.ctrlKey || event.altKey || event.metaKey) return;
+		if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)
+			return;
 		const pan = (dx: number, dy: number): void =>
 			setOffset(clampOffset({ x: pos.x + dx, y: pos.y + dy }));
 		const actions: Record<string, () => void> = {
@@ -232,7 +236,7 @@ export function ImageViewer({ path }: { path: string }): JSX.Element {
 	}
 
 	return (
-		<div className='flex h-full min-h-0 flex-col'>
+		<div className='flex h-full min-h-0 flex-col' onKeyDown={onKeyDown}>
 			<div className='flex h-9 shrink-0 items-center gap-3 border-b border-glass-edge px-3'>
 				<span className='hud'>Image</span>
 				<span className='truncate text-12 text-fg-1'>{baseName(path)}</span>
@@ -302,7 +306,6 @@ export function ImageViewer({ path }: { path: string }): JSX.Element {
 					'relative min-h-0 flex-1 overflow-hidden focus-visible:-outline-offset-1',
 					pannable && (dragging ? 'cursor-grabbing' : 'cursor-grab'),
 				)}
-				onKeyDown={onKeyDown}
 				onPointerDown={onPointerDown}
 				onPointerMove={onPointerMove}
 				onPointerUp={endDrag}
