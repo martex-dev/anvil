@@ -30,13 +30,17 @@ export function reduceUpdate(state: UpdateStatus, event: UpdaterEvent): UpdateSt
 	}
 }
 
+// electron-updater's "nothing published" wording. A bare /404/ also matched sizes and ports.
+const NOT_PUBLISHED =
+	/HttpError: 404\b|\bstatus(?: code)?:? 404\b|Cannot find (?:channel )?"?latest\.yml|No published versions/i;
+// DNS failures (incl. EAI_AGAIN while Wi-Fi reconnects), refused/reset/unreachable, Chromium net errors.
+const OFFLINE =
+	/\b(?:ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENETUNREACH|EHOSTUNREACH)\b|socket hang up|net::ERR_/i;
+
 /** GitHub's "no releases yet" and offline errors are long stack traces; show one plain line. */
 export function describeUpdateError(error: unknown): string {
 	const text = error instanceof Error ? error.message : String(error);
-	if (/404|Cannot find latest\.yml|No published versions/i.test(text)) {
-		return 'No release published yet';
-	}
-	if (/ENOTFOUND|ECONNREFUSED|ETIMEDOUT|net::ERR_/i.test(text))
-		return 'Offline: will retry later';
+	if (NOT_PUBLISHED.test(text)) return 'No release published yet';
+	if (OFFLINE.test(text)) return 'Offline: will retry later';
 	return text.split('\n')[0]?.slice(0, 200) ?? 'Update check failed';
 }
