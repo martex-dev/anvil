@@ -228,6 +228,23 @@ export function withAlpha(hex: string, alpha: number): string {
 	return `rgb(${parseInt(r, 16)} ${parseInt(g, 16)} ${parseInt(b, 16)} / ${out})`;
 }
 
+/**
+ * Longest prefix of `text` (by code point) that fits `maxWidth` with a trailing '…', or the
+ * text itself when it already fits. Canvas `fillText(…, maxWidth)` squashes glyphs instead.
+ */
+export function ellipsize(text: string, maxWidth: number, measure: (s: string) => number): string {
+	if (measure(text) <= maxWidth) return text;
+	const chars = Array.from(text);
+	let lo = 0;
+	let hi = chars.length;
+	while (lo < hi) {
+		const mid = Math.ceil((lo + hi) / 2);
+		if (measure(`${chars.slice(0, mid).join('')}…`) <= maxWidth) lo = mid;
+		else hi = mid - 1;
+	}
+	return `${chars.slice(0, lo).join('')}…`;
+}
+
 /** Cuts styled runs at `max` characters, ending the line with an ellipsis run. */
 export function clipRuns<T extends { text: string }>(runs: readonly T[], max: number): T[] {
 	const out: T[] = [];

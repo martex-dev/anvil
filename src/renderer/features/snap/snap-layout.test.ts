@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	clipRuns,
 	dedent,
+	ellipsize,
 	expandTabs,
 	exportScale,
 	gradientLine,
@@ -187,6 +188,25 @@ describe('snapFileName', () => {
 		expect(snapFileName('C:\\proj\\my file.py')).toBe('my-file-snap.png');
 		expect(snapFileName('.env')).toBe('.env-snap.png');
 		expect(snapFileName('')).toBe('code-snap.png');
+	});
+});
+
+describe('ellipsize', () => {
+	// One unit per code point, so widths read as character counts.
+	const measure = (s: string): number => Array.from(s).length;
+
+	it('leaves text that fits alone', () => {
+		expect(ellipsize('main.py', 7, measure)).toBe('main.py');
+	});
+
+	it('keeps the longest prefix that fits with an ellipsis', () => {
+		expect(ellipsize('a-very-long-name.py', 8, measure)).toBe('a-very-…');
+		expect(ellipsize('abc', 1, measure)).toBe('…');
+		expect(ellipsize('abc', 0, measure)).toBe('…');
+	});
+
+	it('never splits a surrogate pair', () => {
+		expect(ellipsize('😀😀😀😀', 3, measure)).toBe('😀😀…');
 	});
 });
 
