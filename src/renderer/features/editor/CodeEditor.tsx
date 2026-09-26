@@ -5,6 +5,7 @@ import { getCommands, runCommand } from '../../app/commands/run';
 import { registerGroupEditor } from '../../lib/monaco/editors';
 import { toMonacoKeybinding } from '../../lib/monaco/keybinding';
 import type { MonacoApi } from '../../lib/monaco/setup';
+import { isAltGraph } from '../../lib/shortcuts';
 import { useTabsStore } from '../../stores/tabs-store';
 import { runCell } from '../python/run';
 import { countWords, MAX_COUNTED_SELECTION, useEditorStore } from './editor-store';
@@ -135,6 +136,15 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 				updateCursor();
 			}),
 		];
+		// Monaco reads AltGr as Ctrl+Alt, so AltGr+L (ł) would run Next Bookmark instead of typing.
+		// A capture listener runs before Monaco's own keydown handler and flags such keystrokes;
+		// the actions' keybindings are disabled while the flag is set.
+		const altGraph = editor.createContextKey<boolean>('anvil.altGraph', false);
+		const onKeyDown = (event: KeyboardEvent): void => altGraph.set(isAltGraph(event));
+		window.addEventListener('keydown', onKeyDown, { capture: true });
+		subs.push({
+			dispose: () => window.removeEventListener('keydown', onKeyDown, { capture: true }),
+		});
 		// Palette commands scoped to the editor are real Monaco actions: their keys only fire
 		// while the editor has focus, and they show in Monaco's own context menu.
 		for (const command of getCommands()) {
@@ -145,6 +155,7 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 					id: `anvil.${command.id}`,
 					label: `${command.category}: ${command.title}`,
 					keybindings: binding === null ? [] : [binding],
+					keybindingContext: '!anvil.altGraph',
 					...(command.editorLanguage
 						? { precondition: `editorLangId == ${command.editorLanguage}` }
 						: {}),

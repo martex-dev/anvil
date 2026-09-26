@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isBindable, matchesShortcut, parseShortcut } from './shortcuts';
+import { isAltGraph, isBindable, matchesShortcut, parseShortcut } from './shortcuts';
 
 const ev = (
 	key: string,
@@ -44,5 +44,22 @@ describe('shortcuts', () => {
 		expect(isBindable('Shift+Enter')).toBe(false);
 		expect(isBindable('Ctrl+Enter')).toBe(true);
 		expect(matchesShortcut(ev('F5'), 'F5')).toBe(true);
+	});
+
+	it('treats AltGr keystrokes as text, not Ctrl+Alt shortcuts', () => {
+		// Windows reports AltGr+S (Polish ś) as Ctrl+Alt with the AltGraph modifier set.
+		const altGr = (key: string, code: string) => ({
+			...ev(key, { ctrl: true, alt: true }, code),
+			getModifierState: (k: string) => k === 'AltGraph',
+		});
+		expect(isAltGraph(altGr('ś', 'KeyS'))).toBe(true);
+		expect(matchesShortcut(altGr('ś', 'KeyS'), 'Ctrl+Alt+S')).toBe(false);
+		expect(matchesShortcut(altGr('ł', 'KeyL'), 'Ctrl+Alt+L')).toBe(false);
+		const plain = {
+			...ev('s', { ctrl: true, alt: true }, 'KeyS'),
+			getModifierState: () => false,
+		};
+		expect(isAltGraph(plain)).toBe(false);
+		expect(matchesShortcut(plain, 'Ctrl+Alt+S')).toBe(true);
 	});
 });

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-import { isBindable, matchesShortcut } from '../../lib/shortcuts';
+import { isAltGraph, isBindable, matchesShortcut } from '../../lib/shortcuts';
 import { getCommands, runCommand } from './run';
 
 /**
@@ -12,6 +12,8 @@ export function useGlobalShortcuts(): void {
 		const onKeyDown = (event: KeyboardEvent): void => {
 			const fn = /^F\d{1,2}$/.test(event.key);
 			if (!event.ctrlKey && !event.metaKey && !event.altKey && !fn) return;
+			// AltGr+S types ś on Polish layouts; let it through as text instead of Save All.
+			if (isAltGraph(event)) return;
 			const command = getCommands().find(
 				(c) =>
 					(c.scope ?? 'global') === 'global' &&
