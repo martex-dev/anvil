@@ -91,12 +91,17 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 		if (activeFile) reveal(activeFile);
 	}
 
+	// Scroll the focused row into view once it exists: revealing a nested file expands folders
+	// whose listings load later, so the row may only appear after a few more renders.
+	const scrolledTo = useRef<string | null>(null);
 	useEffect(() => {
-		if (!focused) return;
-		containerRef.current
-			?.querySelector(`[data-path="${CSS.escape(focused)}"]`)
-			?.scrollIntoView({ block: 'nearest' });
-	}, [focused]);
+		if (!focused) scrolledTo.current = null;
+		if (!focused || scrolledTo.current === focused) return;
+		const row = containerRef.current?.querySelector(`[data-path="${CSS.escape(focused)}"]`);
+		if (!row) return;
+		scrolledTo.current = focused;
+		row.scrollIntoView({ block: 'nearest' });
+	}, [focused, tree.rows]);
 
 	const openEntry = (entry: FsEntry): void => {
 		if (entry.kind === 'dir') {
