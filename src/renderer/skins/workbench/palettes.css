@@ -348,8 +348,8 @@
 	--border: #a00000;
 	--border-strong: #800000;
 
-	--glass: #ff0000;
-	--glass-strong: #ff0000;
+	--glass: #ff3326;
+	--glass-strong: #ff3326;
 	--glass-edge: #800000;
 	--glass-highlight: #ffff80;
 	--editor-bg: #fffbd0;
@@ -384,7 +384,7 @@
 	--syn-regexp: #c00000;
 
 	--skin-desktop: #ffff00;
-	--skin-face: #ff0000;
+	--skin-face: #ff3326;
 	--skin-bevel-light: #ffff80;
 	--skin-bevel-hi: #ff8a80;
 	--skin-bevel-shadow: #800000;

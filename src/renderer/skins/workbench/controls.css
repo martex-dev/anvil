@@ -14,7 +14,7 @@ html[data-skin='workbench'] .rounded-full:not(.animate-spin) {
 /* ---- Push buttons -------------------------------------------------------------------------- */
 
 html[data-skin='workbench'] button.accent-gradient,
-html[data-skin='workbench'] button.border:not([role='switch']):not([role='combobox']),
+html[data-skin='workbench'] button.border:not([role='switch'], [role='combobox'], .flex-col),
 html[data-skin='workbench'] [data-ai-chat] > header > button:not([aria-label]) {
 	border: 0;
 	border-radius: 0;
@@ -31,7 +31,8 @@ html[data-skin='workbench'] button.accent-gradient {
 	font-weight: 700;
 }
 html[data-skin='workbench'] button.accent-gradient:active,
-html[data-skin='workbench'] button.border:not([role='switch']):not([role='combobox']):active {
+html[data-skin='workbench']
+	button.border:not([role='switch'], [role='combobox'], .flex-col):active {
 	box-shadow: var(--wb-pressed);
 	padding-top: 1px;
 }
