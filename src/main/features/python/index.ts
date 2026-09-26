@@ -13,6 +13,7 @@ import { toAbsolute } from '../../core/workspace/fs-guard';
 import { discoverEnvs, envDirOf, findEnv } from './envs';
 import { activatedEnv, interpreter, setReplSupport } from './interpreter';
 import { runRuffFormat } from './ruff-format';
+import { LocalEnvWatcher } from './venv-watch';
 
 const PickSchema = z.string().nullable();
 const CACHE_MS = 60_000;
@@ -132,20 +133,34 @@ export const pythonFeature: MainFeature = {
 				}
 			);
 		};
-		const emitSelected = (): void =>
+		// `uv venv` in a terminal creates .venv behind Anvil's back; pick it up without a restart.
+		const localEnvs = new LocalEnvWatcher({
+			resolve: (root) => interpreter.resolve(root),
+			onChange: () => {
+				cache = null;
+				interpreter.announce();
+			},
+			onError: (e) => ctx.log.warn('venv watch failed', { message: errorMessage(e) }),
+		});
+		localEnvs.start(ctx.workspace.root());
+		ctx.onDispose(() => localEnvs.stop());
+		const emitSelected = (): void => {
+			localEnvs.sync();
 			void selected()
 				.then((env) => ctx.emit('python:changed', env))
 				.catch((e: unknown) =>
 					ctx.log.error('python:changed failed', { message: errorMessage(e) }),
 				);
+		};
 		const off = interpreter.onChange(emitSelected);
 		ctx.onDispose(off);
 		// Discover once at startup so system Pythons are known before the first Run or REPL.
 		void envs(false).catch((e: unknown) =>
 			ctx.log.error('python discovery failed', { message: errorMessage(e) }),
 		);
-		ctx.workspace.onChange(() => {
+		ctx.workspace.onChange((root) => {
 			cache = null;
+			localEnvs.start(root);
 			emitSelected();
 		});
 

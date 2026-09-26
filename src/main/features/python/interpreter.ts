@@ -43,6 +43,11 @@ class InterpreterState {
 		if (this.resolve(root) !== before) this.notify();
 	}
 
+	/** A change found on disk (a venv created or deleted): every listener re-resolves. */
+	announce(): void {
+		this.notify();
+	}
+
 	private notify(): void {
 		for (const listener of this.listeners) listener();
 	}
