@@ -41,4 +41,35 @@ describe('LspSession failure handling', () => {
 		});
 		expect(result.code).toBe(0);
 	});
+
+	it('ends the session when the server process cannot be spawned', async () => {
+		const launch = fakeServer('');
+		const missingNode = join(dir, 'no-such-node');
+		let session: LspSession | undefined;
+		const result = await waitForExit((exit) => {
+			session = new LspSession(
+				'spawn',
+				launch,
+				dir,
+				{ message: () => undefined, exit },
+				missingNode,
+			);
+			return session;
+		});
+		expect(result.code).toBeNull();
+		expect(result.stderr).toContain('ENOENT');
+		await expect(session?.ready).rejects.toMatchObject({ code: 'ENOENT' });
+		// Nothing to write to and nothing to kill.
+		session?.send({ jsonrpc: '2.0', method: 'x' });
+		await session?.dispose();
+	});
+
+	it('reports ready once the process is running', async () => {
+		const launch = fakeServer('setTimeout(() => {}, 50);');
+		const result = await waitForExit((exit) => {
+			const session = new LspSession('ok', launch, dir, { message: () => undefined, exit });
+			return session;
+		});
+		await expect(result.session.ready).resolves.toBeUndefined();
+	});
 });

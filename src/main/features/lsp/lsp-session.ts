@@ -15,6 +15,8 @@ export class LspSession {
 	private readonly decoder = new MessageDecoder();
 	private stderrTail = '';
 	private exited = false;
+	/** Resolves once the process is running; rejects if it could not be started at all. */
+	readonly ready: Promise<void>;
 
 	constructor(
 		readonly id: string,
@@ -47,13 +49,24 @@ export class LspSession {
 		this.child.stdin.on('error', (error) => {
 			this.appendStderr(`\n[anvil] stdin: ${error.message}`);
 		});
-		this.child.on('error', (error) => {
-			this.appendStderr(`\n${error.message}`);
-		});
-		this.child.on('exit', (code) => {
+		const finish = (code: number | null): void => {
+			if (this.exited) return;
 			this.exited = true;
 			events.exit(code, this.stderrTail.trim());
+		};
+		this.ready = new Promise<void>((resolve, reject) => {
+			this.child.once('spawn', resolve);
+			this.child.once('error', reject);
 		});
+		// Awaiting is optional; a start failure is also reported through events.exit.
+		this.ready.catch(() => undefined);
+		this.child.on('error', (error) => {
+			this.appendStderr(`\n${error.message}`);
+			// Never started (EACCES, EMFILE, blocked by antivirus): 'exit' may never follow, so
+			// end the session here or the client waits for it forever.
+			if (this.child.pid === undefined) finish(null);
+		});
+		this.child.on('exit', (code) => finish(code));
 	}
 
 	get pid(): number | undefined {

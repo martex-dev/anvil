@@ -68,6 +68,20 @@ export const lspFeature: MainFeature = {
 			});
 			sessions.set(id, session);
 			byLanguage.set(language, id);
+			try {
+				await session.ready;
+			} catch (error) {
+				// The exit handler already dropped the session and logged the details.
+				const code =
+					error instanceof Error && 'code' in error && typeof error.code === 'string'
+						? ` (${error.code})`
+						: '';
+				throw new AnvilError(
+					'LSP_START_FAILED',
+					`Could not start the ${language} language server${code}. See the log for details.`,
+					error,
+				);
+			}
 			ctx.log.info('language server started', { language, pid: session.pid });
 			return {
 				session: id,

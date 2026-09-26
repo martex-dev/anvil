@@ -19,6 +19,17 @@ interface Running {
 const ERROR_CONTINUE = 1 as ErrorAction.Continue;
 const CLOSE_DO_NOT_RESTART = 1 as CloseAction.DoNotRestart;
 
+/** A server that is running but never answers initialize must not leave the status pulsing. */
+const START_TIMEOUT_MS = 60_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const timeout = new Promise<never>((_, reject) => {
+		timer = setTimeout(() => reject(new Error(message)), ms);
+	});
+	return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 const clients = new Map<LspLanguage, Running>();
 const starting = new Map<LspLanguage, Promise<void>>();
 // Bumped on stopAll so a start that was in flight when the folder changed is thrown away.
@@ -65,7 +76,22 @@ async function start(language: LspLanguage): Promise<void> {
 			},
 			messageTransports: ipcTransports(info.session),
 		});
-		await client.start();
+		try {
+			await withTimeout(
+				client.start(),
+				START_TIMEOUT_MS,
+				`The ${LANGUAGE_LABEL[language]} language server did not respond within ${START_TIMEOUT_MS / 1000} s`,
+			);
+		} catch (error) {
+			// Don't leave a half-started client or a server process behind.
+			void client
+				.dispose()
+				.catch((e: unknown) => rlog.warn('lsp', 'client dispose failed', e));
+			void call('lsp:stop', { session: info.session }).catch((e: unknown) =>
+				rlog.warn('lsp', 'stop after failed start failed', e),
+			);
+			throw error;
+		}
 		if (gen !== generation) {
 			await client.dispose();
 			return;
