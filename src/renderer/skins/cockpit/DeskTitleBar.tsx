@@ -1,6 +1,7 @@
 import type { JSX } from 'react';
 
 import { runCommandById, shortcutFor } from '../../app/commands/run';
+import { useWindowState } from '../../app/hooks/use-window-state';
 import { useWorkspace } from '../../app/hooks/use-workspace';
 import { WindowControls } from '../../app/WindowControls';
 import { useLayoutStore } from '../../stores/layout-store';
@@ -24,6 +25,7 @@ const MENUS: DeskMenuSpec[] = [
  */
 export function DeskTitleBar(): JSX.Element {
 	const { info } = useWorkspace();
+	const { focused } = useWindowState();
 	const sideOpen = useLayoutStore((s) => s.sideOpen);
 	const panelOpen = useLayoutStore((s) => s.panelOpen);
 	const aiOpen = useLayoutStore((s) => s.aiOpen);
@@ -39,6 +41,13 @@ export function DeskTitleBar(): JSX.Element {
 				))}
 			</nav>
 			<div className='ck-title-book' aria-label='Workspace'>
+				<span
+					className='ck-lamp'
+					data-on={focused}
+					title={focused ? 'Window focused' : 'Window in background'}
+				>
+					{focused ? 'LIVE' : 'IDLE'}
+				</span>
 				<span className='ck-field-label'>BOOK</span>
 				<span className='ck-field-value'>{info.name ?? 'NO FOLDER'}</span>
 			</div>

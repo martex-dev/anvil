@@ -91,7 +91,8 @@ html[data-skin='cockpit'] .text-gradient {
 html[data-skin='cockpit'] .neon {
 	text-shadow: none;
 }
-html[data-skin='cockpit'] .brackets-frame {
+html[data-skin='cockpit'] .brackets-frame,
+html[data-skin='cockpit'] :is(.blur-xl, .blur-2xl) {
 	display: none;
 }
 html[data-skin='cockpit'] .shadow-glow,

@@ -173,6 +173,30 @@ html[data-skin='cockpit'] .ck-title-book {
 	min-width: 0;
 	font-size: 11px;
 }
+/* Window focus as a desk lamp: LIVE while you're on it, IDLE in the background. */
+html[data-skin='cockpit'] .ck-lamp {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	margin-right: 8px;
+	color: var(--text-2);
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: var(--ck-caps);
+}
+html[data-skin='cockpit'] .ck-lamp::before {
+	content: '';
+	width: 6px;
+	height: 6px;
+	background: var(--text-2);
+}
+html[data-skin='cockpit'] .ck-lamp[data-on='true'] {
+	color: var(--up);
+}
+html[data-skin='cockpit'] .ck-lamp[data-on='true']::before {
+	background: var(--up);
+}
+
 html[data-skin='cockpit'] .ck-title-book .ck-field-value {
 	overflow: hidden;
 	text-overflow: ellipsis;
