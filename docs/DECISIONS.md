@@ -81,3 +81,27 @@ Short ADRs: the context, what was decided, and what it costs.
 **Decision.** electron-updater reads `martex-dev/anvil` releases. Pushing a `v*` tag builds the NSIS installer on `windows-latest` and publishes it with the workflow's own token. The installer is unsigned; SmartScreen asks once.
 
 **Consequences.** No second repo, no personal access token. Code signing can be added later without changing the flow.
+
+## ADR-011: Themes are CSS palettes, not Monaco themes
+
+**Context.** One look is not enough for an editor you live in all day, and a theme has to recolor the chrome, the editor, the terminal, Code Snap images and preview cards consistently.
+
+**Decision.** A theme is one `[data-theme='id']` block in `themes.css` that defines the whole palette: surfaces, glass, text, semantic colors, the theme's accent pair and 14 `--syn-*` syntax colors. `tokens.css` derives everything else (soft fills, glows, shadows) per `[data-theme]` scope, so a card with its own `data-theme` renders that theme inside a differently themed app. Monaco keeps VS Code's Default Dark/Light Modern as a base and is restyled through user settings (`workbench.colorCustomizations`, TextMate rules and semantic-token rules) built from the live tokens. xterm reads the same tokens. The accent is the theme's own unless a preset or custom color is chosen. A unit test checks that every theme defines every variable and meets contrast minimums.
+
+**Consequences.** Adding a theme is a CSS block and one line of metadata, with no JS color tables. Every theme change re-tokenizes open files. Monaco's TextMate worker occasionally logs a harmless `tokenizeEncoded` error while that happens (an upstream race; highlighting stays correct), and refreshes are debounced to keep it rare.
+
+## ADR-012: Bundled coding fonts
+
+**Context.** The code font is personal, and a desktop app can't assume anything beyond Consolas is installed.
+
+**Decision.** Nine fonts ship with the app through `@fontsource` packages (JetBrains Mono, Fira Code, Cascadia Code, Geist Mono, Monaspace Neon, Maple Mono, Victor Mono, Iosevka, IBM Plex Mono). Only the Latin 400/700 and italic subsets are used, declared in `styles/fonts.css` as woff2 only (the packages' own stylesheets also pull in `.woff` fallbacks that Chromium never needs). They are dev dependencies because Vite copies the files into the build.
+
+**Consequences.** About 3.7 MB more in the installer (3 MB of it is Iosevka, which has an unusually large glyph set), with no network access and no install step. Fonts that aren't selected are never loaded.
+
+## ADR-013: The scratchpad holds its own model reference
+
+**Context.** The scratchpad is an `inmemory:` Monaco model (it is not a file). In VS Code's services, when any feature (hover, peek, the language client) takes a reference to an `inmemory:` model and releases it, `TextResourceEditorModel` destroys the model, which left an empty editor after a few cursor moves.
+
+**Decision.** `openScratch` takes a reference through `ITextModelService` and keeps it until the tab closes. Closing flushes the text to local storage first.
+
+**Consequences.** The scratchpad lives exactly as long as its tab. Any future in-memory buffer (untitled files, AI previews that are real editors) needs the same treatment.

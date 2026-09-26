@@ -12,7 +12,7 @@ A focused code editor: Monaco + language servers + terminals + git + AI, tuned f
 ## 2. Stack (don't change without asking; record choices in `docs/DECISIONS.md`)
 
 - Electron (pinned) via electron-vite; electron-builder NSIS; electron-updater from this repo's Releases
-- React 19 + TypeScript strict + Vite; Tailwind v4 with tokens only (`src/renderer/styles/tokens.css`)
+- React 19 + TypeScript strict + Vite; Tailwind v4 with tokens only (`src/renderer/styles/themes.css` + `tokens.css`)
 - Radix primitives, lucide-react icons, cmdk (palette, Quick Open, quick picks)
 - Zustand (UI state) + TanStack Query (IPC data)
 - Monaco = `@codingame/monaco-vscode-api` (bundled, never a CDN) + monaco-languageclient → basedpyright, typescript-language-server
@@ -41,6 +41,7 @@ npm test               # vitest
 npm run test:e2e       # build + playwright
 npm run dist           # NSIS installer in release/
 npx tsx scripts/readme-shots.mts <demo-folder> docs/screenshots   # README images (mock AI)
+npx tsx scripts/theme-shots.mts <demo-folder> <out-dir> [ids]       # every theme + picker, gallery, snap
 ```
 
 Run lint, typecheck, unit and e2e tests before every commit.
@@ -48,9 +49,10 @@ Run lint, typecheck, unit and e2e tests before every commit.
 ## 5. Design system: "cyber glass"
 
 - Near-black background with an ambient glow + drifting grid (`.ambient`); floating panes are `.glass` (blur + translucency + a neon hairline edge). Overlays are `.glass-strong`.
-- One accent (`--accent`, set by `<html data-accent>`) plus a partner hue (`--accent-2`) for gradients. The syntax theme uses the `--syn-*` tokens.
-- Type: Geist Sans for UI (13px base), JetBrains Mono for code and numbers (`.num`), and mono uppercase micro-labels (`.hud`).
-- **No raw colors outside `tokens.css`.** Use Tailwind token classes or `var(--token)`; Monaco and xterm resolve tokens via `resolveToken`.
+- **Themes** (ADR-011): each theme is one `[data-theme='id']` block in `themes.css` defining the full palette (surfaces, text, semantic, `--theme-accent(-2)`, `--syn-*`), plus an entry in `theme-list.ts`; `themes.test.ts` keeps them in sync and checks contrast. Derived tokens (`--accent-soft`, glows) are recomputed per `[data-theme]` scope in `tokens.css`, so a nested `data-theme` (preview cards) shows that theme.
+- One accent (`--accent`) plus a partner hue (`--accent-2`): the theme's own by default, or a preset / custom color via `<html data-accent>`. The syntax theme uses the `--syn-*` tokens; Monaco and xterm rebuild on the `anvil:appearance` event.
+- Type: Geist Sans for UI (13px base); the code font is a setting (nine bundled, `--font-code`); numbers use `.num`, micro-labels mono uppercase `.hud`.
+- **No raw colors outside `themes.css` and `tokens.css`.** Use Tailwind token classes or `var(--token)`; Monaco and xterm resolve tokens via `resolveToken`.
 - Every view has designed loading, empty and error states. Everything is reachable from the palette. Visible focus rings; respect reduced motion.
 - Performance: no `backdrop-filter` under Monaco or xterm. `Settings → Glass: off` must stay fully usable.
 
