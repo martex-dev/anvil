@@ -105,3 +105,16 @@ export function isNotARepo(error: unknown): boolean {
 	const message = error instanceof Error ? error.message : String(error);
 	return /not a git repository/i.test(message);
 }
+
+/**
+ * git failures that only mean "this path has no version there": untracked, new, deleted or
+ * conflicted files, no commits yet, or a blame line past the committed end. Matched on
+ * English text, which gitEnv guarantees.
+ */
+const MISSING_PATH =
+	/invalid object name 'HEAD'|no such ref: HEAD|does not exist|exists on disk, but not in|is in the index, but not at stage|no such path|has only \d+ lines?/i;
+
+export function isMissingPathError(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : String(error);
+	return MISSING_PATH.test(message);
+}

@@ -5,7 +5,7 @@ import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { batchPaths, gitEnv } from './git-process';
+import { batchPaths, gitEnv, isMissingPathError } from './git-process';
 import { GitService } from './git-service';
 
 // Integration test against the real system git in a throwaway repository.
@@ -174,6 +174,27 @@ describe('GitService', { timeout: 30_000 }, () => {
 		expect(batchPaths([])).toEqual([]);
 		// A single path longer than the budget still gets its own batch.
 		expect(batchPaths(['x'.repeat(50)], 10)).toEqual([['x'.repeat(50)]]);
+	});
+
+	it('treats a missing side as empty but surfaces real git failures', async () => {
+		const git = new GitService(() => repo);
+		// No commits yet: HEAD does not resolve.
+		writeFileSync(join(repo, 'new.txt'), 'n\n');
+		await git.stage(['new.txt']);
+		expect(await git.diff('new.txt', true)).toMatchObject({ original: '', modified: 'n\n' });
+		expect(await git.headContent('new.txt')).toBeNull();
+		expect(await git.blame('new.txt', 1)).toBeNull();
+		await git.commit('first');
+		writeFileSync(join(repo, 'untracked.txt'), 'u\n');
+		expect(await git.headContent('untracked.txt')).toBeNull();
+		expect(await git.blame('untracked.txt', 1)).toBeNull();
+		expect(await git.blame('new.txt', 5)).toBeNull();
+
+		expect(isMissingPathError(new Error("fatal: path 'a' does not exist in 'HEAD'"))).toBe(
+			true,
+		);
+		expect(isMissingPathError(new Error('spawn git ENOENT'))).toBe(false);
+		expect(isMissingPathError(new Error('fatal: bad object HEAD'))).toBe(false);
 	});
 
 	it('passes git only an allowlisted environment', () => {

@@ -9,7 +9,7 @@ import { scanUnifiedDiff, type SecretFinding } from '@shared/secret-scan';
 
 import { AnvilError } from '../../core/errors';
 import { toAbsolute } from '../../core/workspace/fs-guard';
-import { batchPaths, git, isNotARepo } from './git-process';
+import { batchPaths, git, isMissingPathError, isNotARepo } from './git-process';
 import { mapStatus } from './status-map';
 
 const MAX_DIFF_BYTES = 5 * 1024 * 1024;
@@ -110,8 +110,10 @@ export class GitService {
 		const show = async (spec: string): Promise<string> => {
 			try {
 				return await g.show([spec]);
-			} catch {
-				return '';
+			} catch (error) {
+				// A new, deleted or conflicted file has no version there; anything else is real.
+				if (isMissingPathError(error)) return '';
+				throw error;
 			}
 		};
 		const repoPath = relative(root, abs).split(sep).join('/');
@@ -124,7 +126,11 @@ export class GitService {
 			? await show(`:${repoPath}`)
 			: await readFile(abs)
 					.then((b) => (b.length > MAX_DIFF_BYTES ? '\0' : b.toString('utf8')))
-					.catch(() => '');
+					.catch((error: unknown) => {
+						// Deleted in the working tree: the modified side is empty.
+						if ((error as NodeJS.ErrnoException).code === 'ENOENT') return '';
+						throw error;
+					});
 		const binary = isBinary(original) || isBinary(modified);
 		return binary ? { original: '', modified: '', binary } : { original, modified, binary };
 	}
@@ -231,8 +237,10 @@ export class GitService {
 		let out: string;
 		try {
 			out = await g.raw(['blame', '--porcelain', '-L', `${line},${line}`, '--', repoPath]);
-		} catch {
-			return null;
+		} catch (error) {
+			// Untracked file, no commits yet, or a line past the committed end: nothing to blame.
+			if (isMissingPathError(error)) return null;
+			throw error;
 		}
 		const hash = out.slice(0, 40);
 		if (!/^[0-9a-f]{40}$/.test(hash) || /^0+$/.test(hash)) return null;
@@ -254,8 +262,9 @@ export class GitService {
 		try {
 			const text = await git(root).show([`HEAD:${repoPath}`]);
 			return isBinary(text) || text.length > MAX_DIFF_BYTES ? null : text;
-		} catch {
-			return null;
+		} catch (error) {
+			if (isMissingPathError(error)) return null;
+			throw error;
 		}
 	}
 
