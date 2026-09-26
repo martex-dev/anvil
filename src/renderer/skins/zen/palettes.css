@@ -1,0 +1,277 @@
+/*
+ * Zen Paper palettes: the ONLY file of this skin with raw color values.
+ * Each palette is a paper stock plus two or three inks. Syntax colors are printed, not lit:
+ * one strong ink (the seal color) for keywords, a second for names, a quiet third for literals.
+ * --skin-* extras: fibre and grain for the paper texture, the shadow a sheet of paper casts,
+ * a slightly different stock for the panel and chat, and the deckled vignette at the edges.
+ */
+
+/* Paper (default): charcoal ink and a vermilion seal on warm cream */
+[data-theme='zn-paper'] {
+	color-scheme: light;
+
+	--bg-0: #ebe4d4;
+	--bg-1: #f6f1e5;
+	--bg-2: #efe8d9;
+	--bg-3: #e6dcc8;
+	--border: #ddd3bf;
+	--border-strong: #c3b69b;
+
+	--glass: rgb(246 241 229 / 0);
+	--glass-strong: #f8f4ea;
+	--glass-edge: rgb(74 58 38 / 0.16);
+	--glass-highlight: rgb(255 255 255 / 0.6);
+	--editor-bg: rgb(246 241 229 / 0);
+	--scrim: rgb(92 74 48 / 0.16);
+
+	--text-0: #29251f;
+	--text-1: #5c5346;
+	--text-2: #807565;
+
+	--up: #3d7236;
+	--down: #b3321f;
+	--warn: #9a5f0c;
+	--info: #2e5a86;
+
+	--theme-accent: #c23b24;
+	--theme-accent-2: #2d4a6b;
+	--on-accent: #fbf7ee;
+
+	--syn-comment: #928773;
+	--syn-keyword: #b3371f;
+	--syn-control: #9c2c17;
+	--syn-string: #5a6934;
+	--syn-number: #a9582a;
+	--syn-function: #28486e;
+	--syn-type: #39606f;
+	--syn-variable: #29251f;
+	--syn-parameter: #6a4b30;
+	--syn-property: #4a4136;
+	--syn-decorator: #8c5a24;
+	--syn-builtin: #2f5d68;
+	--syn-operator: #7a6f60;
+	--syn-regexp: #87661c;
+
+	--skin-page: #f7f2e7;
+	--skin-tone: #f0e9da;
+	--skin-fibre: rgb(120 94 58 / 0.07);
+	--skin-grain: rgb(90 70 40 / 0.05);
+	--skin-shadow: rgb(84 62 32 / 0.2);
+	--skin-vignette: rgb(150 118 70 / 0.16);
+}
+
+/* Sepia: walnut ink on an aged, sun-browned page */
+[data-theme='zn-sepia'] {
+	color-scheme: light;
+
+	--bg-0: #e2d1b0;
+	--bg-1: #eee0c4;
+	--bg-2: #e7d6b6;
+	--bg-3: #dcc8a3;
+	--border: #d3be97;
+	--border-strong: #b89f73;
+
+	--glass: rgb(238 224 196 / 0);
+	--glass-strong: #f1e4ca;
+	--glass-edge: rgb(80 52 22 / 0.18);
+	--glass-highlight: rgb(255 248 230 / 0.5);
+	--editor-bg: rgb(238 224 196 / 0);
+	--scrim: rgb(84 56 24 / 0.18);
+
+	--text-0: #37261a;
+	--text-1: #634b33;
+	--text-2: #7f6547;
+
+	--up: #4f6a22;
+	--down: #a3341a;
+	--warn: #8e5a0a;
+	--info: #37586e;
+
+	--theme-accent: #9c4519;
+	--theme-accent-2: #4d6436;
+	--on-accent: #f7ecd6;
+
+	--syn-comment: #8f7755;
+	--syn-keyword: #9a3e16;
+	--syn-control: #86300c;
+	--syn-string: #56662a;
+	--syn-number: #a5531b;
+	--syn-function: #2f5364;
+	--syn-type: #496664;
+	--syn-variable: #37261a;
+	--syn-parameter: #6e4a28;
+	--syn-property: #5a4430;
+	--syn-decorator: #86621f;
+	--syn-builtin: #7a3a44;
+	--syn-operator: #7c6548;
+	--syn-regexp: #86650c;
+
+	--skin-page: #f0e3c8;
+	--skin-tone: #e8d8b9;
+	--skin-fibre: rgb(110 72 30 / 0.09);
+	--skin-grain: rgb(90 58 22 / 0.07);
+	--skin-shadow: rgb(80 50 18 / 0.24);
+	--skin-vignette: rgb(140 92 38 / 0.26);
+}
+
+/* Sakura: plum ink on pale pink washi */
+[data-theme='zn-sakura'] {
+	color-scheme: light;
+
+	--bg-0: #f0e1e2;
+	--bg-1: #f9f0f0;
+	--bg-2: #f4e6e7;
+	--bg-3: #ecd8da;
+	--border: #e6d1d4;
+	--border-strong: #cfb0b6;
+
+	--glass: rgb(249 240 240 / 0);
+	--glass-strong: #fbf3f3;
+	--glass-edge: rgb(90 40 70 / 0.15);
+	--glass-highlight: rgb(255 255 255 / 0.6);
+	--editor-bg: rgb(249 240 240 / 0);
+	--scrim: rgb(96 48 76 / 0.15);
+
+	--text-0: #3a2233;
+	--text-1: #6a4a5e;
+	--text-2: #8a6a7e;
+
+	--up: #3f6b45;
+	--down: #b02a3e;
+	--warn: #94600e;
+	--info: #3f5a8a;
+
+	--theme-accent: #b8386a;
+	--theme-accent-2: #5a4a8c;
+	--on-accent: #fdf5f7;
+
+	--syn-comment: #967c8b;
+	--syn-keyword: #a8305e;
+	--syn-control: #922650;
+	--syn-string: #4c6c4e;
+	--syn-number: #b0543a;
+	--syn-function: #573c88;
+	--syn-type: #6c4a80;
+	--syn-variable: #3a2233;
+	--syn-parameter: #7c4660;
+	--syn-property: #573a50;
+	--syn-decorator: #a84c78;
+	--syn-builtin: #3c5c7c;
+	--syn-operator: #86687c;
+	--syn-regexp: #86621e;
+
+	--skin-page: #faf2f2;
+	--skin-tone: #f3e6e7;
+	--skin-fibre: rgb(150 70 100 / 0.07);
+	--skin-grain: rgb(110 50 80 / 0.045);
+	--skin-shadow: rgb(110 50 80 / 0.18);
+	--skin-vignette: rgb(200 120 150 / 0.2);
+}
+
+/* Night Ink: warm ivory ink and gold leaf on indigo-black night paper */
+[data-theme='zn-ink'] {
+	color-scheme: dark;
+
+	--bg-0: #0d0f17;
+	--bg-1: #151823;
+	--bg-2: #1b1f2c;
+	--bg-3: #242937;
+	--border: #242938;
+	--border-strong: #363d52;
+
+	--glass: rgb(21 24 35 / 0);
+	--glass-strong: #181b27;
+	--glass-edge: rgb(236 228 212 / 0.12);
+	--glass-highlight: rgb(255 255 255 / 0.03);
+	--editor-bg: rgb(21 24 35 / 0);
+	--scrim: rgb(4 5 10 / 0.45);
+
+	--text-0: #ebe3d2;
+	--text-1: #b3aa97;
+	--text-2: #847c6b;
+
+	--up: #93b57a;
+	--down: #e07a62;
+	--warn: #dcae5c;
+	--info: #8fb0d6;
+
+	--theme-accent: #d6b066;
+	--theme-accent-2: #c96b4b;
+	--on-accent: #141620;
+
+	--syn-comment: #726c60;
+	--syn-keyword: #d6b066;
+	--syn-control: #e3a15e;
+	--syn-string: #a8b88a;
+	--syn-number: #e39c7e;
+	--syn-function: #a4bad4;
+	--syn-type: #92b4ae;
+	--syn-variable: #e6decc;
+	--syn-parameter: #d9c19e;
+	--syn-property: #c6bdab;
+	--syn-decorator: #cc9a5c;
+	--syn-builtin: #db8a70;
+	--syn-operator: #978e7c;
+	--syn-regexp: #dac473;
+
+	--skin-page: #171a26;
+	--skin-tone: #12141e;
+	--skin-fibre: rgb(236 228 212 / 0.035);
+	--skin-grain: rgb(236 228 212 / 0.025);
+	--skin-shadow: rgb(0 0 0 / 0.55);
+	--skin-vignette: rgb(0 0 0 / 0.45);
+}
+
+/* Forest: cream ink and persimmon on deep moss-green paper */
+[data-theme='zn-forest'] {
+	color-scheme: dark;
+
+	--bg-0: #0e1611;
+	--bg-1: #142019;
+	--bg-2: #1a2920;
+	--bg-3: #233429;
+	--border: #233327;
+	--border-strong: #35493b;
+
+	--glass: rgb(20 32 25 / 0);
+	--glass-strong: #16231b;
+	--glass-edge: rgb(236 227 204 / 0.12);
+	--glass-highlight: rgb(255 255 255 / 0.03);
+	--editor-bg: rgb(20 32 25 / 0);
+	--scrim: rgb(3 8 5 / 0.45);
+
+	--text-0: #ece3cc;
+	--text-1: #b4ae96;
+	--text-2: #83866f;
+
+	--up: #a3c27e;
+	--down: #e3795f;
+	--warn: #ddb05e;
+	--info: #92b8c4;
+
+	--theme-accent: #e38b58;
+	--theme-accent-2: #c9c07a;
+	--on-accent: #122019;
+
+	--syn-comment: #737d68;
+	--syn-keyword: #e38f5e;
+	--syn-control: #eca56e;
+	--syn-string: #b7c98a;
+	--syn-number: #e5c07a;
+	--syn-function: #a9cbb3;
+	--syn-type: #c8b98f;
+	--syn-variable: #e8dfc7;
+	--syn-parameter: #d9c79e;
+	--syn-property: #c0c7ae;
+	--syn-decorator: #d1a26c;
+	--syn-builtin: #e0917b;
+	--syn-operator: #8f9a86;
+	--syn-regexp: #d9d182;
+
+	--skin-page: #16231c;
+	--skin-tone: #111b15;
+	--skin-fibre: rgb(236 227 204 / 0.035);
+	--skin-grain: rgb(236 227 204 / 0.025);
+	--skin-shadow: rgb(0 0 0 / 0.5);
+	--skin-vignette: rgb(0 0 0 / 0.42);
+}
