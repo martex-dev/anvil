@@ -4,7 +4,7 @@ import { app, BrowserWindow, shell } from 'electron';
 import log from 'electron-log/main';
 import { z } from 'zod';
 
-import { DEFAULT_SETTINGS, type Settings, SettingsSchema } from '@shared/settings';
+import { parseSettings, type Settings, SettingsSchema } from '@shared/settings';
 
 import { emitEvent, router } from './ipc';
 import { openExternalSafely } from './security';
@@ -15,8 +15,21 @@ const UiStateSchema = z.record(z.string(), z.unknown());
 const window = (): BrowserWindow | undefined =>
 	BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
 
+const RawSettingsSchema = z.unknown();
+// readSettings runs on every file save; report a given set of bad fields once, not each time.
+let reportedInvalid = '';
+
+/** Validates per field, so one bad value resets only itself (and the next update persists that). */
 export function readSettings(store: SettingsStore): Settings {
-	return store.get('settings', SettingsSchema, DEFAULT_SETTINGS);
+	const { settings, invalid } = parseSettings(
+		store.get('settings', RawSettingsSchema, undefined),
+	);
+	const signature = invalid.join(',');
+	if (signature && signature !== reportedInvalid) {
+		log.warn('[settings] invalid values replaced by defaults', { keys: invalid });
+	}
+	reportedInvalid = signature;
+	return settings;
 }
 
 export function registerAppHandlers(store: SettingsStore): void {
