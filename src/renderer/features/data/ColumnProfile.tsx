@@ -9,13 +9,22 @@ import { EmptyState } from '../../ui/EmptyState';
 import { ErrorState } from '../../ui/ErrorState';
 import { IconButton } from '../../ui/IconButton';
 import { Spinner } from '../../ui/Spinner';
-import { formatCount, formatStat, formatStatText, isNumericType, typeTag } from './data-format';
+import {
+	formatCount,
+	formatStat,
+	formatStatText,
+	isNumericType,
+	profileScope,
+	typeTag,
+} from './data-format';
 import { Histogram } from './Histogram';
 
 interface ColumnProfileProps {
 	path: string;
 	index: number | null;
 	column: DataColumn | undefined;
+	/** Only the head of the file was loaded, so the stats cover only those rows. */
+	truncated: boolean;
 	onClose: () => void;
 }
 
@@ -81,10 +90,12 @@ function ProfileBody({
 	path,
 	index,
 	column,
+	truncated,
 }: {
 	path: string;
 	index: number;
 	column: DataColumn;
+	truncated: boolean;
 }): JSX.Element {
 	const stats = useQuery({
 		queryKey: ['data', 'stats', path, index],
@@ -136,12 +147,18 @@ function ProfileBody({
 					<p className='text-12 text-fg-2'>No values to chart.</p>
 				)}
 			</section>
-			<p className='text-11 text-fg-2'>Computed over the whole file, ignoring the filter.</p>
+			<p className='text-11 text-fg-2'>{profileScope(truncated, total)}</p>
 		</div>
 	);
 }
 
-export function ColumnProfile({ path, index, column, onClose }: ColumnProfileProps): JSX.Element {
+export function ColumnProfile({
+	path,
+	index,
+	column,
+	truncated,
+	onClose,
+}: ColumnProfileProps): JSX.Element {
 	return (
 		<aside
 			aria-label='Column profile'
@@ -176,7 +193,7 @@ export function ColumnProfile({ path, index, column, onClose }: ColumnProfilePro
 							{typeTag(column.type)}
 						</span>
 					</div>
-					<ProfileBody path={path} index={index} column={column} />
+					<ProfileBody path={path} index={index} column={column} truncated={truncated} />
 				</div>
 			)}
 		</aside>

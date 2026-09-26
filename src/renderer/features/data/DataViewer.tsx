@@ -222,6 +222,7 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 						path={path}
 						index={profileColumn}
 						column={profileColumn === null ? undefined : columns[profileColumn]}
+						truncated={data.truncated}
 						onClose={() => setProfileOpen(false)}
 					/>
 				)}

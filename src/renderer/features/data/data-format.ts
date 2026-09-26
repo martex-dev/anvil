@@ -80,6 +80,13 @@ export function formatStatText(value: string | null, numeric: boolean): string {
 	return Number.isFinite(parsed) ? formatStat(parsed) : value;
 }
 
+/** What the column profile covers: stats see every loaded row, which for a big file is the head. */
+export function profileScope(truncated: boolean, loadedRows: number): string {
+	return truncated
+		? `Computed over the first ${formatCount(loadedRows)} rows (all that was loaded), ignoring the filter.`
+		: 'Computed over the whole file, ignoring the filter.';
+}
+
 /** Header click cycle: ascending → descending → unsorted. */
 export function nextSort(current: SortState | null, column: number): SortState | null {
 	if (!current || current.column !== column) return { column, desc: false };

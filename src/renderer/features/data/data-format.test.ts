@@ -11,6 +11,7 @@ import {
 	MAX_SCROLL_PX,
 	nextSort,
 	pagesForRange,
+	profileScope,
 	ROW_HEIGHT,
 	scrollTopForRow,
 	toDelimited,
@@ -110,5 +111,14 @@ describe('virtual window', () => {
 		expect(pagesForRange(0, 500)).toEqual([0]);
 		expect(pagesForRange(450, 520)).toEqual([0, 1]);
 		expect(pagesForRange(10, 10)).toEqual([]);
+	});
+});
+
+describe('profileScope', () => {
+	it('says when only the loaded head of the file was profiled', () => {
+		expect(profileScope(false, 10)).toBe('Computed over the whole file, ignoring the filter.');
+		expect(profileScope(true, 250000)).toBe(
+			'Computed over the first 250,000 rows (all that was loaded), ignoring the filter.',
+		);
 	});
 });
