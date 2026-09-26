@@ -34,14 +34,14 @@ export function Toaster(): JSX.Element {
 					/>
 					<span className='mt-0.5'>{toneStyle[t.tone].icon}</span>
 					<div className='min-w-0 flex-1'>
-						<RadixToast.Title className='text-13 font-medium text-fg-0'>
+						<RadixToast.Title className='text-13 font-medium wrap-anywhere text-fg-0'>
 							{t.title}
 							{t.count > 1 && (
 								<span className='num ml-1.5 text-11 text-fg-2'>×{t.count}</span>
 							)}
 						</RadixToast.Title>
 						{t.description && (
-							<RadixToast.Description className='selectable mt-0.5 text-12 text-fg-1'>
+							<RadixToast.Description className='selectable mt-0.5 max-h-40 overflow-auto text-12 wrap-anywhere text-fg-1'>
 								{t.description}
 							</RadixToast.Description>
 						)}
