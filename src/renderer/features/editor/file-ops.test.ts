@@ -13,8 +13,16 @@ vi.mock('../../lib/ipc', () => ({
 vi.mock('../../lib/log', () => ({ rlog: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 vi.mock('../../app/hooks/use-settings', () => ({ getSettings: () => ({}) }));
 
-const { closeFile, getModel, getViewState, openFile, reloadFromDisk, saveFile, saveViewState } =
-	await import('./file-ops');
+const {
+	closeFile,
+	getModel,
+	getViewState,
+	onExternalChange,
+	openFile,
+	reloadFromDisk,
+	saveFile,
+	saveViewState,
+} = await import('./file-ops');
 
 /** Just enough of a text model for openFile / closeFile. */
 function fakeModel(text: string): unknown {
@@ -236,5 +244,58 @@ describe('file ops', () => {
 			expect.objectContaining({ expectedMtimeMs: 11 }),
 		]);
 		expect(useEditorStore.getState().conflict).toBeNull();
+	});
+
+	it('keeps keystrokes typed while a reload read is in flight', async () => {
+		let version = 1;
+		const pushEditOperations = vi.fn();
+		const editable = {
+			...monaco,
+			editor: {
+				...monaco.editor,
+				createModel: (value: string) => ({
+					...(fakeModel(value) as object),
+					getAlternativeVersionId: () => version,
+					getLinesContent: () => value.split('\n'),
+					getEOL: () => '\n',
+					getFullModelRange: () => 'everything',
+					pushEditOperations,
+				}),
+			},
+		} as unknown as MonacoApi;
+		call.mockResolvedValue(text);
+		await openFile(editable, 'C:/proj', 'a.py');
+		call.mockImplementation(() => {
+			version = 2;
+			return Promise.resolve({ ...text, content: 'disk = 1\n', mtimeMs: 7 });
+		});
+		await reloadFromDisk('a.py');
+		expect(pushEditOperations).not.toHaveBeenCalled();
+		expect(useEditorStore.getState().files[0]).toMatchObject({
+			changedOnDisk: true,
+			mtimeMs: 1,
+		});
+	});
+
+	it('ignores the watcher echo of its own save', async () => {
+		const pushEditOperations = vi.fn();
+		const editable = {
+			...monaco,
+			editor: {
+				...monaco.editor,
+				createModel: (value: string) => ({
+					...(fakeModel(value) as object),
+					pushEditOperations,
+				}),
+			},
+		} as unknown as MonacoApi;
+		call.mockResolvedValue(text);
+		await openFile(editable, 'C:/proj', 'a.py');
+		call.mockResolvedValue({ ...text, content: 'x = 2\n' });
+		onExternalChange(['a.py']);
+		await vi.waitFor(() => expect(call).toHaveBeenCalledTimes(2));
+		await Promise.resolve();
+		expect(pushEditOperations).not.toHaveBeenCalled();
+		expect(useEditorStore.getState().files[0]?.changedOnDisk).toBe(false);
 	});
 });

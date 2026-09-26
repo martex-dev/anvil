@@ -1,5 +1,7 @@
 import type * as Monaco from 'monaco-editor';
 
+import type { FileContent } from '@shared/ipc/channels/fs';
+
 import { getSettings } from '../../app/hooks/use-settings';
 import { call, IpcCallError } from '../../lib/ipc';
 import { rlog } from '../../lib/log';
@@ -158,20 +160,54 @@ export async function saveAll(): Promise<void> {
 	for (const f of useEditorStore.getState().files) if (f.dirty) await saveFile(f.path);
 }
 
-/** Replaces the buffer with the disk version (used for external changes and "Reload"). */
+/**
+ * Puts the disk version into the buffer, unless the buffer was closed or edited while the read
+ * was in flight: then the new keystrokes stay and the tab is flagged as changed on disk.
+ */
+function applyDiskVersion(path: string, t: Tracked, file: FileContent, version: number): void {
+	if (tracked.get(path) !== t) return;
+	if (t.model.getAlternativeVersionId() !== version) {
+		useEditorStore.getState().update(path, { changedOnDisk: true });
+		return;
+	}
+	// An edit (not setValue) keeps the reload undoable.
+	if (file.content !== t.model.getValue()) replaceText(t.model, file.content);
+	t.savedVersion = t.model.getAlternativeVersionId();
+	useEditorStore.getState().update(path, { mtimeMs: file.mtimeMs, changedOnDisk: false });
+	markDirty(path);
+}
+
+/** Replaces the buffer with the disk version ("Reload from Disk", "Load Disk Version"). */
 export async function reloadFromDisk(path: string): Promise<void> {
 	const t = tracked.get(path);
 	if (!t) return;
+	const version = t.model.getAlternativeVersionId();
 	try {
 		const file = await call('fs:readFile', path);
 		if (file.binary || file.tooLarge) return;
-		// An edit (not setValue) keeps the reload undoable.
-		if (file.content !== t.model.getValue()) replaceText(t.model, file.content);
-		t.savedVersion = t.model.getAlternativeVersionId();
-		useEditorStore.getState().update(path, { mtimeMs: file.mtimeMs, changedOnDisk: false });
-		markDirty(path);
+		applyDiskVersion(path, t, file, version);
 	} catch (error) {
 		// The file was deleted or became unreadable; keep the buffer so nothing is lost.
+		rlog.warn('editor', `reload failed: ${path}`, error);
+		useEditorStore.getState().update(path, { changedOnDisk: true });
+	}
+}
+
+/** Same mtime as the version we hold (1 ms tolerance: some filesystems round mtimes). */
+const sameMtime = (a: number, b: number): boolean => Math.abs(a - b) <= 1;
+
+/** A clean buffer follows disk, except for the watcher's echo of Anvil's own save. */
+async function followDisk(path: string): Promise<void> {
+	const t = tracked.get(path);
+	if (!t) return;
+	const version = t.model.getAlternativeVersionId();
+	try {
+		const file = await call('fs:readFile', path);
+		const known = useEditorStore.getState().files.find((f) => f.path === path);
+		if (!known || sameMtime(file.mtimeMs, known.mtimeMs)) return;
+		if (file.binary || file.tooLarge) return;
+		applyDiskVersion(path, t, file, version);
+	} catch (error) {
 		rlog.warn('editor', `reload failed: ${path}`, error);
 		useEditorStore.getState().update(path, { changedOnDisk: true });
 	}
@@ -184,7 +220,7 @@ export function onExternalChange(paths: readonly string[]): void {
 		const file = store.files.find((f) => f.path === path);
 		if (!file || file.state !== 'ready') continue;
 		if (file.dirty) store.update(path, { changedOnDisk: true });
-		else void reloadFromDisk(path);
+		else void followDisk(path);
 	}
 }
 
