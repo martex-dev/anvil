@@ -299,7 +299,7 @@ export function ImageViewer({ path }: { path: string }): JSX.Element {
 				role='img'
 				aria-label={`${baseName(path)}${natural ? `, ${natural.w} by ${natural.h} pixels` : ''}`}
 				className={cn(
-					'relative min-h-0 flex-1 overflow-hidden focus-visible:outline-none',
+					'relative min-h-0 flex-1 overflow-hidden focus-visible:-outline-offset-1',
 					pannable && (dragging ? 'cursor-grabbing' : 'cursor-grab'),
 				)}
 				onKeyDown={onKeyDown}

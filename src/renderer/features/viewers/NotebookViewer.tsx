@@ -184,7 +184,7 @@ export function NotebookViewer({ path }: { path: string }): JSX.Element {
 			<div
 				tabIndex={0}
 				aria-label='Notebook cells'
-				className='min-h-0 flex-1 overflow-auto focus-visible:outline-none'
+				className='min-h-0 flex-1 overflow-auto focus-visible:-outline-offset-1'
 			>
 				{body}
 			</div>
