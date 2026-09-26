@@ -94,7 +94,7 @@ export function ProblemsView(): JSX.Element {
 							{problems.map((p, i) => {
 								const id = `${path}|${keys.get(path)?.[i] ?? i}`;
 								const open = (): void =>
-									requestOpenFile({
+									void requestOpenFile({
 										path: p.path,
 										line: p.line,
 										column: p.column,
