@@ -129,7 +129,8 @@ async function writeBuffer(path: string, force: boolean): Promise<boolean> {
 	// Nothing to write: a habitual Ctrl+S must not touch the file (mtime, watcher, git status,
 	// local history) or reformat code nobody edited.
 	if (!known.dirty && !force) return true;
-	if (getSettings().formatOnSave && path.endsWith('.py')) await formatPython(path, t.model);
+	if (getSettings().formatOnSave && path.endsWith('.py'))
+		await formatPython(path, t.model, { onSave: true });
 	// Closed while ruff ran: nothing left to save.
 	const file = useEditorStore.getState().files.find((f) => f.path === path);
 	if (tracked.get(path) !== t || !file) return false;
