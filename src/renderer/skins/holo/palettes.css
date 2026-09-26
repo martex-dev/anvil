@@ -1,0 +1,265 @@
+/*
+ * Holo HUD palettes. Every pane is drawn in light over a dark void (or, for Arctic, dark ink on
+ * white holo-glass). --skin-void is the deep-space core behind the targeting ring, --skin-grid
+ * the hex-grid line, --skin-bracket the bright corner brackets and --skin-beam the scan sweep.
+ */
+
+/* Tactical Cyan (default): cyan holo-lines on a deep navy bridge display */
+[data-theme='ho-cyan'] {
+	color-scheme: dark;
+
+	--bg-0: #020812;
+	--bg-1: #06111f;
+	--bg-2: #0a1a2c;
+	--bg-3: #10263d;
+	--border: #12304a;
+	--border-strong: #1d4a6e;
+
+	--glass: rgb(5 18 33 / 0.8);
+	--glass-strong: rgb(4 14 26 / 0.96);
+	--glass-edge: rgb(80 220 255 / 0.26);
+	--glass-highlight: rgb(160 240 255 / 0.08);
+	--editor-bg: rgb(3 11 21 / 0.94);
+	--scrim: rgb(1 4 10 / 0.72);
+
+	--text-0: #d8f6ff;
+	--text-1: #7fb8cc;
+	--text-2: #4d7d95;
+
+	--up: #3dffb0;
+	--down: #ff4d6a;
+	--warn: #ffc24d;
+	--info: #4db8ff;
+
+	--theme-accent: #3ee8ff;
+	--theme-accent-2: #2f8cff;
+	--on-accent: #021018;
+
+	--skin-void: #07203a;
+	--skin-grid: rgb(62 232 255 / 0.09);
+	--skin-bracket: #8ff4ff;
+	--skin-beam: rgb(62 232 255 / 0.1);
+
+	--syn-comment: #4f7890;
+	--syn-keyword: #5fb6ff;
+	--syn-control: #c38bff;
+	--syn-string: #7dffc4;
+	--syn-number: #ffc86b;
+	--syn-function: #3ee8ff;
+	--syn-type: #62f2d0;
+	--syn-variable: #d8f6ff;
+	--syn-parameter: #ffd6a0;
+	--syn-property: #9cc8ff;
+	--syn-decorator: #ff8fb8;
+	--syn-builtin: #ff7a90;
+	--syn-operator: #6fa0bf;
+	--syn-regexp: #fff07a;
+}
+
+/* Red Alert: battle stations, crimson readouts on black */
+[data-theme='ho-redalert'] {
+	color-scheme: dark;
+
+	--bg-0: #040102;
+	--bg-1: #0d0304;
+	--bg-2: #170607;
+	--bg-3: #230a0c;
+	--border: #2c0d10;
+	--border-strong: #4a161b;
+
+	--glass: rgb(15 3 5 / 0.82);
+	--glass-strong: rgb(10 2 3 / 0.96);
+	--glass-edge: rgb(255 60 72 / 0.3);
+	--glass-highlight: rgb(255 130 130 / 0.06);
+	--editor-bg: rgb(8 2 3 / 0.94);
+	--scrim: rgb(4 0 1 / 0.74);
+
+	--text-0: #ffe3e3;
+	--text-1: #d98a8e;
+	--text-2: #93505a;
+
+	--up: #62f59a;
+	--down: #ff3b4e;
+	--warn: #ffb23d;
+	--info: #7cc0ff;
+
+	--theme-accent: #ff2e45;
+	--theme-accent-2: #ff7a1a;
+	--on-accent: #0d0304;
+
+	--skin-void: #2a0508;
+	--skin-grid: rgb(255 46 69 / 0.09);
+	--skin-bracket: #ff8a94;
+	--skin-beam: rgb(255 46 69 / 0.1);
+
+	--syn-comment: #8a5058;
+	--syn-keyword: #ff5a6a;
+	--syn-control: #ff9a3d;
+	--syn-string: #ffd2a0;
+	--syn-number: #ffb23d;
+	--syn-function: #ff9a9a;
+	--syn-type: #ffcf6b;
+	--syn-variable: #ffe3e3;
+	--syn-parameter: #f0b8a8;
+	--syn-property: #e8a6ae;
+	--syn-decorator: #ff6ad0;
+	--syn-builtin: #ff4060;
+	--syn-operator: #b87880;
+	--syn-regexp: #fff07a;
+}
+
+/* Command Gold: gold and amber instrumentation on dark bronze */
+[data-theme='ho-gold'] {
+	color-scheme: dark;
+
+	--bg-0: #060402;
+	--bg-1: #110c06;
+	--bg-2: #1b1409;
+	--bg-3: #271d0e;
+	--border: #2e2210;
+	--border-strong: #4a3818;
+
+	--glass: rgb(19 13 6 / 0.82);
+	--glass-strong: rgb(13 9 4 / 0.96);
+	--glass-edge: rgb(255 196 80 / 0.28);
+	--glass-highlight: rgb(255 220 150 / 0.07);
+	--editor-bg: rgb(10 7 3 / 0.94);
+	--scrim: rgb(5 3 1 / 0.74);
+
+	--text-0: #fff0d2;
+	--text-1: #d4ad6c;
+	--text-2: #8f7142;
+
+	--up: #9be86a;
+	--down: #ff5a4a;
+	--warn: #ffcf3d;
+	--info: #7cc8ff;
+
+	--theme-accent: #ffc23d;
+	--theme-accent-2: #ff8a2a;
+	--on-accent: #110c06;
+
+	--skin-void: #2a1c07;
+	--skin-grid: rgb(255 194 61 / 0.08);
+	--skin-bracket: #ffe29a;
+	--skin-beam: rgb(255 194 61 / 0.09);
+
+	--syn-comment: #8f7650;
+	--syn-keyword: #ffb43d;
+	--syn-control: #ff8a4a;
+	--syn-string: #e2e48e;
+	--syn-number: #ffd97a;
+	--syn-function: #ffe0a0;
+	--syn-type: #f0c060;
+	--syn-variable: #fff0d2;
+	--syn-parameter: #d8b890;
+	--syn-property: #d4b484;
+	--syn-decorator: #ff9a70;
+	--syn-builtin: #ff7050;
+	--syn-operator: #a88a5a;
+	--syn-regexp: #c8f07a;
+}
+
+/* Ultraviolet: violet and magenta sensor light in a nebula */
+[data-theme='ho-ultraviolet'] {
+	color-scheme: dark;
+
+	--bg-0: #05020c;
+	--bg-1: #0d0718;
+	--bg-2: #160c26;
+	--bg-3: #221336;
+	--border: #26143c;
+	--border-strong: #3d2260;
+
+	--glass: rgb(15 8 29 / 0.82);
+	--glass-strong: rgb(10 5 20 / 0.96);
+	--glass-edge: rgb(200 110 255 / 0.3);
+	--glass-highlight: rgb(230 180 255 / 0.07);
+	--editor-bg: rgb(9 5 18 / 0.94);
+	--scrim: rgb(4 2 9 / 0.74);
+
+	--text-0: #f3e8ff;
+	--text-1: #b89ade;
+	--text-2: #775d9a;
+
+	--up: #5dffc0;
+	--down: #ff4d8a;
+	--warn: #ffc857;
+	--info: #7aa8ff;
+
+	--theme-accent: #c86bff;
+	--theme-accent-2: #ff4dd2;
+	--on-accent: #0d0718;
+
+	--skin-void: #25093f;
+	--skin-grid: rgb(200 107 255 / 0.09);
+	--skin-bracket: #e8b8ff;
+	--skin-beam: rgb(255 77 210 / 0.09);
+
+	--syn-comment: #76609a;
+	--syn-keyword: #c86bff;
+	--syn-control: #ff4dd2;
+	--syn-string: #8affd0;
+	--syn-number: #ffb86b;
+	--syn-function: #e0a8ff;
+	--syn-type: #7ad8ff;
+	--syn-variable: #f3e8ff;
+	--syn-parameter: #ffc8e8;
+	--syn-property: #b8a8ff;
+	--syn-decorator: #ff8ab8;
+	--syn-builtin: #ff6aa0;
+	--syn-operator: #9a86c0;
+	--syn-regexp: #ffe87a;
+}
+
+/* Arctic Station (light): white holo-glass traced in teal */
+[data-theme='ho-arctic'] {
+	color-scheme: light;
+
+	--bg-0: #dbe7ec;
+	--bg-1: #f5fafc;
+	--bg-2: #eaf3f6;
+	--bg-3: #d9e8ed;
+	--border: #bcd4dc;
+	--border-strong: #8fb4c0;
+
+	--glass: rgb(248 252 254 / 0.86);
+	--glass-strong: rgb(248 252 254 / 0.97);
+	--glass-edge: rgb(0 128 148 / 0.36);
+	--glass-highlight: rgb(255 255 255 / 0.9);
+	--editor-bg: rgb(252 254 255 / 0.95);
+	--scrim: rgb(10 40 50 / 0.3);
+
+	--text-0: #0b2a33;
+	--text-1: #3d6470;
+	--text-2: #6a8a95;
+
+	--up: #0a8a50;
+	--down: #d2233c;
+	--warn: #a86400;
+	--info: #0a6fd0;
+
+	--theme-accent: #007f8f;
+	--theme-accent-2: #2a5cff;
+	--on-accent: #ffffff;
+
+	--skin-void: #f4fbfd;
+	--skin-grid: rgb(0 127 143 / 0.12);
+	--skin-bracket: #006b7a;
+	--skin-beam: rgb(0 127 143 / 0.07);
+
+	--syn-comment: #6a8a95;
+	--syn-keyword: #0a6fb8;
+	--syn-control: #a0309a;
+	--syn-string: #0a7a4a;
+	--syn-number: #b0520a;
+	--syn-function: #007f8f;
+	--syn-type: #6a3fc0;
+	--syn-variable: #0b2a33;
+	--syn-parameter: #b04a2a;
+	--syn-property: #1a6a80;
+	--syn-decorator: #c0307a;
+	--syn-builtin: #c02040;
+	--syn-operator: #4f6f7a;
+	--syn-regexp: #7a6a00;
+}
