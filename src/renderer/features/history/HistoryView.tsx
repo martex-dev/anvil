@@ -182,9 +182,9 @@ export function HistoryView(): JSX.Element {
 							<button
 								type='button'
 								onClick={() => void compare(s.id, s.time)}
-								className='flex min-w-0 flex-1 flex-col text-left outline-none'
+								className='group/snap flex min-w-0 flex-1 flex-col rounded-sm text-left outline-none focus-visible:shadow-glow'
 							>
-								<span className='text-12 text-fg-0 group-hover:text-accent'>
+								<span className='text-12 text-fg-0 group-hover:text-accent group-focus-visible/snap:text-accent'>
 									{ago(s.time)}
 								</span>
 								<span className='num text-10 text-fg-2'>
