@@ -1,0 +1,152 @@
+/*
+ * Cockpit: base surfaces. Every pane is an opaque data tile with a 1px rule; the 2px pane gap
+ * shows the grid color behind them, so the workbench reads as one ruled sheet. No blur, no
+ * glow, no curves: on a desk screen everything is square and nothing floats.
+ */
+
+html[data-skin='cockpit'] {
+	--r-sm: 0px;
+	--r-md: 0px;
+	--r-lg: 0px;
+	--r-xl: 0px;
+	--glass-blur: 0px;
+	--glow: 0 0 0 1px var(--accent);
+	--glow-soft: none;
+	--shadow-panel: none;
+	--shadow-float: 6px 6px 0 0 color-mix(in oklab, var(--bg-0) 85%, transparent);
+	--grain: transparent;
+	--ck-caps: 0.08em;
+}
+
+html[data-skin='cockpit'] body {
+	background: var(--skin-grid);
+	line-height: 1.35;
+}
+
+/* The body is the grid sheet: Cyber's ambient light show goes, the 2px gaps show the rules. */
+html[data-skin='cockpit'] .ambient {
+	display: none;
+}
+
+/* ---- Tiles ------------------------------------------------------------------------------- */
+
+html[data-skin='cockpit'] .glass {
+	background: var(--glass);
+	backdrop-filter: none;
+	border: 1px solid var(--border);
+	border-radius: 0;
+	box-shadow: none;
+}
+html[data-skin='cockpit'] .glass::before {
+	display: none;
+}
+html[data-skin='cockpit'] .pane-focus:focus-within {
+	border-color: color-mix(in oklab, var(--accent) 45%, var(--border));
+	box-shadow: none;
+}
+
+/* Menus, dialogs, pickers, tooltips, toasts: a solid slab with a hard offset shadow. */
+html[data-skin='cockpit'] .glass-strong {
+	background: var(--glass-strong);
+	backdrop-filter: none;
+	border: 1px solid var(--accent);
+	border-radius: 0;
+	box-shadow: var(--shadow-float);
+}
+
+html[data-skin='cockpit'] .rounded-full,
+html[data-skin='cockpit'] kbd {
+	border-radius: 0;
+}
+
+html[data-skin='cockpit'] kbd {
+	border-bottom-width: 1px;
+	background: var(--bg-0);
+	color: var(--accent);
+	font-family: var(--font-code);
+	font-size: 10px;
+	text-transform: uppercase;
+}
+
+/* HUD micro labels become terminal field labels: condensed, bold, all caps. */
+html[data-skin='cockpit'] .hud {
+	font-family: var(--font-display);
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: var(--ck-caps);
+	color: var(--skin-label);
+}
+
+/* The gradient voice of Cyber Glass has no place on a desk: one flat signal color. */
+html[data-skin='cockpit'] .accent-line,
+html[data-skin='cockpit'] .accent-gradient {
+	background-image: none;
+	background-color: var(--accent);
+	box-shadow: none;
+}
+html[data-skin='cockpit'] .text-gradient {
+	background-image: none;
+	color: var(--accent);
+}
+html[data-skin='cockpit'] .neon {
+	text-shadow: none;
+}
+html[data-skin='cockpit'] .brackets-frame {
+	display: none;
+}
+html[data-skin='cockpit'] .shadow-glow,
+html[data-skin='cockpit'] .shadow-glow-soft {
+	box-shadow: none;
+}
+
+html[data-skin='cockpit'] ::selection {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+
+html[data-skin='cockpit'] :focus-visible {
+	outline: 1px solid var(--accent);
+	outline-offset: -1px;
+}
+
+/* Lucide content icons: square caps and joins, a touch heavier, so they read like glyphs. */
+html[data-skin='cockpit'] svg.lucide {
+	stroke-width: 2.25;
+	stroke-linecap: square;
+	stroke-linejoin: miter;
+}
+
+/* ---- Scrollbars: thin square rails ------------------------------------------------------- */
+
+html[data-skin='cockpit'] ::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+html[data-skin='cockpit'] ::-webkit-scrollbar-thumb {
+	background: var(--border-strong);
+	border: 2px solid transparent;
+	background-clip: padding-box;
+	border-radius: 0;
+}
+html[data-skin='cockpit'] ::-webkit-scrollbar-thumb:hover {
+	background-color: var(--accent);
+}
+html[data-skin='cockpit'] ::-webkit-scrollbar-track {
+	background: color-mix(in oklab, var(--bg-0) 60%, transparent);
+}
+
+/* ---- Splitters: the grid rule lights up when grabbed --------------------------------------- */
+
+html[data-skin='cockpit'] [data-part='splitter-handle'] {
+	background-image: none;
+	background-color: var(--accent);
+	border-radius: 0;
+}
+html[data-skin='cockpit'] [data-part='splitter'][data-axis='x'] [data-part='splitter-handle'] {
+	inset-block: 0;
+	width: 1px;
+}
+html[data-skin='cockpit'] [data-part='splitter'][data-axis='y'] [data-part='splitter-handle'] {
+	inset-inline: 0;
+	height: 1px;
+}
