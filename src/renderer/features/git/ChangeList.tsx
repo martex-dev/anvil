@@ -44,7 +44,7 @@ export function ChangeList({
 					type='button'
 					onClick={() => setCollapsed((c) => !c)}
 					aria-expanded={!collapsed}
-					className='flex min-w-0 flex-1 items-center gap-1 text-11 font-medium tracking-widest text-fg-1 uppercase outline-none focus-visible:text-fg-0'
+					className='flex min-w-0 flex-1 items-center gap-1 text-11 font-medium tracking-widest text-fg-1 uppercase outline-none focus-visible:text-fg-0 focus-visible:shadow-glow'
 				>
 					<ChevronDown
 						size={12}
@@ -81,7 +81,7 @@ export function ChangeList({
 								<button
 									type='button'
 									onClick={() => onOpen(change)}
-									className='flex min-w-0 flex-1 items-center gap-1.5 text-left outline-none focus-visible:text-fg-0'
+									className='flex min-w-0 flex-1 items-center gap-1.5 text-left outline-none focus-visible:text-fg-0 focus-visible:shadow-glow'
 								>
 									<FileCode2 size={13} className='shrink-0 text-fg-2' />
 									<span
