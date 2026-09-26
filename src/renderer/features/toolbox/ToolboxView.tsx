@@ -1,6 +1,7 @@
 import { type ComponentType, type JSX, type KeyboardEvent, useRef } from 'react';
 
 import { cn } from '../../lib/cn';
+import { Tooltip } from '../../ui/Tooltip';
 import { CompoundTool } from './CompoundTool';
 import { EncodeTool } from './EncodeTool';
 import { HashTool } from './HashTool';
@@ -56,34 +57,36 @@ export function ToolboxView(): JSX.Element {
 					onKeyDown={onKeyDown}
 					className='grid grid-cols-[repeat(auto-fill,minmax(76px,1fr))] gap-1'
 				>
-					{TOOLS.map(({ id, label, icon: Icon }) => {
+					{TOOLS.map(({ id, label, hint, icon: Icon }) => {
 						const selected = id === current?.id;
+						// Labels truncate in a narrow side bar; the tooltip names every tab in full.
 						return (
-							<button
-								key={id}
-								ref={(el) => {
-									if (el) tabRefs.current.set(id, el);
-									else tabRefs.current.delete(id);
-								}}
-								type='button'
-								role='tab'
-								id={`toolbox-tab-${id}`}
-								aria-selected={selected}
-								aria-controls={`toolbox-panel-${id}`}
-								tabIndex={selected ? 0 : -1}
-								onClick={() => select(id)}
-								className={cn(
-									'flex h-7 min-w-0 items-center gap-1.5 rounded-sm border px-2 text-12',
-									'transition-[background-color,border-color,color] transition-fast',
-									'focus-visible:shadow-glow focus-visible:outline-none',
-									selected
-										? 'border-accent/40 bg-accent-soft text-accent'
-										: 'border-transparent text-fg-1 hover:bg-bg-3 hover:text-fg-0',
-								)}
-							>
-								<Icon size={12} className='shrink-0' aria-hidden />
-								<span className='truncate'>{label}</span>
-							</button>
+							<Tooltip key={id} content={`${label}: ${hint}`}>
+								<button
+									ref={(el) => {
+										if (el) tabRefs.current.set(id, el);
+										else tabRefs.current.delete(id);
+									}}
+									type='button'
+									role='tab'
+									id={`toolbox-tab-${id}`}
+									aria-selected={selected}
+									aria-controls={`toolbox-panel-${id}`}
+									tabIndex={selected ? 0 : -1}
+									onClick={() => select(id)}
+									className={cn(
+										'flex h-7 min-w-0 items-center gap-1.5 rounded-sm border px-2 text-12',
+										'transition-[background-color,border-color,color] transition-fast',
+										'focus-visible:shadow-glow focus-visible:outline-none',
+										selected
+											? 'border-accent/40 bg-accent-soft text-accent'
+											: 'border-transparent text-fg-1 hover:bg-bg-3 hover:text-fg-0',
+									)}
+								>
+									<Icon size={12} className='shrink-0' aria-hidden />
+									<span className='truncate'>{label}</span>
+								</button>
+							</Tooltip>
 						);
 					})}
 				</div>
