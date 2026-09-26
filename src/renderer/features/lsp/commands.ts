@@ -1,4 +1,4 @@
-import { ShieldCheck, ShieldOff } from 'lucide-react';
+import { RotateCcw, ShieldCheck, ShieldOff } from 'lucide-react';
 
 import type { LspLanguage } from '@shared/ipc/channels/lsp';
 
@@ -6,12 +6,39 @@ import type { Command } from '../../app/commands/types';
 import { call } from '../../lib/ipc';
 import { toast } from '../../stores/toast-store';
 import { restart } from './lsp-clients';
-import { useLspStatus } from './lsp-status';
+import { LANGUAGE_LABEL, useLspStatus } from './lsp-status';
 
 /** Languages whose server is running, starting or failed (not the never-started ones). */
 function activeLanguages(): LspLanguage[] {
 	const status = useLspStatus.getState().status;
 	return (Object.keys(status) as LspLanguage[]).filter((l) => status[l].state !== 'idle');
+}
+
+/** Same as clicking the status bar item: restarts every server that was running or failed. */
+async function restartServers(): Promise<void> {
+	const languages = activeLanguages();
+	if (languages.length === 0) {
+		toast.info(
+			'No language servers running',
+			'They start when you open a Python or TypeScript file in the folder.',
+		);
+		return;
+	}
+	await restart(languages);
+	const failed = languages.filter((l) => useLspStatus.getState().status[l].state === 'error');
+	if (failed.length > 0) {
+		toast.error(
+			'Language server failed to start',
+			failed
+				.map(
+					(l) =>
+						`${LANGUAGE_LABEL[l]}: ${useLspStatus.getState().status[l].message ?? 'unknown error'}`,
+				)
+				.join('\n'),
+		);
+	} else {
+		toast.success(`Restarted ${languages.map((l) => LANGUAGE_LABEL[l]).join(' and ')}`);
+	}
 }
 
 /**
@@ -42,6 +69,22 @@ async function setWorkspaceTs(enabled: boolean): Promise<void> {
 }
 
 export const LSP_COMMANDS: Command[] = [
+	{
+		id: 'lsp.restart',
+		title: 'Restart Language Servers',
+		category: 'Tools',
+		keywords: [
+			'lsp',
+			'basedpyright',
+			'pyright',
+			'typescript',
+			'intellisense',
+			'stuck',
+			'crashed',
+		],
+		icon: RotateCcw,
+		run: restartServers,
+	},
 	{
 		id: 'lsp.useWorkspaceTs',
 		title: 'Use Workspace TypeScript (trust this folder)',
