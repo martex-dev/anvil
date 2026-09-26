@@ -343,7 +343,15 @@
 	background-size: 48px 48px;
 	mask-image: radial-gradient(ellipse 75% 65% at 50% 40%, black 10%, transparent 78%);
 	opacity: 0.8;
-	animation: grid-drift 60s linear infinite;
+}
+/*
+ * The grid drifts only when glass is off. With glass on it sits behind every blurred pane, and
+ * a moving backdrop makes the GPU re-blur the whole window every frame (ADR-009: static ambient).
+ */
+@media (prefers-reduced-motion: no-preference) {
+	html[data-glass='off'] .ambient::before {
+		animation: grid-drift 60s linear infinite;
+	}
 }
 .ambient::after {
 	content: '';
