@@ -103,6 +103,9 @@ export class DataStore {
 		const s = await stat(abs).catch((error: unknown) => {
 			throw fsError(error, spec.rel);
 		});
+		// A folder named like a table: Windows reads it as zero bytes, which would show an empty
+		// table instead of the error Linux and macOS raise.
+		if (!s.isFile()) throw new AnvilError('FS_READ_FAILED', `Could not read ${spec.rel}`);
 		const hit = this.cache.get(abs);
 		if (hit && hit.mtimeMs === s.mtimeMs) {
 			// LRU: move to the back.

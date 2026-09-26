@@ -5,11 +5,12 @@ its GitHub release notes.
 
 ## [0.2.9] - 2026-09-26
 
-Data and file viewers: 49 fixes from the full bug sweep of 0.2.0.
+Data and file viewers: 50 fixes from the full bug sweep of 0.2.0.
 
 ### Fixed
 
 - **data:** Parse, sort and profile tables in a worker thread
+- **data:** Report a folder named like a table as unreadable instead of an empty table on Windows
 - **data:** Share one parse between concurrent requests for a file
 - **data:** Drop the cut-off last row of a truncated csv
 - **data:** Show a clear message when a data file is missing or unreadable

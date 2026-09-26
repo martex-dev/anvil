@@ -92,6 +92,8 @@ describe('DataStore', () => {
 			code: 'FS_READ_FAILED',
 			message: 'Could not read dir.csv',
 		});
+		// Refused before reading: Windows reads a folder as zero bytes, an empty table.
+		expect(readHead).not.toHaveBeenCalled();
 	});
 
 	it('keeps the views of two viewers with different filters', async () => {
