@@ -1,0 +1,246 @@
+/*
+ * Cockpit: tile headers. Every pane opens with an inverted block, like a desk screen's panel
+ * title: index, name, and the pane's mnemonic on the right ("FILE <GO>").
+ */
+
+html[data-skin='cockpit'] [data-part='pane-header'],
+html[data-skin='cockpit'] [data-part='chat'] [data-ai-chat] > header {
+	height: 22px;
+	gap: 6px;
+	border-bottom: 0;
+	background: var(--skin-header);
+	color: var(--skin-on-header);
+	font-family: var(--font-display);
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: var(--ck-caps);
+	text-transform: uppercase;
+}
+
+/* The focused tile's header carries a solid marker on its left edge. */
+html[data-skin='cockpit'] .pane-focus:focus-within > [data-part='pane-header'],
+html[data-skin='cockpit'] [data-part='chat']:focus-within [data-ai-chat] > header {
+	box-shadow: inset 4px 0 0 var(--skin-on-header);
+}
+
+html[data-skin='cockpit'] [data-part='pane-header'] .hud,
+html[data-skin='cockpit'] [data-part='pane-title'],
+html[data-skin='cockpit'] [data-part='chat'] [data-ai-chat] > header .hud {
+	color: var(--skin-on-header);
+	font-size: 11px;
+	letter-spacing: var(--ck-caps);
+}
+
+/* Side bar header: "01) EXPLORER ................ FILE <GO>" */
+html[data-skin='cockpit'] [data-part='sidebar'] > [data-part='pane-header'] {
+	padding-inline: 8px 6px;
+}
+html[data-skin='cockpit'] [data-part='pane-index'] {
+	color: var(--skin-on-header);
+	font-size: 11px;
+	font-weight: 700;
+}
+html[data-skin='cockpit'] [data-part='pane-index']::after {
+	content: ')';
+}
+html[data-skin='cockpit'] [data-part='pane-rule'] {
+	display: none;
+}
+html[data-skin='cockpit'] [data-part='sidebar'] > [data-part='pane-header']::after {
+	margin-left: auto;
+	padding: 0 4px;
+	background: var(--skin-on-header);
+	color: var(--skin-header);
+	font-family: var(--font-code);
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0;
+	line-height: 14px;
+}
+html[data-skin='cockpit']
+	[data-part='sidebar'][data-view='explorer']
+	> [data-part='pane-header']::after {
+	content: 'FILE <GO>';
+}
+html[data-skin='cockpit']
+	[data-part='sidebar'][data-view='search']
+	> [data-part='pane-header']::after {
+	content: 'SRCH <GO>';
+}
+html[data-skin='cockpit']
+	[data-part='sidebar'][data-view='git']
+	> [data-part='pane-header']::after {
+	content: 'GIT <GO>';
+}
+html[data-skin='cockpit']
+	[data-part='sidebar'][data-view='run']
+	> [data-part='pane-header']::after {
+	content: 'EXEC <GO>';
+}
+html[data-skin='cockpit']
+	[data-part='sidebar'][data-view='outline']
+	> [data-part='pane-header']::after {
+	content: 'OUTL <GO>';
+}
+html[data-skin='cockpit']
+	[data-part='sidebar'][data-view='todos']
+	> [data-part='pane-header']::after {
+	content: 'TODO <GO>';
+}
+html[data-skin='cockpit']
+	[data-part='sidebar'][data-view='history']
+	> [data-part='pane-header']::after {
+	content: 'HIST <GO>';
+}
+html[data-skin='cockpit']
+	[data-part='sidebar'][data-view='snippets']
+	> [data-part='pane-header']::after {
+	content: 'SNIP <GO>';
+}
+html[data-skin='cockpit']
+	[data-part='sidebar'][data-view='toolbox']
+	> [data-part='pane-header']::after {
+	content: 'TOOL <GO>';
+}
+
+/* Buttons that live on an inverted header take its ink. */
+html[data-skin='cockpit'] [data-part='pane-header'] button,
+html[data-skin='cockpit'] [data-part='chat'] [data-ai-chat] > header button,
+html[data-skin='cockpit'] [data-part='chat'] [data-ai-chat] > header svg {
+	color: var(--skin-on-header);
+}
+html[data-skin='cockpit'] [data-part='pane-header'] button:hover,
+html[data-skin='cockpit'] [data-part='chat'] [data-ai-chat] > header button:hover {
+	background: var(--skin-on-header);
+	color: var(--skin-header);
+}
+
+/* Chat header: the model picker is a black cell inside the bar. */
+html[data-skin='cockpit'] [data-part='chat'] [data-ai-chat] > header {
+	padding-inline: 8px 4px;
+}
+html[data-skin='cockpit'] [data-part='chat'] [data-ai-chat] > header > button.font-mono {
+	height: 16px;
+	border: 0;
+	background: var(--skin-on-header);
+	color: var(--skin-header);
+	font-size: 10px;
+	text-transform: uppercase;
+}
+html[data-skin='cockpit'] [data-part='chat'] [data-ai-chat] > header > button.font-mono svg {
+	color: var(--skin-header);
+}
+html[data-skin='cockpit'] [data-part='chat'] [data-ai-chat] > header::after {
+	content: 'AI <GO>';
+	order: 1;
+	padding: 0 4px;
+	background: var(--skin-on-header);
+	color: var(--skin-header);
+	font-family: var(--font-code);
+	font-size: 10px;
+	line-height: 14px;
+	letter-spacing: 0;
+}
+
+/* ---- Bottom panel: function tabs inside the header bar ------------------------------------ */
+
+html[data-skin='cockpit'] [data-part='panel'] > [data-part='pane-header'] {
+	padding-inline: 2px;
+}
+html[data-skin='cockpit'] [data-part='panel-tab'] {
+	height: 18px;
+	margin-right: 2px;
+	padding-inline: 8px;
+	color: var(--skin-on-header);
+	font-size: 11px;
+	letter-spacing: var(--ck-caps);
+}
+html[data-skin='cockpit'] [data-part='panel-tab'][data-active='true'] {
+	background: var(--skin-on-header);
+	color: var(--skin-header);
+}
+html[data-skin='cockpit'] [data-part='panel-tab'] [data-part='tab-marker'] {
+	display: none;
+}
+html[data-skin='cockpit'] [data-part='panel-tab'] .num {
+	padding: 0 3px;
+	background: var(--down);
+	color: var(--skin-on-go);
+	font-size: 10px;
+}
+
+html[data-skin='cockpit'] [data-part='terminal-chip'] {
+	height: 16px;
+	border: 0;
+	padding-left: 6px;
+	background: transparent;
+	color: var(--skin-on-header);
+	font-size: 10px;
+	text-transform: uppercase;
+}
+html[data-skin='cockpit'] [data-part='terminal-chip'][data-active='true'] {
+	background: var(--skin-on-header);
+	color: var(--skin-header);
+}
+html[data-skin='cockpit'] [data-part='terminal-chip'] button {
+	color: inherit;
+}
+
+/* ---- Editor tabs: dense uppercase cells on a ruled strip --------------------------------- */
+
+html[data-skin='cockpit'] [data-part='tabbar'] {
+	height: 24px;
+	border-bottom: 1px solid var(--border-strong);
+	background: var(--bg-0);
+}
+html[data-skin='cockpit'] [data-part='tab'] {
+	gap: 6px;
+	padding-left: 8px;
+	border-right: 1px solid var(--border);
+	color: var(--text-2);
+	font-family: var(--font-display);
+	font-size: 11px;
+	font-weight: 500;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+html[data-skin='cockpit'] [data-part='tab']:hover {
+	background: var(--bg-2);
+	color: var(--text-1);
+}
+html[data-skin='cockpit'] [data-part='tab'][data-active='true'] {
+	background: var(--glass);
+	color: var(--text-0);
+	font-weight: 700;
+	box-shadow: inset 0 2px 0 var(--accent);
+}
+html[data-skin='cockpit']
+	[data-part='editor-group'][data-focused='false']
+	[data-part='tab'][data-active='true'] {
+	box-shadow: inset 0 2px 0 var(--border-strong);
+}
+/* The shared tab draws its own top line and divider; the cell rules above replace both. */
+html[data-skin='cockpit'] [data-part='tab'] > span.absolute {
+	display: none;
+}
+/* Dirty: a solid square. Errors: a down-tick triangle, like a falling price. */
+html[data-skin='cockpit'] [data-part='tab'] button > span.size-2 {
+	width: 7px;
+	height: 7px;
+	background: var(--warn);
+}
+html[data-skin='cockpit'] [data-part='tab'] > span[title='This file has errors'] {
+	width: 8px;
+	height: 6px;
+	background: var(--down);
+	box-shadow: none;
+	clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+/* Breadcrumb line under the tabs: a quiet mono field row. */
+html[data-skin='cockpit'] [data-part='editor-group'] > [data-part='tabbar'] + div {
+	height: 20px;
+	border-bottom: 1px solid var(--border);
+	background: var(--bg-1);
+	font-size: 10px;
+}
