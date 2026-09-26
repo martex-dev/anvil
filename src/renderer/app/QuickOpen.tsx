@@ -16,29 +16,7 @@ import { Kbd } from '../ui/Kbd';
 import { getCommands, runCommand } from './commands/run';
 import { fuzzyFilter } from './fuzzy';
 import { useWorkspace } from './hooks/use-workspace';
-
-const RECENT_KEY = 'anvil.recentFiles';
-
-export function rememberRecentFile(path: string): void {
-	try {
-		const list = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]') as unknown;
-		const prev = Array.isArray(list)
-			? list.filter((p): p is string => typeof p === 'string' && p !== path)
-			: [];
-		localStorage.setItem(RECENT_KEY, JSON.stringify([path, ...prev].slice(0, 30)));
-	} catch {
-		// Recents are a nicety.
-	}
-}
-
-function recentFiles(): string[] {
-	try {
-		const list = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]') as unknown;
-		return Array.isArray(list) ? list.filter((p): p is string => typeof p === 'string') : [];
-	} catch {
-		return [];
-	}
-}
+import { quickOpenFilter, quickOpenMode, recentFiles, rememberRecentFile } from './quick-open';
 
 function Highlight({
 	text,
@@ -100,13 +78,7 @@ export function QuickOpen(): JSX.Element {
 		if (dirs.length > 0) void client.invalidateQueries({ queryKey: ['search', 'files'] });
 	});
 
-	const mode = value.startsWith('>')
-		? 'commands'
-		: value.startsWith('@')
-			? 'symbols'
-			: value.startsWith(':')
-				? 'line'
-				: 'files';
+	const mode = quickOpenMode(value);
 	const query = mode === 'files' ? value : value.slice(1).trim();
 
 	const fileResults = useMemo(() => {
@@ -157,6 +129,7 @@ export function QuickOpen(): JSX.Element {
 			label='Quick open'
 			loop
 			shouldFilter={mode === 'commands' || mode === 'symbols'}
+			filter={quickOpenFilter}
 			overlayClassName='fixed inset-0 z-40 bg-scrim'
 			contentClassName='glass-strong animate-in fixed top-[10vh] left-1/2 z-50 w-[min(680px,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-xl'
 		>
@@ -226,6 +199,11 @@ export function QuickOpen(): JSX.Element {
 							</Command.Item>
 						);
 					})}
+				{mode === 'commands' && (
+					<Command.Empty className='px-3 py-6 text-center text-13 text-fg-2'>
+						No matching commands.
+					</Command.Empty>
+				)}
 				{mode === 'commands' &&
 					getCommands().map((c) => (
 						<Command.Item
@@ -245,6 +223,11 @@ export function QuickOpen(): JSX.Element {
 							{c.shortcut && <Kbd keys={c.shortcut} />}
 						</Command.Item>
 					))}
+				{mode === 'symbols' && symbols.length > 0 && (
+					<Command.Empty className='px-3 py-6 text-center text-13 text-fg-2'>
+						No matching symbols.
+					</Command.Empty>
+				)}
 				{mode === 'symbols' &&
 					(symbols.length === 0 ? (
 						<div className='px-3 py-6 text-center text-13 text-fg-2'>

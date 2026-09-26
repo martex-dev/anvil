@@ -5,7 +5,7 @@ import type { WorkspaceInfo } from '@shared/ipc/channels/workspace';
 
 import { getSettings } from '../../app/hooks/use-settings';
 import { useWorkspace, WORKSPACE_KEY } from '../../app/hooks/use-workspace';
-import { rememberRecentFile } from '../../app/QuickOpen';
+import { rememberRecentFile } from '../../app/quick-open';
 import { rlog } from '../../lib/log';
 import { refreshEditorConfiguration } from '../../lib/monaco/load';
 import { setMonacoWorkspaceRoot } from '../../lib/monaco/workspace-root';
