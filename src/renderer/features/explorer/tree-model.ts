@@ -60,3 +60,20 @@ export function ancestorsOf(path: string): string[] {
 export function joinPath(dir: string, name: string): string {
 	return dir ? `${dir}/${name}` : name;
 }
+
+/** `path` itself or anything inside it (a deleted folder takes its children with it). */
+export function isWithin(path: string, ancestor: string): boolean {
+	return path === ancestor || path.startsWith(`${ancestor}/`);
+}
+
+/**
+ * The entry that should take focus once `path` is removed: the next visible entry outside it,
+ * else the previous one, else null when nothing is left.
+ */
+export function neighbourAfterRemoval(rows: readonly TreeRow[], path: string): string | null {
+	const paths = rows.flatMap((r) => (r.kind === 'entry' ? [r.entry.path] : []));
+	const index = paths.indexOf(path);
+	if (index === -1) return null;
+	const after = paths.slice(index + 1).find((p) => !isWithin(p, path));
+	return after ?? paths[index - 1] ?? null;
+}

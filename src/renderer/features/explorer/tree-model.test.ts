@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import type { FsEntry } from '@shared/ipc/channels/fs';
 
-import { ancestorsOf, buildRows, type DirState, joinPath, parentOf } from './tree-model';
+import {
+	ancestorsOf,
+	buildRows,
+	type DirState,
+	joinPath,
+	neighbourAfterRemoval,
+	parentOf,
+} from './tree-model';
 
 const e = (path: string, kind: FsEntry['kind'] = 'file'): FsEntry => ({
 	name: path.split('/').at(-1) ?? path,
@@ -62,5 +69,31 @@ describe('path helpers', () => {
 		expect(ancestorsOf('README.md')).toEqual([]);
 		expect(joinPath('', 'a.ts')).toBe('a.ts');
 		expect(joinPath('src', 'a.ts')).toBe('src/a.ts');
+	});
+});
+
+describe('neighbourAfterRemoval', () => {
+	const dirs = new Map<string, DirState>([
+		['', { entries: [e('src', 'dir'), e('README.md'), e('setup.py')] }],
+		['src', { entries: [e('src/a.py'), e('src/b.py')] }],
+	]);
+	const rows = buildRows(dirs, new Set(['src']));
+
+	it('picks the next visible entry', () => {
+		expect(neighbourAfterRemoval(rows, 'src/a.py')).toBe('src/b.py');
+	});
+
+	it('skips the children of a removed folder', () => {
+		expect(neighbourAfterRemoval(rows, 'src')).toBe('README.md');
+	});
+
+	it('falls back to the previous entry at the end', () => {
+		expect(neighbourAfterRemoval(rows, 'setup.py')).toBe('README.md');
+	});
+
+	it('returns null when nothing is left or the path is not shown', () => {
+		const single = buildRows(new Map([['', { entries: [e('only.py')] }]]), new Set());
+		expect(neighbourAfterRemoval(single, 'only.py')).toBeNull();
+		expect(neighbourAfterRemoval(rows, 'missing.py')).toBeNull();
 	});
 });

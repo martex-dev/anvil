@@ -4,16 +4,22 @@ import type { FsEntry } from '@shared/ipc/channels/fs';
 
 import { toast } from '../../stores/toast-store';
 import { requestOpenFile, useWorkbenchStore } from '../../stores/workbench-store';
-import { Button } from '../../ui/Button';
-import { Dialog } from '../../ui/Dialog';
 import { ErrorState } from '../../ui/ErrorState';
 import { Spinner } from '../../ui/Spinner';
+import { ConfirmTrashDialog } from './ConfirmTrashDialog';
 import { explorerMenuItems } from './explorer-menu';
 import { type FileTreeHandle, registerExplorerTree } from './explorer-tree-registry';
 import { ExplorerContextMenu } from './ExplorerContextMenu';
 import { useFsActions } from './fs-actions';
 import { InlineNameInput } from './InlineNameInput';
-import { ancestorsOf, joinPath, parentOf, type PendingCreate } from './tree-model';
+import {
+	ancestorsOf,
+	isWithin,
+	joinPath,
+	neighbourAfterRemoval,
+	parentOf,
+	type PendingCreate,
+} from './tree-model';
 import { TreeRowView } from './TreeRowView';
 import { useFileTree } from './use-file-tree';
 import { treeKeyHandler } from './use-tree-keyboard';
@@ -276,30 +282,17 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 					})}
 				</div>
 			</ExplorerContextMenu>
-			<Dialog
-				open={confirmDelete !== null}
-				onOpenChange={(open) => !open && setConfirmDelete(null)}
-				title='Move to Recycle Bin?'
-				description={<span className='selectable font-mono'>{confirmDelete}</span>}
-				width='sm'
-				footer={
-					<>
-						<Button variant='ghost' onClick={() => setConfirmDelete(null)}>
-							Cancel
-						</Button>
-						<Button
-							variant='danger'
-							autoFocus
-							onClick={() => {
-								const path = confirmDelete;
-								setConfirmDelete(null);
-								if (path) void actions.trash(path);
-							}}
-						>
-							Move to Recycle Bin
-						</Button>
-					</>
-				}
+			<ConfirmTrashDialog
+				path={confirmDelete}
+				onCancel={() => setConfirmDelete(null)}
+				onConfirm={(path) => {
+					setConfirmDelete(null);
+					// Keep keyboard navigation in place: focus the neighbour, not the top.
+					const next = neighbourAfterRemoval(tree.rows, path);
+					void actions.trash(path).then((trashed) => {
+						if (trashed) setFocused((f) => (f && isWithin(f, path) ? next : f));
+					});
+				}}
 			/>
 		</>
 	);
