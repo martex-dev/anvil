@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 import type { PythonEnv, PythonPackage, PythonTools } from '@shared/ipc/channels/python';
 
-import { AnvilError } from '../../core/errors';
+import { AnvilError, errorMessage } from '../../core/errors';
 import type { MainFeature } from '../../core/features';
 import { toAbsolute } from '../../core/workspace/fs-guard';
 import { discoverEnvs, envDirOf } from './envs';
@@ -120,7 +120,11 @@ export const pythonFeature: MainFeature = {
 			);
 		};
 		const emitSelected = (): void =>
-			void selected().then((env) => ctx.emit('python:changed', env));
+			void selected()
+				.then((env) => ctx.emit('python:changed', env))
+				.catch((e: unknown) =>
+					ctx.log.error('python:changed failed', { message: errorMessage(e) }),
+				);
 		const off = interpreter.onChange(emitSelected);
 		ctx.onDispose(off);
 		ctx.workspace.onChange(() => {
