@@ -5,83 +5,20 @@ import { REPO_URL } from '@shared/constants';
 import { SECRET_SPECS } from '@shared/secrets';
 import type { Settings } from '@shared/settings';
 
-import {
-	pickModel,
-	PROVIDER_LABEL,
-	saveAiSettings,
-	useAiSettings,
-} from '../../features/ai/ai-settings';
 import { call } from '../../lib/ipc';
 import { type SettingsTab, useUiStore } from '../../stores/ui-store';
 import { Button } from '../../ui/Button';
 import { Dialog } from '../../ui/Dialog';
 import { ErrorState } from '../../ui/ErrorState';
-import { Input } from '../../ui/Input';
 import { Tabs } from '../../ui/Tabs';
 import { useSettings } from '../hooks/use-settings';
+import { AiSettings } from './AiSettings';
 import { AppearanceSettings } from './AppearanceSettings';
 import { EditorSettings } from './EditorSettings';
 import { SecretRow } from './SecretRow';
-import { SettingRow } from './SettingRow';
-import { SettingStepper } from './SettingStepper';
-import { SettingToggle } from './SettingToggle';
 import { UpdatesSetting } from './UpdatesSetting';
 
 const SAVED_SECRETS_KEY = ['secrets', 'saved'] as const;
-
-function Ai({ s, update }: { s: Settings; update: (p: Partial<Settings>) => void }): JSX.Element {
-	const { settings, keys } = useAiSettings();
-	if (!settings) return <div className='shimmer h-24 rounded-md' />;
-	return (
-		<div className='divide-y divide-glass-edge'>
-			<SettingRow
-				label='Chat model'
-				description={`Chat, inline edit (Ctrl+I) and one-click actions · ${PROVIDER_LABEL[settings.chat.provider]}${keys?.[settings.chat.provider] ? '' : ' · key missing'}`}
-			>
-				<Button size='sm' onClick={() => void pickModel('chat')}>
-					<span className='font-mono'>{settings.chat.model}</span>
-				</Button>
-			</SettingRow>
-			<SettingRow
-				label='Autocomplete model'
-				description={`Ghost text while typing · ${PROVIDER_LABEL[settings.completion.provider]}. Pick something fast and cheap.`}
-			>
-				<Button size='sm' onClick={() => void pickModel('completion')}>
-					<span className='font-mono'>{settings.completion.model}</span>
-				</Button>
-			</SettingRow>
-			<SettingToggle
-				label='AI autocomplete'
-				description='Suggestions appear in gray; Tab accepts, Esc dismisses.'
-				value={s.ghostText}
-				onChange={(ghostText) => update({ ghostText })}
-			/>
-			<SettingStepper
-				label='Autocomplete delay (×50 ms)'
-				description='Wait this long after you stop typing before asking.'
-				value={Math.round(s.ghostDelayMs / 50)}
-				min={2}
-				max={40}
-				onChange={(v) => update({ ghostDelayMs: v * 50 })}
-			/>
-			<SettingRow
-				label='Ollama server'
-				description='Local models, no key needed (ollama serve).'
-			>
-				<Input
-					key={settings.ollamaUrl}
-					defaultValue={settings.ollamaUrl}
-					className='w-56 font-mono text-12'
-					onBlur={(e) => {
-						const url = e.target.value.trim();
-						if (url && url !== settings.ollamaUrl)
-							void saveAiSettings({ ...settings, ollamaUrl: url });
-					}}
-				/>
-			</SettingRow>
-		</div>
-	);
-}
 
 function Keys(): JSX.Element {
 	const client = useQueryClient();
@@ -203,7 +140,7 @@ export function SettingsDialog(): JSX.Element {
 						{
 							value: 'ai',
 							label: 'AI',
-							content: pane(<Ai s={settings} update={update} />),
+							content: pane(<AiSettings s={settings} update={update} />),
 						},
 						{ value: 'keys', label: 'API Keys', content: pane(<Keys />) },
 						{

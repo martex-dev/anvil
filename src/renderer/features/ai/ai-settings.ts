@@ -1,6 +1,11 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-import type { AiModelRef, AiProvider, AiSettings } from '@shared/ipc/channels/ai';
+import {
+	type AiModelRef,
+	type AiProvider,
+	type AiSettings,
+	AiSettingsSchema,
+} from '@shared/ipc/channels/ai';
 
 import { call } from '../../lib/ipc';
 import { queryClient } from '../../lib/query-client';
@@ -46,6 +51,8 @@ export const SUGGESTED_MODELS: Array<AiModelRef & { note: string; completion?: b
 export function useAiSettings(): {
 	settings: AiSettings | undefined;
 	keys: Record<AiProvider, boolean> | undefined;
+	error: Error | null;
+	refetch: () => void;
 } {
 	const client = useQueryClient();
 	const settings = useQuery({ queryKey: AI_SETTINGS_KEY, queryFn: () => call('ai:settings') });
@@ -54,7 +61,12 @@ export function useAiSettings(): {
 		'secrets:changed',
 		() => void client.invalidateQueries({ queryKey: AI_KEYS_KEY }),
 	);
-	return { settings: settings.data, keys: keys.data };
+	return {
+		settings: settings.data,
+		keys: keys.data,
+		error: settings.data ? null : settings.error,
+		refetch: () => void settings.refetch(),
+	};
 }
 
 export async function getAiSettings(): Promise<AiSettings> {
@@ -63,6 +75,12 @@ export async function getAiSettings(): Promise<AiSettings> {
 		queryFn: () => call('ai:settings'),
 		staleTime: 30_000,
 	});
+}
+
+/** A trimmed http(s) Ollama server URL, or null when main would reject it. */
+export function parseOllamaUrl(text: string): string | null {
+	const parsed = AiSettingsSchema.shape.ollamaUrl.safeParse(text.trim());
+	return parsed.success ? parsed.data : null;
 }
 
 export async function saveAiSettings(next: AiSettings): Promise<void> {
