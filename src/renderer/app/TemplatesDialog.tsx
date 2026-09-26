@@ -10,6 +10,8 @@ import { useUiStore } from '../stores/ui-store';
 import { reasonNotToLeaveWorkspace } from '../stores/workbench-store';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
+import { EmptyState } from '../ui/EmptyState';
+import { ErrorState } from '../ui/ErrorState';
 import { Input } from '../ui/Input';
 
 const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
@@ -112,6 +114,20 @@ export function TemplatesDialog(): JSX.Element {
 						</li>
 					))}
 					{templates.isLoading && <li className='shimmer h-20 rounded-lg' />}
+					{templates.isError && (
+						<li>
+							<ErrorState
+								title='Could not load templates'
+								message={templates.error.message}
+								onRetry={() => void templates.refetch()}
+							/>
+						</li>
+					)}
+					{templates.data?.length === 0 && (
+						<li>
+							<EmptyState title='No templates available' />
+						</li>
+					)}
 				</ul>
 				<div className='flex flex-col gap-3'>
 					<label className='flex flex-col gap-1'>
