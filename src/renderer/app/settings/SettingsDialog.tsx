@@ -16,6 +16,7 @@ import { AiSettings } from './AiSettings';
 import { AppearanceSettings } from './AppearanceSettings';
 import { EditorSettings } from './EditorSettings';
 import { SecretRow } from './SecretRow';
+import { toastFailure } from './toast-failure';
 import { UpdatesSetting } from './UpdatesSetting';
 
 const SAVED_SECRETS_KEY = ['secrets', 'saved'] as const;
@@ -96,8 +97,8 @@ function About({
 						ANVIL
 					</p>
 					<p className='num text-12 text-fg-2'>
-						v{version.data ?? '…'} · an AI code editor for quant, trading, crypto, ML
-						and data work
+						{version.isError ? 'version unknown' : `v${version.data ?? '…'}`} · an AI
+						code editor for quant, trading, crypto, ML and data work
 					</p>
 				</div>
 			</div>
@@ -106,10 +107,23 @@ function About({
 				onChange={(autoUpdate) => update({ autoUpdate })}
 			/>
 			<div className='flex gap-2'>
-				<Button size='sm' onClick={() => void call('app:openExternal', REPO_URL)}>
+				<Button
+					size='sm'
+					onClick={() =>
+						call('app:openExternal', REPO_URL).catch(
+							toastFailure('Could not open GitHub'),
+						)
+					}
+				>
 					Source on GitHub
 				</Button>
-				<Button size='sm' variant='ghost' onClick={() => void call('app:openLogs')}>
+				<Button
+					size='sm'
+					variant='ghost'
+					onClick={() =>
+						call('app:openLogs').catch(toastFailure('Could not open the logs'))
+					}
+				>
 					Open logs
 				</Button>
 			</div>

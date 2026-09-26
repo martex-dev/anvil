@@ -25,7 +25,7 @@ export function UpdatesSetting({
 	const disabled = status.data?.state === 'disabled';
 	return (
 		<SettingRow
-			label={`Updates · Anvil ${version.data ?? ''}`}
+			label={`Updates · Anvil ${version.isError ? '(version unknown)' : (version.data ?? '')}`}
 			description={describeUpdate(status.data)}
 			htmlFor='auto-update'
 		>

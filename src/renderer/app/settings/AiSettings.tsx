@@ -9,7 +9,6 @@ import {
 	saveAiSettings,
 	useAiSettings,
 } from '../../features/ai/ai-settings';
-import { describeError } from '../../lib/global-errors';
 import { toast } from '../../stores/toast-store';
 import { Button } from '../../ui/Button';
 import { ErrorState } from '../../ui/ErrorState';
@@ -17,12 +16,7 @@ import { Input } from '../../ui/Input';
 import { SettingRow } from './SettingRow';
 import { SettingStepper } from './SettingStepper';
 import { SettingToggle } from './SettingToggle';
-
-function failed(title: string): (error: unknown) => void {
-	return (error) => {
-		toast.error(title, describeError(error));
-	};
-}
+import { toastFailure } from './toast-failure';
 
 export function AiSettings({
 	s,
@@ -57,7 +51,7 @@ export function AiSettings({
 		if (url === settings.ollamaUrl) return setDraft(null);
 		saveAiSettings({ ...settings, ollamaUrl: url })
 			.then(() => setDraft(null))
-			.catch(failed('Could not save AI settings'));
+			.catch(toastFailure('Could not save AI settings'));
 	};
 	return (
 		<div className='divide-y divide-glass-edge'>
@@ -67,7 +61,9 @@ export function AiSettings({
 			>
 				<Button
 					size='sm'
-					onClick={() => pickModel('chat').catch(failed('Could not set the chat model'))}
+					onClick={() =>
+						pickModel('chat').catch(toastFailure('Could not set the chat model'))
+					}
 				>
 					<span className='font-mono'>{settings.chat.model}</span>
 				</Button>
@@ -80,7 +76,7 @@ export function AiSettings({
 					size='sm'
 					onClick={() =>
 						pickModel('completion').catch(
-							failed('Could not set the autocomplete model'),
+							toastFailure('Could not set the autocomplete model'),
 						)
 					}
 				>
