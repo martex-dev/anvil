@@ -202,6 +202,47 @@ export function scanText(text: string, path: string | null = null): SecretFindin
 	return findings.sort((a, b) => a.line - b.line || a.column - b.column);
 }
 
+const C_ESCAPES: Record<string, number> = {
+	a: 7,
+	b: 8,
+	t: 9,
+	n: 10,
+	v: 11,
+	f: 12,
+	r: 13,
+	'"': 34,
+	'\\': 92,
+};
+
+/**
+ * Undoes git's C-style path quoting (`"b/\320\264.py"`): octal escapes are UTF-8 bytes. Git
+ * quotes names with non-ASCII bytes (unless core.quotePath is off), quotes, backslashes or
+ * control characters; unquoted paths are returned as they are.
+ */
+export function unquoteGitPath(raw: string): string {
+	if (raw.length < 2 || !raw.startsWith('"') || !raw.endsWith('"')) return raw;
+	// Escapes are ASCII, so work on the UTF-8 bytes: unescaped non-ASCII text passes through.
+	const source = new TextEncoder().encode(raw.slice(1, -1));
+	const bytes: number[] = [];
+	const isOctal = (b: number | undefined): boolean => b !== undefined && b >= 48 && b <= 55;
+	for (let i = 0; i < source.length; i++) {
+		const byte = source[i] ?? 0;
+		const next = source[i + 1];
+		if (byte !== 92 || next === undefined) {
+			bytes.push(byte);
+		} else if (isOctal(next) && isOctal(source[i + 2]) && isOctal(source[i + 3])) {
+			bytes.push(
+				parseInt(String.fromCharCode(next, source[i + 2] ?? 0, source[i + 3] ?? 0), 8),
+			);
+			i += 3;
+		} else {
+			bytes.push(C_ESCAPES[String.fromCharCode(next)] ?? next);
+			i += 1;
+		}
+	}
+	return new TextDecoder().decode(new Uint8Array(bytes));
+}
+
 /** Only the added lines of a unified diff, attributed to their file and new line number. */
 export function scanUnifiedDiff(diff: string): SecretFinding[] {
 	const findings: SecretFinding[] = [];
@@ -209,7 +250,7 @@ export function scanUnifiedDiff(diff: string): SecretFinding[] {
 	let line = 0;
 	for (const raw of diff.split('\n')) {
 		if (raw.startsWith('+++ ')) {
-			file = raw.slice(4).replace(/^b\//, '').trim();
+			file = unquoteGitPath(raw.slice(4).trim()).replace(/^b\//, '');
 			if (file === '/dev/null') file = null;
 			continue;
 		}

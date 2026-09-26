@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { isCredentialName, isEnvFile, maskSecret, scanText, scanUnifiedDiff } from './secret-scan';
+import {
+	isCredentialName,
+	isEnvFile,
+	maskSecret,
+	scanText,
+	scanUnifiedDiff,
+	unquoteGitPath,
+} from './secret-scan';
 
 const kinds = (text: string): string[] => scanText(text).map((f) => f.kind);
 
@@ -82,6 +89,30 @@ describe('scanUnifiedDiff', () => {
 		const findings = scanUnifiedDiff(diff);
 		expect(findings).toHaveLength(1);
 		expect(findings[0]).toMatchObject({ path: 'bot.py', line: 2 });
+	});
+});
+
+describe('unquoteGitPath', () => {
+	it('decodes octal UTF-8 escapes and C escapes', () => {
+		expect(
+			unquoteGitPath(String.raw`"b/\320\264\320\260\320\275\320\275\321\213\320\265.py"`),
+		).toBe('b/данные.py');
+		expect(unquoteGitPath(String.raw`"b/say \"hi\"\tnow.py"`)).toBe('b/say "hi"\tnow.py');
+		// Unescaped non-ASCII (core.quotePath=false) next to an escaped backslash.
+		expect(unquoteGitPath('"b/данные\\\\x.py"')).toBe('b/данные\\x.py');
+	});
+
+	it('leaves unquoted paths alone', () => {
+		expect(unquoteGitPath('b/bot.py')).toBe('b/bot.py');
+	});
+
+	it('gives the real path to findings in quoted diff headers', () => {
+		const diff = [
+			String.raw`+++ "b/\320\272\320\273\321\216\321\207.py"`,
+			'@@ -0,0 +1 @@',
+			`+KEY = "sk-ant-${'q'.repeat(30)}"`,
+		].join('\n');
+		expect(scanUnifiedDiff(diff)[0]).toMatchObject({ path: 'ключ.py', line: 1 });
 	});
 });
 
