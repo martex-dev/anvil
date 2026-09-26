@@ -12,8 +12,11 @@ import {
 } from '../transform/generate';
 import { insertAtCursors, requireEditor } from './edit-actions';
 
-/** Runs one of Monaco's built-in actions on the focused editor. */
-export function runEditorAction(id: string): void {
+/**
+ * Runs one of Monaco's built-in actions on the focused editor. The action's promise is returned
+ * so a failure reaches runCommand, which logs it and shows a toast.
+ */
+export async function runEditorAction(id: string): Promise<void> {
 	const editor = requireEditor();
 	if (!editor) return;
 	const action = editor.getAction(id);
@@ -21,7 +24,7 @@ export function runEditorAction(id: string): void {
 		toast.warn('Not available here', id);
 		return;
 	}
-	void action.run();
+	await action.run();
 }
 
 export async function changeLanguage(): Promise<void> {
