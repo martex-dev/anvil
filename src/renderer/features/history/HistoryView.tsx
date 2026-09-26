@@ -6,6 +6,7 @@ import { useSettings } from '../../app/hooks/use-settings';
 import { useWorkspace } from '../../app/hooks/use-workspace';
 import { call } from '../../lib/ipc';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
+import { useNow } from '../../lib/use-now';
 import { useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
 import { Button } from '../../ui/Button';
@@ -16,16 +17,7 @@ import { IconButton } from '../../ui/IconButton';
 import { Spinner } from '../../ui/Spinner';
 import { useEditorStore } from '../editor/editor-store';
 import { getModel } from '../editor/file-ops';
-
-function ago(ms: number): string {
-	const s = (Date.now() - ms) / 1000;
-	if (s < 60) return 'just now';
-	if (s < 3600) return `${Math.floor(s / 60)} min ago`;
-	if (s < 86_400) return `${Math.floor(s / 3600)} h ago`;
-	return `${Math.floor(s / 86_400)} d ago`;
-}
-
-const bytes = (n: number): string => (n < 1024 ? `${n} B` : `${(n / 1024).toFixed(1)} KB`);
+import { ago, bytes } from './history-format';
 
 /** Snapshots taken on every save of the active file; compare or roll back without git. */
 export function HistoryView(): JSX.Element {
@@ -43,6 +35,8 @@ export function HistoryView(): JSX.Element {
 		if (path && files.includes(path)) void q.refetch();
 	});
 	const [restore, setRestore] = useState<string | null>(null);
+	// Re-renders the relative times ("just now" → "1 min ago") while the view stays open.
+	const now = useNow(30_000);
 	const [confirmClear, setConfirmClear] = useState(false);
 
 	/** The snapshot's text, or null after telling the user why it could not be read. */
@@ -188,7 +182,7 @@ export function HistoryView(): JSX.Element {
 								className='group/snap flex min-w-0 flex-1 flex-col rounded-sm text-left outline-none focus-visible:shadow-glow'
 							>
 								<span className='text-12 text-fg-0 group-hover:text-accent group-focus-visible/snap:text-accent'>
-									{ago(s.time)}
+									{ago(s.time, now)}
 								</span>
 								<span className='num text-10 text-fg-2'>
 									{new Date(s.time).toLocaleString([], { hour12: false })} ·{' '}
