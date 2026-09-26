@@ -1,6 +1,6 @@
 import { open } from 'node:fs/promises';
 
-import { AnvilError } from '../../core/errors';
+import { AnvilError, errorMessage } from '../../core/errors';
 import type { TextFormat } from './format';
 import { buildTable, parseDelimited, sniffDelimiter, type Table, tableFromRecords } from './table';
 
@@ -24,6 +24,28 @@ export async function readHead(
 	}
 }
 
+/** One JSON value per line; blank lines are skipped, errors name the file's line number. */
+function parseJsonLines(text: string, truncated: boolean, maxRows: number): unknown[] {
+	const lines = text.split(/\r?\n/);
+	// The last line of a cut-off file is usually partial.
+	if (truncated) lines.pop();
+	const records: unknown[] = [];
+	for (let i = 0; i < lines.length && records.length < maxRows; i++) {
+		const line = lines[i] ?? '';
+		if (!line.trim()) continue;
+		try {
+			records.push(JSON.parse(line) as unknown);
+		} catch (error) {
+			throw new AnvilError(
+				'DATA_PARSE',
+				`Invalid JSON on line ${i + 1}: ${errorMessage(error)}`,
+				error,
+			);
+		}
+	}
+	return records;
+}
+
 /** Parses CSV/TSV/JSON/JSONL text (possibly only the head of the file) into a table. */
 export function tableFromText(
 	text: string,
@@ -39,21 +61,18 @@ export function tableFromText(
 		return buildTable(parsed.header, parsed.rows, truncated || parsed.truncated, 'built-in');
 	}
 	let records: unknown[];
-	try {
-		if (format === 'jsonl') {
-			const lines = text.split(/\r?\n/).filter((l) => l.trim());
-			// The last line of a cut-off file is usually partial.
-			if (truncated) lines.pop();
-			records = lines.slice(0, maxRows).map((l) => JSON.parse(l) as unknown);
-		} else {
-			if (truncated)
-				throw new AnvilError('DATA_TOO_LARGE', 'JSON files over 200 MB are not supported');
-			const parsed = JSON.parse(text) as unknown;
-			records = Array.isArray(parsed) ? parsed : [parsed];
+	if (format === 'jsonl') {
+		records = parseJsonLines(text, truncated, maxRows);
+	} else {
+		if (truncated)
+			throw new AnvilError('DATA_TOO_LARGE', 'JSON files over 200 MB are not supported');
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(text) as unknown;
+		} catch (error) {
+			throw new AnvilError('DATA_PARSE', `Invalid JSON: ${errorMessage(error)}`, error);
 		}
-	} catch (error) {
-		if (error instanceof AnvilError) throw error;
-		throw new AnvilError('DATA_PARSE', `Invalid JSON: ${(error as Error).message}`);
+		records = Array.isArray(parsed) ? parsed : [parsed];
 	}
 	return tableFromRecords(records, truncated || records.length >= maxRows);
 }
