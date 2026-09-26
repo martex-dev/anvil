@@ -80,7 +80,9 @@ export async function openPath(root: string, request: OpenFileRequest): Promise<
 		return;
 	}
 	const focus = request.focus ?? !request.preview;
-	const target = useTabsStore.getState().groups.find((g) => g.id === (group ?? tabs.focused));
+	// The group the tab lands in; its editor (and only its) handles the reveal.
+	const targetId = group ?? tabs.focused;
+	const target = useTabsStore.getState().groups.find((g) => g.id === targetId);
 	const shown =
 		target?.active === tab.id &&
 		useEditorStore.getState().files.some((f) => f.path === request.path && f.state === 'ready');
@@ -93,6 +95,7 @@ export async function openPath(root: string, request: OpenFileRequest): Promise<
 					path: request.path,
 					line: request.line,
 					column: request.column ?? 1,
+					group: targetId,
 					focus,
 				}
 			: null,

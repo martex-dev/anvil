@@ -197,13 +197,20 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 	const reveal = useEditorStore((s) => s.reveal);
 	useEffect(() => {
 		const editor = editorRef.current;
-		if (!editor || !reveal || !visible || reveal.path !== path || shown.current !== path)
+		if (
+			!editor ||
+			!reveal ||
+			!visible ||
+			reveal.group !== group ||
+			reveal.path !== path ||
+			shown.current !== path
+		)
 			return;
 		editor.setPosition({ lineNumber: reveal.line, column: reveal.column });
 		editor.revealLineInCenter(reveal.line);
 		if (reveal.focus) editor.focus();
 		useEditorStore.getState().setReveal(null);
-	}, [reveal, path, visible, ready]);
+	}, [reveal, path, visible, ready, group]);
 
 	return (
 		<div

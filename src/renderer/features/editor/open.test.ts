@@ -49,4 +49,14 @@ describe('openPath focus', () => {
 		expect(useEditorStore.getState().reveal).toMatchObject({ line: 9, focus: true });
 		expect(useTabsStore.getState().groups[0]?.tabIds).toEqual(['code:a.py']);
 	});
+
+	it('a reveal targets the group the file opens in', async () => {
+		await openPath('C:/proj', { path: 'a.py' });
+		await openPath('C:/proj', { path: 'a.py', line: 3, side: true });
+		expect(useTabsStore.getState().groups.map((g) => g.id)).toEqual([0, 1]);
+		expect(useEditorStore.getState().reveal).toMatchObject({ line: 3, group: 1 });
+		useTabsStore.getState().focus(0);
+		await openPath('C:/proj', { path: 'a.py', line: 7 });
+		expect(useEditorStore.getState().reveal).toMatchObject({ line: 7, group: 0 });
+	});
 });

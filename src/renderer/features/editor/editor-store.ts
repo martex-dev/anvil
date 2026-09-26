@@ -48,6 +48,8 @@ export interface RevealRequest {
 	path: string;
 	line: number;
 	column: number;
+	/** The editor group the file was opened in: the same file may be shown in both. */
+	group: number;
 	/** Whether revealing also moves keyboard focus into the editor. */
 	focus: boolean;
 }
