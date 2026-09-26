@@ -10,8 +10,12 @@ export function EditorDialogs(): JSX.Element {
 	const closing = useEditorStore((s) => s.closing);
 	const setClosing = useEditorStore((s) => s.setClosing);
 	const onCloseDone = (): void => setClosing(null);
-	const conflict = useEditorStore((s) => s.conflict);
-	const setConflict = useEditorStore((s) => s.setConflict);
+	// Save All can hit several conflicts: they're asked about one after another.
+	const conflict = useEditorStore((s) => s.conflicts[0] ?? null);
+	const dropConflict = useEditorStore((s) => s.dropConflict);
+	const onConflictDone = (): void => {
+		if (conflict) dropConflict(conflict);
+	};
 	const name = (path: string | null): string => path?.split('/').at(-1) ?? '';
 	// Set when "Don't Save" removes the tab: Radix would return focus to its (gone) close button.
 	const tabRemoved = useRef(false);
@@ -69,19 +73,19 @@ export function EditorDialogs(): JSX.Element {
 			/>
 			<Dialog
 				open={conflict !== null}
-				onOpenChange={(open) => !open && setConflict(null)}
+				onOpenChange={(open) => !open && onConflictDone()}
 				title={`${name(conflict)} changed on disk`}
 				description='Another program modified this file after you opened it. Which version do you want to keep?'
 				width='sm'
 				footer={
 					<>
-						<Button variant='ghost' onClick={() => setConflict(null)}>
+						<Button variant='ghost' onClick={onConflictDone}>
 							Cancel
 						</Button>
 						<Button
 							onClick={() => {
 								const path = conflict;
-								setConflict(null);
+								onConflictDone();
 								if (path) void reloadFromDisk(path);
 							}}
 						>
@@ -91,7 +95,7 @@ export function EditorDialogs(): JSX.Element {
 							variant='primary'
 							onClick={() => {
 								const path = conflict;
-								setConflict(null);
+								onConflictDone();
 								if (path) void saveFile(path, true);
 							}}
 						>

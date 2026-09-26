@@ -148,7 +148,7 @@ async function writeBuffer(path: string, force: boolean): Promise<boolean> {
 		return true;
 	} catch (error) {
 		if (error instanceof IpcCallError && error.code === 'FS_CONFLICT') {
-			store.setConflict(path);
+			store.queueConflict(path);
 			return false;
 		}
 		rlog.error('editor', `save failed: ${path}`, error);
@@ -161,7 +161,13 @@ async function writeBuffer(path: string, force: boolean): Promise<boolean> {
 }
 
 export async function saveAll(): Promise<void> {
-	for (const f of useEditorStore.getState().files) if (f.dirty) await saveFile(f.path);
+	const unsaved: string[] = [];
+	for (const f of useEditorStore.getState().files) {
+		if (f.dirty && !(await saveFile(f.path))) unsaved.push(f.name);
+	}
+	// Each failure has its own dialog or toast; this says how many are still unsaved overall.
+	if (unsaved.length > 1)
+		toast.warn(`${unsaved.length} files were not saved`, unsaved.join(', '));
 }
 
 /**

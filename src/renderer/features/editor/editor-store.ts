@@ -60,8 +60,11 @@ interface EditorState {
 	cursor: CursorInfo | null;
 	/** Last cursor line per editor group, so an unfocused group's breadcrumbs stay put. */
 	groupLines: Readonly<Record<number, GroupLine>>;
-	/** Save conflict awaiting a decision (overwrite / reload). */
-	conflict: string | null;
+	/**
+	 * Files whose save hit a changed-on-disk conflict, oldest first. EditorDialogs asks about the
+	 * first (overwrite / reload); Save All can queue several.
+	 */
+	conflicts: string[];
 	/** Position to scroll to once the file's model is shown. */
 	reveal: RevealRequest | null;
 	/** Dirty file whose close is waiting for Save / Don't Save / Cancel. */
@@ -75,7 +78,8 @@ interface EditorState {
 	setActive: (path: string | null) => void;
 	setCursor: (cursor: CursorInfo | null) => void;
 	setGroupLine: (group: number, line: GroupLine | null) => void;
-	setConflict: (path: string | null) => void;
+	queueConflict: (path: string) => void;
+	dropConflict: (path: string) => void;
 	setReveal: (reveal: RevealRequest | null) => void;
 	setClosing: (path: string | null) => void;
 	reset: () => void;
@@ -86,7 +90,7 @@ export const useEditorStore = create<EditorState>((set) => ({
 	active: null,
 	cursor: null,
 	groupLines: {},
-	conflict: null,
+	conflicts: [],
 	reveal: null,
 	closing: null,
 	contentVersion: 0,
@@ -99,6 +103,7 @@ export const useEditorStore = create<EditorState>((set) => ({
 	remove: (path) =>
 		set((s) => ({
 			files: s.files.filter((f) => f.path !== path),
+			conflicts: s.conflicts.filter((p) => p !== path),
 			// The tabs store picks the next tab (and EditorBridge mirrors it); never point at a
 			// buffer that no longer exists.
 			active: s.active === path ? null : s.active,
@@ -115,7 +120,9 @@ export const useEditorStore = create<EditorState>((set) => ({
 				groupLines: Object.fromEntries(line ? [...others, [group, line]] : others),
 			};
 		}),
-	setConflict: (conflict) => set({ conflict }),
+	queueConflict: (path) =>
+		set((s) => (s.conflicts.includes(path) ? s : { conflicts: [...s.conflicts, path] })),
+	dropConflict: (path) => set((s) => ({ conflicts: s.conflicts.filter((p) => p !== path) })),
 	setReveal: (reveal) => set({ reveal }),
 	setClosing: (closing) => set({ closing }),
 	reset: () =>
@@ -124,7 +131,7 @@ export const useEditorStore = create<EditorState>((set) => ({
 			active: null,
 			cursor: null,
 			groupLines: {},
-			conflict: null,
+			conflicts: [],
 			reveal: null,
 			closing: null,
 		}),

@@ -7,9 +7,19 @@ import { useToastStore } from '../../stores/toast-store';
 import { useEditorStore } from './editor-store';
 
 const call = vi.fn();
+const { IpcCallError } = vi.hoisted(() => ({
+	IpcCallError: class extends Error {
+		constructor(
+			readonly code: string,
+			message: string,
+		) {
+			super(message);
+		}
+	},
+}));
 vi.mock('../../lib/ipc', () => ({
 	call: (...args: unknown[]): unknown => call(...args),
-	IpcCallError: class extends Error {},
+	IpcCallError,
 }));
 vi.mock('../../lib/log', () => ({ rlog: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 vi.mock('../../app/hooks/use-settings', () => ({ getSettings: () => ({}) }));
@@ -21,6 +31,7 @@ const {
 	onExternalChange,
 	openFile,
 	reloadFromDisk,
+	saveAll,
 	saveFile,
 	saveViewState,
 } = await import('./file-ops');
@@ -244,7 +255,7 @@ describe('file ops', () => {
 			expect.objectContaining({ expectedMtimeMs: 1 }),
 			expect.objectContaining({ expectedMtimeMs: 11 }),
 		]);
-		expect(useEditorStore.getState().conflict).toBeNull();
+		expect(useEditorStore.getState().conflicts).toEqual([]);
 	});
 
 	it('keeps keystrokes typed while a reload read is in flight', async () => {
@@ -325,5 +336,22 @@ describe('file ops', () => {
 		call.mockResolvedValue(text);
 		await openFile(driveRoot, 'D:\\', 'src/a.py');
 		expect(file).toHaveBeenCalledWith('D:/src/a.py');
+	});
+
+	it('asks about every conflict Save All runs into', async () => {
+		call.mockResolvedValue(text);
+		await openFile(monaco, 'C:/proj', 'a.py');
+		await openFile(monaco, 'C:/proj', 'b.py');
+		useEditorStore.getState().update('a.py', { dirty: true });
+		useEditorStore.getState().update('b.py', { dirty: true });
+		call.mockRejectedValue(new IpcCallError('FS_CONFLICT', 'changed on disk'));
+		await saveAll();
+		expect(useEditorStore.getState().conflicts).toEqual(['a.py', 'b.py']);
+		expect(useToastStore.getState().toasts.at(-1)).toMatchObject({
+			title: '2 files were not saved',
+			description: 'a.py, b.py',
+		});
+		closeFile('a.py');
+		expect(useEditorStore.getState().conflicts).toEqual(['b.py']);
 	});
 });
