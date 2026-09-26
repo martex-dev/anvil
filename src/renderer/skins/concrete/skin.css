@@ -1,0 +1,179 @@
+/*
+ * Concrete: shape, type and the pane system. Everything is paper with a 3px ink rule and a
+ * hard offset shadow; nothing is rounded, blurred or glowing. The chrome bands live in
+ * chrome.css, tabs and popups in sheets.css, the backdrop in paper.css.
+ */
+
+html[data-skin='concrete'] {
+	--r-sm: 0px;
+	--r-md: 0px;
+	--r-lg: 0px;
+	--r-xl: 0px;
+
+	--cc-rule: 3px;
+	--cc-drop: 5px;
+	--cc-focus: var(--skin-ink);
+	--cc-accent-text: var(--skin-accent-text);
+
+	/* Accent washes are printed as real tints so active rows read on paper. */
+	--accent-soft: color-mix(in oklab, var(--accent) 55%, transparent);
+	--accent-faint: color-mix(in oklab, var(--accent) 28%, transparent);
+
+	/* Focus is a two-tone ring, never a glow: accent inside, ink outside. */
+	--glow: 0 0 0 2px var(--accent), 0 0 0 4px var(--skin-ink);
+	--glow-soft: none;
+	--shadow-panel: var(--cc-drop) var(--cc-drop) 0 var(--skin-shadow);
+	--shadow-float: 8px 8px 0 var(--skin-shadow);
+	--grain: transparent;
+}
+
+/* The solid bars: title band, status strip, numeral column, pane headers. Inside them the
+ * text tokens flip so every shared component reads on the ink. */
+html[data-skin='concrete'] :is(.cc-band, [data-part='pane-header'], [data-ai-chat] > header) {
+	--text-0: var(--skin-band-text);
+	--text-1: var(--skin-band-text-1);
+	--text-2: var(--skin-band-text-2);
+	--up: var(--skin-band-up);
+	--down: var(--skin-band-down);
+	--warn: var(--skin-band-warn);
+	--skin-ink: var(--skin-band-text);
+	--cc-focus: var(--skin-band-accent);
+	--cc-accent-text: var(--skin-band-accent);
+	--glass-edge: var(--skin-band-text-2);
+	--bg-2: color-mix(in oklab, var(--skin-band-text) 10%, var(--skin-band));
+	--bg-3: color-mix(in oklab, var(--skin-band-text) 18%, var(--skin-band));
+	--glow: 0 0 0 2px var(--skin-band-accent);
+	background: var(--skin-band);
+	color: var(--text-0);
+}
+
+/* ---- Base ------------------------------------------------------------------------------ */
+
+html[data-skin='concrete'] body {
+	letter-spacing: 0.005em;
+}
+html[data-skin='concrete'] :focus-visible {
+	outline: 3px solid var(--cc-focus);
+	outline-offset: 1px;
+}
+html[data-skin='concrete'] ::selection {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+html[data-skin='concrete'] .text-accent {
+	color: var(--cc-accent-text);
+}
+html[data-skin='concrete'] .rounded-full {
+	border-radius: 0;
+}
+html[data-skin='concrete'] svg.lucide {
+	stroke-width: 2.5;
+	stroke-linecap: square;
+	stroke-linejoin: miter;
+}
+html[data-skin='concrete'] .hud {
+	font-family: var(--font-ui);
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	color: var(--text-1);
+}
+
+html[data-skin='concrete'] ::-webkit-scrollbar {
+	width: 12px;
+	height: 12px;
+}
+html[data-skin='concrete'] ::-webkit-scrollbar-thumb {
+	background: var(--text-2);
+	border: 3px solid transparent;
+	border-radius: 0;
+	background-clip: padding-box;
+}
+html[data-skin='concrete'] ::-webkit-scrollbar-thumb:hover {
+	background-color: var(--text-0);
+}
+
+/* ---- Panes ----------------------------------------------------------------------------- */
+
+html[data-skin='concrete'] [data-part='workbench'] {
+	padding-top: var(--pane-gap);
+}
+
+html[data-skin='concrete'] .glass {
+	background: var(--bg-1);
+	backdrop-filter: none;
+	border: var(--cc-rule) solid var(--skin-ink);
+	border-radius: 0;
+	box-shadow: var(--shadow-panel);
+}
+html[data-skin='concrete'] .glass::before,
+html[data-skin='concrete'] .brackets-frame {
+	display: none;
+}
+
+/* The pane you're in gets the accent block behind it, outlined in ink like a second print pass. */
+html[data-skin='concrete'] :is(.pane-focus, [data-part='editor-group']):focus-within {
+	border-color: var(--skin-ink);
+	box-shadow:
+		7px 7px 0 0 var(--accent),
+		7px 7px 0 var(--cc-rule) var(--skin-ink);
+}
+
+/* Pane headers: a solid bar with a big magazine numeral. */
+html[data-skin='concrete'] [data-part='pane-header'] {
+	height: 40px;
+	gap: 10px;
+	padding-left: 10px;
+	border-bottom: var(--cc-rule) solid var(--skin-ink);
+	border-bottom-color: var(--skin-band);
+}
+html[data-skin='concrete'] [data-part='pane-index'] {
+	font-family: 'Bebas Neue', var(--font-display);
+	font-size: 34px;
+	line-height: 1;
+	letter-spacing: 0;
+	padding-top: 4px;
+	color: var(--skin-band-accent);
+}
+html[data-skin='concrete'] [data-part='pane-rule'] {
+	width: var(--cc-rule);
+	height: 22px;
+	background: var(--skin-band-text);
+}
+html[data-skin='concrete'] [data-part='pane-title'] {
+	font-family: var(--font-display);
+	font-size: 15px;
+	font-weight: 400;
+	letter-spacing: 0.02em;
+	color: var(--skin-band-text);
+}
+
+/* The chat pane's own header gets the same bar treatment. */
+html[data-skin='concrete'] [data-ai-chat] > header {
+	height: 40px;
+	border-bottom: 0;
+}
+html[data-skin='concrete'] [data-ai-chat] > header > .hud {
+	font-family: var(--font-display);
+	font-size: 15px;
+	font-weight: 400;
+	letter-spacing: 0.02em;
+	color: var(--skin-band-text);
+}
+html[data-skin='concrete'] [data-ai-chat] > header > button:not([aria-label]) {
+	border: 2px solid var(--skin-band-text-2);
+	background: transparent;
+}
+
+/* Splitters: the gutter shows a solid ink bar while grabbed or hovered. */
+html[data-skin='concrete'] [data-part='splitter-handle'] {
+	background: var(--skin-ink);
+	border-radius: 0;
+	box-shadow: none;
+}
+html[data-skin='concrete'] [data-part='splitter'][data-axis='x'] [data-part='splitter-handle'] {
+	width: 4px;
+}
+html[data-skin='concrete'] [data-part='splitter'][data-axis='y'] [data-part='splitter-handle'] {
+	height: 4px;
+}
