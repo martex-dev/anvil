@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { capRows } from './change-rows';
+import { capRows, refocusIndex } from './change-rows';
 
 describe('capRows', () => {
 	it('keeps short lists whole', () => {
@@ -15,5 +15,16 @@ describe('capRows', () => {
 		expect(shown).toHaveLength(1000);
 		expect(shown.at(-1)).toBe(999);
 		expect(hidden).toBe(24_000);
+	});
+});
+
+describe('refocusIndex', () => {
+	it("focuses the row that took the moved row's place", () => {
+		expect(refocusIndex(2, 5)).toBe(2);
+	});
+
+	it('falls back to the last row, or nothing when the list emptied', () => {
+		expect(refocusIndex(4, 4)).toBe(3);
+		expect(refocusIndex(0, 0)).toBeNull();
 	});
 });

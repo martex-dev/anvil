@@ -49,9 +49,11 @@ export function useGitActions(): {
 	busy: boolean;
 } {
 	const client = useQueryClient();
-	const done = (): void => {
-		void client.invalidateQueries({ queryKey: GIT_STATUS_KEY });
+	// Returned so a mutation stays pending until the status has refreshed: the lists never
+	// show a stale row as actionable, and focus can be restored against the new rows.
+	const done = (): Promise<void> => {
 		invalidateGitLines();
+		return client.invalidateQueries({ queryKey: GIT_STATUS_KEY });
 	};
 	const fail = (what: string) => (error: Error) => toast.error(`${what} failed`, error.message);
 

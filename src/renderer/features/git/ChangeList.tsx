@@ -1,11 +1,11 @@
 import { ChevronDown, FileCode2, Minus, Plus } from 'lucide-react';
-import { type JSX, useState } from 'react';
+import { type JSX, useEffect, useRef, useState } from 'react';
 
 import type { GitChange, GitChangeKind } from '@shared/ipc/channels/git';
 
 import { cn } from '../../lib/cn';
 import { IconButton } from '../../ui/IconButton';
-import { capRows } from './change-rows';
+import { capRows, refocusIndex } from './change-rows';
 
 const BADGE: Record<GitChangeKind, { letter: string; className: string; label: string }> = {
 	modified: { letter: 'M', className: 'text-warn', label: 'Modified' },
@@ -34,6 +34,28 @@ export function ChangeList({
 	busy,
 }: ChangeListProps): JSX.Element | null {
 	const [collapsed, setCollapsed] = useState(false);
+	const listRef = useRef<HTMLUListElement>(null);
+	const headerRef = useRef<HTMLButtonElement>(null);
+	// Index of the row whose (un)stage button was used. That row moves to the other list, so
+	// once the operation (and the status refresh) is done, focus goes to the row now there.
+	const pendingFocus = useRef<number | null>(null);
+	useEffect(() => {
+		const index = pendingFocus.current;
+		if (busy || index === null) return;
+		pendingFocus.current = null;
+		// Only fix up focus that was lost; never pull it from somewhere the user moved it to.
+		const active = document.activeElement;
+		const lost =
+			!active ||
+			active === document.body ||
+			!active.isConnected ||
+			(listRef.current?.contains(active) ?? false);
+		if (!lost) return;
+		const buttons = listRef.current?.querySelectorAll<HTMLButtonElement>('[data-toggle]') ?? [];
+		const target = refocusIndex(index, buttons.length);
+		(target === null ? headerRef.current : buttons[target])?.focus();
+	}, [busy, changes]);
+
 	if (changes.length === 0) return null;
 	const actionLabel = staged ? 'Unstage' : 'Stage';
 	const ActionIcon = staged ? Minus : Plus;
@@ -43,6 +65,7 @@ export function ChangeList({
 		<section aria-label={title}>
 			<div className='group flex h-6 items-center gap-1 pr-1 pl-1'>
 				<button
+					ref={headerRef}
 					type='button'
 					onClick={() => setCollapsed((c) => !c)}
 					aria-expanded={!collapsed}
@@ -69,8 +92,8 @@ export function ChangeList({
 				/>
 			</div>
 			{!collapsed && (
-				<ul>
-					{shown.map((change) => {
+				<ul ref={listRef}>
+					{shown.map((change, index) => {
 						const badge = BADGE[change.kind];
 						const name = change.path.split('/').at(-1) ?? change.path;
 						const dir = change.path.slice(0, -name.length - 1);
@@ -104,7 +127,11 @@ export function ChangeList({
 									icon={<ActionIcon size={12} />}
 									disabled={busy}
 									className='opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
-									onClick={() => onToggle([change.path])}
+									data-toggle
+									onClick={() => {
+										pendingFocus.current = index;
+										onToggle([change.path]);
+									}}
 								/>
 								<span
 									className={cn(
