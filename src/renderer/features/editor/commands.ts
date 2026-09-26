@@ -25,7 +25,6 @@ import { requestOpenFile } from '../../stores/workbench-store';
 import { quickPick } from '../../ui/QuickPick';
 import { nextBookmarkLine, toggleBookmarkAt } from './extras/bookmarks';
 import { isBlameEnabled, setBlameEnabled } from './extras/git-lines';
-import { repaintShield } from './extras/shield';
 import { saveAll, saveFile } from './file-ops';
 import { closeTab } from './open';
 
@@ -211,8 +210,8 @@ export const EDITOR_COMMANDS: Command[] = [
 		keywords: ['env', 'blur', 'streamer', 'keys', 'privacy'],
 		run: async () => {
 			const on = !getSettings().secretShield;
+			// The shield repaints itself when the cached setting changes.
 			await updateSettings({ secretShield: on });
-			repaintShield();
 			toast.info(`Secret shield ${on ? 'on' : 'off'}`);
 		},
 	},

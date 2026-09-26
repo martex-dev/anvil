@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
 import { DEFAULT_SETTINGS, editorFontFamily, type Settings } from '@shared/settings';
@@ -38,6 +38,27 @@ export function getSettings(): Settings {
 export async function updateSettings(patch: Partial<Settings>): Promise<void> {
 	const next = await call('settings:update', patch);
 	queryClient.setQueryData(SETTINGS_KEY, next);
+}
+
+/**
+ * Calls `onChange` whenever `key` changes in the cached settings, whoever changed it: the status
+ * bar, Settings, a command, or main via `settings:changed`. Returns the unsubscribe.
+ */
+export function watchSetting<K extends keyof Settings>(
+	key: K,
+	onChange: (value: Settings[K]) => void,
+	client: QueryClient = queryClient,
+): () => void {
+	const read = (): Settings[K] =>
+		(client.getQueryData<Settings>(SETTINGS_KEY) ?? DEFAULT_SETTINGS)[key];
+	let last = read();
+	return client.getQueryCache().subscribe((event) => {
+		if (event.type !== 'updated' || event.query.queryKey[0] !== SETTINGS_KEY[0]) return;
+		const next = read();
+		if (Object.is(next, last)) return;
+		last = next;
+		onChange(next);
+	});
 }
 
 /** Mounted once: applies appearance settings to <html> and follows changes from main. */

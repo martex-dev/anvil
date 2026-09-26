@@ -2,7 +2,7 @@ import type * as Monaco from 'monaco-editor';
 
 import { isEnvFile, scanText } from '@shared/secret-scan';
 
-import { getSettings } from '../../../app/hooks/use-settings';
+import { getSettings, watchSetting } from '../../../app/hooks/use-settings';
 import type { MonacoApi } from '../../../lib/monaco/setup';
 import { toWorkspacePath } from '../../../lib/monaco/workspace-root';
 
@@ -33,6 +33,7 @@ export function attachShield(
 	editor: Monaco.editor.IStandaloneCodeEditor,
 	monaco: MonacoApi,
 ): Monaco.IDisposable {
+	watchShieldSetting();
 	const blur = editor.createDecorationsCollection();
 	let timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -100,7 +101,14 @@ export function attachShield(
 	};
 }
 
-export function repaintShield(): void {
-	// Settings toggled: every attached editor repaints right away.
-	window.dispatchEvent(new CustomEvent('anvil:shield'));
+let watching = false;
+
+/**
+ * Repaints every attached editor as soon as the setting flips, however it was toggled (status
+ * bar, Settings, the command, or another window), so the blur never lags the switch.
+ */
+function watchShieldSetting(): void {
+	if (watching) return;
+	watching = true;
+	watchSetting('secretShield', () => window.dispatchEvent(new CustomEvent('anvil:shield')));
 }

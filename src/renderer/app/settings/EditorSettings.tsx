@@ -2,7 +2,6 @@ import type { JSX } from 'react';
 
 import { EDITOR_FONTS, type EditorFontId, type Settings } from '@shared/settings';
 
-import { repaintShield } from '../../features/editor/extras/shield';
 import { Select } from '../../ui/Select';
 import { SettingRow } from './SettingRow';
 import { SettingSegmented } from './SettingSegmented';
@@ -143,10 +142,7 @@ export function EditorSettings({
 				label='Secret shield'
 				description='Blur .env values, flag API keys, private keys and seed phrases in code, and block commits that stage them.'
 				value={s.secretShield}
-				onChange={(secretShield) => {
-					update({ secretShield });
-					setTimeout(repaintShield, 50);
-				}}
+				onChange={(secretShield) => update({ secretShield })}
 			/>
 		</div>
 	);
