@@ -32,6 +32,12 @@ html[data-skin='mainframe'][data-theme='mf-greenbar']
 	):not([data-selected='true'], [data-highlighted], [aria-selected='true']) {
 	background-color: var(--skin-bar);
 }
+/* Outline rows are buttons wrapped in a role='none' list item, so band by the item instead. */
+html[data-skin='mainframe'][data-theme='mf-greenbar']
+	[role='none']:is(:nth-child(6n + 4), :nth-child(6n + 5), :nth-child(6n + 6))
+	> [role='treeitem']:not([aria-selected='true']) {
+	background-color: var(--skin-bar);
+}
 
 /* Ink doesn't glow; the brand and title block print in red ribbon. */
 html[data-skin='mainframe'][data-theme='mf-greenbar'] .mf-brand {
