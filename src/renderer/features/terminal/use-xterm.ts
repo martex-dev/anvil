@@ -40,9 +40,11 @@ interface Options {
 export function useXterm(
 	hostRef: RefObject<HTMLDivElement | null>,
 	{ sessionId, preset, fontSize, enabled, initialCommand, focus = true, onOpen }: Options,
-): { status: TerminalStatus; error: string | null } {
+): { status: TerminalStatus; error: string | null; retry: () => void } {
 	const [status, setStatus] = useState<TerminalStatus>('starting');
 	const [error, setError] = useState<string | null>(null);
+	// Bumped by retry(): re-runs the effect so a failed start can be attempted again.
+	const [attempt, setAttempt] = useState(0);
 
 	useEffect(() => {
 		const host = hostRef.current;
@@ -210,7 +212,13 @@ export function useXterm(
 		};
 		// initialCommand/focus/onOpen only matter for the first open of a session.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [hostRef, sessionId, preset, fontSize, enabled]);
+	}, [hostRef, sessionId, preset, fontSize, enabled, attempt]);
 
-	return { status, error };
+	const retry = (): void => {
+		setError(null);
+		setStatus('starting');
+		setAttempt((n) => n + 1);
+	};
+
+	return { status, error, retry };
 }

@@ -9,7 +9,7 @@ import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
 import { ErrorState } from '../../ui/ErrorState';
 import { Spinner } from '../../ui/Spinner';
-import { type TermTab, useTerminalStore } from './terminal-store';
+import { closeTerminal, type TermTab, useTerminalStore } from './terminal-store';
 import { useXterm } from './use-xterm';
 
 export const PRESETS_KEY = ['terminal', 'presets'] as const;
@@ -27,7 +27,7 @@ export function TerminalPane({ tab, visible }: { tab: TermTab; visible: boolean 
 	const hostRef = useRef<HTMLDivElement>(null);
 	// Captured once: the command is typed only into the session this pane starts.
 	const [initial] = useState(tab.initialCommand);
-	const { status, error } = useXterm(hostRef, {
+	const { status, error, retry } = useXterm(hostRef, {
 		sessionId: tab.id,
 		preset: tab.preset,
 		fontSize: Math.max(11, settings.editorFontSize - 1),
@@ -95,8 +95,22 @@ export function TerminalPane({ tab, visible }: { tab: TermTab; visible: boolean 
 			/>
 		);
 	}
-	if (status === 'error')
-		return <ErrorState title='Terminal failed to start' message={error ?? 'Unknown error'} />;
+	if (status === 'error') {
+		// The host div is unmounted here; retry() re-runs the start once it is back.
+		return (
+			<div className='flex h-full flex-col items-center justify-center'>
+				<ErrorState
+					className='h-auto'
+					title='Terminal failed to start'
+					message={error ?? 'Unknown error'}
+					onRetry={retry}
+				/>
+				<Button size='sm' variant='ghost' onClick={() => closeTerminal(tab.id)}>
+					Close terminal
+				</Button>
+			</div>
+		);
+	}
 
 	return (
 		<div
