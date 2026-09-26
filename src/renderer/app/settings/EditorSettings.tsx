@@ -46,6 +46,7 @@ export function EditorSettings({
 			/>
 			<SettingRow label='Line height' description='Air between lines, relative to font size.'>
 				<SettingSegmented
+					aria-label='Line height'
 					value={String(s.editorLineHeight)}
 					options={LINE_HEIGHTS}
 					onChange={(v) => update({ editorLineHeight: Number(v) })}
@@ -53,6 +54,7 @@ export function EditorSettings({
 			</SettingRow>
 			<SettingRow label='Cursor'>
 				<SettingSegmented
+					aria-label='Cursor'
 					value={s.cursorStyle}
 					options={['line', 'block', 'underline'] as const}
 					onChange={(cursorStyle) => update({ cursorStyle })}
