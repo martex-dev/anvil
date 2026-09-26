@@ -14,12 +14,6 @@ export const useSearchParams = create<{
 	setParams: (patch) => set((s) => ({ params: { ...s.params, ...patch } })),
 }));
 
-/** Bumped by the "Search in Files" command so the panel focuses its input even if already open. */
-export const useSearchFocus = create<{ tick: number; focus: () => void }>((set) => ({
-	tick: 0,
-	focus: () => set((s) => ({ tick: s.tick + 1 })),
-}));
-
 export function useFileSearch(
 	root: string | null,
 	query: SearchQuery,

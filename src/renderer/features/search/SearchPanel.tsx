@@ -3,12 +3,13 @@ import { type JSX, type ReactNode, useEffect, useMemo, useRef, useState } from '
 
 import { useWorkspace } from '../../app/hooks/use-workspace';
 import { cn } from '../../lib/cn';
+import { useFocusOnViewRequest } from '../../stores/view-focus-store';
 import { EmptyState } from '../../ui/EmptyState';
 import { Input } from '../../ui/Input';
 import { Spinner } from '../../ui/Spinner';
 import { Tooltip } from '../../ui/Tooltip';
 import { SearchResults } from './SearchResults';
-import { useFileSearch, useSearchFocus, useSearchParams } from './use-search';
+import { useFileSearch, useSearchParams } from './use-search';
 
 const DEBOUNCE_MS = 250;
 
@@ -59,14 +60,7 @@ export function SearchPanel(): JSX.Element {
 	const exclude = str(params['exclude']);
 	const [showGlobs, setShowGlobs] = useState(Boolean(include || exclude));
 	const inputRef = useRef<HTMLInputElement>(null);
-	const focusTick = useSearchFocus((s) => s.tick);
-
-	useEffect(() => {
-		if (focusTick > 0) {
-			inputRef.current?.focus();
-			inputRef.current?.select();
-		}
-	}, [focusTick]);
+	useFocusOnViewRequest('search', inputRef, info.root !== null);
 
 	useEffect(() => {
 		const id = setTimeout(() => {

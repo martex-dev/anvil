@@ -3,6 +3,7 @@ import { type JSX, useEffect, useImperativeHandle, useRef, useState } from 'reac
 import type { FsEntry } from '@shared/ipc/channels/fs';
 
 import { toast } from '../../stores/toast-store';
+import { useFocusOnViewRequest } from '../../stores/view-focus-store';
 import { requestOpenFile, useWorkbenchStore } from '../../stores/workbench-store';
 import { ErrorState } from '../../ui/ErrorState';
 import { Spinner } from '../../ui/Spinner';
@@ -44,6 +45,8 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 	const actions = useFsActions(root);
 	const activeFile = useWorkbenchStore((s) => s.activeFile);
 	const containerRef = useRef<HTMLDivElement>(null);
+	// The tree only renders once the root listing has loaded; focus it then.
+	useFocusOnViewRequest('explorer', containerRef, !tree.isRootLoading && !tree.rootError);
 
 	const focusedEntry = tree.rows.find((r) => r.kind === 'entry' && r.entry.path === focused);
 	const baseDir = (entry: FsEntry | null | undefined): string =>
