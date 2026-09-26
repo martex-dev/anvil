@@ -1,0 +1,488 @@
+@import 'tailwindcss';
+@import './tokens.css';
+
+@import '@fontsource/geist-sans/latin-400.css';
+@import '@fontsource/geist-sans/latin-500.css';
+@import '@fontsource/geist-sans/latin-600.css';
+@import '@fontsource/geist-sans/latin-700.css';
+@import '@fontsource/jetbrains-mono/latin-400.css';
+@import '@fontsource/jetbrains-mono/latin-500.css';
+@import '@fontsource/jetbrains-mono/latin-700.css';
+
+/*
+ * Map tokens into Tailwind. Default palettes are wiped so only token colors exist:
+ * `bg-red-500` simply doesn't compile, which keeps hardcoded colors out.
+ */
+@theme inline {
+	--color-*: initial;
+	--color-bg-0: var(--bg-0);
+	--color-bg-1: var(--bg-1);
+	--color-bg-2: var(--bg-2);
+	--color-bg-3: var(--bg-3);
+	--color-glass: var(--glass);
+	--color-glass-strong: var(--glass-strong);
+	--color-glass-edge: var(--glass-edge);
+	--color-border: var(--border);
+	--color-border-strong: var(--border-strong);
+	--color-fg-0: var(--text-0);
+	--color-fg-1: var(--text-1);
+	--color-fg-2: var(--text-2);
+	--color-up: var(--up);
+	--color-down: var(--down);
+	--color-warn: var(--warn);
+	--color-info: var(--info);
+	--color-accent: var(--accent);
+	--color-accent-2: var(--accent-2);
+	--color-accent-soft: var(--accent-soft);
+	--color-accent-faint: var(--accent-faint);
+	--color-on-accent: var(--on-accent);
+	--color-up-soft: var(--up-soft);
+	--color-down-soft: var(--down-soft);
+	--color-warn-soft: var(--warn-soft);
+	--color-info-soft: var(--info-soft);
+	--color-scrim: var(--scrim);
+	--color-transparent: transparent;
+	--color-current: currentColor;
+
+	--font-sans: var(--font-ui);
+	--font-mono: var(--font-code);
+
+	--text-*: initial;
+	--text-10: 10px;
+	--text-11: 11px;
+	--text-12: 12px;
+	--text-13: 13px;
+	--text-14: 14px;
+	--text-16: 16px;
+	--text-20: 20px;
+	--text-28: 28px;
+	--text-48: 48px;
+
+	--radius-*: initial;
+	--radius-sm: 4px;
+	--radius-md: 6px;
+	--radius-lg: 10px;
+	--radius-xl: 14px;
+	--radius-full: 9999px;
+
+	--shadow-glow: var(--glow);
+	--shadow-glow-soft: var(--glow-soft);
+	--shadow-panel: var(--shadow-panel);
+	--ease-out: var(--ease-out);
+}
+
+@layer base {
+	html,
+	body,
+	#root {
+		height: 100%;
+	}
+
+	html {
+		font-size: var(--ui-font-size);
+		color-scheme: dark;
+	}
+
+	body {
+		margin: 0;
+		background: var(--bg-0);
+		color: var(--text-0);
+		font-family: var(--font-ui);
+		font-size: var(--ui-font-size);
+		line-height: 1.45;
+		-webkit-font-smoothing: antialiased;
+		overflow: hidden;
+		user-select: none;
+	}
+
+	input,
+	textarea,
+	[contenteditable='true'],
+	.selectable {
+		user-select: text;
+	}
+
+	::selection {
+		background: color-mix(in oklab, var(--accent) 30%, transparent);
+	}
+
+	:focus-visible {
+		outline: 1px solid var(--accent);
+		outline-offset: 1px;
+	}
+
+	code,
+	kbd,
+	pre,
+	.num {
+		font-family: var(--font-code);
+		font-variant-numeric: tabular-nums;
+	}
+
+	::-webkit-scrollbar {
+		width: 10px;
+		height: 10px;
+	}
+	::-webkit-scrollbar-thumb {
+		background: color-mix(in oklab, var(--text-2) 30%, transparent);
+		border: 3px solid transparent;
+		background-clip: padding-box;
+		border-radius: 9999px;
+	}
+	::-webkit-scrollbar-thumb:hover {
+		background-color: color-mix(in oklab, var(--accent) 45%, transparent);
+	}
+	::-webkit-scrollbar-track,
+	::-webkit-scrollbar-corner {
+		background: transparent;
+	}
+}
+
+@layer components {
+	/* A floating pane of frosted glass over the ambient background. */
+	.glass {
+		position: relative;
+		background: var(--glass);
+		backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+		border: 1px solid var(--glass-edge);
+		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-panel);
+	}
+	/* A neon hairline that fades around the pane: accent at the top-left, partner hue bottom-right. */
+	.glass::before {
+		content: '';
+		position: absolute;
+		inset: -1px;
+		border-radius: inherit;
+		padding: 1px;
+		background: linear-gradient(
+			150deg,
+			color-mix(in oklab, var(--accent) 38%, transparent) 0%,
+			transparent 22%,
+			transparent 78%,
+			color-mix(in oklab, var(--accent-2) 30%, transparent) 100%
+		);
+		-webkit-mask:
+			linear-gradient(#000 0 0) content-box,
+			linear-gradient(#000 0 0);
+		-webkit-mask-composite: xor;
+		mask-composite: exclude;
+		pointer-events: none;
+		z-index: 1;
+		opacity: 0.7;
+		transition: opacity var(--dur-base) var(--ease-out);
+	}
+	.glass:focus-within::before {
+		opacity: 1;
+	}
+	html[data-glass='off'] .glass::before {
+		opacity: 0.35;
+	}
+	.glass-strong {
+		background: var(--glass-strong);
+		backdrop-filter: blur(calc(var(--glass-blur) * 1.4)) saturate(160%);
+		border: 1px solid var(--border-strong);
+		border-radius: var(--radius-lg);
+		box-shadow:
+			var(--shadow-panel),
+			0 24px 64px -20px rgb(0 0 0 / 0.8);
+	}
+	/* The pane you're working in lights up along its edge. */
+	.pane-focus:focus-within {
+		border-color: color-mix(in oklab, var(--accent) 38%, var(--glass-edge));
+		box-shadow: var(--shadow-panel), var(--glow-soft);
+	}
+
+	/* Mono uppercase micro-labels: the HUD voice of the UI. */
+	.hud {
+		font-family: var(--font-code);
+		font-size: 10px;
+		font-weight: 500;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: var(--text-2);
+	}
+
+	.neon {
+		color: var(--accent);
+		text-shadow: 0 0 10px color-mix(in oklab, var(--accent) 55%, transparent);
+	}
+
+	.accent-gradient {
+		background-image: linear-gradient(100deg, var(--accent), var(--accent-2));
+	}
+	.text-gradient {
+		background-image: linear-gradient(100deg, var(--accent) 10%, var(--accent-2) 90%);
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+	}
+
+	/* 1px gradient hairline, e.g. under the active tab. */
+	.accent-line {
+		background-image: linear-gradient(90deg, var(--accent), var(--accent-2));
+		box-shadow: 0 0 10px color-mix(in oklab, var(--accent) 60%, transparent);
+	}
+
+	/* Corner brackets on the focused editor group: sci-fi HUD framing without extra DOM. */
+	.brackets-frame {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		z-index: 6;
+	}
+	.brackets-frame::before,
+	.brackets-frame::after {
+		content: '';
+		position: absolute;
+		width: 10px;
+		height: 10px;
+		pointer-events: none;
+		opacity: 0;
+		transition: opacity var(--dur-base) var(--ease-out);
+		z-index: 5;
+	}
+	.brackets-frame::before {
+		top: -1px;
+		left: -1px;
+		border-top: 1px solid var(--accent);
+		border-left: 1px solid var(--accent);
+		border-top-left-radius: var(--radius-lg);
+	}
+	.brackets-frame::after {
+		right: -1px;
+		bottom: -1px;
+		border-right: 1px solid var(--accent-2);
+		border-bottom: 1px solid var(--accent-2);
+		border-bottom-right-radius: var(--radius-lg);
+	}
+	.brackets-frame[data-focused='true']::before,
+	.brackets-frame[data-focused='true']::after {
+		opacity: 1;
+	}
+
+	/* Busy AI output: a light sweep across the element. */
+	.shimmer {
+		background-image: linear-gradient(
+			100deg,
+			transparent 20%,
+			color-mix(in oklab, var(--accent) 22%, transparent) 50%,
+			transparent 80%
+		);
+		background-size: 200% 100%;
+		animation: shimmer 1.6s linear infinite;
+	}
+}
+
+@layer utilities {
+	.drag {
+		-webkit-app-region: drag;
+	}
+	.no-drag {
+		-webkit-app-region: no-drag;
+	}
+	.transition-fast {
+		transition-duration: var(--dur-fast);
+		transition-timing-function: var(--ease-out);
+	}
+	.transition-base {
+		transition-duration: var(--dur-base);
+		transition-timing-function: var(--ease-out);
+	}
+	.animate-in {
+		animation: pop-in var(--dur-slow) var(--ease-out);
+	}
+	.animate-fade {
+		animation: fade-in var(--dur-slow) var(--ease-out);
+	}
+	.pulse-dot {
+		animation: pulse-dot 1.8s ease-in-out infinite;
+	}
+}
+
+/* Ambient background: two soft light sources and a perspective grid, behind every pane. */
+.ambient {
+	position: fixed;
+	inset: 0;
+	z-index: 0;
+	pointer-events: none;
+	overflow: hidden;
+	background:
+		radial-gradient(
+			1100px 700px at 8% -12%,
+			color-mix(in oklab, var(--accent) 26%, transparent),
+			transparent 65%
+		),
+		radial-gradient(
+			900px 700px at 105% 110%,
+			color-mix(in oklab, var(--accent-2) 24%, transparent),
+			transparent 65%
+		),
+		radial-gradient(
+			700px 420px at 55% 45%,
+			color-mix(in oklab, var(--accent) 7%, transparent),
+			transparent 70%
+		),
+		var(--bg-0);
+}
+.ambient::before {
+	content: '';
+	position: absolute;
+	inset: -50% -10% -10% -10%;
+	background-image:
+		linear-gradient(color-mix(in oklab, var(--accent) 7%, transparent) 1px, transparent 1px),
+		linear-gradient(
+			90deg,
+			color-mix(in oklab, var(--accent) 7%, transparent) 1px,
+			transparent 1px
+		);
+	background-size: 48px 48px;
+	mask-image: radial-gradient(ellipse 75% 65% at 50% 40%, black 10%, transparent 78%);
+	opacity: 0.8;
+	animation: grid-drift 60s linear infinite;
+}
+.ambient::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	/* A faint scanline texture that reads as "screen" without costing anything. */
+	background-image: repeating-linear-gradient(
+		0deg,
+		rgb(255 255 255 / 0.012) 0px,
+		rgb(255 255 255 / 0.012) 1px,
+		transparent 1px,
+		transparent 3px
+	);
+}
+html[data-ambient='false'] .ambient::before,
+html[data-reduce-motion='true'] .ambient::before {
+	animation: none;
+}
+html[data-ambient='false'] .ambient::before {
+	display: none;
+}
+
+@keyframes grid-drift {
+	from {
+		transform: translateY(0);
+	}
+	to {
+		transform: translateY(48px);
+	}
+}
+@keyframes shimmer {
+	from {
+		background-position: 200% 0;
+	}
+	to {
+		background-position: -200% 0;
+	}
+}
+@keyframes pop-in {
+	from {
+		opacity: 0;
+		transform: translateY(4px) scale(0.985);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+@keyframes fade-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+@keyframes pulse-dot {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.35;
+	}
+}
+
+/* ---- Monaco & xterm skinning --------------------------------------------------------- */
+
+/* Ghost-text suggestions: dim and italic so they never read as real code. */
+.monaco-editor .ghost-text-decoration,
+.monaco-editor .ghost-text-decoration-preview,
+.monaco-editor .ghost-text {
+	color: color-mix(in oklab, var(--text-2) 90%, transparent) !important;
+	font-style: italic;
+}
+
+/* `# %%` cell separators. */
+.monaco-editor .anvil-cell-line {
+	border-top: 1px solid color-mix(in oklab, var(--accent) 35%, transparent);
+}
+.monaco-editor .anvil-cell-active {
+	background: color-mix(in oklab, var(--accent) 4%, transparent);
+}
+.monaco-editor .anvil-cell-glyph::before {
+	content: '▸';
+	color: var(--accent);
+	font-size: 12px;
+	padding-left: 4px;
+}
+
+/* Secret shield: blurred values in .env files and flagged keys. */
+.monaco-editor .anvil-secret-blur {
+	filter: blur(4px);
+	transition: filter var(--dur-fast) var(--ease-out);
+}
+.monaco-editor .anvil-secret-blur:hover {
+	filter: none;
+}
+.monaco-editor .anvil-secret-flag {
+	text-decoration: wavy underline var(--down);
+	text-underline-offset: 3px;
+}
+
+/* Inline git blame after the current line. */
+.monaco-editor .anvil-blame-text {
+	color: var(--text-2) !important;
+	font-style: italic;
+	opacity: 0.75;
+}
+
+/* Gutter change markers against HEAD. */
+.monaco-editor .anvil-diff-added {
+	border-left: 3px solid var(--up);
+	margin-left: 3px;
+}
+.monaco-editor .anvil-diff-modified {
+	border-left: 3px solid var(--info);
+	margin-left: 3px;
+}
+.monaco-editor .anvil-diff-deleted {
+	border-left: 3px solid var(--down);
+	margin-left: 3px;
+	height: 3px !important;
+	top: auto !important;
+}
+
+/* AI inline edit: proposed lines. */
+.monaco-editor .anvil-ai-added {
+	background: var(--up-soft);
+}
+.monaco-editor .anvil-ai-range {
+	background: var(--accent-faint);
+	border-left: 2px solid var(--accent);
+}
+
+.monaco-editor .anvil-bookmark::before {
+	content: '◆';
+	color: var(--accent-2);
+	font-size: 9px;
+	padding-left: 6px;
+	text-shadow: 0 0 6px var(--accent-2);
+}
+
+.xterm .xterm-viewport {
+	background-color: transparent !important;
+}
