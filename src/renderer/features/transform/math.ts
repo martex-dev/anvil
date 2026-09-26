@@ -169,6 +169,8 @@ export interface SelectionResult {
 
 const ASSIGN_RE = /^(\s*)([A-Za-z_]\w*)(\s*=(?!=)\s*)(\S.*?)\s*$/;
 const TRAILING_EQ_RE = /^(\s*)(\S.*?)\s*=\s*$/;
+/** A trailing Python comment, with the whitespace before it. '#' is never valid math. */
+const COMMENT_RE = /^(.*?)(\s*#.*)$/;
 
 /**
  * Evaluates each non-empty line. `expr =` becomes `expr = result`, a bare `expr` becomes its
@@ -197,7 +199,9 @@ export function evaluateSelection(text: string): SelectionResult {
 		lines.map((line, idx) => {
 			const trimmed = line.trim();
 			if (trimmed === '' || trimmed.startsWith('#')) return line;
-			const assign = ASSIGN_RE.exec(line);
+			// Evaluate only the code; the comment is put back after the result.
+			const [, code = line, comment = ''] = COMMENT_RE.exec(line) ?? [];
+			const assign = ASSIGN_RE.exec(code);
 			if (assign) {
 				const [, indent = '', name = '', eq = '', expr = ''] = assign;
 				if (Object.hasOwn(FUNCTIONS, name)) {
@@ -206,13 +210,15 @@ export function evaluateSelection(text: string): SelectionResult {
 				vars[name] = run(expr, indent.length + name.length + eq.length, idx + 1);
 				return line;
 			}
-			const trailing = TRAILING_EQ_RE.exec(line);
+			const trailing = TRAILING_EQ_RE.exec(code);
 			if (trailing) {
 				const [, indent = '', expr = ''] = trailing;
-				return `${indent}${expr} = ${formatNumber(run(expr, indent.length, idx + 1), false)}`;
+				const value = formatNumber(run(expr, indent.length, idx + 1), false);
+				return `${indent}${expr} = ${value}${comment}`;
 			}
-			const indent = line.length - line.trimStart().length;
-			return line.slice(0, indent) + formatNumber(run(trimmed, indent, idx + 1), false);
+			const indent = code.length - code.trimStart().length;
+			const value = formatNumber(run(code.trim(), indent, idx + 1), false);
+			return code.slice(0, indent) + value + comment;
 		}),
 	);
 
