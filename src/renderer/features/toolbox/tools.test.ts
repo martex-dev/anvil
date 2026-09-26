@@ -395,6 +395,16 @@ describe('compoundGrowth', () => {
 		expect(compoundGrowth({ start: 1000, ratePct: 10, periods: 0 }).final).toBe(1000);
 	});
 
+	it('reports overflow instead of NaN for very long horizons', () => {
+		expect(() => compoundGrowth({ start: 1000, ratePct: 5, periods: 100000 })).toThrow(
+			/too large/,
+		);
+		expect(() =>
+			compoundGrowth({ start: 1000, ratePct: 5, periods: 100000, contribution: 10 }),
+		).toThrow(/too large/);
+		expect(compoundGrowth({ start: 0, ratePct: 5, periods: 100000 }).final).toBe(0);
+	});
+
 	it('validates input', () => {
 		expect(() => compoundGrowth({ start: 1000, ratePct: 5, periods: 1.5 })).toThrow(/whole/);
 		expect(() => compoundGrowth({ start: 1000, ratePct: -100, periods: 1 })).toThrow(/-100/);

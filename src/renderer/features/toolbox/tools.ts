@@ -251,8 +251,17 @@ export function compoundGrowth(input: CompoundGrowthInput): CompoundGrowthResult
 	}
 	const r = ratePct / 100;
 	const growth = (1 + r) ** periods;
-	const contributions = r === 0 ? contribution * periods : (contribution * (growth - 1)) / r;
-	const final = start * growth + contributions;
+	// A zero term stays zero even when growth overflows to Infinity (0 * Infinity is NaN).
+	const grownStart = start === 0 ? 0 : start * growth;
+	let contributions = 0;
+	if (contribution !== 0) {
+		contributions = r === 0 ? contribution * periods : (contribution * (growth - 1)) / r;
+	}
+	const final = grownStart + contributions;
 	const totalContributed = start + contribution * periods;
-	return { final, totalContributed, gain: final - totalContributed };
+	const gain = final - totalContributed;
+	if (!Number.isFinite(final) || !Number.isFinite(gain)) {
+		throw new Error('Result is too large to represent');
+	}
+	return { final, totalContributed, gain };
 }
