@@ -2,13 +2,14 @@ import { realpathSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { isAbsolute, join, relative, sep } from 'node:path';
 
-import { type SimpleGit, simpleGit, type StatusResult } from 'simple-git';
+import type { SimpleGit, StatusResult } from 'simple-git';
 
 import type { GitBlame, GitCommit, GitStatus } from '@shared/ipc/channels/git';
 import { scanUnifiedDiff, type SecretFinding } from '@shared/secret-scan';
 
 import { AnvilError } from '../../core/errors';
 import { toAbsolute } from '../../core/workspace/fs-guard';
+import { batchPaths, git, isNotARepo } from './git-process';
 import { mapStatus } from './status-map';
 
 const MAX_DIFF_BYTES = 5 * 1024 * 1024;
@@ -23,89 +24,7 @@ const NOT_A_REPO: GitStatus = {
 	unstaged: [],
 };
 
-/**
- * Environment for git: an allowlist of what git and Git Credential Manager need. Inheriting
- * everything would leak other tools' hooks (GIT_ASKPASS from VS Code, EDITOR, PAGER…), which
- * simple-git also refuses to run with.
- */
-const ENV_ALLOW = new Set(
-	[
-		'PATH',
-		'PATHEXT',
-		'SystemRoot',
-		'SystemDrive',
-		'windir',
-		'ComSpec',
-		'TEMP',
-		'TMP',
-		'HOME',
-		'HOMEDRIVE',
-		'HOMEPATH',
-		'USERPROFILE',
-		'USERNAME',
-		'USERDOMAIN',
-		'APPDATA',
-		'LOCALAPPDATA',
-		'ProgramData',
-		'ProgramFiles',
-		'ProgramFiles(x86)',
-		'ProgramW6432',
-		'CommonProgramFiles',
-		'LANG',
-		'SSH_AUTH_SOCK',
-		// The user's SSH client (PuTTY's plink via GIT_SSH, set by TortoiseGit/PuTTY installers).
-		'GIT_SSH',
-		'GIT_SSH_COMMAND',
-		'GIT_SSH_VARIANT',
-		// Where git (and GPG for signed commits) find the user's config and identity on Linux.
-		'XDG_CONFIG_HOME',
-		'GNUPGHOME',
-		// Git Credential Manager / askpass windows on Linux.
-		'DISPLAY',
-		'WAYLAND_DISPLAY',
-		'HTTP_PROXY',
-		'HTTPS_PROXY',
-		'NO_PROXY',
-		'http_proxy',
-		'https_proxy',
-		'no_proxy',
-	].map((k) => k.toLowerCase()),
-);
-
-export function gitEnv(env: NodeJS.ProcessEnv): Record<string, string> {
-	const out: Record<string, string> = {};
-	for (const [key, value] of Object.entries(env)) {
-		if (value === undefined) continue;
-		// Windows env names are case-insensitive; GCM_* configures Git Credential Manager.
-		if (ENV_ALLOW.has(key.toLowerCase()) || key.startsWith('GCM_') || key.startsWith('LC_')) {
-			out[key] = value;
-		}
-	}
-	// Anvil parses git's messages ("not a git repository"), so they must stay in English.
-	// LC_ALL would override LC_MESSAGES; keep its character set as LC_CTYPE so non-ASCII paths
-	// are still encoded the same way.
-	const all = out['LC_ALL'];
-	delete out['LC_ALL'];
-	if (all !== undefined && out['LC_CTYPE'] === undefined) out['LC_CTYPE'] = all;
-	return { ...out, LC_MESSAGES: 'C', GIT_TERMINAL_PROMPT: '0' };
-}
-
-function git(baseDir: string): SimpleGit {
-	return simpleGit({
-		baseDir,
-		maxConcurrentProcesses: 4,
-		timeout: { block: 60_000 },
-		// GIT_TERMINAL_PROMPT=0: never hang on a prompt in an invisible terminal; Git
-		// Credential Manager still shows its own window when credentials are needed.
-	}).env(gitEnv(process.env));
-}
-
 const isBinary = (s: string): boolean => s.includes('\0');
-
-function isNotARepo(error: unknown): boolean {
-	const message = error instanceof Error ? error.message : String(error);
-	return /not a git repository/i.test(message);
-}
 
 /** Git for the open folder, via the system git (simple-git). The repo root may be above it. */
 export class GitService {
@@ -211,14 +130,14 @@ export class GitService {
 	async stage(paths: string[]): Promise<void> {
 		const { root, g } = await this.requireRepo();
 		for (const p of paths) toAbsolute(root, p);
-		await g.add(['--', ...paths]);
+		for (const batch of batchPaths(paths)) await g.add(['--', ...batch]);
 	}
 
 	async unstage(paths: string[]): Promise<void> {
 		const { root, g } = await this.requireRepo();
 		for (const p of paths) toAbsolute(root, p);
 		// `restore --staged` also works before the first commit, unlike `reset HEAD`.
-		await g.raw(['restore', '--staged', '--', ...paths]);
+		for (const batch of batchPaths(paths)) await g.raw(['restore', '--staged', '--', ...batch]);
 	}
 
 	async commit(message: string): Promise<{ hash: string }> {

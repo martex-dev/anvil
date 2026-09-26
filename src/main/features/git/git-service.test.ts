@@ -5,7 +5,8 @@ import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { gitEnv, GitService } from './git-service';
+import { batchPaths, gitEnv } from './git-process';
+import { GitService } from './git-service';
 
 // Integration test against the real system git in a throwaway repository.
 let repo: string;
@@ -143,6 +144,31 @@ describe('GitService', { timeout: 30_000 }, () => {
 			LC_MESSAGES: 'C',
 			GIT_TERMINAL_PROMPT: '0',
 		});
+	});
+
+	it('stages and unstages many files across several command lines', async () => {
+		const git = new GitService(() => repo);
+		writeFileSync(join(repo, 'first.txt'), 'x');
+		run('add', 'first.txt');
+		run('commit', '-q', '-m', 'first');
+		const paths = Array.from({ length: 800 }, (_, i) => `research-file-${i}.txt`);
+		for (const p of paths) writeFileSync(join(repo, p), p);
+		expect(batchPaths(paths).length).toBeGreaterThan(1);
+		await git.stage(paths);
+		expect((await git.status()).staged).toHaveLength(800);
+		await git.unstage(paths);
+		expect((await git.status()).staged).toEqual([]);
+	});
+
+	it('batches paths under the command-line budget without dropping any', () => {
+		const paths = Array.from({ length: 1000 }, (_, i) => `some/long/folder/name/file-${i}.py`);
+		const batches = batchPaths(paths, 8_000);
+		expect(batches.length).toBeGreaterThan(1);
+		expect(batches.flat()).toEqual(paths);
+		for (const b of batches) expect(b.join(' ').length).toBeLessThanOrEqual(8_000);
+		expect(batchPaths([])).toEqual([]);
+		// A single path longer than the budget still gets its own batch.
+		expect(batchPaths(['x'.repeat(50)], 10)).toEqual([['x'.repeat(50)]]);
 	});
 
 	it('passes git only an allowlisted environment', () => {
