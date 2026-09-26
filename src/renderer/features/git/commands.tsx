@@ -16,6 +16,7 @@ import { focusedTab, useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
 import { quickPick } from '../../ui/QuickPick';
 import { invalidateGitLines } from '../editor/extras/git-lines';
+import { useCommitFocus } from './commit-focus';
 import { GIT_STATUS_KEY } from './use-git';
 
 const refresh = (): void => {
@@ -124,7 +125,10 @@ export const GIT_COMMANDS: Command[] = [
 		title: 'Commit…',
 		category: 'Git',
 		icon: GitCommitHorizontal,
-		run: () => useLayoutStore.getState().showView('git'),
+		run: () => {
+			useLayoutStore.getState().showView('git');
+			useCommitFocus.getState().request();
+		},
 	},
 	{
 		id: 'git.switchBranch',

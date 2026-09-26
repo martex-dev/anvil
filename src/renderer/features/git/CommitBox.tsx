@@ -1,5 +1,5 @@
 import { Check, Sparkles } from 'lucide-react';
-import { type JSX, useRef, useState } from 'react';
+import { type JSX, useEffect, useRef, useState } from 'react';
 
 import { toast } from '../../stores/toast-store';
 import { Button } from '../../ui/Button';
@@ -8,6 +8,7 @@ import { IconButton } from '../../ui/IconButton';
 import { Kbd } from '../../ui/Kbd';
 import { generateCommitMessage } from '../ai/actions';
 import { useCommitDrafts } from './commit-draft-store';
+import { useCommitFocus } from './commit-focus';
 
 interface CommitBoxProps {
 	/** Workspace root; the unsent message is kept per folder. */
@@ -33,6 +34,15 @@ export function CommitBox({
 	const [confirmReplace, setConfirmReplace] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const commitRef = useRef<HTMLButtonElement>(null);
+
+	// "Git: Commit…" asks for the message box; take a request made before this box mounted too.
+	useEffect(() => {
+		const take = (): void => {
+			if (useCommitFocus.getState().consume()) textareaRef.current?.focus();
+		};
+		take();
+		return useCommitFocus.subscribe(take);
+	}, []);
 
 	const generate = (): void => {
 		setWritingRoot(root);
