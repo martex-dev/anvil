@@ -19,6 +19,8 @@ beforeAll(() => {
 	write('src/util.py', 'def price_feed():\n    return "price"\n');
 	write('node_modules/lib/index.js', 'price everywhere');
 	write('notes.md', 'The price is right. Priceless.');
+	write('.github/workflows/ci.yml', 'run: check-price');
+	write('.git/config', 'price = internal');
 });
 
 afterAll(() => rmSync(root, { recursive: true, force: true }));
@@ -36,10 +38,15 @@ describe('rgArgs', () => {
 describe('Ripgrep (real binary)', () => {
 	const rg = new Ripgrep();
 
-	it('finds case-insensitive literal matches, skipping node_modules', async () => {
+	it('finds case-insensitive literal matches, in dotfiles too, skipping node_modules and .git', async () => {
 		const result = await rg.search(root, { query: 'price' });
 		const paths = result.files.map((f) => f.path).sort();
-		expect(paths).toEqual(['notes.md', 'src/app.ts', 'src/util.py']);
+		expect(paths).toEqual([
+			'.github/workflows/ci.yml',
+			'notes.md',
+			'src/app.ts',
+			'src/util.py',
+		]);
 		const app = result.files.find((f) => f.path === 'src/app.ts');
 		expect(app?.matches.map((m) => [m.line, m.column])).toEqual([
 			[1, 7],

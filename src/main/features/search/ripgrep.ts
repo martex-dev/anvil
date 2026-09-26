@@ -27,6 +27,9 @@ export function rgArgs(input: SearchQuery): string[] {
 	const q = SearchQuerySchema.parse(input);
 	const args = [
 		'--json',
+		// Dotfiles (.github/, .env.example, .pre-commit-config.yaml) are code too, and Quick Open
+		// lists them; .git itself is excluded through IGNORED_DIRS below.
+		'--hidden',
 		'--max-filesize',
 		'2M',
 		// Per-file cap: one huge generated file shouldn't eat the whole result budget.
