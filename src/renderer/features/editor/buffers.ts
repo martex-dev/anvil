@@ -1,6 +1,7 @@
 import type * as Monaco from 'monaco-editor';
 
 import { minimalEdits } from '../../lib/minimal-edits';
+import type { MonacoApi } from '../../lib/monaco/setup';
 import { codeTabId, useTabsStore } from '../../stores/tabs-store';
 import { useEditorStore } from './editor-store';
 
@@ -60,4 +61,20 @@ export function replaceText(model: Monaco.editor.ITextModel, text: string): void
 		{ range: model.getFullModelRange(), text },
 	];
 	if (edits.length > 0) model.pushEditOperations([], edits, () => null);
+}
+
+export function toUri(monaco: MonacoApi, root: string, path: string): Monaco.Uri {
+	// Absolute file:// URIs are what language servers (Phase 2) expect.
+	// Trailing separators go, like setMonacoWorkspaceRoot does: a drive root 'D:\' must give
+	// 'D:/src/a.py', not 'D://src/a.py'.
+	const base = root.replace(/\\/g, '/').replace(/\/+$/, '');
+	return monaco.Uri.file(`${base}/${path}`);
+}
+
+/** Files VS Code's grammars don't claim but that read fine with a close cousin. */
+export function languageOverride(path: string): string | undefined {
+	const name = path.split('/').at(-1)?.toLowerCase() ?? '';
+	if (name === '.env' || name.startsWith('.env.') || name.endsWith('.env')) return 'ini';
+	if (name.endsWith('.toml') || name === 'uv.lock' || name === 'poetry.lock') return 'ini';
+	return undefined;
 }

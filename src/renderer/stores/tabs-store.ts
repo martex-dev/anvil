@@ -55,6 +55,8 @@ interface TabsState {
 	move: (group: number, from: number, to: number) => void;
 	pin: (id: string) => void;
 	rename: (id: string, patch: Partial<Pick<Tab, 'path' | 'title'>>) => void;
+	/** Swaps a tab for another (a new id, e.g. after its file was renamed), in place. */
+	replace: (id: string, tab: Tab) => void;
 	reset: () => void;
 }
 
@@ -204,6 +206,21 @@ export const useTabsStore = create<TabsState>((set, get) => ({
 		set((s) => {
 			const tab = s.tabs[id];
 			return tab ? { tabs: { ...s.tabs, [id]: { ...tab, ...patch } } } : s;
+		}),
+	replace: (id, tab) =>
+		set((s) => {
+			if (!s.tabs[id]) return s;
+			const tabs = Object.fromEntries(Object.entries(s.tabs).filter(([key]) => key !== id));
+			tabs[tab.id] = tab;
+			const swap = (t: string): string => (t === id ? tab.id : t);
+			return {
+				tabs,
+				groups: s.groups.map((g) => ({
+					...g,
+					tabIds: [...new Set(g.tabIds.map(swap))],
+					active: g.active === null ? null : swap(g.active),
+				})),
+			};
 		}),
 	reset: () => set({ tabs: {}, groups: [{ id: 0, tabIds: [], active: null }], focused: 0 }),
 }));

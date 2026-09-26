@@ -78,6 +78,8 @@ interface EditorState {
 	add: (file: OpenFile) => void;
 	update: (path: string, patch: Partial<OpenFile>) => void;
 	remove: (path: string) => void;
+	/** Re-keys an open file after a rename in the explorer. */
+	rename: (from: string, to: string) => void;
 	setActive: (path: string | null) => void;
 	setCursor: (cursor: CursorInfo | null) => void;
 	setGroupLine: (group: number, line: GroupLine | null) => void;
@@ -114,6 +116,18 @@ export const useEditorStore = create<EditorState>((set) => ({
 			// buffer that no longer exists.
 			active: s.active === path ? null : s.active,
 		})),
+	rename: (from, to) =>
+		set((s) => {
+			const swap = (p: string): string => (p === from ? to : p);
+			return {
+				files: s.files.map((f) =>
+					f.path === from ? { ...f, path: to, name: to.split('/').at(-1) ?? to } : f,
+				),
+				active: s.active === from ? to : s.active,
+				conflicts: s.conflicts.map(swap),
+				closing: s.closing.map(swap),
+			};
+		}),
 	setActive: (active) => set({ active }),
 	setCursor: (cursor) => set({ cursor }),
 	setGroupLine: (group, line) =>

@@ -218,11 +218,3 @@ export function closeAllTabs(): void {
 	for (const f of [...useEditorStore.getState().files]) closeFile(f.path);
 	useTabsStore.getState().reset();
 }
-
-/** Keeps a tab's path in sync after a rename in the explorer. */
-export function renameOpenPath(from: string, to: string): void {
-	const tabs = useTabsStore.getState();
-	for (const tab of Object.values(tabs.tabs)) {
-		if (tab.path === from) tabs.rename(tab.id, { path: to, title: baseName(to) });
-	}
-}

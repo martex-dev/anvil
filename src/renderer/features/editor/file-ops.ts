@@ -1,5 +1,3 @@
-import type * as Monaco from 'monaco-editor';
-
 import type { FileContent } from '@shared/ipc/channels/fs';
 
 import { getSettings } from '../../app/hooks/use-settings';
@@ -7,7 +5,7 @@ import { call, IpcCallError } from '../../lib/ipc';
 import { rlog } from '../../lib/log';
 import type { MonacoApi } from '../../lib/monaco/setup';
 import { toast } from '../../stores/toast-store';
-import { markDirty, replaceText, type Tracked, tracked } from './buffers';
+import { languageOverride, markDirty, replaceText, toUri, type Tracked, tracked } from './buffers';
 import { useEditorStore } from './editor-store';
 import { cleanWhitespace, formatPython } from './format';
 import { isScratch } from './scratchpad';
@@ -16,22 +14,6 @@ import { isScratch } from './scratchpad';
 export { getModel, getViewState, saveViewState } from './buffers';
 export { formatPython } from './format';
 export { isScratch, openScratch, SCRATCH_PATH } from './scratchpad';
-
-function toUri(monaco: MonacoApi, root: string, path: string): Monaco.Uri {
-	// Absolute file:// URIs are what language servers (Phase 2) expect.
-	// Trailing separators go, like setMonacoWorkspaceRoot does: a drive root 'D:\' must give
-	// 'D:/src/a.py', not 'D://src/a.py'.
-	const base = root.replace(/\\/g, '/').replace(/\/+$/, '');
-	return monaco.Uri.file(`${base}/${path}`);
-}
-
-/** Files VS Code's grammars don't claim but that read fine with a close cousin. */
-function languageOverride(path: string): string | undefined {
-	const name = path.split('/').at(-1)?.toLowerCase() ?? '';
-	if (name === '.env' || name.startsWith('.env.') || name.endsWith('.env')) return 'ini';
-	if (name.endsWith('.toml') || name === 'uv.lock' || name === 'poetry.lock') return 'ini';
-	return undefined;
-}
 
 /**
  * The read in flight per path. Closing the tab (or the whole folder) drops it, so a read that
