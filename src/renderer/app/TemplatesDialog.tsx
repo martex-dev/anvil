@@ -4,8 +4,10 @@ import { type JSX, useState } from 'react';
 
 import { cn } from '../lib/cn';
 import { call } from '../lib/ipc';
+import { openRecentFolder } from '../features/explorer/workspace-actions';
 import { toast } from '../stores/toast-store';
 import { useUiStore } from '../stores/ui-store';
+import { reasonNotToLeaveWorkspace } from '../stores/workbench-store';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
@@ -30,6 +32,13 @@ export function TemplatesDialog(): JSX.Element {
 
 	const create = async (): Promise<void> => {
 		if (!selected || !valid) return;
+		// Opening the new project replaces the workspace, so check the unsaved-changes guard
+		// before creating anything rather than dropping dirty tabs afterwards.
+		const reason = reasonNotToLeaveWorkspace();
+		if (reason) {
+			toast.warn("Can't switch folders yet", reason);
+			return;
+		}
 		setBusy(true);
 		try {
 			const { root } = await call('templates:create', { templateId: selected.id, name });
@@ -37,6 +46,7 @@ export function TemplatesDialog(): JSX.Element {
 				toast.success('Project created', root);
 				setOpen(false);
 				setName('');
+				openRecentFolder(root);
 			}
 		} catch (error) {
 			toast.error(

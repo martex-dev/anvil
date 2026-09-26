@@ -43,7 +43,7 @@ export const toolsChannels = defineChannels({
 	'tasks:list': { input: z.void(), output: z.array(TaskSchema) },
 
 	'templates:list': { input: z.void(), output: z.array(TemplateSchema) },
-	/** Asks for a parent folder, creates `<parent>/<name>` from the template and opens it. */
+	/** Asks for a parent folder and creates `<parent>/<name>` from the template; the renderer opens it. */
 	'templates:create': {
 		input: z.object({
 			templateId: z.string().min(1).max(64),

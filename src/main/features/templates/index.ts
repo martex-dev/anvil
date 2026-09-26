@@ -50,7 +50,7 @@ export const templatesFeature: MainFeature = {
 			if (picked.canceled || !parent) return { root: null };
 			const root = writeTemplate(template, parent, name);
 			ctx.log.info('project created from template', { templateId, root });
-			ctx.workspace.open(root);
+			// The renderer opens it, so its unsaved-changes guard applies like any folder switch.
 			return { root };
 		});
 	},
