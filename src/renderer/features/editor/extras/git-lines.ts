@@ -1,6 +1,7 @@
 import type * as Monaco from 'monaco-editor';
 
 import { getSettings } from '../../../app/hooks/use-settings';
+import { escapeMarkdown } from '../../../lib/escape-markdown';
 import { call } from '../../../lib/ipc';
 import { diffLines } from '../../../lib/line-diff';
 import type { MonacoApi } from '../../../lib/monaco/setup';
@@ -118,7 +119,7 @@ export function attachGitLines(
 					showIfCollapsed: true,
 					after: { content: text, inlineClassName: 'anvil-blame-text' },
 					hoverMessage: {
-						value: `**${info.hash.slice(0, 8)}** ${info.author}\n\n${info.summary}`,
+						value: `**${info.hash.slice(0, 8)}** ${escapeMarkdown(info.author)}\n\n${escapeMarkdown(info.summary)}`,
 					},
 				},
 			},
