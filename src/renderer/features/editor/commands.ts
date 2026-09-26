@@ -22,46 +22,17 @@ import { toWorkspacePath } from '../../lib/monaco/workspace-root';
 import { focusedTab, useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
 import { requestOpenFile } from '../../stores/workbench-store';
-import { quickPick } from '../../ui/QuickPick';
 import { nextBookmarkLine, toggleBookmarkAt } from './extras/bookmarks';
 import { isBlameEnabled, setBlameEnabled } from './extras/git-lines';
 import { repaintShield } from './extras/shield';
 import { isScratch, saveAll, saveFile } from './file-ops';
+import { newFile } from './new-file';
 import { closeTab } from './open';
 import { revealInExplorer } from './tab-actions';
 
 function activePath(): string | null {
 	const tab = focusedTab(useTabsStore.getState());
 	return tab?.path ?? null;
-}
-
-async function newFile(): Promise<void> {
-	const picked = await quickPick({
-		title: 'new file',
-		placeholder: 'Path relative to the folder, e.g. src/strategy/momentum.py',
-		items: [],
-		allowCustom: { label: (text) => `Create ${text}` },
-	});
-	if (!picked?.startsWith('custom:')) return;
-	const rel = picked.slice(7).replace(/\\/g, '/').replace(/^\/+/, '');
-	const parts = rel.split('/');
-	const name = parts.pop() ?? '';
-	let parent = '';
-	try {
-		for (const dir of parts) {
-			const next = parent ? `${parent}/${dir}` : dir;
-			// Existing folders are fine; create only what's missing.
-			await call('fs:create', { parent, name: dir, kind: 'dir' }).catch(() => undefined);
-			parent = next;
-		}
-		const entry = await call('fs:create', { parent, name, kind: 'file' });
-		requestOpenFile({ path: entry.path });
-	} catch (error) {
-		toast.error(
-			'Could not create the file',
-			error instanceof Error ? error.message : undefined,
-		);
-	}
 }
 
 export const EDITOR_COMMANDS: Command[] = [
