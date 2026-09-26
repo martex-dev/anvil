@@ -1,8 +1,10 @@
 import log from 'electron-log/main';
 import type { z } from 'zod';
 
+import type { FeatureFailure } from '@shared/ipc/channels/app';
 import type { AnvilEvent, Channel, EventPayload } from '@shared/ipc/contract';
 
+import { errorMessage } from './errors';
 import { emitEvent, router } from './ipc';
 import type { Handler } from './ipc-router';
 import type { SecretsService } from './secrets/secrets-service';
@@ -49,58 +51,32 @@ export interface FeatureHost {
 	dataDir: (id: string) => string;
 }
 
+type Disposer = () => void | Promise<void>;
+
 /**
  * Starts every feature with its own context. A feature that throws on activation is logged
- * and skipped: one broken integration must not take the editor down with it.
+ * and skipped: one broken integration must not take the editor down with it. Failures are
+ * returned so the shell can name the broken module instead of showing per-panel errors.
  */
 export async function startFeatures(
 	features: readonly MainFeature[],
 	host: FeatureHost,
-): Promise<{ stopAll(): Promise<void> }> {
-	const disposers: Array<() => void | Promise<void>> = [];
+): Promise<{ stopAll(): Promise<void>; failures: FeatureFailure[] }> {
+	const disposers: Disposer[] = [];
+	const failures: FeatureFailure[] = [];
 	for (const feature of features) {
-		const scoped = log.scope(feature.id);
-		const ctx: FeatureContext = {
-			log: {
-				info: (m, meta) => scoped.info(m, meta ?? ''),
-				warn: (m, meta) => scoped.warn(m, meta ?? ''),
-				error: (m, meta) => scoped.error(m, meta ?? ''),
-			},
-			ipc: {
-				handle: (channel, handler) => disposers.push(router.handle(channel, handler)),
-			},
-			emit: emitEvent,
-			onDispose: (fn) => disposers.push(fn),
-			getSecret: (key) => {
-				try {
-					return host.secrets.get(key);
-				} catch (error) {
-					// Unreadable (e.g. userData copied from another Windows account): act as unset.
-					scoped.warn('secret unreadable', { key, error: String(error) });
-					return null;
-				}
-			},
-			settings: {
-				get: (key, schema, fallback) =>
-					host.settings.get(`${feature.id}:${key}`, schema, fallback),
-				set: (key, schema, value) =>
-					host.settings.set(`${feature.id}:${key}`, schema, value),
-			},
-			workspace: {
-				root: () => host.workspace.getRoot(),
-				open: (path) => void host.workspace.open(path),
-				onChange: (listener) =>
-					disposers.push(host.workspace.onChange((info) => listener(info.root))),
-			},
-			dataDir: host.dataDir(feature.id),
-		};
 		try {
-			await feature.activate(ctx);
+			// Built inside the try: dataDir creates a folder, which can fail (EPERM, disk full).
+			await feature.activate(createContext(feature.id, host, disposers));
 		} catch (error) {
-			scoped.error('feature failed to start', error);
+			log.scope(feature.id).error('feature failed to start', error);
+			const message = errorMessage(error);
+			failures.push({ id: feature.id, message });
+			router.markUnavailable(feature.id, message);
 		}
 	}
 	return {
+		failures,
 		async stopAll() {
 			for (const dispose of disposers.reverse()) {
 				try {
@@ -110,5 +86,41 @@ export async function startFeatures(
 				}
 			}
 		},
+	};
+}
+
+function createContext(id: string, host: FeatureHost, disposers: Disposer[]): FeatureContext {
+	const scoped = log.scope(id);
+	return {
+		log: {
+			info: (m, meta) => scoped.info(m, meta ?? ''),
+			warn: (m, meta) => scoped.warn(m, meta ?? ''),
+			error: (m, meta) => scoped.error(m, meta ?? ''),
+		},
+		ipc: {
+			handle: (channel, handler) => disposers.push(router.handle(channel, handler)),
+		},
+		emit: emitEvent,
+		onDispose: (fn) => disposers.push(fn),
+		getSecret: (key) => {
+			try {
+				return host.secrets.get(key);
+			} catch (error) {
+				// Unreadable (e.g. userData copied from another Windows account): act as unset.
+				scoped.warn('secret unreadable', { key, error: String(error) });
+				return null;
+			}
+		},
+		settings: {
+			get: (key, schema, fallback) => host.settings.get(`${id}:${key}`, schema, fallback),
+			set: (key, schema, value) => host.settings.set(`${id}:${key}`, schema, value),
+		},
+		workspace: {
+			root: () => host.workspace.getRoot(),
+			open: (path) => void host.workspace.open(path),
+			onChange: (listener) =>
+				disposers.push(host.workspace.onChange((info) => listener(info.root))),
+		},
+		dataDir: host.dataDir(id),
 	};
 }

@@ -1,11 +1,11 @@
 import { z } from 'zod';
 
-import { SettingsSchema } from '../../settings';
+import { SettingsPatchSchema, SettingsSchema } from '../../settings';
 import { defineChannels } from '../define';
 
 export const settingsChannels = defineChannels({
 	'settings:get': { input: z.void(), output: SettingsSchema },
-	'settings:update': { input: SettingsSchema.partial(), output: SettingsSchema },
+	'settings:update': { input: SettingsPatchSchema, output: SettingsSchema },
 	/** Small UI state that should survive restarts (panel sizes, open views). Opaque JSON. */
 	'ui:getState': { input: z.void(), output: z.record(z.string(), z.unknown()) },
 	'ui:setState': {

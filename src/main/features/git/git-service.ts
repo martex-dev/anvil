@@ -276,7 +276,16 @@ export class GitService {
 
 	async scanStaged(): Promise<SecretFinding[]> {
 		const { g } = await this.requireRepo();
-		const diff = await g.raw(['diff', '--cached', '--no-color', '--no-ext-diff', '-U0']);
+		// Unquoted non-ASCII names, so findings point at a file the user can open.
+		const diff = await g.raw([
+			'-c',
+			'core.quotePath=false',
+			'diff',
+			'--cached',
+			'--no-color',
+			'--no-ext-diff',
+			'-U0',
+		]);
 		return scanUnifiedDiff(diff);
 	}
 }

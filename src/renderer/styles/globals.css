@@ -375,6 +375,17 @@ html[data-reduce-motion='true'] .shimmer {
 	}
 }
 
+/* Endless decorative loops (busy dots, shimmer) stop under the in-app Reduce motion setting as well
+   as the OS preference; zeroing the --dur-* tokens doesn't reach their fixed durations. */
+html[data-reduce-motion='true'] :is(.pulse-dot, .shimmer, .animate-pulse) {
+	animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+	:is(.pulse-dot, .shimmer, .animate-pulse) {
+		animation: none;
+	}
+}
+
 @keyframes grid-drift {
 	from {
 		transform: translateY(0);

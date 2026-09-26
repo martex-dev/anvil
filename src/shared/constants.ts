@@ -1,8 +1,9 @@
 export const APP_NAME = 'Anvil';
 
 /**
- * Native window chrome colors. Main can't read CSS variables, so these mirror tokens.css
- * (--bg-0 and --text-1). Keep them in sync if the tokens change.
+ * Default native window chrome colors, used until the renderer reports the active theme's
+ * (app:setChrome). Main can't read CSS variables, so these mirror the default theme's --bg-0
+ * and --text-1 in themes.css. Keep them in sync if the tokens change.
  */
 export const WINDOW_CHROME = {
 	background: '#05060A',

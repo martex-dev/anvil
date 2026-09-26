@@ -83,3 +83,49 @@ export const SettingsSchema = z.object({
 export type Settings = z.infer<typeof SettingsSchema>;
 
 export const DEFAULT_SETTINGS: Settings = SettingsSchema.parse({});
+
+type SettingsShape = typeof SettingsSchema.shape;
+
+/**
+ * A partial settings update. Not `SettingsSchema.partial()`: in zod 4 an optional field that
+ * wraps a default still fills the default in, so a one-key patch would come back with every
+ * other key set to its default and overwrite the stored values.
+ */
+export const SettingsPatchSchema = z.object(
+	Object.fromEntries(
+		Object.entries(SettingsSchema.shape).map(([key, field]) => [
+			key,
+			field.unwrap().optional(),
+		]),
+	) as { [K in keyof SettingsShape]: z.ZodOptional<ReturnType<SettingsShape[K]['unwrap']>> },
+);
+export type SettingsPatch = z.infer<typeof SettingsPatchSchema>;
+
+/** Merges a patch over the current settings; keys sent as `undefined` keep their current value. */
+export function applySettingsPatch(current: Settings, patch: SettingsPatch): Settings {
+	const defined = Object.fromEntries(
+		Object.entries(patch).filter(([, value]) => value !== undefined),
+	);
+	return { ...current, ...defined };
+}
+
+/**
+ * Reads stored settings field by field: a value that no longer validates (hand edit, a font
+ * removed in a later release) falls back to its own default instead of resetting every
+ * preference, and unknown keys are dropped. `invalid` names the fields that were replaced.
+ */
+export function parseSettings(raw: unknown): { settings: Settings; invalid: string[] } {
+	const source: Record<string, unknown> =
+		raw && typeof raw === 'object' && !Array.isArray(raw)
+			? (raw as Record<string, unknown>)
+			: {};
+	const invalid: string[] = [];
+	const picked: Record<string, unknown> = {};
+	for (const [key, field] of Object.entries(SettingsSchema.shape)) {
+		if (!(key in source)) continue;
+		if (field.safeParse(source[key]).success) picked[key] = source[key];
+		else invalid.push(key);
+	}
+	if (raw !== undefined && source !== raw) invalid.push('<settings>');
+	return { settings: SettingsSchema.parse(picked), invalid };
+}

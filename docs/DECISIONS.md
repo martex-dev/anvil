@@ -105,3 +105,11 @@ Short ADRs: the context, what was decided, and what it costs.
 **Decision.** `openScratch` takes a reference through `ITextModelService` and keeps it until the tab closes. Closing flushes the text to local storage first.
 
 **Consequences.** The scratchpad lives exactly as long as its tab. Any future in-memory buffer (untitled files, AI previews that are real editors) needs the same treatment.
+
+## ADR-014: The workspace TypeScript is opt-in per folder
+
+**Context.** typescript-language-server runs whichever `tsserver.js` it is given with Electron's Node and the user's full environment. Preferring the folder's own `node_modules/typescript` meant that opening a downloaded repository and viewing a `.ts` file ran code from that repository.
+
+**Decision.** The TypeScript server always uses the TypeScript Anvil ships. "Use Workspace TypeScript (trust this folder)" in the palette switches one folder to its own version (stored per folder in settings); "Use Bundled TypeScript" switches back. The status bar tooltip says which version is running and when a workspace version is available.
+
+**Consequences.** Projects that rely on their own TypeScript version or tsserver plugins need one explicit opt-in per folder. Nothing in an untrusted folder runs just by opening it.

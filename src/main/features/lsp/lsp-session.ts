@@ -15,6 +15,8 @@ export class LspSession {
 	private readonly decoder = new MessageDecoder();
 	private stderrTail = '';
 	private exited = false;
+	/** Resolves once the process is running; rejects if it could not be started at all. */
+	readonly ready: Promise<void>;
 
 	constructor(
 		readonly id: string,
@@ -27,26 +29,44 @@ export class LspSession {
 			cwd,
 			env: launch.env,
 			windowsHide: true,
+			// Own process group on POSIX, so killTree can take down the server's workers too.
+			detached: process.platform !== 'win32',
 		});
 		this.child.stdout.on('data', (chunk: Buffer) => {
 			try {
 				for (const message of this.decoder.push(chunk)) events.message(message);
 			} catch (error) {
 				// Garbage on stdout (a print() in a server plugin): the stream can't be trusted now.
-				this.stderrTail += `\n[anvil] ${String(error)}`;
+				this.appendStderr(`\n[anvil] ${String(error)}`);
 				void this.dispose();
 			}
 		});
 		this.child.stderr.on('data', (chunk: Buffer) => {
-			this.stderrTail = (this.stderrTail + chunk.toString('utf8')).slice(-4_000);
+			this.appendStderr(chunk.toString('utf8'));
 		});
-		this.child.on('error', (error) => {
-			this.stderrTail += `\n${error.message}`;
+		// A crashing server closes its pipe before 'exit' arrives; writing then fails with EPIPE,
+		// which without a listener is an uncaught exception that takes down the main process.
+		this.child.stdin.on('error', (error) => {
+			this.appendStderr(`\n[anvil] stdin: ${error.message}`);
 		});
-		this.child.on('exit', (code) => {
+		const finish = (code: number | null): void => {
+			if (this.exited) return;
 			this.exited = true;
 			events.exit(code, this.stderrTail.trim());
+		};
+		this.ready = new Promise<void>((resolve, reject) => {
+			this.child.once('spawn', resolve);
+			this.child.once('error', reject);
 		});
+		// Awaiting is optional; a start failure is also reported through events.exit.
+		this.ready.catch(() => undefined);
+		this.child.on('error', (error) => {
+			this.appendStderr(`\n${error.message}`);
+			// Never started (EACCES, EMFILE, blocked by antivirus): 'exit' may never follow, so
+			// end the session here or the client waits for it forever.
+			if (this.child.pid === undefined) finish(null);
+		});
+		this.child.on('exit', (code) => finish(code));
 	}
 
 	get pid(): number | undefined {
@@ -55,7 +75,16 @@ export class LspSession {
 
 	send(message: unknown): void {
 		if (this.exited || !this.child.stdin.writable) return;
-		this.child.stdin.write(encodeMessage(message));
+		try {
+			this.child.stdin.write(encodeMessage(message));
+		} catch (error) {
+			// The stream was destroyed between the check and the write; 'exit' reports the crash.
+			this.appendStderr(`\n[anvil] stdin: ${String(error)}`);
+		}
+	}
+
+	private appendStderr(text: string): void {
+		this.stderrTail = (this.stderrTail + text).slice(-4_000);
 	}
 
 	async dispose(): Promise<void> {

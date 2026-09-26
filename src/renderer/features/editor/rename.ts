@@ -46,6 +46,9 @@ function moveBuffer(monaco: MonacoApi, root: string, from: string, to: string): 
 		savedVersion: dirty ? -1 : model.getAlternativeVersionId(),
 		listener: model.onDidChangeContent(() => markDirty(to)),
 		viewStates: views,
+		// Same bytes on disk under the new name: keep writing its BOM and encoding.
+		bom: t.bom,
+		encoding: t.encoding,
 	});
 }
 

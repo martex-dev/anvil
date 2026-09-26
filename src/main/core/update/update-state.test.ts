@@ -34,4 +34,22 @@ describe('update state', () => {
 		);
 		expect(describeUpdateError('weird\nstack')).toBe('weird');
 	});
+
+	it('recognises more offline errors and only real 404s', () => {
+		for (const msg of [
+			'getaddrinfo EAI_AGAIN github.com',
+			'read ECONNRESET',
+			'connect ENETUNREACH 140.82.121.4:443',
+			'connect EHOSTUNREACH 10.0.0.1:443',
+			'socket hang up',
+		]) {
+			expect(describeUpdateError(new Error(msg))).toBe('Offline: will retry later');
+		}
+		expect(describeUpdateError(new Error('Cannot find channel "latest.yml" update info'))).toBe(
+			'No release published yet',
+		);
+		expect(
+			describeUpdateError(new Error('sha512 mismatch: expected 4040 bytes, got 404')),
+		).toBe('sha512 mismatch: expected 4040 bytes, got 404');
+	});
 });

@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Link2 } from 'lucide-react';
 import type { JSX } from 'react';
 
 import type { FsEntry } from '@shared/ipc/channels/fs';
@@ -75,6 +75,9 @@ export function TreeRowView({
 				<EntryIcon kind={entry.kind} name={entry.name} open={expanded} />
 			</span>
 			<span className='truncate'>{entry.name}</span>
+			{entry.isLink && entry.kind !== 'symlink' && (
+				<Link2 size={11} className='shrink-0 text-fg-2' aria-label='link' />
+			)}
 		</div>
 	);
 }

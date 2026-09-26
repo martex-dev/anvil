@@ -8,13 +8,17 @@ export const RelPathSchema = z.string().max(4096);
 export const FsEntrySchema = z.object({
 	name: z.string(),
 	path: z.string(),
+	/** What the entry resolves to; 'symlink' only for a link whose target is missing. */
 	kind: z.enum(['file', 'dir', 'symlink']),
-	/** For a symlink or junction: what it points at. Absent when the link is broken. */
-	targetKind: z.enum(['file', 'dir']).optional(),
+	/** Reached through a symlink or junction (shown with a link badge; kind is the target's). */
+	isLink: z.boolean(),
 	size: z.number(),
 	mtimeMs: z.number(),
 });
 export type FsEntry = z.infer<typeof FsEntrySchema>;
+
+export const TextEncodingSchema = z.enum(['utf8', 'windows-1252']);
+export type TextEncoding = z.infer<typeof TextEncodingSchema>;
 
 export const FileContentSchema = z.object({
 	path: z.string(),
@@ -25,6 +29,10 @@ export const FileContentSchema = z.object({
 	binary: z.boolean(),
 	tooLarge: z.boolean(),
 	eol: z.enum(['\n', '\r\n']),
+	/** Started with a UTF-8 BOM (stripped from content); pass it back on save to keep it. */
+	bom: z.boolean(),
+	/** 'windows-1252' when the bytes are not valid UTF-8; pass it back on save to keep them. */
+	encoding: TextEncodingSchema,
 });
 export type FileContent = z.infer<typeof FileContentSchema>;
 
@@ -47,6 +55,10 @@ export const fsChannels = defineChannels({
 			content: z.string().max(50 * 1024 * 1024),
 			/** If set and the file changed on disk since, the write fails with FS_CONFLICT. */
 			expectedMtimeMs: z.number().optional(),
+			/** Prepend a UTF-8 BOM (the file had one when it was read). */
+			bom: z.boolean().optional(),
+			/** Encoding the file was read with (default UTF-8). */
+			encoding: TextEncodingSchema.optional(),
 		}),
 		output: z.object({ mtimeMs: z.number() }),
 	},
@@ -66,6 +78,8 @@ export const fsChannels = defineChannels({
 		input: RelPathSchema.min(1),
 		output: z.object({ url: z.string(), size: z.number() }),
 	},
+	/** Restarts the file watcher (after a watch error, from Refresh in the explorer). */
+	'fs:rewatch': { input: z.void(), output: z.void() },
 	'fs:copyPath': {
 		input: z.object({ path: RelPathSchema, absolute: z.boolean() }),
 		output: z.string(),
@@ -75,4 +89,6 @@ export const fsChannels = defineChannels({
 export const fsEvents = {
 	/** Directories whose listing changed and files whose content changed, workspace-relative. */
 	'fs:changed': z.object({ dirs: z.array(z.string()), files: z.array(z.string()) }),
+	/** Watching failed, so outside changes may not show; once per watcher start, no paths. */
+	'fs:watchError': z.object({ message: z.string() }),
 };
