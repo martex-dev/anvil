@@ -144,3 +144,9 @@ html[data-skin='mainframe'] select {
 html[data-skin='mainframe'] ::placeholder {
 	color: var(--text-2);
 }
+
+/* Shortcut hints printed on an accent block (primary buttons) take the block's ink. */
+html[data-skin='mainframe'] :is(.bg-accent, .mf-rev) kbd {
+	color: inherit;
+	opacity: 0.75;
+}
