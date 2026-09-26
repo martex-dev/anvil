@@ -1,7 +1,9 @@
 import { Bot, Sparkles, SquareTerminal, TerminalSquare, Wand2, X } from 'lucide-react';
 
 import type { Command } from '../../app/commands/types';
+import { useLayoutStore } from '../../stores/layout-store';
 import { toast } from '../../stores/toast-store';
+import { quickPick } from '../../ui/QuickPick';
 import { closeTerminal, newTerminal, useTerminalStore } from './terminal-store';
 
 /** Command Prompt and Git Bash are Windows shells; main doesn't offer them elsewhere. */
@@ -11,6 +13,30 @@ function newWindowsTerminal(preset: 'cmd' | 'gitbash', label: string): void {
 		return;
 	}
 	newTerminal(preset);
+}
+
+/** Kills the active terminal, asking first when it isn't on screen (a hidden training run). */
+export async function killActiveTerminal(): Promise<void> {
+	const { tabs, active } = useTerminalStore.getState();
+	const tab = tabs.find((t) => t.id === active);
+	if (!tab) {
+		toast.info('No terminal to kill');
+		return;
+	}
+	const layout = useLayoutStore.getState();
+	if (!layout.panelOpen || layout.panelTab !== 'terminal') {
+		const answer = await quickPick({
+			title: `Kill ${tab.title}?`,
+			placeholder: 'This terminal is hidden: anything running in it will stop',
+			items: [
+				{ id: 'kill', label: `Kill ${tab.title}` },
+				{ id: 'cancel', label: 'Cancel' },
+			],
+		});
+		if (answer !== 'kill') return;
+	}
+	closeTerminal(tab.id);
+	toast.info(`Killed ${tab.title}`);
 }
 
 export const TERMINAL_COMMANDS: Command[] = [
@@ -72,9 +98,6 @@ export const TERMINAL_COMMANDS: Command[] = [
 		title: 'Kill Active Terminal',
 		category: 'Terminal',
 		icon: X,
-		run: () => {
-			const id = useTerminalStore.getState().active;
-			if (id) closeTerminal(id);
-		},
+		run: killActiveTerminal,
 	},
 ];

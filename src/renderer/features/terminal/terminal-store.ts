@@ -123,7 +123,14 @@ export function newTerminal(preset: TerminalPresetId, title?: string): void {
 
 export function closeTerminal(id: string): void {
 	useTerminalStore.getState().close(id);
-	void call('terminal:kill', id).catch(() => undefined);
+	call('terminal:kill', id).catch((e: unknown) => {
+		// The tab is gone either way, but its process may still be running.
+		rlog.warn('terminal', 'kill failed', e);
+		toast.error(
+			'Could not stop the terminal process',
+			e instanceof Error ? e.message : undefined,
+		);
+	});
 }
 
 /**
