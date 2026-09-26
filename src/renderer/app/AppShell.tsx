@@ -1,19 +1,16 @@
-import { type JSX, lazy, Suspense, useRef } from 'react';
+import type { CSSProperties, JSX } from 'react';
 
 import { AiStreamController } from '../features/ai/AiStreamController';
 import { ApplyDialog } from '../features/ai/ApplyDialog';
 import { InlineEditHost } from '../features/ai/InlineEditHost';
-import { EditorArea } from '../features/editor/EditorArea';
 import { EditorBridge } from '../features/editor/EditorBridge';
 import { LspController } from '../features/lsp/LspController';
 import { SnapDialog } from '../features/snap/SnapDialog';
-import { cn } from '../lib/cn';
+import { chromeFor } from '../skins/chrome-registry';
+import { useLook } from '../skins/look-store';
 import { useLayoutStore } from '../stores/layout-store';
 import { QuickPickHost } from '../ui/QuickPick';
-import { Spinner } from '../ui/Spinner';
-import { Splitter } from '../ui/Splitter';
 import { ActivityBar } from './ActivityBar';
-import { BottomPanel } from './BottomPanel';
 import { CommandPalette } from './CommandPalette';
 import { useGlobalShortcuts } from './commands/use-global-shortcuts';
 import { useFsInvalidation } from './hooks/use-fs-invalidation';
@@ -23,123 +20,59 @@ import { useApplySettings } from './hooks/use-settings';
 import { QuickOpen } from './QuickOpen';
 import { SettingsDialog } from './settings/SettingsDialog';
 import { ShortcutsDialog } from './ShortcutsDialog';
-import { SideBar } from './SideBar';
 import { StatusBar } from './StatusBar';
 import { TemplatesDialog } from './TemplatesDialog';
 import { TitleBar } from './TitleBar';
+import { Workbench } from './Workbench';
 
 import './commands/all';
 
-const ChatPanel = lazy(() =>
-	import('../features/ai/ChatPanel').then((m) => ({ default: m.ChatPanel })),
-);
+/** Cyber Glass's two soft light sources and drifting grid; skins can replace it. */
+function Ambient(): JSX.Element {
+	return <div className='ambient' aria-hidden />;
+}
 
 /**
- * The workbench: floating glass panes over an ambient background. Activity bar, side bar,
- * editor groups over the terminal panel, and the AI pane on the right.
+ * The window: title bar, optional skin bars, the workbench and the status bar, arranged by the
+ * active skin. Everything a skin doesn't replace is the shared chrome, restyled by its CSS.
  */
 export function AppShell(): JSX.Element {
-	const layout = useLayoutStore();
-	const start = useRef(0);
 	useGlobalShortcuts();
 	useApplySettings();
 	useFsInvalidation();
 	useLayoutPersistence();
 	useMonacoExtras();
-
-	const zen = layout.zen;
-	const showSide = layout.sideOpen && !zen;
-	const showPanel = layout.panelOpen && !zen;
-	const showAi = layout.aiOpen && !zen;
+	const { skin, layout } = useLook();
+	const zen = useLayoutStore((s) => s.zen);
+	const chrome = chromeFor(skin.id);
+	const Title = chrome.TitleBar ?? TitleBar;
+	const Activity = chrome.ActivityBar ?? ActivityBar;
+	const Status = chrome.StatusBar ?? StatusBar;
+	const Backdrop = chrome.Backdrop ?? Ambient;
+	const { Top, Bottom, Overlay } = chrome;
 
 	return (
-		<div className='relative flex h-full flex-col'>
-			<div className='ambient' aria-hidden />
-			<TitleBar />
-			<div
-				className={cn(
-					'relative z-10 flex min-h-0 flex-1 px-1.5 pb-1.5',
-					zen && 'px-[8vw] pb-6',
-				)}
-			>
-				{!zen && <ActivityBar />}
-				{!zen && <span className='w-1.5 shrink-0' />}
-				{showSide && (
-					<>
-						<div className='min-w-0 shrink-0' style={{ width: layout.sideWidth }}>
-							<SideBar />
-						</div>
-						<Splitter
-							axis='x'
-							label='Resize side bar'
-							onStart={() => (start.current = useLayoutStore.getState().sideWidth)}
-							onDrag={(d) => layout.resize({ sideWidth: start.current + d })}
-							onReset={() => layout.resize({ sideWidth: 272 })}
-						/>
-					</>
-				)}
-				<div className='flex min-w-0 flex-1 flex-col'>
-					{!(showPanel && layout.panelMaximized) && (
-						<div className='min-h-0 flex-1'>
-							<EditorArea />
-						</div>
-					)}
-					{showPanel && (
-						<>
-							{!layout.panelMaximized && (
-								<Splitter
-									axis='y'
-									label='Resize panel'
-									onStart={() =>
-										(start.current = useLayoutStore.getState().panelHeight)
-									}
-									onDrag={(d) =>
-										layout.resize({ panelHeight: start.current - d })
-									}
-									onReset={() => layout.resize({ panelHeight: 240 })}
-								/>
-							)}
-							<div
-								className={layout.panelMaximized ? 'min-h-0 flex-1' : 'shrink-0'}
-								style={
-									layout.panelMaximized
-										? undefined
-										: { height: layout.panelHeight }
-								}
-							>
-								<BottomPanel />
-							</div>
-						</>
-					)}
+		<div
+			data-part='shell'
+			className='relative flex h-full flex-col'
+			style={{ '--pane-gap': `${layout.gap}px` } as CSSProperties}
+		>
+			<Backdrop />
+			<Title />
+			{!zen && Top && <Top />}
+			{!zen && layout.statusBar === 'top' && <Status />}
+			{!zen && layout.activity === 'top' && (
+				<div
+					data-part='activity-row'
+					className='relative z-10 shrink-0 px-[var(--pane-gap)] pb-[var(--pane-gap)]'
+				>
+					<Activity />
 				</div>
-				{showAi && (
-					<>
-						<Splitter
-							axis='x'
-							label='Resize AI panel'
-							onStart={() => (start.current = useLayoutStore.getState().aiWidth)}
-							onDrag={(d) => layout.resize({ aiWidth: start.current - d })}
-							onReset={() => layout.resize({ aiWidth: 380 })}
-						/>
-						<aside
-							aria-label='AI assistant'
-							className='glass pane-focus min-w-0 shrink-0 overflow-hidden'
-							style={{ width: layout.aiWidth }}
-						>
-							<Suspense
-								fallback={
-									<div className='flex h-full items-center justify-center'>
-										<Spinner />
-									</div>
-								}
-							>
-								<ChatPanel />
-							</Suspense>
-						</aside>
-					</>
-				)}
-			</div>
-			{!zen && <StatusBar />}
+			)}
+			<Workbench Activity={Activity} />
+			{!zen && layout.statusBar === 'bottom' && <Status />}
+			{!zen && Bottom && <Bottom />}
+			{Overlay && <Overlay />}
 
 			<EditorBridge />
 			<LspController />
