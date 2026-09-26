@@ -8,6 +8,7 @@ import { useWorkspace, WORKSPACE_KEY } from '../../app/hooks/use-workspace';
 import { rememberRecentFile } from '../../app/QuickOpen';
 import { rlog } from '../../lib/log';
 import { refreshEditorConfiguration } from '../../lib/monaco/load';
+import { REDUCED_MOTION_QUERY } from '../../lib/monaco/theme';
 import { setMonacoWorkspaceRoot } from '../../lib/monaco/workspace-root';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { focusedTab, type Tab, useTabsStore } from '../../stores/tabs-store';
@@ -196,9 +197,13 @@ export function EditorBridge(): null {
 			}, 60);
 		};
 		window.addEventListener('anvil:appearance', refresh);
+		// The OS reduced-motion switch also changes the editor's scroll and cursor animations.
+		const motion = window.matchMedia(REDUCED_MOTION_QUERY);
+		motion.addEventListener('change', refresh);
 		return () => {
 			clearTimeout(timer);
 			window.removeEventListener('anvil:appearance', refresh);
+			motion.removeEventListener('change', refresh);
 		};
 	}, []);
 

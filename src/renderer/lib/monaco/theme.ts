@@ -18,6 +18,8 @@ export type EditorPrefs = Pick<
 	| 'colorSwatches'
 >;
 
+export const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
+
 function syntaxRules(c: (token: string) => string): unknown[] {
 	const rule = (scope: string | string[], token: string, fontStyle?: string): unknown => ({
 		scope,
@@ -205,6 +207,8 @@ export function buildUserConfiguration(prefs: EditorPrefs): string {
 		'editorBracketHighlight.foreground6': c('--syn-string'),
 	};
 	const size = prefs.editorFontSize;
+	// The OS setting counts too (like tokens.css); EditorBridge refreshes when it changes.
+	const still = prefs.reduceMotion || window.matchMedia(REDUCED_MOTION_QUERY).matches;
 	// The live theme (which may be a preview) decides light vs dark for Monaco's base rules.
 	const light = themeById(document.documentElement.dataset['theme'] ?? '').kind === 'light';
 	return JSON.stringify({
@@ -230,9 +234,9 @@ export function buildUserConfiguration(prefs: EditorPrefs): string {
 		'editor.inlineSuggest.showToolbar': 'onHover',
 		'editor.suggest.preview': true,
 		'editor.linkedEditing': true,
-		'editor.smoothScrolling': !prefs.reduceMotion,
-		'editor.cursorBlinking': prefs.reduceMotion ? 'solid' : 'expand',
-		'editor.cursorSmoothCaretAnimation': prefs.reduceMotion ? 'off' : 'on',
+		'editor.smoothScrolling': !still,
+		'editor.cursorBlinking': still ? 'solid' : 'expand',
+		'editor.cursorSmoothCaretAnimation': still ? 'off' : 'on',
 		'editor.cursorWidth': 2,
 		'editor.cursorStyle': prefs.cursorStyle,
 		'editor.colorDecorators': prefs.colorSwatches,
