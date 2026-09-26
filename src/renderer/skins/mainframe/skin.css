@@ -1,0 +1,205 @@
+/*
+ * Mainframe: base layer. Zero radius, no blur, no glass, one monospace everywhere, and every
+ * pane drawn as a box-drawing window: a 1px phosphor frame (the old Cyber hairline pseudo,
+ * repurposed) that brightens and doubles (Turbo Vision style) on the pane you're in.
+ */
+
+html[data-skin='mainframe'] {
+	--r-sm: 0px;
+	--r-md: 0px;
+	--r-lg: 0px;
+	--r-xl: 0px;
+	--glass-blur: 0px;
+	--glow: 0 0 0 1px var(--accent);
+	--glow-soft: none;
+	--shadow-panel: none;
+	--shadow-float: none;
+	--grain: transparent;
+	/* A header row: tall enough for one line of the UI font. Pane frames start halfway down it. */
+	--mf-row: 24px;
+	--mf-line: color-mix(in oklab, var(--border) 60%, var(--border-strong));
+	--mf-hot: var(--accent);
+	/* Dialog / menu drop shadow, offset like a text-mode window's two-cell shadow. */
+	--mf-shadow: 8px 8px 0 0 var(--scrim);
+}
+
+/*
+ * One size for every UI font: VT323 has a tiny x-height, so normalise on it instead of the em.
+ * Monaco and xterm measure their own glyphs, so they (and anything outside the app) stay raw.
+ */
+html[data-skin='mainframe'] #root,
+html[data-skin='mainframe'] [data-radix-popper-content-wrapper],
+html[data-skin='mainframe'] [role='dialog'],
+html[data-skin='mainframe'] [role='region'] {
+	font-size-adjust: 0.56;
+}
+html[data-skin='mainframe'] .monaco-editor,
+html[data-skin='mainframe'] .xterm {
+	font-size-adjust: none;
+}
+
+html[data-skin='mainframe'] body {
+	background: var(--bg-0);
+	line-height: 1.35;
+}
+html[data-skin='mainframe'] .hud {
+	font-size: 13px;
+	letter-spacing: 0.08em;
+	font-weight: 400;
+}
+html[data-skin='mainframe'] .font-semibold,
+html[data-skin='mainframe'] .font-bold {
+	font-weight: 600;
+}
+
+/* Reverse video: the one emphasis a character terminal had. */
+html[data-skin='mainframe'] .mf-rev {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+html[data-skin='mainframe'] ::selection {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+html[data-skin='mainframe'] :focus-visible {
+	outline: 1px solid var(--accent);
+	outline-offset: -1px;
+}
+
+/* Square everything, including the little status dots. */
+html[data-skin='mainframe'] .rounded-full,
+html[data-skin='mainframe'] [class*='rounded-['] {
+	border-radius: 0;
+}
+
+/* No glass anywhere: drop every backdrop blur the shared chrome asks for. */
+html[data-skin='mainframe'] [class*='backdrop-blur'] {
+	backdrop-filter: none;
+}
+
+/* Lucide content icons, drawn blockier to sit with the glyphs. */
+html[data-skin='mainframe'] svg.lucide {
+	stroke-width: 2;
+	stroke-linecap: square;
+	stroke-linejoin: miter;
+}
+
+.mf-glyph {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-family: var(--font-code);
+	font-size-adjust: none;
+	line-height: 1;
+	font-weight: 600;
+}
+
+/* ---- The tube and the panes ---------------------------------------------------------- */
+
+html[data-skin='mainframe'] .mf-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 0;
+	pointer-events: none;
+	background: var(--bg-0);
+}
+
+html[data-skin='mainframe'] .glass {
+	background: var(--bg-1);
+	backdrop-filter: none;
+	border: 0;
+	border-radius: 0;
+	box-shadow: none;
+}
+/* The frame. Panes with a header row start it halfway down so the title sits on the line. */
+html[data-skin='mainframe'] .glass::before {
+	content: '';
+	position: absolute;
+	inset: var(--mf-frame-top, 0px) 0 0 0;
+	padding: 0;
+	background: none;
+	-webkit-mask: none;
+	mask: none;
+	border: 1px solid var(--mf-line);
+	border-radius: 0;
+	opacity: 1;
+	z-index: 3;
+	pointer-events: none;
+	transition: none;
+}
+html[data-skin='mainframe'] .glass:focus-within::before {
+	border: 3px double var(--mf-hot);
+}
+html[data-skin='mainframe'] .pane-focus:focus-within {
+	border-color: transparent;
+	box-shadow: none;
+}
+html[data-skin='mainframe'] .brackets-frame {
+	display: none;
+}
+html[data-skin='mainframe'] .accent-line {
+	background: var(--accent);
+	box-shadow: none;
+}
+html[data-skin='mainframe'] .accent-gradient {
+	background: var(--accent);
+}
+html[data-skin='mainframe'] .text-gradient {
+	background: none;
+	color: var(--accent);
+}
+
+/* Splitters: a dark gutter between boxes, a bright rule while you drag. */
+html[data-skin='mainframe'] [data-part='splitter'] {
+	background: var(--bg-0);
+}
+html[data-skin='mainframe'] [data-part='splitter-handle'] {
+	border-radius: 0;
+	background: var(--accent);
+}
+html[data-skin='mainframe'] [data-part='splitter-handle'].inset-y-3 {
+	top: 0;
+	bottom: 0;
+	width: 1px;
+}
+html[data-skin='mainframe'] [data-part='splitter-handle'].inset-x-3 {
+	left: 0;
+	right: 0;
+	height: 1px;
+}
+
+/* Block scrollbars: a solid thumb in a dotted track. */
+html[data-skin='mainframe'] ::-webkit-scrollbar {
+	width: 10px;
+	height: 10px;
+}
+html[data-skin='mainframe'] ::-webkit-scrollbar-thumb {
+	background: var(--border);
+	border: 0;
+	border-radius: 0;
+}
+html[data-skin='mainframe'] ::-webkit-scrollbar-thumb:hover {
+	background: var(--border-strong);
+}
+html[data-skin='mainframe'] ::-webkit-scrollbar-track {
+	background: color-mix(in oklab, var(--border) 22%, transparent);
+}
+
+/* Loaders become a blinking block cursor. */
+html[data-skin='mainframe'] [role='status'].animate-spin {
+	width: 0.6em !important;
+	height: 1.1em !important;
+	border: 0;
+	background: var(--accent);
+	animation: mf-blink 1s steps(1) infinite;
+}
+
+@keyframes mf-blink {
+	50% {
+		opacity: 0;
+	}
+}
+
+html[data-skin='mainframe'][data-fx='off'] [role='status'].animate-spin {
+	animation: none;
+}

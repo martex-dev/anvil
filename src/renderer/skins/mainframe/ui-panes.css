@@ -1,0 +1,231 @@
+/*
+ * Mainframe: pane headers sit ON the top rule of their box, `┌─[ 01 EXPLORER ]──────┐`.
+ * Every piece of a header gets the pane color so it cuts the line; gaps between pieces let
+ * the line show through. The pane you're in inverts its title.
+ */
+
+html[data-skin='mainframe'] [data-part='sidebar'],
+html[data-skin='mainframe'] [data-part='panel'],
+html[data-skin='mainframe'] [data-part='chat'],
+html[data-skin='mainframe'] [data-part='editor-group']:has(> [data-part='tabbar']) {
+	--mf-frame-top: calc(var(--mf-row) / 2);
+}
+
+html[data-skin='mainframe'] [data-part='pane-header'],
+html[data-skin='mainframe'] [data-part='chat'] header,
+html[data-skin='mainframe'] [data-part='tabbar'] {
+	position: relative;
+	z-index: 4;
+	height: var(--mf-row);
+	padding-left: 10px;
+	padding-right: 8px;
+	gap: 0;
+	border-bottom: 0;
+	background: transparent;
+	font-size: 14px;
+}
+/* Pieces on the rule: pane-colored so the frame line breaks around them. */
+html[data-skin='mainframe'] [data-part='pane-header'] > *,
+html[data-skin='mainframe'] [data-part='pane-header'] [role='tablist'] > *,
+html[data-skin='mainframe'] [data-part='pane-header'] > div > *,
+html[data-skin='mainframe'] [data-part='chat'] header > *,
+html[data-skin='mainframe'] [data-part='tabbar'] [role='tablist'] > *,
+html[data-skin='mainframe'] [data-part='tabbar'] > div:last-child {
+	background-color: var(--bg-1);
+}
+html[data-skin='mainframe'] [data-part='pane-header'] > div,
+html[data-skin='mainframe'] [data-part='pane-header'] [role='tablist'],
+html[data-skin='mainframe'] [data-part='tabbar'] [role='tablist'] {
+	background: transparent;
+	gap: 8px;
+}
+
+/* ---- Side bar title: `[ 01 EXPLORER ]` ------------------------------------------------ */
+
+html[data-skin='mainframe'] [data-part='pane-rule'] {
+	display: none;
+}
+html[data-skin='mainframe'] [data-part='pane-index'] {
+	padding-left: 4px;
+	font-family: var(--font-display);
+	font-size: 14px;
+	color: var(--text-2);
+}
+html[data-skin='mainframe'] [data-part='pane-index']::before {
+	content: '[ ';
+	color: var(--text-1);
+}
+html[data-skin='mainframe'] [data-part='pane-title'] {
+	padding: 0 4px 0 6px;
+	color: var(--text-0);
+	font-size: 14px;
+}
+html[data-skin='mainframe'] [data-part='pane-title']::after {
+	content: ' ]';
+	color: var(--text-1);
+}
+html[data-skin='mainframe']
+	[data-part='sidebar']:focus-within
+	:is([data-part='pane-index'], [data-part='pane-title']),
+html[data-skin='mainframe']
+	[data-part='sidebar']:focus-within
+	:is([data-part='pane-index'], [data-part='pane-title'])::before,
+html[data-skin='mainframe']
+	[data-part='sidebar']:focus-within
+	:is([data-part='pane-index'], [data-part='pane-title'])::after {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+
+/* ---- Panel tabs: `[TERMINAL]─[PROBLEMS 2]` -------------------------------------------- */
+
+html[data-skin='mainframe'] [data-part='panel-tab'] {
+	padding: 0 6px;
+	font-size: 14px;
+	color: var(--text-2);
+}
+html[data-skin='mainframe'] [data-part='panel-tab']::before {
+	content: '[';
+}
+html[data-skin='mainframe'] [data-part='panel-tab']::after {
+	content: ']';
+}
+html[data-skin='mainframe'] [data-part='panel-tab'][data-active='true'] {
+	color: var(--text-0);
+}
+html[data-skin='mainframe']
+	[data-part='panel']:focus-within
+	[data-part='panel-tab'][data-active='true'] {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+html[data-skin='mainframe'] [data-part='panel-tab'] [data-part='tab-marker'] {
+	display: none;
+}
+html[data-skin='mainframe'] [data-part='panel-tab'] .num {
+	padding: 0;
+	background: none;
+	color: var(--warn);
+	font-family: inherit;
+}
+html[data-skin='mainframe'] [data-part='terminal-chip'] {
+	height: 100%;
+	padding: 0 2px 0 6px;
+	border: 0;
+	gap: 4px;
+	font-family: var(--font-ui);
+	font-size: 14px;
+}
+html[data-skin='mainframe'] [data-part='terminal-chip'][data-active='true'] {
+	background: var(--bg-3);
+	color: var(--text-0);
+}
+html[data-skin='mainframe'] [data-part='terminal-chip'][data-active='true']::after {
+	content: '*';
+	order: 2;
+	color: var(--accent);
+}
+html[data-skin='mainframe'] [data-part='terminal-chip'] > span:first-child {
+	width: 0.5em;
+	height: 0.5em;
+}
+
+/* ---- Editor tabs: `[1:strategy.py*]` -------------------------------------------------- */
+
+html[data-skin='mainframe'] [data-part='tabbar'] {
+	padding-left: 8px;
+	padding-right: 6px;
+}
+html[data-skin='mainframe'] [data-part='tabbar'] [role='tablist'] {
+	counter-reset: mf-tab;
+	gap: 6px;
+	scrollbar-width: none;
+}
+html[data-skin='mainframe'] [data-part='tab'] {
+	counter-increment: mf-tab;
+	max-width: 22rem;
+	gap: 0;
+	padding: 0 4px;
+	font-size: 14px;
+	color: var(--text-2);
+	background-color: var(--bg-1) !important;
+}
+html[data-skin='mainframe'] [data-part='tab']::before {
+	content: '[' counter(mf-tab) ':';
+}
+html[data-skin='mainframe'] [data-part='tab']::after {
+	content: ']';
+	order: 9;
+}
+html[data-skin='mainframe'] [data-part='tab']:hover {
+	color: var(--text-0);
+}
+html[data-skin='mainframe'] [data-part='tab'][data-active='true'] {
+	color: var(--text-0);
+}
+html[data-skin='mainframe']
+	[data-part='editor-group'][data-focused='true']
+	[data-part='tab'][data-active='true'] {
+	background-color: var(--accent) !important;
+	color: var(--on-accent);
+}
+/* Drop the badge, underline tint and divider; keep the dirty mark as a `*`. */
+html[data-skin='mainframe'] [data-part='tab'] > span.absolute,
+html[data-skin='mainframe'] [data-part='tab'] > span[class*='text-[8.5px]'],
+html[data-skin='mainframe'] [data-part='tab'] > span.rotate-45,
+html[data-skin='mainframe'] [data-part='tab'] > svg {
+	display: none;
+}
+html[data-skin='mainframe'] [data-part='tab'] > span.truncate {
+	font-style: normal;
+}
+html[data-skin='mainframe'] [data-part='tab'] > button {
+	order: 8;
+	width: auto;
+	min-width: 1ch;
+	height: auto;
+	color: inherit;
+	background: none;
+}
+html[data-skin='mainframe'] [data-part='tab'] > button:hover {
+	background: none;
+	color: var(--down);
+}
+html[data-skin='mainframe'] [data-part='tab'] > button > span.bg-accent {
+	width: auto;
+	height: auto;
+	background: none;
+	box-shadow: none;
+}
+html[data-skin='mainframe'] [data-part='tab'] > button > span.bg-accent::before {
+	content: '*';
+}
+html[data-skin='mainframe'] [data-part='tab'] > button > svg {
+	width: 11px;
+}
+html[data-skin='mainframe'] [data-part='tab'] > button:has(> svg.invisible) {
+	min-width: 0;
+}
+html[data-skin='mainframe'] [data-part='tab'] > button > svg.invisible {
+	display: none;
+}
+html[data-skin='mainframe'] [data-part='tab']:hover > button > svg.invisible {
+	display: block;
+}
+html[data-skin='mainframe'] [data-part='tab'] > span.bg-down {
+	width: auto;
+	height: auto;
+	margin-right: 2px;
+	background: none;
+	box-shadow: none;
+	color: var(--down);
+}
+html[data-skin='mainframe'] [data-part='tab'] > span.bg-down::before {
+	content: '!';
+}
+html[data-skin='mainframe'] [data-part='tabbar'] > div:last-child {
+	padding: 0 2px;
+}
+html[data-skin='mainframe'] [data-part='editor-group'] [data-part='editor-surface'] {
+	margin: 0 1px 1px;
+}
