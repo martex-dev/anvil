@@ -61,29 +61,51 @@ export function useDataMeta(params: DataParams): UseQueryResult<DataPage> {
 
 export type RowLookup = (row: number) => Row | 'loading' | 'error';
 
+/** A page of rows that failed to load, with a way to try it again. */
+export interface PageFailure {
+	page: number;
+	message: string;
+	retry: () => void;
+}
+
+export interface RowPages {
+	getRow: RowLookup;
+	/** Pages near the viewport whose request failed; their rows render as errors. */
+	failures: PageFailure[];
+}
+
 /** Fetches (and caches, via TanStack Query) the pages overlapping [start, end). */
 export function useRowPages(
 	params: DataParams,
 	start: number,
 	end: number,
 	enabled: boolean,
-): RowLookup {
+): RowPages {
 	// Reach a little past the viewport so scrolling across a page boundary is already loaded.
 	const pages = pagesForRange(Math.max(0, start - 100), end + 100);
 	const results = useQueries({
 		queries: pages.map((page) => ({ ...pageQuery(params, page), enabled })),
 	});
 	const byPage = new Map<number, UseQueryResult<DataPage>>();
+	const failures: PageFailure[] = [];
 	pages.forEach((page, i) => {
 		const result = results[i];
-		if (result) byPage.set(page, result);
+		if (!result) return;
+		byPage.set(page, result);
+		if (result.isError)
+			failures.push({
+				page,
+				message: result.error.message,
+				retry: () => void result.refetch(),
+			});
 	});
-	return (row) => {
+	const getRow: RowLookup = (row) => {
 		const result = byPage.get(Math.floor(row / PAGE_SIZE));
 		if (!result || result.isPending) return 'loading';
 		if (result.isError) return 'error';
 		return result.data.rows[row % PAGE_SIZE] ?? 'loading';
 	};
+	return { getRow, failures };
 }
 
 /** Rows [start, end] inclusive, reusing cached pages; used for clipboard export. */

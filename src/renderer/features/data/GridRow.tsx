@@ -63,7 +63,8 @@ export const GridRow = memo(function GridRow({
 		if (cells === 'loading') {
 			content = <span className='shimmer block h-2 w-3/5 rounded-sm bg-bg-3/60' />;
 		} else if (cells === 'error') {
-			content = <span className='text-fg-2'>—</span>;
+			// Tinted so failed rows don't read as data; the banner below the grid explains.
+			content = <span className='text-down/70'>—</span>;
 		} else {
 			content = renderCell(cells[c], column);
 		}

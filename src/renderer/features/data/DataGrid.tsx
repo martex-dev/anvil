@@ -32,6 +32,7 @@ import {
 } from './grid-selection';
 import { GridHeader } from './GridHeader';
 import { GridRow } from './GridRow';
+import { RowErrorBanner } from './RowErrorBanner';
 import { type DataParams, useRowPages } from './use-data-pages';
 import { gridMenuItems, useGridMouse } from './use-grid-mouse';
 
@@ -95,7 +96,7 @@ export function DataGrid({
 		scroll.left - COLUMN_OVERSCAN_PX,
 		scroll.left + size.width - gutter + COLUMN_OVERSCAN_PX,
 	);
-	const getRow = useRowPages(params, win.start, win.end, size.height > 0);
+	const { getRow, failures } = useRowPages(params, win.start, win.end, size.height > 0);
 	const range = selection ? selectionRange(selection) : null;
 	const firstVisible = Math.min(
 		Math.max(0, totalRows - 1),
@@ -224,48 +225,54 @@ export function DataGrid({
 	}
 
 	return (
-		<AppContextMenu
-			items={gridMenuItems(range, totalRows, columns.length, onCopy, onSelectionChange)}
-		>
-			<div
-				ref={scrollRef}
-				role='grid'
-				aria-rowcount={totalRows + 1}
-				aria-colcount={columns.length}
-				aria-multiselectable
-				aria-label='Data table'
-				tabIndex={0}
-				onScroll={(e) =>
-					setScroll({ top: e.currentTarget.scrollTop, left: e.currentTarget.scrollLeft })
-				}
-				onKeyDown={onKeyDown}
-				onMouseDown={mouse.onMouseDown}
-				onMouseMove={mouse.onMouseMove}
-				onMouseUp={mouse.onMouseUp}
-				className='relative min-h-0 flex-1 overflow-auto focus-visible:-outline-offset-1'
+		<>
+			<AppContextMenu
+				items={gridMenuItems(range, totalRows, columns.length, onCopy, onSelectionChange)}
 			>
 				<div
-					className='relative'
-					style={{ width: contentWidth, height: HEADER_HEIGHT + win.height }}
+					ref={scrollRef}
+					role='grid'
+					aria-rowcount={totalRows + 1}
+					aria-colcount={columns.length}
+					aria-multiselectable
+					aria-label='Data table'
+					tabIndex={0}
+					onScroll={(e) =>
+						setScroll({
+							top: e.currentTarget.scrollTop,
+							left: e.currentTarget.scrollLeft,
+						})
+					}
+					onKeyDown={onKeyDown}
+					onMouseDown={mouse.onMouseDown}
+					onMouseMove={mouse.onMouseMove}
+					onMouseUp={mouse.onMouseUp}
+					className='relative min-h-0 flex-1 overflow-auto focus-visible:-outline-offset-1'
 				>
-					<GridHeader
-						columns={columns}
-						offsets={offsets}
-						gutter={gutter}
-						width={contentWidth}
-						colStart={cols.start}
-						colEnd={cols.end}
-						sort={params.sort}
-						selLeft={range ? range.left : -1}
-						selRight={range ? range.right : -1}
-						onSort={onSort}
-						onResize={onResize}
-					/>
-					{rows}
-					{overlay}
-					{focusMark}
+					<div
+						className='relative'
+						style={{ width: contentWidth, height: HEADER_HEIGHT + win.height }}
+					>
+						<GridHeader
+							columns={columns}
+							offsets={offsets}
+							gutter={gutter}
+							width={contentWidth}
+							colStart={cols.start}
+							colEnd={cols.end}
+							sort={params.sort}
+							selLeft={range ? range.left : -1}
+							selRight={range ? range.right : -1}
+							onSort={onSort}
+							onResize={onResize}
+						/>
+						{rows}
+						{overlay}
+						{focusMark}
+					</div>
 				</div>
-			</div>
-		</AppContextMenu>
+			</AppContextMenu>
+			<RowErrorBanner failures={failures} totalRows={totalRows} />
+		</>
 	);
 }
