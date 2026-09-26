@@ -10,6 +10,7 @@ import { useProblems } from '../problems/problems-store';
 import { useEditorStore } from './editor-store';
 import { isScratch } from './file-ops';
 import { closeTab } from './open';
+import { type DropSide, dropSide, dropTab, TAB_MIME } from './tab-drop';
 import { focusTab, tabKeyTarget } from './tab-keys';
 import { tabMenuItems } from './tab-menu';
 
@@ -31,7 +32,7 @@ export function TabView({
 	const dirty = tab.kind === 'code' && Boolean(file?.dirty);
 	const changed = Boolean(file?.changedOnDisk);
 	const { activate, pin } = useTabsStore.getState();
-	const [dragOver, setDragOver] = useState(false);
+	const [dropAt, setDropAt] = useState<DropSide | null>(null);
 	const label = tab.kind === 'welcome' ? 'Welcome' : tab.title;
 	const fileName = isScratch(tab.path)
 		? 'scratch.py'
@@ -53,33 +54,24 @@ export function TabView({
 				title={tab.path ?? label}
 				draggable
 				onDragStart={(e) =>
-					e.dataTransfer.setData('text/anvil-tab', JSON.stringify({ id: tab.id, group }))
+					e.dataTransfer.setData(TAB_MIME, JSON.stringify({ id: tab.id, group }))
 				}
 				onDragOver={(e) => {
-					if (e.dataTransfer.types.includes('text/anvil-tab')) {
-						e.preventDefault();
-						setDragOver(true);
-					}
+					if (!e.dataTransfer.types.includes(TAB_MIME)) return;
+					e.preventDefault();
+					setDropAt(dropSide(e.clientX, e.currentTarget.getBoundingClientRect()));
 				}}
-				onDragLeave={() => setDragOver(false)}
+				onDragLeave={(e) => {
+					// Moving onto the label or close button isn't leaving the tab.
+					const to = e.relatedTarget;
+					if (to instanceof Node && e.currentTarget.contains(to)) return;
+					setDropAt(null);
+				}}
 				onDrop={(e) => {
-					setDragOver(false);
-					const raw = e.dataTransfer.getData('text/anvil-tab');
-					if (!raw) return;
-					const from = JSON.parse(raw) as { id: string; group: number };
-					const g = useTabsStore.getState().groups.find((x) => x.id === group);
-					if (!g) return;
-					if (from.group === group) {
-						useTabsStore
-							.getState()
-							.move(group, g.tabIds.indexOf(from.id), g.tabIds.indexOf(tab.id));
-					} else {
-						const moved = useTabsStore.getState().tabs[from.id];
-						if (moved) {
-							useTabsStore.getState().open(moved, { group });
-							useTabsStore.getState().close(from.group, from.id);
-						}
-					}
+					const side = dropSide(e.clientX, e.currentTarget.getBoundingClientRect());
+					setDropAt(null);
+					const raw = e.dataTransfer.getData(TAB_MIME);
+					if (raw) dropTab(raw, group, tab.id, side);
 				}}
 				onClick={() => activate(group, tab.id)}
 				onDoubleClick={() => pin(tab.id)}
@@ -117,7 +109,8 @@ export function TabView({
 					active
 						? 'bg-accent-faint text-fg-0'
 						: 'text-fg-2 hover:bg-bg-3/40 hover:text-fg-1',
-					dragOver && 'shadow-[inset_2px_0_0_var(--accent)]',
+					dropAt === 'before' && 'shadow-[inset_2px_0_0_var(--accent)]',
+					dropAt === 'after' && 'shadow-[inset_-2px_0_0_var(--accent)]',
 					hasError && !active && 'text-down/80',
 					'focus-visible:shadow-[inset_0_0_0_1px_var(--accent)]',
 				)}
