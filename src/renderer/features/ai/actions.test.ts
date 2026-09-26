@@ -1,7 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { call } from '../../lib/ipc';
 import { useToastStore } from '../../stores/toast-store';
-import { askChat, fixProblemsHere, testFramework, vectorize } from './actions';
+import {
+	addDocstring,
+	askAiAboutProblem,
+	askChat,
+	fixProblemsHere,
+	testFramework,
+	vectorize,
+} from './actions';
 import { useChat } from './chat-store';
 import type * as editorContext from './editor-context';
 import { type ActiveEditor, activeEditor, problemsContext } from './editor-context';
@@ -13,6 +21,8 @@ vi.mock('./ai-settings', () => ({
 	),
 }));
 
+vi.mock('../../lib/ipc', () => ({ call: vi.fn(() => Promise.reject(new Error('no ipc'))) }));
+vi.mock('../../stores/workbench-store', () => ({ requestOpenFile: vi.fn() }));
 vi.mock('./inline-edit', () => ({ startInlineEdit: vi.fn() }));
 vi.mock('../../lib/monaco/load', () => ({ getLoadedMonaco: () => ({}) }));
 vi.mock('./editor-context', async (original) => ({
@@ -119,5 +129,33 @@ describe('testFramework', () => {
 
 	it('falls back to idiomatic tests instead of vitest', () => {
 		expect(testFramework('sql')).toBe('idiomatic sql');
+	});
+});
+
+describe('feedback instead of silence', () => {
+	it('says to open a file when there is no editor', async () => {
+		vi.mocked(activeEditor).mockReturnValue(null);
+		await fixProblemsHere();
+		addDocstring();
+		const titles = useToastStore.getState().toasts.map((t) => t.title);
+		expect(titles).toEqual(['Open a file first', 'Open a file first']);
+		expect(startInlineEdit).not.toHaveBeenCalled();
+	});
+
+	it('warns when the file behind a problem cannot be read, and still asks', async () => {
+		vi.mocked(call).mockRejectedValueOnce(new Error('EACCES'));
+		await askAiAboutProblem({
+			path: 'a.py',
+			line: 3,
+			column: 1,
+			message: 'bad',
+			severity: 'error',
+			source: 'ruff',
+		});
+		const warn = useToastStore
+			.getState()
+			.toasts.find((t) => t.title === 'Sent without the file');
+		expect(warn?.description).toContain('EACCES');
+		expect(useChat.getState().messages[0]?.context?.map((c) => c.kind)).toEqual(['problems']);
 	});
 });

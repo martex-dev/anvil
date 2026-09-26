@@ -151,7 +151,11 @@ export async function checkLookahead(): Promise<void> {
 export async function fixProblemsHere(): Promise<void> {
 	const ed = activeEditor();
 	const monaco = getLoadedMonaco();
-	if (!ed || !monaco) return;
+	// Monaco loads with the first editor, so no Monaco also means no file open.
+	if (!ed || !monaco) {
+		toast.info('Open a file first');
+		return;
+	}
 	const line = ed.editor.getPosition()?.lineNumber ?? 1;
 	const problems = problemsContext(
 		monaco,
@@ -177,7 +181,14 @@ export async function fixProblemsHere(): Promise<void> {
 
 export async function askAiAboutProblem(p: Problem): Promise<void> {
 	requestOpenFile({ path: p.path, line: p.line, column: p.column });
-	const content = await call('fs:readFile', p.path).catch(() => null);
+	const content = await call('fs:readFile', p.path).catch((error: unknown) => {
+		// Still ask about the problem, but say the model won't see the file.
+		toast.warn(
+			'Sent without the file',
+			`Could not read ${p.path}: ${error instanceof Error ? error.message : String(error)}`,
+		);
+		return null;
+	});
 	const context: AiContext[] = [];
 	if (content && !content.binary && !content.tooLarge) {
 		const { text, truncated } = truncateForContext(content.content);
@@ -198,7 +209,10 @@ export async function askAiAboutProblem(p: Problem): Promise<void> {
 
 export function addDocstring(): void {
 	const ed = activeEditor();
-	if (!ed) return;
+	if (!ed) {
+		toast.info('Open a file first');
+		return;
+	}
 	// Select the function under the cursor so the edit covers it whole.
 	if (!ed.selection) selectSymbolAtCursor(ed);
 	startInlineEdit(
