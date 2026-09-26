@@ -3,33 +3,31 @@ import { History, RotateCcw, Trash2 } from 'lucide-react';
 import { type JSX, useState } from 'react';
 
 import { useSettings } from '../../app/hooks/use-settings';
+import { useWorkspace } from '../../app/hooks/use-workspace';
 import { call } from '../../lib/ipc';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
+import { useNow } from '../../lib/use-now';
 import { useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
 import { Button } from '../../ui/Button';
 import { Dialog } from '../../ui/Dialog';
 import { EmptyState } from '../../ui/EmptyState';
+import { ErrorState } from '../../ui/ErrorState';
 import { IconButton } from '../../ui/IconButton';
+import { Spinner } from '../../ui/Spinner';
 import { useEditorStore } from '../editor/editor-store';
 import { getModel } from '../editor/file-ops';
-
-function ago(ms: number): string {
-	const s = (Date.now() - ms) / 1000;
-	if (s < 60) return 'just now';
-	if (s < 3600) return `${Math.floor(s / 60)} min ago`;
-	if (s < 86_400) return `${Math.floor(s / 3600)} h ago`;
-	return `${Math.floor(s / 86_400)} d ago`;
-}
-
-const bytes = (n: number): string => (n < 1024 ? `${n} B` : `${(n / 1024).toFixed(1)} KB`);
+import { ago, bytes } from './history-format';
 
 /** Snapshots taken on every save of the active file; compare or roll back without git. */
 export function HistoryView(): JSX.Element {
 	const path = useEditorStore((s) => s.active);
 	const { settings, update } = useSettings();
+	const { info } = useWorkspace();
 	const q = useQuery({
-		queryKey: ['history', path],
+		// Snapshots are stored per project: the same relative path in another folder is
+		// another file's history.
+		queryKey: ['history', info.root, path],
 		queryFn: () => call('history:list', path ?? ''),
 		enabled: Boolean(path),
 	});
@@ -37,10 +35,30 @@ export function HistoryView(): JSX.Element {
 		if (path && files.includes(path)) void q.refetch();
 	});
 	const [restore, setRestore] = useState<string | null>(null);
+	// Re-renders the relative times ("just now" → "1 min ago") while the view stays open.
+	const now = useNow(30_000);
+	const [confirmClear, setConfirmClear] = useState(false);
+
+	/** The snapshot's text, or null after telling the user why it could not be read. */
+	const readSnapshot = async (id: string): Promise<string | null> => {
+		if (!path) return null;
+		try {
+			return (await call('history:read', { path, id })).content;
+		} catch (error) {
+			toast.error(
+				'Could not read snapshot',
+				error instanceof Error ? error.message : undefined,
+			);
+			// It may have been pruned or cleared meanwhile; show what is left.
+			void q.refetch();
+			return null;
+		}
+	};
 
 	const compare = async (id: string, time: number): Promise<void> => {
 		if (!path) return;
-		const { content } = await call('history:read', { path, id });
+		const content = await readSnapshot(id);
+		if (content === null) return;
 		const current = getModel(path)?.getValue() ?? '';
 		const name = path.split('/').at(-1) ?? path;
 		useTabsStore.getState().open({
@@ -62,8 +80,12 @@ export function HistoryView(): JSX.Element {
 	const doRestore = async (id: string): Promise<void> => {
 		if (!path) return;
 		const model = getModel(path);
-		if (!model) return;
-		const { content } = await call('history:read', { path, id });
+		if (!model) {
+			toast.info('Open the file to restore', path);
+			return;
+		}
+		const content = await readSnapshot(id);
+		if (content === null) return;
 		// An edit, not a file write: undo gets you back, and saving is your call.
 		model.pushEditOperations(
 			[],
@@ -71,6 +93,21 @@ export function HistoryView(): JSX.Element {
 			() => null,
 		);
 		toast.success('Snapshot restored', 'Save to keep it, or undo (Ctrl+Z).');
+	};
+
+	const clear = async (): Promise<void> => {
+		if (!path) return;
+		try {
+			await call('history:clear', path);
+			toast.success('History cleared', path);
+		} catch (error) {
+			toast.error(
+				'Could not clear history',
+				error instanceof Error ? error.message : undefined,
+			);
+		} finally {
+			void q.refetch();
+		}
 	};
 
 	if (!settings.localHistory) {
@@ -99,24 +136,37 @@ export function HistoryView(): JSX.Element {
 	return (
 		<div className='flex h-full flex-col'>
 			<div className='flex items-center gap-2 px-3 py-2'>
-				<span className='truncate font-mono text-11 text-fg-1'>{path}</span>
+				<span className='truncate font-mono text-11 text-fg-1' title={path}>
+					{path}
+				</span>
 				<span className='flex-1' />
 				{items.length > 0 && (
 					<IconButton
 						size='sm'
 						label='Clear history for this file'
 						icon={<Trash2 size={12} />}
-						onClick={() => void call('history:clear', path).then(() => q.refetch())}
+						onClick={() => setConfirmClear(true)}
 					/>
 				)}
 			</div>
-			{items.length === 0 ? (
+			{q.isLoading ? (
+				<div className='flex h-24 items-center justify-center'>
+					<Spinner label='Reading snapshots' />
+				</div>
+			) : q.error && !q.data ? (
+				<ErrorState
+					title='Could not read local history'
+					message={q.error.message}
+					onRetry={() => void q.refetch()}
+				/>
+			) : items.length === 0 ? (
 				<p className='px-3 text-12 text-fg-2'>
 					No snapshots yet. One is kept every time you save (up to 50, 30 days).
 				</p>
 			) : (
-				<ol className='relative min-h-0 flex-1 overflow-auto pb-3 pl-3'>
-					<span className='absolute top-2 bottom-3 left-[17px] w-px bg-glass-edge' />
+				// The timeline rail is a pseudo-element: a child <span> would be an invalid, announced
+				// list item.
+				<ol className="relative min-h-0 flex-1 overflow-auto pb-3 pl-3 before:absolute before:top-2 before:bottom-3 before:left-[17px] before:w-px before:bg-glass-edge before:content-['']">
 					{items.map((s, i) => (
 						<li key={s.id} className='group relative flex items-center gap-3 py-1 pr-2'>
 							<span
@@ -129,10 +179,10 @@ export function HistoryView(): JSX.Element {
 							<button
 								type='button'
 								onClick={() => void compare(s.id, s.time)}
-								className='flex min-w-0 flex-1 flex-col text-left outline-none'
+								className='group/snap flex min-w-0 flex-1 flex-col rounded-sm text-left outline-none focus-visible:shadow-glow'
 							>
-								<span className='text-12 text-fg-0 group-hover:text-accent'>
-									{ago(s.time)}
+								<span className='text-12 text-fg-0 group-hover:text-accent group-focus-visible/snap:text-accent'>
+									{ago(s.time, now)}
 								</span>
 								<span className='num text-10 text-fg-2'>
 									{new Date(s.time).toLocaleString([], { hour12: false })} ·{' '}
@@ -144,12 +194,35 @@ export function HistoryView(): JSX.Element {
 								label='Restore this version'
 								icon={<RotateCcw size={12} />}
 								onClick={() => setRestore(s.id)}
-								className='opacity-0 group-hover:opacity-100'
+								className='opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100'
 							/>
 						</li>
 					))}
 				</ol>
 			)}
+			<Dialog
+				open={confirmClear}
+				onOpenChange={setConfirmClear}
+				title={`Delete all ${items.length} snapshot${items.length === 1 ? '' : 's'} of this file?`}
+				description='This permanently removes them from local history. It cannot be undone.'
+				width='sm'
+				footer={
+					<>
+						<Button variant='ghost' autoFocus onClick={() => setConfirmClear(false)}>
+							Cancel
+						</Button>
+						<Button
+							variant='danger'
+							onClick={() => {
+								setConfirmClear(false);
+								void clear();
+							}}
+						>
+							Delete
+						</Button>
+					</>
+				}
+			/>
 			<Dialog
 				open={restore !== null}
 				onOpenChange={(open) => !open && setRestore(null)}

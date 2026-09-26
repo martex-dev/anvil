@@ -2,9 +2,11 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { rgArgs, Ripgrep } from './ripgrep';
+import { queryError, rgArgs, Ripgrep } from './ripgrep';
+
+vi.mock('electron-log/main', () => ({ default: { warn: vi.fn() } }));
 
 let root: string;
 
@@ -19,6 +21,8 @@ beforeAll(() => {
 	write('src/util.py', 'def price_feed():\n    return "price"\n');
 	write('node_modules/lib/index.js', 'price everywhere');
 	write('notes.md', 'The price is right. Priceless.');
+	write('.github/workflows/ci.yml', 'run: check-price');
+	write('.git/config', 'price = internal');
 });
 
 afterAll(() => rmSync(root, { recursive: true, force: true }));
@@ -33,13 +37,34 @@ describe('rgArgs', () => {
 	});
 });
 
+describe('queryError', () => {
+	it('blames the query only for regex and glob errors', () => {
+		expect(
+			queryError('rg: regex parse error:\n    (\n    ^\nerror: unclosed group\n'),
+		).toMatchObject({
+			code: 'SEARCH_BAD_QUERY',
+		});
+		expect(queryError("rg: error parsing glob '{a': unclosed alternate group")).toMatchObject({
+			code: 'SEARCH_BAD_QUERY',
+		});
+		// An unreadable file is not a bad query: the search still resolves with what it found.
+		expect(queryError('rg: ./locked.db: Access is denied. (os error 5)\n')).toBeNull();
+		expect(queryError('')).toBeNull();
+	});
+});
+
 describe('Ripgrep (real binary)', () => {
 	const rg = new Ripgrep();
 
-	it('finds case-insensitive literal matches, skipping node_modules', async () => {
+	it('finds case-insensitive literal matches, in dotfiles too, skipping node_modules and .git', async () => {
 		const result = await rg.search(root, { query: 'price' });
 		const paths = result.files.map((f) => f.path).sort();
-		expect(paths).toEqual(['notes.md', 'src/app.ts', 'src/util.py']);
+		expect(paths).toEqual([
+			'.github/workflows/ci.yml',
+			'notes.md',
+			'src/app.ts',
+			'src/util.py',
+		]);
 		const app = result.files.find((f) => f.path === 'src/app.ts');
 		expect(app?.matches.map((m) => [m.line, m.column])).toEqual([
 			[1, 7],
@@ -62,9 +87,24 @@ describe('Ripgrep (real binary)', () => {
 		expect(none.files).toEqual([]);
 	});
 
+	it('runs searches on separate instances side by side (the TODO scan has its own)', async () => {
+		const [find, todos] = await Promise.all([
+			rg.search(root, { query: 'price' }),
+			new Ripgrep().search(root, { query: 'Priceless', caseSensitive: true }),
+		]);
+		expect(find.matchCount).toBeGreaterThan(0);
+		expect(todos.files.map((f) => f.path)).toEqual(['notes.md']);
+	});
+
+	it('marks a search stopped by the time limit as incomplete', async () => {
+		const result = await new Ripgrep(undefined, 1).search(root, { query: 'price' });
+		expect(result).toMatchObject({ truncated: true, timedOut: true });
+	});
+
 	it('reports an invalid regex as a readable error', async () => {
 		await expect(rg.search(root, { query: '(unclosed', regex: true })).rejects.toMatchObject({
 			code: 'SEARCH_BAD_QUERY',
+			message: 'regex parse error: unclosed group',
 		});
 	});
 });

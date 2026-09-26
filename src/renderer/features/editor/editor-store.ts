@@ -72,7 +72,10 @@ interface EditorState {
 	 * (Close All / Close Others can hit several).
 	 */
 	closing: string[];
-	/** Bumped (debounced) when the focused editor's text changes; views like Outline follow it. */
+	/**
+	 * Bumped (debounced) when an editor's text changes, and when an editor swaps to another
+	 * file's model; views like Outline follow it.
+	 */
 	contentVersion: number;
 	bumpContent: () => void;
 	add: (file: OpenFile) => void;

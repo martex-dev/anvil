@@ -25,6 +25,8 @@ interface PickRequest {
 	title: string;
 	placeholder: string;
 	items: PickItem[] | Promise<PickItem[]>;
+	/** Toast title when `items` rejects (the picker then closes). */
+	loadErrorTitle?: string;
 	/** Offer "create <typed text>" (e.g. a new branch) when nothing matches exactly. */
 	allowCustom?: { label: (text: string) => string };
 	/** Called as the highlighted item changes (live previews); `null` when nothing is. */
@@ -71,13 +73,15 @@ export function quickPick(options: Omit<PickRequest, 'resolve'>): Promise<string
 				.then((items) =>
 					useQuickPickStore.setState({ items, active: initialActive(items) }),
 				)
+				// Say why and close: an empty "Nothing matches." list (still offering "create …")
+				// would hide the failure. Leave a picker that has replaced this one alone.
 				.catch((error: unknown) => {
 					rlog.error('quick-pick', `loading "${options.title}" items failed`, error);
 					toast.error(
-						'Could not load the list',
+						options.loadErrorTitle ?? 'Could not load the list',
 						error instanceof Error ? error.message : undefined,
 					);
-					useQuickPickStore.setState({ items: [] });
+					if (useQuickPickStore.getState().request?.resolve === resolve) close(null);
 				});
 		}
 	});

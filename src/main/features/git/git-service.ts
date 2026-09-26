@@ -2,13 +2,14 @@ import { realpathSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { isAbsolute, join, relative, sep } from 'node:path';
 
-import { type SimpleGit, simpleGit } from 'simple-git';
+import type { SimpleGit, StatusResult } from 'simple-git';
 
 import type { GitBlame, GitCommit, GitStatus } from '@shared/ipc/channels/git';
 import { scanUnifiedDiff, type SecretFinding } from '@shared/secret-scan';
 
 import { AnvilError } from '../../core/errors';
 import { toAbsolute } from '../../core/workspace/fs-guard';
+import { batchPaths, git, isMissingPathError, isNotARepo, isUnbornHead } from './git-process';
 import { mapStatus } from './status-map';
 
 const MAX_DIFF_BYTES = 5 * 1024 * 1024;
@@ -23,73 +24,17 @@ const NOT_A_REPO: GitStatus = {
 	unstaged: [],
 };
 
-/**
- * Environment for git: an allowlist of what git and Git Credential Manager need. Inheriting
- * everything would leak other tools' hooks (GIT_ASKPASS from VS Code, EDITOR, PAGER…), which
- * simple-git also refuses to run with.
- */
-const ENV_ALLOW = new Set(
-	[
-		'PATH',
-		'PATHEXT',
-		'SystemRoot',
-		'SystemDrive',
-		'windir',
-		'ComSpec',
-		'TEMP',
-		'TMP',
-		'HOME',
-		'HOMEDRIVE',
-		'HOMEPATH',
-		'USERPROFILE',
-		'USERNAME',
-		'USERDOMAIN',
-		'APPDATA',
-		'LOCALAPPDATA',
-		'ProgramData',
-		'ProgramFiles',
-		'ProgramFiles(x86)',
-		'ProgramW6432',
-		'CommonProgramFiles',
-		'LANG',
-		'LANGUAGE',
-		'SSH_AUTH_SOCK',
-		'HTTP_PROXY',
-		'HTTPS_PROXY',
-		'NO_PROXY',
-		'http_proxy',
-		'https_proxy',
-		'no_proxy',
-	].map((k) => k.toLowerCase()),
-);
-
-export function gitEnv(env: NodeJS.ProcessEnv): Record<string, string> {
-	const out: Record<string, string> = {};
-	for (const [key, value] of Object.entries(env)) {
-		if (value === undefined) continue;
-		// Windows env names are case-insensitive; GCM_* configures Git Credential Manager.
-		if (ENV_ALLOW.has(key.toLowerCase()) || key.startsWith('GCM_') || key.startsWith('LC_')) {
-			out[key] = value;
-		}
-	}
-	return { ...out, GIT_TERMINAL_PROMPT: '0' };
-}
-
-function git(baseDir: string): SimpleGit {
-	return simpleGit({
-		baseDir,
-		maxConcurrentProcesses: 4,
-		timeout: { block: 60_000 },
-		// GIT_TERMINAL_PROMPT=0: never hang on a prompt in an invisible terminal; Git
-		// Credential Manager still shows its own window when credentials are needed.
-	}).env(gitEnv(process.env));
-}
-
 const isBinary = (s: string): boolean => s.includes('\0');
+
+export function pullSummary(s: { changes: number; insertions: number; deletions: number }): string {
+	if (s.changes === 0) return 'Already up to date';
+	const files = `${s.changes} file${s.changes === 1 ? '' : 's'}`;
+	return `${files} changed, +${s.insertions} −${s.deletions}`;
+}
 
 /** Git for the open folder, via the system git (simple-git). The repo root may be above it. */
 export class GitService {
-	private repoRootCache: { workspace: string; root: string | null } | null = null;
+	private repoRootCache: { workspace: string; root: string } | null = null;
 
 	constructor(private readonly getWorkspaceRoot: () => string | null) {}
 
@@ -103,11 +48,12 @@ export class GitService {
 			root = top ? join(top) : null;
 		} catch (error) {
 			// "Not a repo" is a normal state; anything else (git missing, blocked env…) is a real error.
-			const message = error instanceof Error ? error.message : String(error);
-			if (!/not a git repository/i.test(message)) throw error;
+			if (!isNotARepo(error)) throw error;
 			root = null;
 		}
-		this.repoRootCache = { workspace, root };
+		// Only a found repo is cached: a plain folder must notice `git init` run in a terminal
+		// (the empty state suggests exactly that), and rev-parse is cheap enough to repeat.
+		this.repoRootCache = root ? { workspace, root } : null;
 		return root;
 	}
 
@@ -127,13 +73,23 @@ export class GitService {
 		const root = await this.repoRoot();
 		const workspace = this.getWorkspaceRoot();
 		if (!root || !workspace) return NOT_A_REPO;
-		// -uall lists files inside new folders instead of collapsing them to "folder/".
-		const s = await git(root).status(['-uall']);
+		let s: StatusResult;
+		try {
+			// -uall lists files inside new folders instead of collapsing them to "folder/".
+			s = await git(root).status(['-uall']);
+		} catch (error) {
+			// The cached repo is gone (.git deleted): back to the "not a repo" state.
+			if (!isNotARepo(error)) throw error;
+			this.reset();
+			return NOT_A_REPO;
+		}
 		// git reports long paths; the folder may have been opened via an 8.3 short name (PCGAME~1).
 		const realWorkspace = realpathSync.native(workspace);
 		const toWorkspacePath = (repoPath: string): string | null => {
 			const rel = relative(realWorkspace, join(root, repoPath));
-			return rel.startsWith('..') || isAbsolute(rel) ? null : rel.split(sep).join('/');
+			// Not startsWith('..'): '..env.bak' is a file inside the folder.
+			const outside = rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel);
+			return outside ? null : rel.split(sep).join('/');
 		};
 		return {
 			isRepo: true,
@@ -160,8 +116,10 @@ export class GitService {
 		const show = async (spec: string): Promise<string> => {
 			try {
 				return await g.show([spec]);
-			} catch {
-				return '';
+			} catch (error) {
+				// A new, deleted or conflicted file has no version there; anything else is real.
+				if (isMissingPathError(error)) return '';
+				throw error;
 			}
 		};
 		const repoPath = relative(root, abs).split(sep).join('/');
@@ -174,7 +132,11 @@ export class GitService {
 			? await show(`:${repoPath}`)
 			: await readFile(abs)
 					.then((b) => (b.length > MAX_DIFF_BYTES ? '\0' : b.toString('utf8')))
-					.catch(() => '');
+					.catch((error: unknown) => {
+						// Deleted in the working tree: the modified side is empty.
+						if ((error as NodeJS.ErrnoException).code === 'ENOENT') return '';
+						throw error;
+					});
 		const binary = isBinary(original) || isBinary(modified);
 		return binary ? { original: '', modified: '', binary } : { original, modified, binary };
 	}
@@ -182,14 +144,14 @@ export class GitService {
 	async stage(paths: string[]): Promise<void> {
 		const { root, g } = await this.requireRepo();
 		for (const p of paths) toAbsolute(root, p);
-		await g.add(['--', ...paths]);
+		for (const batch of batchPaths(paths)) await g.add(['--', ...batch]);
 	}
 
 	async unstage(paths: string[]): Promise<void> {
 		const { root, g } = await this.requireRepo();
 		for (const p of paths) toAbsolute(root, p);
 		// `restore --staged` also works before the first commit, unlike `reset HEAD`.
-		await g.raw(['restore', '--staged', '--', ...paths]);
+		for (const batch of batchPaths(paths)) await g.raw(['restore', '--staged', '--', ...batch]);
 	}
 
 	async commit(message: string): Promise<{ hash: string }> {
@@ -206,8 +168,7 @@ export class GitService {
 	async pull(): Promise<{ summary: string }> {
 		const { g } = await this.requireRepo();
 		const r = await g.pull();
-		const { changes, insertions, deletions } = r.summary;
-		return { summary: `${changes} files changed, +${insertions} −${deletions}` };
+		return { summary: pullSummary(r.summary) };
 	}
 
 	async push(): Promise<{ summary: string }> {
@@ -256,21 +217,36 @@ export class GitService {
 						r.split('\x1f');
 					return { hash, author, date: Number(date) * 1000, refs, message };
 				});
-		} catch {
-			// A repo without commits has no log.
-			return [];
+		} catch (error) {
+			// A repo without commits has no log; anything else is a real failure to report.
+			if (isUnbornHead(error)) return [];
+			throw error;
 		}
 	}
 
+	/**
+	 * Repo-relative path of a path relative to the open folder, which may be a subfolder of the
+	 * repo. Goes through the real workspace path: git reports long names, the folder may have
+	 * been opened via an 8.3 short name.
+	 */
+	private repoPathOfWorkspacePath(root: string, path: string): string {
+		const workspace = this.getWorkspaceRoot();
+		if (!workspace) throw new AnvilError('GIT_NOT_A_REPO', 'No folder is open');
+		const abs = toAbsolute(realpathSync.native(workspace), path);
+		return relative(root, abs).split(sep).join('/');
+	}
+
+	/** `path` is relative to the open folder (the editor's view), not to the repo root. */
 	async blame(path: string, line: number): Promise<GitBlame | null> {
 		const { root, g } = await this.requireRepo();
-		const abs = toAbsolute(root, path);
-		const repoPath = relative(root, abs).split(sep).join('/');
+		const repoPath = this.repoPathOfWorkspacePath(root, path);
 		let out: string;
 		try {
 			out = await g.raw(['blame', '--porcelain', '-L', `${line},${line}`, '--', repoPath]);
-		} catch {
-			return null;
+		} catch (error) {
+			// Untracked file, no commits yet, or a line past the committed end: nothing to blame.
+			if (isMissingPathError(error)) return null;
+			throw error;
 		}
 		const hash = out.slice(0, 40);
 		if (!/^[0-9a-f]{40}$/.test(hash) || /^0+$/.test(hash)) return null;
@@ -284,16 +260,17 @@ export class GitService {
 		};
 	}
 
+	/** `path` is relative to the open folder (the editor's view), not to the repo root. */
 	async headContent(path: string): Promise<string | null> {
 		const root = await this.repoRoot();
 		if (!root) return null;
-		const abs = toAbsolute(root, path);
-		const repoPath = relative(root, abs).split(sep).join('/');
+		const repoPath = this.repoPathOfWorkspacePath(root, path);
 		try {
 			const text = await git(root).show([`HEAD:${repoPath}`]);
 			return isBinary(text) || text.length > MAX_DIFF_BYTES ? null : text;
-		} catch {
-			return null;
+		} catch (error) {
+			if (isMissingPathError(error)) return null;
+			throw error;
 		}
 	}
 

@@ -1,15 +1,38 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 
+import log from 'electron-log/main';
+
 import type { SearchQuery, SearchResult } from '@shared/ipc/channels/search';
 import { SearchQuerySchema } from '@shared/ipc/channels/search';
 
 import { AnvilError } from '../../core/errors';
 import { IGNORED_DIRS } from '../../core/workspace/watcher';
-import { ResultCollector, splitGlobs } from './rg-parse';
+import { PER_FILE_LIMIT, ResultCollector, splitGlobs } from './rg-parse';
 
 export const MATCH_LIMIT = 2_000;
 const TIMEOUT_MS = 20_000;
+const STDERR_LIMIT = 4_000;
+
+const QUERY_ERROR =
+	/regex parse error|error parsing glob|not allowed in a regex|exceeds size limit/i;
+
+/** The query's own fault (bad regex or glob) as a user-facing error; null for other rg errors. */
+export function queryError(stderr: string): AnvilError | null {
+	if (!QUERY_ERROR.test(stderr)) return null;
+	// A regex error spans lines: "regex parse error:", the pattern, a caret, then "error: why".
+	const lines = stderr
+		.split('\n')
+		.map((l) => l.trim())
+		.filter(Boolean);
+	const first = (lines[0] ?? 'ripgrep failed').replace(/^rg: /, '');
+	const reason = lines
+		.find((l) => l.startsWith('error:'))
+		?.slice('error:'.length)
+		.trim();
+	const message = reason ? `${first.replace(/:$/, '')}: ${reason}` : first;
+	return new AnvilError('SEARCH_BAD_QUERY', message);
+}
 
 /**
  * Path of the bundled rg binary. `@vscode/ripgrep` ships it in a per-platform package; in a
@@ -27,11 +50,14 @@ export function rgArgs(input: SearchQuery): string[] {
 	const q = SearchQuerySchema.parse(input);
 	const args = [
 		'--json',
+		// Dotfiles (.github/, .env.example, .pre-commit-config.yaml) are code too, and Quick Open
+		// lists them; .git itself is excluded through IGNORED_DIRS below.
+		'--hidden',
 		'--max-filesize',
 		'2M',
 		// Per-file cap: one huge generated file shouldn't eat the whole result budget.
 		'--max-count',
-		'200',
+		String(PER_FILE_LIMIT),
 		q.caseSensitive ? '--case-sensitive' : '--ignore-case',
 	];
 	if (!q.regex) args.push('--fixed-strings');
@@ -48,7 +74,10 @@ export function rgArgs(input: SearchQuery): string[] {
 export class Ripgrep {
 	private current: ChildProcess | null = null;
 
-	constructor(private readonly binary: string = rgPath()) {}
+	constructor(
+		private readonly binary: string = rgPath(),
+		private readonly timeoutMs: number = TIMEOUT_MS,
+	) {}
 
 	cancel(): void {
 		this.current?.kill();
@@ -63,7 +92,8 @@ export class Ripgrep {
 		this.current = child;
 		let stderr = '';
 		child.stderr.on('data', (chunk: Buffer) => {
-			stderr += chunk.toString('utf8').slice(0, 2_000);
+			// Bounded: a folder full of unreadable files can print an error per file.
+			if (stderr.length < STDERR_LIMIT) stderr += chunk.toString('utf8');
 		});
 		const lines = createInterface({ input: child.stdout });
 		lines.on('line', (line) => {
@@ -71,7 +101,12 @@ export class Ripgrep {
 		});
 
 		return new Promise((resolve, reject) => {
-			const timer = setTimeout(() => child.kill(), TIMEOUT_MS);
+			// A search that runs too long is stopped and shown as partial, never as complete.
+			let timedOut = false;
+			const timer = setTimeout(() => {
+				timedOut = true;
+				child.kill();
+			}, this.timeoutMs);
 			child.on('error', (error) => {
 				clearTimeout(timer);
 				reject(
@@ -90,16 +125,19 @@ export class Ripgrep {
 					reject(new AnvilError('SEARCH_CANCELLED', 'Search replaced by a newer one'));
 					return;
 				}
-				// rg exits 1 for "no matches" and 2 for errors such as an invalid regex.
-				if (code === 2 && collector.count === 0) {
-					const message = stderr.split('\n').find((l) => l.trim()) ?? 'ripgrep failed';
-					reject(new AnvilError('SEARCH_BAD_QUERY', message.replace(/^rg: /, '')));
+				// rg exits 1 for "no matches" and 2 for errors: an invalid regex or glob (the query's
+				// fault), or I/O errors such as locked or access-denied files (skip those, keep results).
+				const bad = code === 2 ? queryError(stderr) : null;
+				if (bad) {
+					reject(bad);
 					return;
 				}
+				if (code === 2) log.warn('[search] ripgrep reported errors', { stderr });
 				resolve({
 					files: collector.result(),
 					matchCount: collector.count,
-					truncated: collector.truncated,
+					truncated: collector.truncated || timedOut,
+					timedOut,
 					durationMs: Math.round(performance.now() - started),
 				});
 			});

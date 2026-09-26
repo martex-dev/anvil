@@ -6,9 +6,17 @@ export const searchFeature: MainFeature = {
 	id: 'search',
 	activate(ctx) {
 		const rg = new Ripgrep();
-		ctx.onDispose(() => rg.cancel());
+		// A separate lane, so the TODO view and Find-in-files never cancel each other.
+		const todos = new Ripgrep();
+		ctx.onDispose(() => {
+			rg.cancel();
+			todos.cancel();
+		});
 		// Closing or switching folders makes a running search meaningless.
-		ctx.workspace.onChange(() => rg.cancel());
+		ctx.workspace.onChange(() => {
+			rg.cancel();
+			todos.cancel();
+		});
 
 		const root = (): string => {
 			const r = ctx.workspace.root();
@@ -16,6 +24,7 @@ export const searchFeature: MainFeature = {
 			return r;
 		};
 		ctx.ipc.handle('search:run', (query) => rg.search(root(), query));
+		ctx.ipc.handle('search:todos', (query) => todos.search(root(), query));
 		ctx.ipc.handle('search:files', () => listFiles(root()));
 	},
 };
