@@ -124,18 +124,21 @@ html[data-skin='y2k'] [data-part='status-item'] {
 	border-radius: 999px;
 }
 html[data-skin='y2k'] button[data-part='status-item'],
-html[data-skin='y2k'] [data-part='statusbar'] > button {
+html[data-skin='y2k'] [data-part='statusbar'] > button,
+html[data-skin='y2k'] [data-part='status-group'] > button {
 	background: color-mix(in oklab, var(--bg-1) 70%, transparent);
 	box-shadow:
 		inset 0 0 0 1px color-mix(in oklab, var(--skin-rim) 70%, transparent),
 		0 1px 0 var(--skin-gloss);
 }
 html[data-skin='y2k'] button[data-part='status-item']:hover,
-html[data-skin='y2k'] [data-part='statusbar'] > button:hover {
+html[data-skin='y2k'] [data-part='statusbar'] > button:hover,
+html[data-skin='y2k'] [data-part='status-group'] > button:hover {
 	background: var(--accent-soft);
 	color: var(--text-0);
 }
-html[data-skin='y2k'] [data-part='statusbar'] > button {
+html[data-skin='y2k'] [data-part='statusbar'] > button,
+html[data-skin='y2k'] [data-part='status-group'] > button {
 	height: 22px;
 	border-radius: 999px;
 	padding: 0 8px;

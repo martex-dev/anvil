@@ -1,4 +1,5 @@
 import type { JSX } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 
 import { runCommandById, shortcutFor } from '../../app/commands/run';
 import { useWorkspace } from '../../app/hooks/use-workspace';
@@ -23,7 +24,18 @@ const HEIGHT = 50;
 export function YkTitleBar(): JSX.Element {
 	const { info } = useWorkspace();
 	const openQuick = useUiStore((s) => s.openQuickOpen);
-	const layout = useLayoutStore();
+	// Zen hides the panes, so the toggles show what is visible, not what is remembered. A narrow
+	// selection also keeps splitter drags from re-rendering the title bar.
+	const layout = useLayoutStore(
+		useShallow((s) => ({
+			sideOpen: s.sideOpen && !s.zen,
+			panelOpen: s.panelOpen && !s.zen,
+			aiOpen: s.aiOpen && !s.zen,
+			toggleSide: s.toggleSide,
+			togglePanel: s.togglePanel,
+			toggleAi: s.toggleAi,
+		})),
+	);
 	return (
 		<header
 			data-part='titlebar'
@@ -79,6 +91,7 @@ export function YkTitleBar(): JSX.Element {
 					size='md'
 					label='Toggle side bar'
 					shortcut={shortcutFor('view.toggleSide')}
+					toggle
 					active={layout.sideOpen}
 					icon={<SkinIcon name='sidebar' size={15} />}
 					onClick={layout.toggleSide}
@@ -87,6 +100,7 @@ export function YkTitleBar(): JSX.Element {
 					size='md'
 					label='Toggle panel'
 					shortcut={shortcutFor('view.togglePanel')}
+					toggle
 					active={layout.panelOpen}
 					icon={<SkinIcon name='panel' size={15} />}
 					onClick={() => layout.togglePanel()}
@@ -95,6 +109,7 @@ export function YkTitleBar(): JSX.Element {
 					size='md'
 					label='Toggle AI'
 					shortcut={shortcutFor('view.toggleAi')}
+					toggle
 					active={layout.aiOpen}
 					icon={<SkinIcon name='ai' size={15} />}
 					onClick={() => layout.toggleAi()}

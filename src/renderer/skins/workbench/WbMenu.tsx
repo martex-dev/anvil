@@ -1,7 +1,8 @@
 import { Menubar } from 'radix-ui';
 import type { JSX } from 'react';
 
-import { getCommands, runCommand } from '../../app/commands/run';
+import { getCommands } from '../../app/commands/run';
+import { useMenuCommand } from '../../app/hooks/use-menu-command';
 import { Kbd } from '../../ui/Kbd';
 import type { MenuDef } from './menus';
 
@@ -20,6 +21,8 @@ function Mnemonic({ label, mnemonic }: { label: string; mnemonic: string }): JSX
 
 /** One drop-down of the menu bar: the commands of its categories, grouped. */
 export function WbMenu({ menu }: { menu: MenuDef }): JSX.Element {
+	// Commands run once the menu has closed, so focus lands where they put it.
+	const { pick, onCloseAutoFocus } = useMenuCommand();
 	const commands = getCommands();
 	const groups = menu.categories
 		.map((category) => ({
@@ -34,6 +37,7 @@ export function WbMenu({ menu }: { menu: MenuDef }): JSX.Element {
 			</Menubar.Trigger>
 			<Menubar.Portal>
 				<Menubar.Content
+					onCloseAutoFocus={onCloseAutoFocus}
 					align='start'
 					sideOffset={1}
 					className='glass-strong wb-menu z-50 max-h-[70vh] min-w-60 overflow-y-auto'
@@ -51,7 +55,7 @@ export function WbMenu({ menu }: { menu: MenuDef }): JSX.Element {
 								return (
 									<Menubar.Item
 										key={c.id}
-										onSelect={() => void runCommand(c)}
+										onSelect={() => pick(c)}
 										className='wb-menu-item'
 									>
 										<span className='wb-menu-icon'>

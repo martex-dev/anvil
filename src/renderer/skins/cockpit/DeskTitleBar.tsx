@@ -26,9 +26,10 @@ const MENUS: DeskMenuSpec[] = [
 export function DeskTitleBar(): JSX.Element {
 	const { info } = useWorkspace();
 	const { focused } = useWindowState();
-	const sideOpen = useLayoutStore((s) => s.sideOpen);
-	const panelOpen = useLayoutStore((s) => s.panelOpen);
-	const aiOpen = useLayoutStore((s) => s.aiOpen);
+	// Zen hides the panes, so the keys light for what is visible, not what is remembered.
+	const sideOpen = useLayoutStore((s) => s.sideOpen && !s.zen);
+	const panelOpen = useLayoutStore((s) => s.panelOpen && !s.zen);
+	const aiOpen = useLayoutStore((s) => s.aiOpen && !s.zen);
 	return (
 		<header data-part='titlebar' className='ck-titlebar drag'>
 			<div data-part='brand' className='ck-brand'>

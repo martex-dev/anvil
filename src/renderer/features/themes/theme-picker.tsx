@@ -37,7 +37,13 @@ export async function pickTheme(): Promise<void> {
 	});
 	const chosen = skin.palettes.find((p) => p.id === picked);
 	if (chosen && chosen.id !== palette.id) {
-		await updateSettings(palettePatch(getSettings(), chosen.id));
+		try {
+			await updateSettings(palettePatch(getSettings(), chosen.id));
+		} catch (error) {
+			// The save failed, so the preview must not linger as if the palette were set.
+			previewTheme(null);
+			throw error;
+		}
 		toast.info(`${skin.name}: ${chosen.name}`);
 	} else {
 		previewTheme(null);
@@ -77,7 +83,13 @@ export async function pickSkin(): Promise<void> {
 		},
 	});
 	if (picked && picked !== current) {
-		await updateSettings({ skin: picked });
+		try {
+			await updateSettings({ skin: picked });
+		} catch (error) {
+			// As with palettes: a failed save must not leave the previewed skin on screen.
+			previewSkin(null);
+			throw error;
+		}
 		toast.info(`Skin: ${skinById(picked).name}`);
 	} else {
 		previewSkin(null);

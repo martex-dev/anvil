@@ -26,7 +26,9 @@ export function ThemeCard({
 			className={cn(
 				'group relative flex flex-col overflow-hidden rounded-lg border bg-bg-1 text-left outline-none',
 				'transition-[box-shadow,border-color,translate] transition-fast hover:-translate-y-px',
-				'focus-visible:shadow-glow',
+				// Selected already glows, so focus needs its own mark: an inset ring in the card's own
+				// text color, which contrasts with the card whatever the app theme around it is.
+				'focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-fg-0 focus-visible:outline-solid',
 				selected ? 'border-accent shadow-glow' : 'border-border hover:border-border-strong',
 			)}
 		>

@@ -78,16 +78,18 @@ export const useTabsStore = create<TabsState>((set, get) => ({
 	open: (tab, options = {}) =>
 		set((s) => {
 			const groupId = options.group ?? s.focused;
+			const target = s.groups.find((g) => g.id === groupId);
+			// A preview replaces the group's current preview instead of piling up tabs.
+			const replaced =
+				tab.preview && target && !target.tabIds.includes(tab.id)
+					? target.tabIds.find((id) => s.tabs[id]?.preview && id !== tab.id)
+					: undefined;
 			const groups = s.groups.map((g) => {
 				if (g.id !== groupId) return g;
 				if (g.tabIds.includes(tab.id))
 					return options.background ? g : { ...g, active: tab.id };
 				let tabIds = g.tabIds;
-				// A preview replaces the group's current preview instead of piling up tabs.
-				const preview = tab.preview
-					? g.tabIds.find((id) => s.tabs[id]?.preview && id !== tab.id)
-					: undefined;
-				if (preview) tabIds = tabIds.map((id) => (id === preview ? tab.id : id));
+				if (replaced) tabIds = tabIds.map((id) => (id === replaced ? tab.id : id));
 				else {
 					const at = g.active ? g.tabIds.indexOf(g.active) + 1 : g.tabIds.length;
 					tabIds = [...tabIds.slice(0, at), tab.id, ...tabIds.slice(at)];
@@ -97,7 +99,12 @@ export const useTabsStore = create<TabsState>((set, get) => ({
 			const existing = s.tabs[tab.id];
 			// Re-opening something as a preview must not demote a tab you already kept.
 			const merged = existing && !existing.preview ? { ...tab, preview: false } : tab;
-			return { tabs: { ...s.tabs, [tab.id]: merged }, groups, focused: groupId };
+			// The replaced preview's record goes too, unless the other group still shows it.
+			const drop =
+				replaced && !groups.some((g) => g.tabIds.includes(replaced)) ? replaced : null;
+			const kept = Object.fromEntries(Object.entries(s.tabs).filter(([key]) => key !== drop));
+			const tabs = { ...kept, [tab.id]: merged };
+			return { tabs, groups, focused: groupId };
 		}),
 	activate: (group, id) =>
 		set((s) => ({
@@ -108,9 +115,11 @@ export const useTabsStore = create<TabsState>((set, get) => ({
 	close: (group, id) => {
 		const s = get();
 		let groups = s.groups.map((g) => (g.id === group ? withoutTab(g, id) : g));
-		// An empty second group folds away; the first always stays.
-		if (groups.length > 1)
-			groups = groups.filter((g) => g.tabIds.length > 0 || g.id === groups[0]?.id);
+		// Empty groups fold away (left or right); one group always stays, even when empty.
+		if (groups.length > 1) {
+			const nonEmpty = groups.filter((g) => g.tabIds.length > 0);
+			groups = nonEmpty.length > 0 ? nonEmpty : groups.slice(0, 1);
+		}
 		const stillShown = groups.some((g) => g.tabIds.includes(id));
 		const tabs = stillShown
 			? s.tabs

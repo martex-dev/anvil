@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react';
-import { type FormEvent, type JSX, useState } from 'react';
+import { type FormEvent, type JSX, useCallback, useRef, useState } from 'react';
 
 import { call } from '../../lib/ipc';
 import { toast } from '../../stores/toast-store';
@@ -18,6 +18,12 @@ interface SecretRowProps {
 export function SecretRow({ spec, isSaved, onChanged }: SecretRowProps): JSX.Element {
 	// The draft lives only in this component and is cleared as soon as it's sent to main.
 	const [draft, setDraft] = useState('');
+	// Keys copied from a provider dashboard often carry a trailing newline or space.
+	const value = draft.trim();
+	// Deleting is permanent, so the trash button asks once before it acts.
+	const [confirming, setConfirming] = useState(false);
+	const input = useRef<HTMLInputElement>(null);
+	const focusOnMount = useCallback((el: HTMLButtonElement | null) => el?.focus(), []);
 	const save = useMutation({
 		mutationFn: (value: string) => call('secrets:set', { key: spec.key, value }),
 		onSuccess: () => {
@@ -34,11 +40,16 @@ export function SecretRow({ spec, isSaved, onChanged }: SecretRowProps): JSX.Ele
 			toast.info('Secret deleted', spec.label);
 		},
 		onError: (error) => toast.error('Could not delete secret', error.message),
+		onSettled: () => {
+			// The delete buttons go away; keep keyboard focus in the row instead of on <body>.
+			setConfirming(false);
+			input.current?.focus();
+		},
 	});
 
 	const onSubmit = (event: FormEvent): void => {
 		event.preventDefault();
-		if (draft.length > 0) save.mutate(draft);
+		if (value.length > 0) save.mutate(value);
 	};
 
 	return (
@@ -51,6 +62,7 @@ export function SecretRow({ spec, isSaved, onChanged }: SecretRowProps): JSX.Ele
 			{spec.help && <p className='text-12 text-fg-2'>{spec.help}</p>}
 			<form onSubmit={onSubmit} className='flex items-center gap-2'>
 				<Input
+					ref={input}
 					type='password'
 					autoComplete='off'
 					spellCheck={false}
@@ -66,16 +78,39 @@ export function SecretRow({ spec, isSaved, onChanged }: SecretRowProps): JSX.Ele
 					type='submit'
 					variant='primary'
 					loading={save.isPending}
-					disabled={draft.length === 0}
+					disabled={value.length === 0}
 				>
 					Save
 				</Button>
-				<IconButton
-					label='Delete secret'
-					icon={<Trash2 size={14} />}
-					disabled={!isSaved || remove.isPending}
-					onClick={() => remove.mutate()}
-				/>
+				{confirming ? (
+					<>
+						<Button
+							ref={focusOnMount}
+							variant='ghost'
+							disabled={remove.isPending}
+							onClick={() => {
+								setConfirming(false);
+								input.current?.focus();
+							}}
+						>
+							Keep
+						</Button>
+						<Button
+							variant='danger'
+							loading={remove.isPending}
+							onClick={() => remove.mutate()}
+						>
+							Delete
+						</Button>
+					</>
+				) : (
+					<IconButton
+						label='Delete secret'
+						icon={<Trash2 size={14} />}
+						disabled={!isSaved}
+						onClick={() => setConfirming(true)}
+					/>
+				)}
 			</form>
 		</li>
 	);

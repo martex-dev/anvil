@@ -155,6 +155,15 @@ html[data-skin='cyber']:not([data-fx='full']) :is(.cy-aurora, .cy-stars, .cy-flo
 html[data-skin='cyber']:not([data-fx='full']) [data-part='brand'] .text-gradient {
 	animation: none;
 }
+/* The Reduce motion setting drops effects to subtle; the OS preference leaves data-fx at full,
+   so the loops stop here too, like the shared ambient grid. */
+@media (prefers-reduced-motion: reduce) {
+	html[data-skin='cyber'] :is(.cy-aurora, .cy-stars, .cy-floor),
+	html[data-skin='cyber'] [data-part='brand'] .text-gradient,
+	html[data-skin='cyber'][data-fx='full'] .glass.pane-focus:focus-within::before {
+		animation: none;
+	}
+}
 html[data-skin='cyber'][data-fx='off'] :is(.cy-aurora, .cy-stars, .cy-floor, .cy-horizon) {
 	display: none;
 }

@@ -22,7 +22,6 @@ import { focusedTab, useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
 import { requestOpenFile } from '../../stores/workbench-store';
 import { nextBookmarkLine, toggleBookmarkAt } from './extras/bookmarks';
-import { repaintShield } from './extras/shield';
 import { isScratch, saveAll, saveFile } from './file-ops';
 import { newFile } from './new-file';
 import { closeTab } from './open';
@@ -117,6 +116,7 @@ export const EDITOR_COMMANDS: Command[] = [
 		title: 'Next Tab',
 		category: 'Go',
 		shortcut: 'Ctrl+PageDown',
+		repeatable: true,
 		run: () => cycleTab(1),
 	},
 	{
@@ -124,6 +124,7 @@ export const EDITOR_COMMANDS: Command[] = [
 		title: 'Previous Tab',
 		category: 'Go',
 		shortcut: 'Ctrl+PageUp',
+		repeatable: true,
 		run: () => cycleTab(-1),
 	},
 	{
@@ -198,8 +199,8 @@ export const EDITOR_COMMANDS: Command[] = [
 		keywords: ['env', 'blur', 'streamer', 'keys', 'privacy'],
 		run: async () => {
 			const on = !getSettings().secretShield;
+			// The shield repaints itself when the cached setting changes.
 			await updateSettings({ secretShield: on });
-			repaintShield();
 			toast.info(`Secret shield ${on ? 'on' : 'off'}`);
 		},
 	},
@@ -219,6 +220,7 @@ export const EDITOR_COMMANDS: Command[] = [
 		title: 'Editor Font Bigger',
 		category: 'View',
 		shortcut: 'Ctrl+=',
+		repeatable: true,
 		icon: ZoomIn,
 		run: () =>
 			void updateSettings({ editorFontSize: Math.min(24, getSettings().editorFontSize + 1) }),
@@ -228,6 +230,7 @@ export const EDITOR_COMMANDS: Command[] = [
 		title: 'Editor Font Smaller',
 		category: 'View',
 		shortcut: 'Ctrl+-',
+		repeatable: true,
 		icon: ZoomOut,
 		run: () =>
 			void updateSettings({ editorFontSize: Math.max(10, getSettings().editorFontSize - 1) }),

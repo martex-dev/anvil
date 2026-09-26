@@ -56,7 +56,8 @@ html[data-skin='y2k'] [data-part='tab'] > span.absolute {
 }
 /* Keyboard focus (arrow keys move it along the strip): the shadow is the candy bevel, so the
    ring is an outline. */
-html[data-skin='y2k'] [data-part='tab']:focus-visible {
+html[data-skin='y2k'] [data-part='tab']:focus-visible,
+html[data-skin='y2k'] [data-part='panel-tab']:focus-visible {
 	outline: 2px solid var(--accent);
 	outline-offset: 1px;
 }
@@ -149,6 +150,10 @@ html[data-skin='y2k'] [data-part='terminal-chip'] {
 	height: 24px;
 	border-radius: 999px;
 	padding-left: 10px;
+}
+/* The chip already insets its tab button. */
+html[data-skin='y2k'] [data-part='terminal-chip'] > [role='tab'] {
+	padding-left: 0;
 }
 html[data-skin='y2k'] [data-part='terminal-chip'][data-active='true'] {
 	background: var(--bg-1);

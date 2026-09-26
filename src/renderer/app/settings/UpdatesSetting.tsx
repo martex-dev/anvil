@@ -1,35 +1,15 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { RefreshCcw } from 'lucide-react';
 import type { JSX } from 'react';
 
-import type { UpdateStatus } from '@shared/ipc/channels/update';
-
+import { describeError } from '../../lib/global-errors';
 import { call } from '../../lib/ipc';
+import { toast } from '../../stores/toast-store';
 import { Button } from '../../ui/Button';
 import { Switch } from '../../ui/Switch';
-import { useUpdateStatus } from '../hooks/use-update';
+import { UPDATE_KEY, useInstallUpdate, useUpdateStatus } from '../hooks/use-update';
+import { describeUpdate } from '../update-text';
 import { SettingRow } from './SettingRow';
-
-function describe(status: UpdateStatus | undefined): string {
-	switch (status?.state) {
-		case undefined:
-			return '…';
-		case 'disabled':
-			return `Updates are off: ${status.reason.toLowerCase()}.`;
-		case 'idle':
-			return status.lastChecked
-				? `Up to date (checked ${new Date(status.lastChecked).toLocaleString()}).`
-				: 'Checks a minute after start, then every 6 hours.';
-		case 'checking':
-			return 'Checking…';
-		case 'downloading':
-			return `Downloading ${status.version}: ${status.percent}%`;
-		case 'ready':
-			return `${status.version} is downloaded: restart to install it.`;
-		case 'error':
-			return `Last check failed: ${status.message}`;
-	}
-}
 
 export function UpdatesSetting({
 	autoUpdate,
@@ -43,12 +23,20 @@ export function UpdatesSetting({
 		queryKey: ['app', 'version'],
 		queryFn: () => call('app:getVersion'),
 	});
-	const check = useMutation({ mutationFn: () => call('update:check') });
+	const client = useQueryClient();
+	const check = useMutation({
+		mutationFn: () => call('update:check'),
+		onSuccess: (next) => client.setQueryData(UPDATE_KEY, next),
+		onError: (error) => toast.error('Update check failed', describeError(error)),
+	});
+	const { install, isPending: installing } = useInstallUpdate();
 	const disabled = status.data?.state === 'disabled';
+	// A check is already under way (or its download is): another click would only race it.
+	const busy = status.data?.state === 'checking' || status.data?.state === 'downloading';
 	return (
 		<SettingRow
-			label={`Updates · Anvil ${version.data ?? ''}`}
-			description={describe(status.data)}
+			label={`Updates · Anvil ${version.isError ? '(version unknown)' : (version.data ?? '')}`}
+			description={describeUpdate(status.data)}
 			htmlFor='auto-update'
 		>
 			<div className='flex items-center gap-3'>
@@ -57,15 +45,16 @@ export function UpdatesSetting({
 						size='sm'
 						variant='primary'
 						icon={<RefreshCcw size={12} />}
-						onClick={() => void call('update:install')}
+						loading={installing}
+						onClick={install}
 					>
 						Restart to update
 					</Button>
 				) : (
 					<Button
 						size='sm'
-						disabled={disabled}
-						loading={check.isPending}
+						disabled={disabled || busy}
+						loading={check.isPending || busy}
 						onClick={() => check.mutate()}
 					>
 						Check now

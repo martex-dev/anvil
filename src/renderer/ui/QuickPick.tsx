@@ -7,6 +7,7 @@ import { cn } from '../lib/cn';
 import { rlog } from '../lib/log';
 import { useRegisterOverlay } from '../stores/overlay-store';
 import { toast } from '../stores/toast-store';
+import { ErrorState } from './ErrorState';
 import { Kbd } from './Kbd';
 import { Spinner } from './Spinner';
 
@@ -25,7 +26,10 @@ interface PickRequest {
 	title: string;
 	placeholder: string;
 	items: PickItem[] | Promise<PickItem[]>;
-	/** Toast title when `items` rejects (the picker then closes). */
+	/**
+	 * Toast title when `items` rejects; the picker then closes. Without it, the picker shows the
+	 * failure in place of its list.
+	 */
 	loadErrorTitle?: string;
 	/** Offer "create <typed text>" (e.g. a new branch) when nothing matches exactly. */
 	allowCustom?: { label: (text: string) => string };
@@ -40,13 +44,16 @@ interface QuickPickState {
 	query: string;
 	/** cmdk value of the highlighted item (controlled, so highlight changes are observable). */
 	active: string;
+	/** Why async items failed to load; shown instead of "Nothing matches". */
+	error: string | null;
 }
 
-const useQuickPickStore = create<QuickPickState>(() => ({
+export const useQuickPickStore = create<QuickPickState>(() => ({
 	request: null,
 	items: null,
 	query: '',
 	active: '',
+	error: null,
 }));
 
 const itemValue = (item: PickItem): string =>
@@ -62,42 +69,55 @@ function initialActive(items: PickItem[]): string {
 export function quickPick(options: Omit<PickRequest, 'resolve'>): Promise<string | null> {
 	useQuickPickStore.getState().request?.resolve(null);
 	return new Promise((resolve) => {
+		const request: PickRequest = { ...options, resolve };
 		useQuickPickStore.setState({
-			request: { ...options, resolve },
+			request,
 			items: Array.isArray(options.items) ? options.items : null,
 			query: '',
 			active: Array.isArray(options.items) ? initialActive(options.items) : '',
+			error: null,
 		});
-		if (!Array.isArray(options.items)) {
-			options.items
-				.then((items) =>
-					useQuickPickStore.setState({ items, active: initialActive(items) }),
-				)
-				// Say why and close: an empty "Nothing matches." list (still offering "create …")
-				// would hide the failure. Leave a picker that has replaced this one alone.
-				.catch((error: unknown) => {
-					rlog.error('quick-pick', `loading "${options.title}" items failed`, error);
-					toast.error(
-						options.loadErrorTitle ?? 'Could not load the list',
-						error instanceof Error ? error.message : undefined,
-					);
-					if (useQuickPickStore.getState().request?.resolve === resolve) close(null);
-				});
-		}
+		if (Array.isArray(options.items)) return;
+		// A slow load must not fill a picker opened after it (picking would apply the wrong value).
+		const current = (): boolean => useQuickPickStore.getState().request === request;
+		options.items
+			.then((items) => {
+				if (current()) useQuickPickStore.setState({ items, active: initialActive(items) });
+			})
+			// Never an empty "Nothing matches." list (still offering "create …"): that would hide
+			// the failure. Leave a picker that has replaced this one alone.
+			.catch((error: unknown) => {
+				rlog.error('quick-pick', `loading "${options.title}" items failed`, error);
+				if (!current()) return;
+				const message = error instanceof Error ? error.message : String(error);
+				// A caller that names the failure (git's branch and log pickers) has nothing to
+				// offer without its items: say why in a toast and close. Others show the reason in
+				// the picker.
+				if (options.loadErrorTitle !== undefined) {
+					toast.error(options.loadErrorTitle, message);
+					close(null);
+					return;
+				}
+				useQuickPickStore.setState({ items: [], error: message });
+			});
 	});
 }
 
 function close(value: string | null): void {
 	const req = useQuickPickStore.getState().request;
-	useQuickPickStore.setState({ request: null, items: null, query: '', active: '' });
+	useQuickPickStore.setState({ request: null, items: null, query: '', active: '', error: null });
 	req?.resolve(value);
 }
 
 export function QuickPickHost(): JSX.Element {
-	const { request, items, query, active } = useQuickPickStore();
+	const { request, items, query, active, error } = useQuickPickStore();
 	useRegisterOverlay(request !== null);
+	// No "create …" next to a failed load: the list it would add to is unknown.
 	const custom =
-		request?.allowCustom && query.trim() && !items?.some((i) => i.label === query.trim());
+		error === null &&
+		request?.allowCustom &&
+		query.trim() &&
+		!items?.some((i) => i.label === query.trim());
 	return (
 		<Command.Dialog
 			open={request !== null}
@@ -134,6 +154,12 @@ export function QuickPickHost(): JSX.Element {
 							<Spinner />
 						</div>
 					</Command.Loading>
+				) : error !== null ? (
+					<ErrorState
+						title={`Couldn't load ${request?.title.toLowerCase() ?? 'the list'}`}
+						message={error}
+						className='h-auto min-h-0 py-6'
+					/>
 				) : (
 					<Command.Empty className='px-3 py-6 text-center text-13 text-fg-2'>
 						Nothing matches.
@@ -153,17 +179,29 @@ export function QuickPickHost(): JSX.Element {
 							</span>
 						)}
 						<span className='flex min-w-0 flex-1 flex-col'>
-							<span className='flex items-center gap-2 truncate'>
-								{item.label}
+							{/* Ellipsis needs a block-level text box: truncate on the flex row itself
+							    only clips. Titles expose the full branch, model or path. */}
+							<span className='flex min-w-0 items-center gap-2'>
+								<span className='min-w-0 truncate' title={item.label}>
+									{item.label}
+								</span>
 								{item.description && (
-									<span className='truncate text-12 text-fg-2'>
+									<span
+										className='min-w-0 truncate text-12 text-fg-2'
+										title={item.description}
+									>
 										{item.description}
 									</span>
 								)}
-								{item.current && <span className='hud text-accent'>current</span>}
+								{item.current && (
+									<span className='hud shrink-0 text-accent'>current</span>
+								)}
 							</span>
 							{item.detail && (
-								<span className='truncate font-mono text-11 text-fg-2'>
+								<span
+									className='truncate font-mono text-11 text-fg-2'
+									title={item.detail}
+								>
 									{item.detail}
 								</span>
 							)}

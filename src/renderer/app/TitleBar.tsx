@@ -1,3 +1,4 @@
+import { Minimize2 } from 'lucide-react';
 import type { JSX } from 'react';
 
 import { WINDOW_CHROME } from '@shared/constants';
@@ -11,7 +12,7 @@ import { IconButton } from '../ui/IconButton';
 import { Kbd } from '../ui/Kbd';
 import { runCommandById, shortcutFor } from './commands/run';
 import { useWorkspace } from './hooks/use-workspace';
-import { TITLE_MENUS, TitleMenu } from './TitleMenu';
+import { TitleMenus } from './TitleMenus';
 import { WindowControls } from './WindowControls';
 
 /** Default title bar height; skins may draw a taller or shorter one. */
@@ -20,7 +21,11 @@ export const TITLE_BAR_HEIGHT = WINDOW_CHROME.titleBarHeight;
 export function TitleBar(): JSX.Element {
 	const { info } = useWorkspace();
 	const openQuick = useUiStore((s) => s.openQuickOpen);
-	const layout = useLayoutStore();
+	const sideOpen = useLayoutStore((s) => s.sideOpen);
+	const panelOpen = useLayoutStore((s) => s.panelOpen);
+	const aiOpen = useLayoutStore((s) => s.aiOpen);
+	// Zen hides the panes, so the toggles show what is visible, not what is remembered.
+	const zen = useLayoutStore((s) => s.zen);
 	return (
 		<header
 			data-part='titlebar'
@@ -36,18 +41,16 @@ export function TitleBar(): JSX.Element {
 					ANVIL
 				</span>
 			</div>
-			<nav data-part='menubar' className='flex items-center' aria-label='Menu'>
-				{TITLE_MENUS.map((m) => (
-					<TitleMenu key={m.label} {...m} />
-				))}
-			</nav>
+			<TitleMenus />
 
+			{/* In the flow, not absolutely centered: on narrower windows it shrinks instead of
+			    drawing over the menus and the chips on the right. */}
 			<button
 				type='button'
 				data-part='command-center'
 				onClick={() => openQuick('')}
 				className={cn(
-					'no-drag group absolute left-1/2 flex h-7 w-[min(520px,36vw)] -translate-x-1/2 items-center gap-2 rounded-lg border border-glass-edge bg-bg-2/50 px-3 text-12 text-fg-2 backdrop-blur-md',
+					'no-drag group mx-auto flex h-7 max-w-[520px] min-w-0 flex-1 items-center gap-2 rounded-lg border border-glass-edge bg-bg-2/50 px-3 text-12 text-fg-2 glass-blur',
 					'transition-[border-color,box-shadow,color] transition-fast hover:border-accent/40 hover:text-fg-1 hover:shadow-glow-soft focus-visible:shadow-glow focus-visible:outline-none',
 				)}
 			>
@@ -55,7 +58,7 @@ export function TitleBar(): JSX.Element {
 				<span className='truncate'>
 					<span className='text-fg-1'>{info.name ?? 'anvil'}</span>
 					<span className='mx-1.5 opacity-50'>/</span>
-					files, commands, symbols, AI
+					files, &gt; commands, @ symbols, : line
 				</span>
 				<span className='flex-1' />
 				<Kbd keys={shortcutFor('file.quickOpen') ?? 'Ctrl+P'} />
@@ -71,29 +74,41 @@ export function TitleBar(): JSX.Element {
 					onClick={() => runCommandById('python.runFile')}
 				/>
 				<span className='mx-1 h-4 w-px bg-glass-edge' />
+				{zen && (
+					<IconButton
+						size='sm'
+						label='Exit Zen mode'
+						shortcut={shortcutFor('view.zen')}
+						icon={<Minimize2 size={14} />}
+						onClick={() => useLayoutStore.getState().toggleZen()}
+					/>
+				)}
 				<IconButton
 					size='sm'
 					label='Toggle side bar'
 					shortcut={shortcutFor('view.toggleSide')}
-					active={layout.sideOpen}
+					toggle
+					active={sideOpen && !zen}
 					icon={<SkinIcon name='sidebar' size={14} />}
-					onClick={layout.toggleSide}
+					onClick={() => useLayoutStore.getState().toggleSide()}
 				/>
 				<IconButton
 					size='sm'
 					label='Toggle panel'
 					shortcut={shortcutFor('view.togglePanel')}
-					active={layout.panelOpen}
+					toggle
+					active={panelOpen && !zen}
 					icon={<SkinIcon name='panel' size={14} />}
-					onClick={() => layout.togglePanel()}
+					onClick={() => useLayoutStore.getState().togglePanel()}
 				/>
 				<IconButton
 					size='sm'
 					label='Toggle AI'
 					shortcut={shortcutFor('view.toggleAi')}
-					active={layout.aiOpen}
+					toggle
+					active={aiOpen && !zen}
 					icon={<SkinIcon name='ai' size={14} />}
-					onClick={() => layout.toggleAi()}
+					onClick={() => useLayoutStore.getState().toggleAi()}
 				/>
 				<IconButton
 					size='sm'

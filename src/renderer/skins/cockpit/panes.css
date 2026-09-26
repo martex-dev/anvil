@@ -185,6 +185,10 @@ html[data-skin='cockpit'] [data-part='terminal-chip'][data-active='true'] {
 html[data-skin='cockpit'] [data-part='terminal-chip'] button {
 	color: inherit;
 }
+/* The chip already insets its tab button. */
+html[data-skin='cockpit'] [data-part='terminal-chip'] > [role='tab'] {
+	padding-left: 0;
+}
 
 /* ---- Editor tabs: dense uppercase cells on a ruled strip --------------------------------- */
 

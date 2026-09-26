@@ -92,7 +92,8 @@ Scope every selector with `html[data-skin='<id>']`. Useful levers:
 
 Shell and panes: `shell`, `workbench`, `titlebar`, `brand`, `menubar`, `menu-trigger`,
 `command-center`, `title-actions`, `window-controls`, `window-button` (+ `data-action=
-minimize|maximize|close`), `statusbar`, `status-item`, `splitter` (+ `data-axis`),
+minimize|maximize|close`), `statusbar`, `status-group` (the shared bar's clipping item groups),
+`status-item`, `splitter` (+ `data-axis`),
 `splitter-handle`, `pane-gap`.
 
 Views switcher: `activity` (+ `data-orientation`, `data-placement`), `activity-row`,

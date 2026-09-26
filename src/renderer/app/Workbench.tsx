@@ -1,13 +1,23 @@
-import { type ComponentType, type JSX, lazy, Suspense, useEffect, useRef } from 'react';
+import {
+	type ComponentType,
+	type JSX,
+	lazy,
+	type ReactNode,
+	Suspense,
+	useEffect,
+	useRef,
+} from 'react';
+import { useShallow } from 'zustand/react/shallow';
 
 import { EditorArea } from '../features/editor/EditorArea';
 import { cn } from '../lib/cn';
 import { useLook } from '../skins/look-store';
 import { useLayoutStore } from '../stores/layout-store';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { Spinner } from '../ui/Spinner';
-import { Splitter } from '../ui/Splitter';
 import { ActivityRail } from './ActivityRail';
 import { BottomPanel } from './BottomPanel';
+import { PaneSplitter } from './PaneSplitter';
 import { SideBar } from './SideBar';
 import { SideDrawer } from './SideDrawer';
 
@@ -15,60 +25,110 @@ const ChatPanel = lazy(() =>
 	import('../features/ai/ChatPanel').then((m) => ({ default: m.ChatPanel })),
 );
 
-function SidePane({ side }: { side: 'left' | 'right' }): JSX.Element {
+const resize: ReturnType<typeof useLayoutStore.getState>['resize'] = (patch) =>
+	useLayoutStore.getState().resize(patch);
+
+/*
+ * Pane sizes are read by these small wrappers, not by the panes around them, so a splitter drag
+ * (a store update per pointermove) re-renders only the resized wrapper. Their children are
+ * elements created by the parent, which React skips when the wrapper re-renders.
+ */
+function SideWidth({ children }: { children: ReactNode }): JSX.Element {
 	const width = useLayoutStore((s) => s.sideWidth);
+	return (
+		<div data-part='sidebar-slot' className='min-w-0 shrink-0' style={{ width }}>
+			{children}
+		</div>
+	);
+}
+
+function PanelHeight({ children }: { children: ReactNode }): JSX.Element {
+	const maximized = useLayoutStore((s) => s.panelMaximized);
+	const height = useLayoutStore((s) => s.panelHeight);
+	return (
+		<div
+			className={maximized ? 'min-h-0 flex-1' : 'shrink-0'}
+			style={maximized ? undefined : { height }}
+		>
+			{children}
+		</div>
+	);
+}
+
+function AiWidth({ children }: { children: ReactNode }): JSX.Element {
+	const width = useLayoutStore((s) => s.aiWidth);
+	return (
+		<aside
+			aria-label='AI assistant'
+			data-part='chat'
+			className='glass pane-focus animate-fade min-w-0 shrink-0 overflow-hidden'
+			style={{ width }}
+		>
+			{children}
+		</aside>
+	);
+}
+
+function SidePane({ side }: { side: 'left' | 'right' }): JSX.Element {
 	const start = useRef(0);
 	const sign = side === 'left' ? 1 : -1;
 	const splitter = (
-		<Splitter
+		<PaneSplitter
+			pane='sideWidth'
 			axis='x'
 			label='Resize side bar'
 			onStart={() => (start.current = useLayoutStore.getState().sideWidth)}
-			onDrag={(d) =>
-				useLayoutStore.getState().resize({ sideWidth: start.current + sign * d })
-			}
-			onReset={() => useLayoutStore.getState().resize({ sideWidth: 272 })}
+			onDrag={(d) => resize({ sideWidth: start.current + sign * d })}
+			onReset={() => resize({ sideWidth: 272 })}
 		/>
 	);
 	return (
 		<>
 			{side === 'right' && splitter}
-			<div data-part='sidebar-slot' className='min-w-0 shrink-0' style={{ width }}>
+			<SideWidth>
 				<SideBar />
-			</div>
+			</SideWidth>
 			{side === 'left' && splitter}
 		</>
 	);
 }
 
 function EditorColumn(): JSX.Element {
-	const layout = useLayoutStore();
+	const { panelOpen, zen, panelMaximized } = useLayoutStore(
+		useShallow((s) => ({
+			panelOpen: s.panelOpen,
+			zen: s.zen,
+			panelMaximized: s.panelMaximized,
+		})),
+	);
 	const start = useRef(0);
-	const showPanel = layout.panelOpen && !layout.zen;
+	const showPanel = panelOpen && !zen;
 	return (
 		<div data-part='editor-column' className='flex min-w-0 flex-1 flex-col'>
-			{!(showPanel && layout.panelMaximized) && (
-				<div className='min-h-0 flex-1'>
+			{/* Hidden, not unmounted, while the panel is maximized: unmounting would dispose and
+			    rebuild every Monaco editor on each maximize/restore. */}
+			<div className={showPanel && panelMaximized ? 'hidden' : 'min-h-0 flex-1'}>
+				<ErrorBoundary name='Editor' className='glass'>
 					<EditorArea />
-				</div>
-			)}
+				</ErrorBoundary>
+			</div>
 			{showPanel && (
 				<>
-					{!layout.panelMaximized && (
-						<Splitter
+					{!panelMaximized && (
+						<PaneSplitter
+							pane='panelHeight'
 							axis='y'
 							label='Resize panel'
 							onStart={() => (start.current = useLayoutStore.getState().panelHeight)}
-							onDrag={(d) => layout.resize({ panelHeight: start.current - d })}
-							onReset={() => layout.resize({ panelHeight: 240 })}
+							onDrag={(d) => resize({ panelHeight: start.current - d })}
+							onReset={() => resize({ panelHeight: 240 })}
 						/>
 					)}
-					<div
-						className={layout.panelMaximized ? 'min-h-0 flex-1' : 'shrink-0'}
-						style={layout.panelMaximized ? undefined : { height: layout.panelHeight }}
-					>
-						<BottomPanel />
-					</div>
+					<PanelHeight>
+						<ErrorBoundary name='Panel' className='glass'>
+							<BottomPanel />
+						</ErrorBoundary>
+					</PanelHeight>
 				</>
 			)}
 		</div>
@@ -76,33 +136,30 @@ function EditorColumn(): JSX.Element {
 }
 
 function ChatPane(): JSX.Element {
-	const width = useLayoutStore((s) => s.aiWidth);
 	const start = useRef(0);
 	return (
 		<>
-			<Splitter
+			<PaneSplitter
+				pane='aiWidth'
 				axis='x'
 				label='Resize AI panel'
 				onStart={() => (start.current = useLayoutStore.getState().aiWidth)}
-				onDrag={(d) => useLayoutStore.getState().resize({ aiWidth: start.current - d })}
-				onReset={() => useLayoutStore.getState().resize({ aiWidth: 380 })}
+				onDrag={(d) => resize({ aiWidth: start.current - d })}
+				onReset={() => resize({ aiWidth: 380 })}
 			/>
-			<aside
-				aria-label='AI assistant'
-				data-part='chat'
-				className='glass pane-focus min-w-0 shrink-0 overflow-hidden'
-				style={{ width }}
-			>
-				<Suspense
-					fallback={
-						<div className='flex h-full items-center justify-center'>
-							<Spinner />
-						</div>
-					}
-				>
-					<ChatPanel />
-				</Suspense>
-			</aside>
+			<AiWidth>
+				<ErrorBoundary name='AI assistant'>
+					<Suspense
+						fallback={
+							<div className='flex h-full items-center justify-center'>
+								<Spinner />
+							</div>
+						}
+					>
+						<ChatPanel />
+					</Suspense>
+				</ErrorBoundary>
+			</AiWidth>
 		</>
 	);
 }

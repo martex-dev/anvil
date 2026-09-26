@@ -1,8 +1,9 @@
 import { DropdownMenu } from 'radix-ui';
 import { type JSX, useState } from 'react';
 
-import { getCommands, runCommand } from '../../app/commands/run';
+import { getCommands } from '../../app/commands/run';
 import type { CommandCategory } from '../../app/commands/types';
+import { useMenuCommand } from '../../app/hooks/use-menu-command';
 import { useRegisterOverlay } from '../../stores/overlay-store';
 import { Kbd } from '../../ui/Kbd';
 
@@ -17,6 +18,8 @@ export function YkMenu({
 	const [open, setOpen] = useState(false);
 	// Webviews hide while any overlay is open, or they would paint over the menu.
 	useRegisterOverlay(open);
+	// Commands run once the menu has closed, so focus lands where they put it.
+	const { pick, onCloseAutoFocus } = useMenuCommand();
 	const items = getCommands().filter((c) => categories.includes(c.category));
 	return (
 		<DropdownMenu.Root open={open} onOpenChange={setOpen}>
@@ -25,6 +28,7 @@ export function YkMenu({
 			</DropdownMenu.Trigger>
 			<DropdownMenu.Portal>
 				<DropdownMenu.Content
+					onCloseAutoFocus={onCloseAutoFocus}
 					align='start'
 					sideOffset={6}
 					className='glass-strong animate-in z-50 max-h-[70vh] min-w-64 overflow-auto p-1.5'
@@ -47,7 +51,7 @@ export function YkMenu({
 									return (
 										<DropdownMenu.Item
 											key={c.id}
-											onSelect={() => void runCommand(c)}
+											onSelect={() => pick(c)}
 											className='yk-menu-item group flex h-7 cursor-default items-center gap-2 rounded-full px-2.5 text-12 text-fg-1 outline-none'
 										>
 											{Icon ? (

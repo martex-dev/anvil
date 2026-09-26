@@ -1,7 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('../../lib/log', () => ({ rlog: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
+vi.mock('../../stores/toast-store', () => ({ toast: { error: vi.fn(), info: vi.fn() } }));
 
 import type { Command } from './types';
-import { globalCommandFor } from './use-global-shortcuts';
+import { globalCommandFor, shortcutAction } from './use-global-shortcuts';
 
 const run = (): void => undefined;
 const commands: Command[] = [
@@ -25,5 +28,28 @@ describe('globalCommandFor', () => {
 
 	it('still captures other app shortcuts in the terminal', () => {
 		expect(globalCommandFor(ctrl('P', true), commands, true)?.id).toBe('palette');
+	});
+});
+
+const key = { repeat: false, isComposing: false };
+
+describe('shortcutAction', () => {
+	it('runs a plain key press', () => {
+		expect(shortcutAction(key, {}, false)).toBe('run');
+	});
+
+	it('leaves keys to an open dialog unless the command is overlay-safe', () => {
+		expect(shortcutAction(key, {}, true)).toBe('pass');
+		expect(shortcutAction(key, { allowInOverlay: true }, true)).toBe('run');
+	});
+
+	it('swallows auto-repeat for toggles but repeats repeatable commands', () => {
+		const held = { ...key, repeat: true };
+		expect(shortcutAction(held, {}, false)).toBe('swallow');
+		expect(shortcutAction(held, { repeatable: true }, false)).toBe('run');
+	});
+
+	it('never fires while an IME is composing', () => {
+		expect(shortcutAction({ ...key, isComposing: true }, {}, false)).toBe('pass');
 	});
 });

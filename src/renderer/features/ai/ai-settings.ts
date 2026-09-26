@@ -1,6 +1,11 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-import type { AiModelRef, AiProvider, AiSettings } from '@shared/ipc/channels/ai';
+import {
+	type AiModelRef,
+	type AiProvider,
+	type AiSettings,
+	AiSettingsSchema,
+} from '@shared/ipc/channels/ai';
 
 import { call } from '../../lib/ipc';
 import { queryClient } from '../../lib/query-client';
@@ -48,8 +53,12 @@ export function useAiSettings(): {
 	settings: AiSettings | undefined;
 	/** undefined while loading (or failed): not the same as "no key". */
 	keys: Record<AiProvider, boolean> | undefined;
-	/** Why settings or keys could not be loaded, if they couldn't. */
+	/**
+	 * Why settings or keys could not be loaded, if they couldn't. A failed background refetch
+	 * that still has earlier data is not an error: the views keep showing that data.
+	 */
 	error: Error | null;
+	/** Refetches whichever of settings and keys failed. */
 	retry: () => void;
 } {
 	const client = useQueryClient();
@@ -62,7 +71,7 @@ export function useAiSettings(): {
 	return {
 		settings: settings.data,
 		keys: keys.data,
-		error: settings.error ?? keys.error,
+		error: (settings.data ? null : settings.error) ?? (keys.data ? null : keys.error),
 		retry: () => {
 			if (settings.isError) void settings.refetch();
 			if (keys.isError) void keys.refetch();
@@ -76,6 +85,12 @@ export async function getAiSettings(): Promise<AiSettings> {
 		queryFn: () => call('ai:settings'),
 		staleTime: 30_000,
 	});
+}
+
+/** A trimmed http(s) Ollama server URL, or null when main would reject it. */
+export function parseOllamaUrl(text: string): string | null {
+	const parsed = AiSettingsSchema.shape.ollamaUrl.safeParse(text.trim());
+	return parsed.success ? parsed.data : null;
 }
 
 export async function saveAiSettings(next: AiSettings): Promise<void> {

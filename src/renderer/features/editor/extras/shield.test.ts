@@ -4,7 +4,10 @@ import { describe, expect, it, vi } from 'vitest';
 import type { MonacoApi } from '../../../lib/monaco/setup';
 
 let secretShield = true;
-vi.mock('../../../app/hooks/use-settings', () => ({ getSettings: () => ({ secretShield }) }));
+vi.mock('../../../app/hooks/use-settings', () => ({
+	getSettings: () => ({ secretShield }),
+	watchSetting: () => () => undefined,
+}));
 
 const { attachShield, envValueRanges, hiddenSecrets } = await import('./shield');
 

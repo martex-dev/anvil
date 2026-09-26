@@ -270,6 +270,7 @@ export function ImageViewer({ path }: { path: string }): JSX.Element {
 					label='Fit to pane'
 					shortcut='0'
 					icon={<Scan size={14} />}
+					toggle
 					active={zoom === 'fit'}
 					disabled={!natural}
 					onClick={() => zoomTo('fit')}

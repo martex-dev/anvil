@@ -1,8 +1,9 @@
 import { DropdownMenu } from 'radix-ui';
 import { type JSX, useState } from 'react';
 
-import { getCommands, runCommand } from '../../app/commands/run';
+import { getCommands } from '../../app/commands/run';
 import type { CommandCategory } from '../../app/commands/types';
+import { useMenuCommand } from '../../app/hooks/use-menu-command';
 import { useRegisterOverlay } from '../../stores/overlay-store';
 
 export interface DeskMenuSpec {
@@ -17,6 +18,8 @@ export interface DeskMenuSpec {
 export function DeskMenu({ label, categories }: DeskMenuSpec): JSX.Element {
 	const [open, setOpen] = useState(false);
 	useRegisterOverlay(open);
+	// Commands run once the menu has closed, so focus lands where they put it.
+	const { pick, onCloseAutoFocus } = useMenuCommand();
 	// Rows are numbered in display order: category by category, as the menu lists them.
 	const items = categories.flatMap((cat) => getCommands().filter((c) => c.category === cat));
 	return (
@@ -26,6 +29,7 @@ export function DeskMenu({ label, categories }: DeskMenuSpec): JSX.Element {
 			</DropdownMenu.Trigger>
 			<DropdownMenu.Portal>
 				<DropdownMenu.Content
+					onCloseAutoFocus={onCloseAutoFocus}
 					align='start'
 					sideOffset={2}
 					className='glass-strong ck-menu z-50 max-h-[70vh] min-w-72 overflow-auto'
@@ -47,7 +51,7 @@ export function DeskMenu({ label, categories }: DeskMenuSpec): JSX.Element {
 								{group.map((c) => (
 									<DropdownMenu.Item
 										key={c.id}
-										onSelect={() => void runCommand(c)}
+										onSelect={() => pick(c)}
 										className='ck-menu-item'
 									>
 										<span className='ck-menu-num num'>

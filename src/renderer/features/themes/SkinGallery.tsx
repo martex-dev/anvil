@@ -28,7 +28,9 @@ export function SkinGallery({
 						onClick={() => onChange(skin.id)}
 						className={cn(
 							'group flex flex-col overflow-hidden rounded-lg border bg-bg-1 text-left outline-none',
-							'transition-[box-shadow,border-color,translate] transition-fast hover:-translate-y-px focus-visible:shadow-glow',
+							'transition-[box-shadow,border-color,translate] transition-fast hover:-translate-y-px',
+							// Selected already glows, so focus gets its own mark, as on the palette cards.
+							'focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-fg-0 focus-visible:outline-solid',
 							selected
 								? 'border-accent shadow-glow'
 								: 'border-border hover:border-border-strong',

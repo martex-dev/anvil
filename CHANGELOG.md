@@ -3,6 +3,81 @@
 What changed in each release of Anvil. The release workflow publishes a version's section as
 its GitHub release notes.
 
+## [0.2.8] - 2026-09-26
+
+App shell, commands, layout and themes: 60 fixes from the full bug sweep of 0.2.0.
+
+### Fixed
+
+- **layout:** Announce scm badge and align activity bar button states
+- **layout:** Add error boundaries and global error handlers
+- **layout:** Return focus to the editor when a focused pane hides
+- **layout:** Stop re-rendering the workbench on every splitter move
+- **layout:** Fade panes and side views in on show
+- **layout:** Keep side and ai panes inside the window
+- **layout:** Keep editors mounted while the panel is maximized
+- **terminal:** Put terminals on the editor plate
+- **terminal:** Make terminal tabs keyboard reachable
+- **terminal:** Show loading, error and empty states in the profile menu
+- **terminal:** Add focus ring and arrow keys to panel tabs
+- **palette:** Make quick open command and symbol modes match items
+- **palette:** Scope quick open's pending enter to its query
+- **palette:** Keep editor focus after quick open navigates
+- **palette:** Show empty, error and truncated states in quick open
+- **palette:** Record quick open commands as recently used
+- **shortcuts:** Show an empty state and reset the filter on reopen
+- **git:** Keep the commit message draft across side view switches
+- **editor:** Repaint the secret shield whenever the setting changes
+- **layout:** Make status bar, title pill and scrim blurs follow glass setting
+- **layout:** Align the status bar clock to the second
+- **layout:** Truncate long branch names and keep status bar items on screen
+- **layout:** Run title bar menu commands after the menu closes
+- **layout:** Make the title bar menus a real menubar
+- **layout:** Keep the title bar search pill in the flex flow
+- **commands:** Surface failures of window and log commands
+- **commands:** Move keyboard focus with focus editor group
+- **commands:** Describe check for updates results instead of raw states
+- **commands:** Hold global shortcuts while dialogs are open or keys repeat
+- **layout:** Log layout save failures and keep early toggles
+- **settings:** Save settings optimistically and show load errors
+- **settings:** Paint the saved theme before the first render
+- **settings:** Save a picked custom accent when settings closes
+- **settings:** Show focus on accent swatches and keep the custom color current
+- **settings:** Preview each editor font in its own face
+- **settings:** Trim pasted api keys and confirm before deleting one
+- **settings:** Make segmented controls keyboard friendly radio groups
+- **settings:** Keep stepper focus at min and max and announce the value
+- **settings:** Show ai settings load errors and validate the ollama url
+- **settings:** Show loading and error states on the api keys tab
+- **settings:** Surface about-tab failures and an unreadable version
+- **settings:** Report failed update checks and restart to update only once
+- **themes:** Give the focused theme card a ring distinct from selection
+- **themes:** Revert the theme preview when saving the pick fails
+- **commands:** Let altgr characters through global shortcuts
+- **layout:** Reveal panes from zen mode and add a way out
+- **editor:** Release replaced preview tabs
+- **editor:** Fold an empty left editor group
+- **toast:** Keep error toasts over bursts and fold repeats
+- **themes:** Drop backdrop filters on panes when glass is off
+- **themes:** Stop looping animations under reduced motion
+- **themes:** Keep the ambient grid still behind blurred panes
+- **themes:** Darken accent presets on light themes
+- **ui:** Keep active icon buttons lit on hover and expose toggles
+- **ui:** Drop stale quick pick loads and show load errors
+- **ui:** Ellipsize long quick pick labels and show them in full on hover
+- **ui:** Give selects a hover cue and a scrollable height cap
+- **layout:** End splitter drags on cancel and report pane sizes
+- **ui:** Animate overlays and toasts out, and let toasts follow a swipe
+- **ui:** Wrap long toast text instead of clipping it
+- **themes:** Use the darker accent presets on the light palettes of every skin
+- **themes:** Revert the skin preview when saving the pick fails
+- **themes:** Give the focused skin card a ring distinct from selection
+- **settings:** Preview each interface font in its own face
+- **skins:** Run the skin title menus' commands after the menu closes
+- **skins:** Light skin title bar toggles only for panes that are visible
+- **skins:** Align the Cockpit and Mainframe clocks to the second
+- **skins:** Stop Mainframe's loader and Cyber's backdrop loops under reduced motion
+
 ## [0.2.7] - 2026-09-26
 
 Core, IPC, settings and language servers: 39 fixes from the full bug sweep of 0.2.0.

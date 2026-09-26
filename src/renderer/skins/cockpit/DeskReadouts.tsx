@@ -3,6 +3,7 @@ import { type JSX, useEffect, useState } from 'react';
 
 import { useWorkspace } from '../../app/hooks/use-workspace';
 import { pickPythonEnv, useSelectedPython } from '../../features/python/use-python';
+import { everySecond } from '../../lib/every-second';
 import { call } from '../../lib/ipc';
 import { TickValue } from './TickValue';
 
@@ -18,10 +19,8 @@ export function DeskReadouts(): JSX.Element {
 	const { info } = useWorkspace();
 	const { env } = useSelectedPython();
 	const [now, setNow] = useState(() => new Date());
-	useEffect(() => {
-		const id = setInterval(() => setNow(new Date()), 1000);
-		return () => clearInterval(id);
-	}, []);
+	// Aligned to the second, so the HH:MM:SS readout changes together with the system clock.
+	useEffect(() => everySecond(setNow), []);
 	const metrics = useQuery({
 		queryKey: ['app', 'metrics'],
 		queryFn: () => call('app:metrics'),

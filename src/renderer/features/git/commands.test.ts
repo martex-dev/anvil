@@ -33,7 +33,9 @@ describe('git.sync', () => {
 		call.mockRejectedValueOnce(new Error('merge conflict'));
 		await run('git.sync');
 		expect(call.mock.calls.map((c) => c[0])).toEqual(['git:pull']);
-		expect(useToastStore.getState().toasts.map((t) => t.title)).toEqual(['Pull failed']);
+		// The dismissed progress toast stays in the store (closed) while it animates out.
+		const shown = useToastStore.getState().toasts.filter((t) => t.open);
+		expect(shown.map((t) => t.title)).toEqual(['Pull failed']);
 	});
 });
 

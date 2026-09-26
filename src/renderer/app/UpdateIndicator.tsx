@@ -1,13 +1,12 @@
 import { ArrowDownToLine, RefreshCcw } from 'lucide-react';
 import type { JSX } from 'react';
 
-import { call } from '../lib/ipc';
-import { toast } from '../stores/toast-store';
-import { useUpdateStatus } from './hooks/use-update';
+import { useInstallUpdate, useUpdateStatus } from './hooks/use-update';
 
 /** Status bar: download progress, then a one-click restart once the update is ready. */
 export function UpdateIndicator(): JSX.Element | null {
 	const status = useUpdateStatus().data;
+	const { install, isPending } = useInstallUpdate();
 	if (status?.state === 'downloading') {
 		return (
 			<span
@@ -24,9 +23,8 @@ export function UpdateIndicator(): JSX.Element | null {
 	return (
 		<button
 			type='button'
-			onClick={() =>
-				void call('update:install').catch(() => toast.error('Could not restart to update'))
-			}
+			onClick={install}
+			aria-disabled={isPending || undefined}
 			className='flex items-center gap-1 rounded-sm px-1 text-accent hover:bg-bg-3 focus-visible:shadow-glow focus-visible:outline-none'
 			title='Quit, install the update and reopen Anvil'
 			data-update='ready'

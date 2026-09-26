@@ -22,25 +22,26 @@ export function Toaster(): JSX.Element {
 			{toasts.map((t) => (
 				<RadixToast.Root
 					key={t.id}
+					open={t.open}
 					duration={t.durationMs}
 					onOpenChange={(open) => {
 						if (!open) dismiss(t.id);
 					}}
-					className={cn(
-						'glass-strong animate-in relative flex w-80 items-start gap-2 overflow-hidden rounded-lg py-2 pr-2 pl-3',
-						'data-[state=closed]:opacity-0 transition-opacity transition-fast',
-					)}
+					className='glass-strong animate-in toast-swipe relative flex w-80 items-start gap-2 overflow-hidden rounded-lg py-2 pr-2 pl-3'
 				>
 					<span
 						className={cn('absolute inset-y-0 left-0 w-0.5', toneStyle[t.tone].bar)}
 					/>
 					<span className='mt-0.5'>{toneStyle[t.tone].icon}</span>
 					<div className='min-w-0 flex-1'>
-						<RadixToast.Title className='text-13 font-medium text-fg-0'>
+						<RadixToast.Title className='text-13 font-medium wrap-anywhere text-fg-0'>
 							{t.title}
+							{t.count > 1 && (
+								<span className='num ml-1.5 text-11 text-fg-2'>×{t.count}</span>
+							)}
 						</RadixToast.Title>
 						{t.description && (
-							<RadixToast.Description className='selectable mt-0.5 text-12 text-fg-1'>
+							<RadixToast.Description className='selectable mt-0.5 max-h-40 overflow-auto text-12 wrap-anywhere text-fg-1'>
 								{t.description}
 							</RadixToast.Description>
 						)}

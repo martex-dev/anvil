@@ -13,7 +13,8 @@ export default defineConfig({
 	test: {
 		include: ['src/**/*.test.{ts,tsx}'],
 		environment: 'node',
-		// Vitest blanks CSS by default; the palette test reads each skin's palettes.css as text.
-		css: { include: [/palettes\.css/] },
+		// Vitest blanks CSS by default; the palette test reads each skin's palettes.css and tokens.css
+		// as text.
+		css: { include: [/(palettes|tokens)\.css/] },
 	},
 });
