@@ -17,7 +17,6 @@ import { type JSX, useEffect, useMemo, useRef, useState } from 'react';
 
 import { runCommandById } from '../../app/commands/run';
 import { useWorkspace } from '../../app/hooks/use-workspace';
-import { cn } from '../../lib/cn';
 import { call } from '../../lib/ipc';
 import { useUiStore } from '../../stores/ui-store';
 import { Button } from '../../ui/Button';
@@ -28,8 +27,9 @@ import { Spinner } from '../../ui/Spinner';
 import { PROVIDER_LABEL, useAiSettings } from './ai-settings';
 import { attachCurrent, attachDiff, attachPath } from './chat-attach';
 import { useChatFocus } from './chat-focus';
-import { chatTrigger, SLASH_COMMANDS, STARTERS } from './chat-shortcuts';
+import { chatTrigger, mentionStatus, SLASH_COMMANDS, STARTERS } from './chat-shortcuts';
 import { useChat } from './chat-store';
+import { ChatSuggestions } from './ChatSuggestions';
 import { MessageView } from './MessageView';
 import { useStickToBottom } from './use-stick-to-bottom';
 
@@ -73,7 +73,16 @@ export function ChatPanel(): JSX.Element {
 			.slice(0, 8)
 			.map((f) => ({ id: f, label: f.split('/').at(-1) ?? f, hint: f }));
 	}, [tr, files.data]);
-	const popupOpen = suggestions.length > 0 && dismissedAt !== text;
+	const status =
+		tr?.kind === '@'
+			? mentionStatus({
+					hasFolder: Boolean(info.root),
+					loading: files.isPending,
+					error: files.error,
+					matches: suggestions.length,
+				})
+			: null;
+	const popupOpen = (suggestions.length > 0 || status !== null) && dismissedAt !== text;
 
 	useEffect(() => {
 		if (focusTick > 0) inputRef.current?.focus();
@@ -270,35 +279,14 @@ export function ChatPanel(): JSX.Element {
 					</div>
 				)}
 				<div className='relative'>
-					{popupOpen && (
-						<ul
-							role='listbox'
-							className='glass-strong animate-in absolute right-0 bottom-full left-0 z-20 mb-1 max-h-60 overflow-auto p-1'
-						>
-							{suggestions.map((s, i) => (
-								<li key={s.id} role='option' aria-selected={i === pick}>
-									<button
-										type='button'
-										onMouseDown={(e) => {
-											e.preventDefault();
-											choose(i);
-										}}
-										className={cn(
-											'flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-12',
-											i === pick ? 'bg-accent-faint text-fg-0' : 'text-fg-1',
-										)}
-									>
-										{tr?.kind === '@' ? (
-											<FileBadge name={s.label} />
-										) : (
-											<span className='font-mono text-accent'>{s.label}</span>
-										)}
-										{tr?.kind === '@' && <span>{s.label}</span>}
-										<span className='truncate text-11 text-fg-2'>{s.hint}</span>
-									</button>
-								</li>
-							))}
-						</ul>
+					{popupOpen && tr && (
+						<ChatSuggestions
+							kind={tr.kind}
+							suggestions={suggestions}
+							pick={pick}
+							status={status}
+							onChoose={choose}
+						/>
 					)}
 					<textarea
 						ref={inputRef}
@@ -311,13 +299,14 @@ export function ChatPanel(): JSX.Element {
 						onKeyDown={(e) => {
 							// Enter confirms an IME composition (CJK input); it must not send.
 							if (e.nativeEvent.isComposing) return;
-							if (popupOpen) {
-								if (e.key === 'Escape') {
-									e.preventDefault();
-									e.stopPropagation();
-									setDismissedAt(text);
-									return;
-								}
+							if (popupOpen && e.key === 'Escape') {
+								e.preventDefault();
+								e.stopPropagation();
+								setDismissedAt(text);
+								return;
+							}
+							// A status-only popup (loading, no matches) leaves Enter free to send.
+							if (popupOpen && suggestions.length > 0) {
 								if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
 									e.preventDefault();
 									setPick(

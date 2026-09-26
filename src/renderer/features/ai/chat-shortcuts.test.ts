@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { chatTrigger, SLASH_COMMANDS, STARTERS } from './chat-shortcuts';
+import { chatTrigger, mentionStatus, SLASH_COMMANDS, STARTERS } from './chat-shortcuts';
 import { AI_COMMANDS } from './commands';
 
 describe('chat shortcuts', () => {
@@ -16,5 +16,25 @@ describe('chatTrigger', () => {
 		expect(chatTrigger('/rev')).toEqual({ kind: '/', query: 'rev' });
 		expect(chatTrigger('a /rev')).toBeNull();
 		expect(chatTrigger('mail@example')).toBeNull();
+	});
+});
+
+describe('mentionStatus', () => {
+	const base = { hasFolder: true, loading: false, error: null, matches: 0 };
+
+	it('stays out of the way when there are files to pick', () => {
+		expect(mentionStatus({ ...base, matches: 3 })).toBeNull();
+	});
+
+	it('explains an empty @ popup', () => {
+		expect(mentionStatus({ ...base, hasFolder: false })?.text).toBe(
+			'Open a folder to mention files',
+		);
+		expect(mentionStatus({ ...base, loading: true })?.tone).toBe('loading');
+		expect(mentionStatus({ ...base, error: new Error('boom') })).toEqual({
+			tone: 'error',
+			text: 'Could not list files: boom',
+		});
+		expect(mentionStatus(base)?.text).toBe('No matching files');
 	});
 });

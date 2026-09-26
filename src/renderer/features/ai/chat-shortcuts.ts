@@ -30,3 +30,19 @@ export function chatTrigger(text: string): ChatTrigger | null {
 	const slash = /^\/(\w*)$/.exec(text);
 	return slash ? { kind: '/', query: slash[1] ?? '' } : null;
 }
+
+export type SuggestionStatus = { tone: 'muted' | 'loading' | 'error'; text: string };
+
+/** What the `@` popup says when it has no files to offer, so typing `@` never looks dead. */
+export function mentionStatus(state: {
+	hasFolder: boolean;
+	loading: boolean;
+	error: Error | null;
+	matches: number;
+}): SuggestionStatus | null {
+	if (state.matches > 0) return null;
+	if (!state.hasFolder) return { tone: 'muted', text: 'Open a folder to mention files' };
+	if (state.error) return { tone: 'error', text: `Could not list files: ${state.error.message}` };
+	if (state.loading) return { tone: 'loading', text: 'Loading files…' };
+	return { tone: 'muted', text: 'No matching files' };
+}
