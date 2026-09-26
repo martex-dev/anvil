@@ -32,7 +32,7 @@ export function TodoView(): JSX.Element {
 	const [only, setOnly] = useState<Tag | null>(null);
 	const q = useQuery({
 		queryKey: ['todos', info.root],
-		queryFn: () => call('search:run', { query: PATTERN, regex: true, caseSensitive: true }),
+		queryFn: () => call('search:todos', { query: PATTERN, regex: true, caseSensitive: true }),
 		enabled: Boolean(info.root),
 		staleTime: 30_000,
 	});

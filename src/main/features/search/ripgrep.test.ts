@@ -87,6 +87,15 @@ describe('Ripgrep (real binary)', () => {
 		expect(none.files).toEqual([]);
 	});
 
+	it('runs searches on separate instances side by side (the TODO scan has its own)', async () => {
+		const [find, todos] = await Promise.all([
+			rg.search(root, { query: 'price' }),
+			new Ripgrep().search(root, { query: 'Priceless', caseSensitive: true }),
+		]);
+		expect(find.matchCount).toBeGreaterThan(0);
+		expect(todos.files.map((f) => f.path)).toEqual(['notes.md']);
+	});
+
 	it('marks a search stopped by the time limit as incomplete', async () => {
 		const result = await new Ripgrep(undefined, 1).search(root, { query: 'price' });
 		expect(result).toMatchObject({ truncated: true, timedOut: true });

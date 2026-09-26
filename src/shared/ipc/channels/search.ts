@@ -48,6 +48,11 @@ export type SearchResult = z.infer<typeof SearchResultSchema>;
 export const searchChannels = defineChannels({
 	/** Runs ripgrep in the open folder. A newer search cancels the previous one. */
 	'search:run': { input: SearchQuerySchema, output: SearchResultSchema },
+	/**
+	 * The TODO scan. Same search, but its own ripgrep: Find-in-files and the scan would otherwise
+	 * cancel each other. A newer scan cancels the previous scan only.
+	 */
+	'search:todos': { input: SearchQuerySchema, output: SearchResultSchema },
 	/** Every file in the open folder (gitignore-aware), for Quick Open. */
 	'search:files': {
 		input: z.void(),
