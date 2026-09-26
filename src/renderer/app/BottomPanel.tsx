@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, Maximize2, Minimize2, Plus, SquareTerminal, X } from 'lucide-react';
+import { ChevronDown, Maximize2, Minimize2, Plus, RotateCw, SquareTerminal, X } from 'lucide-react';
 import { DropdownMenu } from 'radix-ui';
 import { type JSX, useState } from 'react';
 
@@ -13,8 +13,13 @@ import { type PanelTab, useLayoutStore } from '../stores/layout-store';
 import { useRegisterOverlay } from '../stores/overlay-store';
 import { EmptyState } from '../ui/EmptyState';
 import { IconButton } from '../ui/IconButton';
+import { Spinner } from '../ui/Spinner';
+import { Tooltip } from '../ui/Tooltip';
 import { shortcutFor } from './commands/run';
 import { TerminalTabs } from './TerminalTabs';
+
+const ITEM =
+	'flex h-7 cursor-default items-center gap-2 rounded-md px-2 text-12 text-fg-1 outline-none data-[disabled]:opacity-40 data-[highlighted]:bg-accent-faint data-[highlighted]:text-fg-0';
 
 function PresetMenu(): JSX.Element {
 	const [open, setOpen] = useState(false);
@@ -26,12 +31,14 @@ function PresetMenu(): JSX.Element {
 	});
 	return (
 		<DropdownMenu.Root open={open} onOpenChange={setOpen}>
-			<DropdownMenu.Trigger
-				aria-label='New terminal profile'
-				className='flex size-6 items-center justify-center rounded-md text-fg-2 outline-none hover:bg-bg-3 hover:text-fg-0 focus-visible:shadow-glow'
-			>
-				<ChevronDown size={13} />
-			</DropdownMenu.Trigger>
+			<Tooltip content='New terminal profile'>
+				<DropdownMenu.Trigger
+					aria-label='New terminal profile'
+					className='flex size-6 items-center justify-center rounded-md text-fg-2 outline-none transition-colors transition-fast hover:bg-bg-3 hover:text-fg-0 focus-visible:shadow-glow'
+				>
+					<ChevronDown size={13} />
+				</DropdownMenu.Trigger>
+			</Tooltip>
 			<DropdownMenu.Portal>
 				<DropdownMenu.Content
 					align='end'
@@ -41,12 +48,39 @@ function PresetMenu(): JSX.Element {
 					<DropdownMenu.Label className='hud px-2 pt-1 pb-1'>
 						New terminal
 					</DropdownMenu.Label>
+					{presets.isPending && (
+						<div className='flex h-7 items-center gap-2 px-2 text-12 text-fg-2'>
+							<Spinner size={12} label='Loading profiles' />
+							Loading profiles…
+						</div>
+					)}
+					{presets.isError && (
+						<>
+							<p role='alert' className='max-w-64 px-2 py-1 text-12 text-down'>
+								Could not list terminal profiles: {presets.error.message}
+							</p>
+							<DropdownMenu.Item
+								onSelect={(e) => {
+									// Keep the menu open so the reloaded list shows in place.
+									e.preventDefault();
+									void presets.refetch();
+								}}
+								className={ITEM}
+							>
+								<RotateCw size={13} className='text-fg-2' />
+								Retry
+							</DropdownMenu.Item>
+						</>
+					)}
+					{presets.isSuccess && presets.data.length === 0 && (
+						<p className='px-2 py-1 text-12 text-fg-2'>No terminal profiles found.</p>
+					)}
 					{(presets.data ?? []).map((p) => (
 						<DropdownMenu.Item
 							key={p.id}
 							disabled={!p.available}
 							onSelect={() => newTerminal(p.id)}
-							className='flex h-7 cursor-default items-center gap-2 rounded-md px-2 text-12 text-fg-1 outline-none data-[disabled]:opacity-40 data-[highlighted]:bg-accent-faint data-[highlighted]:text-fg-0'
+							className={ITEM}
 							title={p.reason ?? undefined}
 						>
 							<SquareTerminal size={13} className='text-fg-2' />
