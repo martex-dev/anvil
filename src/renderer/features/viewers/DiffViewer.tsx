@@ -1,10 +1,13 @@
+import { Equal } from 'lucide-react';
 import type * as Monaco from 'monaco-editor';
 import { type JSX, useEffect, useRef, useState } from 'react';
 
+import { cn } from '../../lib/cn';
 import type { MonacoApi } from '../../lib/monaco/setup';
 import type { DiffPayload } from '../../stores/tabs-store';
 import { requestOpenFile } from '../../stores/workbench-store';
 import { Button } from '../../ui/Button';
+import { EmptyState } from '../../ui/EmptyState';
 
 /** Side-by-side (or inline) read-only diff: git changes, local history, AI proposals. */
 export function DiffViewer({
@@ -23,6 +26,7 @@ export function DiffViewer({
 		removed: number;
 	} | null>(null);
 	const stats = counted?.diff === diff ? counted : null;
+	const identical = stats !== null && stats.added === 0 && stats.removed === 0;
 	const editorRef = useRef<Monaco.editor.IStandaloneDiffEditor | null>(null);
 	// Read when the editor is recreated for a new diff, so it keeps the chosen layout.
 	const inlineRef = useRef(inline);
@@ -93,7 +97,15 @@ export function DiffViewer({
 					</Button>
 				)}
 			</div>
-			<div ref={hostRef} className='min-h-0 flex-1' />
+			{identical && (
+				<EmptyState
+					icon={<Equal size={22} />}
+					title='No differences'
+					description='Both sides have the same content.'
+				/>
+			)}
+			{/* Stays mounted (only hidden) so the editor survives while the diff is identical. */}
+			<div ref={hostRef} className={cn('min-h-0 flex-1', identical && 'hidden')} />
 		</div>
 	);
 }
