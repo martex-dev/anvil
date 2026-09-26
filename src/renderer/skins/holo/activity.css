@@ -1,0 +1,136 @@
+/*
+ * Holo HUD views switcher: hexagonal chevron keys outlined in light. The outline is the key's
+ * own fill showing around an inset plate (::before), so it follows the angled edges.
+ */
+
+html[data-skin='holo'] [data-part='activity-row'] {
+	padding-top: 6px;
+}
+
+html[data-skin='holo'] .ho-activity {
+	display: flex;
+	align-items: center;
+	gap: 3px;
+	height: 30px;
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+
+html[data-skin='holo'] .ho-activity-tag {
+	flex-shrink: 0;
+	padding: 0 12px 0 4px;
+	font-family: var(--font-display);
+	font-size: 9px;
+	font-weight: 700;
+	letter-spacing: 0.24em;
+	color: var(--text-2);
+	white-space: nowrap;
+}
+html[data-skin='holo'] .ho-activity-tag b {
+	font-weight: 700;
+	color: var(--accent);
+}
+
+html[data-skin='holo'] .ho-activity-spacer {
+	flex: 1;
+	min-width: 16px;
+	align-self: stretch;
+	margin: 0 10px;
+	background: repeating-linear-gradient(90deg, var(--ho-edge) 0 8px, transparent 8px 14px)
+		center / 100% 1px no-repeat;
+}
+
+html[data-skin='holo'] .ho-navtab {
+	--h: 10px;
+	position: relative;
+	isolation: isolate;
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	gap: 6px;
+	height: 28px;
+	padding: 0 calc(var(--h) + 6px);
+	color: var(--text-2);
+	background: var(--ho-edge);
+	outline: none;
+	clip-path: polygon(
+		var(--h) 0,
+		calc(100% - var(--h)) 0,
+		100% 50%,
+		calc(100% - var(--h)) 100%,
+		var(--h) 100%,
+		0 50%
+	);
+	transition:
+		color var(--dur-fast) var(--ease-out),
+		background-color var(--dur-fast) var(--ease-out);
+}
+html[data-skin='holo'] .ho-navtab::before {
+	content: '';
+	position: absolute;
+	inset: 1px;
+	z-index: -1;
+	background: color-mix(in oklab, var(--bg-1) 92%, transparent);
+	clip-path: inherit;
+	transition: background-color var(--dur-fast) var(--ease-out);
+}
+html[data-skin='holo'] .ho-navtab:hover {
+	color: var(--text-0);
+	background: var(--ho-edge-hot);
+}
+html[data-skin='holo'] .ho-navtab:hover::before {
+	background: color-mix(in oklab, var(--accent) 10%, var(--bg-1));
+}
+html[data-skin='holo'] .ho-navtab:focus-visible {
+	color: var(--text-0);
+	background: var(--accent);
+}
+html[data-skin='holo'] .ho-navtab[data-active='true'] {
+	color: var(--text-0);
+	background: var(--accent);
+}
+html[data-skin='holo'] .ho-navtab[data-active='true']::before {
+	background: linear-gradient(
+		180deg,
+		color-mix(in oklab, var(--accent) 34%, var(--bg-1)),
+		color-mix(in oklab, var(--accent) 12%, var(--bg-1))
+	);
+}
+html[data-skin='holo'] .ho-navtab[data-active='true'] .skin-icon {
+	color: var(--accent);
+	filter: drop-shadow(0 0 4px var(--accent));
+}
+html[data-skin='holo'][data-kind='light'] .ho-navtab[data-active='true'] .skin-icon {
+	filter: none;
+}
+
+html[data-skin='holo'] .ho-navtab-code {
+	font-family: var(--font-display);
+	font-size: 8px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	color: var(--text-2);
+}
+html[data-skin='holo'] .ho-navtab[data-active='true'] .ho-navtab-code {
+	color: var(--accent);
+}
+html[data-skin='holo'] .ho-navtab-label {
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+html[data-skin='holo'] .ho-navtab-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 16px;
+	height: 14px;
+	padding: 0 3px;
+	font-size: 9px;
+	font-weight: 700;
+	color: var(--on-accent);
+	background: var(--warn);
+	clip-path: polygon(3px 0, 100% 0, calc(100% - 3px) 100%, 0 100%);
+}

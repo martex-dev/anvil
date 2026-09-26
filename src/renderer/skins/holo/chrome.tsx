@@ -1,4 +1,5 @@
 import type { SkinChrome } from '../types';
+import { HoloActivityBar } from './HoloActivityBar';
 import { HoloBackdrop } from './HoloBackdrop';
 import { HoloOverlay } from './HoloOverlay';
 import { HoloTitleBar } from './HoloTitleBar';
@@ -8,6 +9,7 @@ import { HoloWindowControls } from './HoloWindowControls';
 const chrome: SkinChrome = {
 	TitleBar: HoloTitleBar,
 	WindowControls: HoloWindowControls,
+	ActivityBar: HoloActivityBar,
 	Backdrop: HoloBackdrop,
 	Overlay: HoloOverlay,
 };
