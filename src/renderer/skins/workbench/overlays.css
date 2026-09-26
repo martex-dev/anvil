@@ -19,16 +19,26 @@ html[data-skin='workbench'] .animate-in,
 html[data-skin='workbench'] .animate-fade {
 	animation: none;
 }
-/* Menus drop open the way they did on the desktop: a quick unroll from the top. */
+/*
+ * Full effects only: menus drop open and windows pop up in a few hard steps, the way a 1995
+ * machine drew them (no easing, just frames).
+ */
 html[data-skin='workbench'][data-fx='full'] :is([role='menu'], [role='listbox']).glass-strong {
-	animation: wb-unroll 110ms steps(4, end);
+	animation: wb-drop 120ms steps(3, end);
 }
-@keyframes wb-unroll {
+html[data-skin='workbench'][data-fx='full'] [role='dialog'].glass-strong {
+	animation: wb-pop 150ms steps(3, end);
+}
+@keyframes wb-drop {
 	from {
-		clip-path: inset(0 0 100% 0);
+		opacity: 0;
+		transform: translateY(-6px);
 	}
-	to {
-		clip-path: inset(0);
+}
+@keyframes wb-pop {
+	from {
+		opacity: 0;
+		transform: scale(0.94);
 	}
 }
 

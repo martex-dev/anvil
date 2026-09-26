@@ -113,6 +113,7 @@ html[data-skin='workbench'] .wb-toolbar {
 	gap: 1px;
 	height: 32px;
 	padding: 0 4px 0 2px;
+	overflow: hidden;
 	box-shadow: var(--wb-thin-raised);
 }
 html[data-skin='workbench'] .wb-grip {
@@ -169,7 +170,7 @@ html[data-skin='workbench'] .wb-tool-badge {
 html[data-skin='workbench'] .wb-combo {
 	display: flex;
 	flex: 0 1 380px;
-	min-width: 180px;
+	min-width: 140px;
 	height: 23px;
 	padding: 2px;
 	background: var(--skin-field);
