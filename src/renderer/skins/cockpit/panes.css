@@ -193,6 +193,10 @@ html[data-skin='cockpit'] [data-part='tabbar'] {
 	border-bottom: 1px solid var(--border-strong);
 	background: var(--bg-0);
 }
+/* The strip scrolls with the wheel; a scrollbar inside a 24px strip would only cover the caps. */
+html[data-skin='cockpit'] [data-part='tabbar'] > [role='tablist'] {
+	scrollbar-width: none;
+}
 html[data-skin='cockpit'] [data-part='tab'] {
 	gap: 6px;
 	padding-left: 8px;

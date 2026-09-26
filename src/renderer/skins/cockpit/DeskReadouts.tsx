@@ -38,7 +38,7 @@ export function DeskReadouts(): JSX.Element {
 			{info.root && (
 				<button
 					type='button'
-					className='ck-readout ck-readout-btn no-drag'
+					className='ck-readout ck-readout-btn ck-readout-py no-drag'
 					onClick={() => void pickPythonEnv()}
 					title={env ? `${env.label}\n${env.path}\nClick to change` : 'Pick a Python'}
 				>
@@ -72,7 +72,7 @@ export function DeskReadouts(): JSX.Element {
 					/>
 				</span>
 			)}
-			<span className='ck-readout' title={now.toLocaleString()}>
+			<span className='ck-readout ck-readout-date' title={now.toLocaleString()}>
 				<span className='ck-field-value num'>{date}</span>
 			</span>
 			<span className='ck-readout ck-clock' title={`UTC ${now.toISOString()}`}>

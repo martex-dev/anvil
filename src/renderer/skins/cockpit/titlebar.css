@@ -270,3 +270,10 @@ html[data-skin='cockpit'] .ck-winkeys [data-action='close']:focus-visible {
 	background: var(--down);
 	color: var(--skin-on-go);
 }
+
+@media (max-width: 1100px) {
+	html[data-skin='cockpit'] .ck-brand-sub,
+	html[data-skin='cockpit'] .ck-title-book .ck-field-label {
+		display: none;
+	}
+}

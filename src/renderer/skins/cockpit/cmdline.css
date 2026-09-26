@@ -168,3 +168,16 @@ html[data-skin='cockpit'] .ck-tick[data-tone='up'] .ck-tick-flash {
 html[data-skin='cockpit'] .ck-tick[data-tone='down'] .ck-tick-flash {
 	background: var(--down);
 }
+
+/* Narrow windows shed the least urgent figures first: date, then the interpreter. */
+@media (max-width: 1180px) {
+	html[data-skin='cockpit'] .ck-readout-date,
+	html[data-skin='cockpit'] .ck-prompt-hint {
+		display: none;
+	}
+}
+@media (max-width: 960px) {
+	html[data-skin='cockpit'] .ck-readout-py {
+		display: none;
+	}
+}
