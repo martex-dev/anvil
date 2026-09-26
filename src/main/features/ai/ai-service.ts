@@ -1,7 +1,6 @@
-import { execFile } from 'node:child_process';
-
 import type { AiContext, AiMessage, AiMode, AiModelRef, AiProvider } from '@shared/ipc/channels/ai';
 
+import { AnvilError } from '../../core/errors';
 import { buildCompletionRequest, type CompletionInput, parseCompletion } from './completion';
 import { buildSystem } from './prompt';
 import { buildRequest, parseEvent } from './providers';
@@ -12,12 +11,15 @@ export interface StreamSink {
 	done(
 		usage: { inputTokens: number | null; outputTokens: number | null },
 		cancelled: boolean,
+		/** The reply was cut off at the output-token limit. */
+		truncated?: boolean,
 	): void;
 	error(message: string): void;
 }
 
-const MAX_DIFF = 200_000;
 const COMPLETION_TIMEOUT_MS = 8_000;
+/** Silence that ends a streaming reply. Generous: reasoning models can think a while between chunks. */
+const STREAM_IDLE_MS = 120_000;
 
 /** Readable message from a provider's error body ({error: {message}} in every API here). */
 export async function describeHttpError(provider: AiProvider, response: Response): Promise<string> {
@@ -96,7 +98,25 @@ export class AiService {
 		this.running.set(requestId, controller);
 		let inputTokens: number | null = null;
 		let outputTokens: number | null = null;
+		// A provider that stops sending without closing the connection would leave the reply
+		// "streaming" forever: give up after a stretch of silence (reset by every chunk).
+		let stalled = false;
+		let received = false;
+		let truncated = false;
+		let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+		let idle: ReturnType<typeof setTimeout> | undefined;
+		const touch = (): void => {
+			clearTimeout(idle);
+			idle = setTimeout(() => {
+				stalled = true;
+				controller.abort();
+				// Releases a pending read even if the body isn't tied to the signal.
+				void reader?.cancel().catch(() => undefined);
+			}, STREAM_IDLE_MS);
+		};
+		const stallMessage = `No response from ${provider} for ${STREAM_IDLE_MS / 1000} s. Try again.`;
 		try {
+			touch();
 			const response = await fetch(this.url(request.url), {
 				method: 'POST',
 				headers: request.headers,
@@ -109,8 +129,9 @@ export class AiService {
 			}
 			const parser = new SseParser();
 			const decoder = new TextDecoder();
-			const reader = response.body.getReader();
+			reader = response.body.getReader();
 			for (;;) {
+				touch();
 				const { value, done } = await reader.read();
 				if (done) break;
 				for (const event of parser.push(decoder.decode(value, { stream: true }))) {
@@ -120,28 +141,54 @@ export class AiService {
 						await reader.cancel().catch(() => undefined);
 						return;
 					}
-					if (chunk.text) sink.delta(chunk.text);
+					if (chunk.text) {
+						received = true;
+						sink.delta(chunk.text);
+					}
+					if (chunk.blocked) {
+						sink.error(`${provider} blocked this reply (${chunk.blocked}).`);
+						await reader.cancel().catch(() => undefined);
+						return;
+					}
+					if (chunk.truncated) truncated = true;
 					if (chunk.inputTokens !== undefined) inputTokens = chunk.inputTokens;
 					if (chunk.outputTokens !== undefined) outputTokens = chunk.outputTokens;
 				}
 			}
-			sink.done({ inputTokens, outputTokens }, false);
+			if (stalled) sink.error(stallMessage);
+			else if (!received) {
+				sink.error(
+					truncated
+						? `${provider} hit the token limit before writing anything.`
+						: `${provider} returned an empty reply.`,
+				);
+			} else sink.done({ inputTokens, outputTokens }, false, truncated);
 		} catch (error) {
-			if (controller.signal.aborted) sink.done({ inputTokens, outputTokens }, true);
+			if (stalled) sink.error(stallMessage);
+			else if (controller.signal.aborted) sink.done({ inputTokens, outputTokens }, true);
 			else sink.error(unreachable(provider, error));
 		} finally {
+			clearTimeout(idle);
 			this.running.delete(requestId);
 		}
 	}
 
-	/** Ghost text. Resolves '' when cancelled (the user kept typing) or when there's no key. */
+	/**
+	 * Ghost text. Resolves '' when cancelled (the user kept typing). A missing key or a timeout
+	 * throws, so the status bar can show why suggestions never appear.
+	 */
 	async complete(
 		requestId: string,
 		{ provider, model }: AiModelRef,
 		input: CompletionInput,
 	): Promise<string> {
 		const key = this.key(provider);
-		if (key === null) return '';
+		if (key === null) {
+			throw new AnvilError(
+				'AI_NO_KEY',
+				`No ${provider} API key for autocomplete. Add it in Settings → Keys.`,
+			);
+		}
 		const request = buildCompletionRequest(
 			provider,
 			model,
@@ -151,7 +198,11 @@ export class AiService {
 		);
 		const controller = new AbortController();
 		this.running.set(requestId, controller);
-		const timer = setTimeout(() => controller.abort(), COMPLETION_TIMEOUT_MS);
+		let timedOut = false;
+		const timer = setTimeout(() => {
+			timedOut = true;
+			controller.abort();
+		}, COMPLETION_TIMEOUT_MS);
 		try {
 			const response = await fetch(this.url(request.url), {
 				method: 'POST',
@@ -162,7 +213,15 @@ export class AiService {
 			if (!response.ok) throw new Error(await describeHttpError(provider, response));
 			return parseCompletion(provider, await response.json());
 		} catch (error) {
+			if (timedOut) {
+				throw new AnvilError(
+					'AI_COMPLETE_TIMEOUT',
+					`${provider} autocomplete did not answer within ${COMPLETION_TIMEOUT_MS / 1000} s.`,
+					error,
+				);
+			}
 			if (controller.signal.aborted) return '';
+			if (error instanceof AnvilError) throw error;
 			throw new Error(unreachable(provider, error), { cause: error });
 		} finally {
 			clearTimeout(timer);
@@ -177,28 +236,4 @@ function unreachable(provider: AiProvider, error: unknown): string {
 	return provider === 'ollama'
 		? `Could not reach Ollama: ${message}. Is \`ollama serve\` running?`
 		: `Could not reach ${provider}: ${message}`;
-}
-
-/** Working-tree (or staged-only) changes against HEAD, capped for the context window. */
-export function gitDiff(
-	root: string,
-	staged: boolean,
-): Promise<{ diff: string; truncated: boolean }> {
-	const env: NodeJS.ProcessEnv = { ...process.env, GIT_TERMINAL_PROMPT: '0' };
-	delete env['GIT_ASKPASS'];
-	delete env['GIT_EDITOR'];
-	const args = staged
-		? ['-C', root, 'diff', '--cached', '--no-color', '--no-ext-diff']
-		: ['-C', root, 'diff', 'HEAD', '--no-color', '--no-ext-diff'];
-	return new Promise((resolve) => {
-		execFile(
-			'git',
-			args,
-			{ env, windowsHide: true, maxBuffer: 20 * 1024 * 1024, timeout: 10_000 },
-			(error, stdout) => {
-				if (error && !stdout) return resolve({ diff: '', truncated: false });
-				resolve({ diff: stdout.slice(0, MAX_DIFF), truncated: stdout.length > MAX_DIFF });
-			},
-		);
-	});
 }

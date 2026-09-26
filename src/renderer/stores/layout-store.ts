@@ -39,6 +39,7 @@ interface LayoutActions {
 	togglePanel: (tab?: PanelTab) => void;
 	showPanel: (tab: PanelTab) => void;
 	toggleMaximizePanel: () => void;
+	/** Opening the AI panel leaves zen mode, which would otherwise hide it. */
 	toggleAi: (open?: boolean) => void;
 	toggleZen: () => void;
 	resize: (
@@ -110,7 +111,11 @@ export const useLayoutStore = create<LayoutState & LayoutActions>((set) => ({
 		),
 	showPanel: (tab) => set({ panelOpen: true, panelTab: tab }),
 	toggleMaximizePanel: () => set((s) => ({ panelMaximized: !s.panelMaximized, panelOpen: true })),
-	toggleAi: (open) => set((s) => ({ aiOpen: open ?? !s.aiOpen })),
+	toggleAi: (open) =>
+		set((s) =>
+			// In zen the panel is hidden even when aiOpen, so a plain toggle shows it.
+			(open ?? !(s.aiOpen && !s.zen)) ? { aiOpen: true, zen: false } : { aiOpen: false },
+		),
 	toggleZen: () => set((s) => ({ zen: !s.zen })),
 	resize: (patch) =>
 		set(() => {

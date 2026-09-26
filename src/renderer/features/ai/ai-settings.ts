@@ -7,6 +7,7 @@ import { queryClient } from '../../lib/query-client';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { toast } from '../../stores/toast-store';
 import { quickPick } from '../../ui/QuickPick';
+import { parseModelChoice } from './model-ref';
 
 export const AI_SETTINGS_KEY = ['ai', 'settings'] as const;
 export const AI_KEYS_KEY = ['ai', 'keys'] as const;
@@ -45,7 +46,11 @@ export const SUGGESTED_MODELS: Array<AiModelRef & { note: string; completion?: b
 
 export function useAiSettings(): {
 	settings: AiSettings | undefined;
+	/** undefined while loading (or failed): not the same as "no key". */
 	keys: Record<AiProvider, boolean> | undefined;
+	/** Why settings or keys could not be loaded, if they couldn't. */
+	error: Error | null;
+	retry: () => void;
 } {
 	const client = useQueryClient();
 	const settings = useQuery({ queryKey: AI_SETTINGS_KEY, queryFn: () => call('ai:settings') });
@@ -54,7 +59,15 @@ export function useAiSettings(): {
 		'secrets:changed',
 		() => void client.invalidateQueries({ queryKey: AI_KEYS_KEY }),
 	);
-	return { settings: settings.data, keys: keys.data };
+	return {
+		settings: settings.data,
+		keys: keys.data,
+		error: settings.error ?? keys.error,
+		retry: () => {
+			if (settings.isError) void settings.refetch();
+			if (keys.isError) void keys.refetch();
+		},
+	};
 }
 
 export async function getAiSettings(): Promise<AiSettings> {
@@ -86,18 +99,14 @@ export async function pickModel(slot: 'chat' | 'completion'): Promise<void> {
 		allowCustom: { label: (text) => `Use "${text}"` },
 	});
 	if (!picked) return;
-	const raw = picked.startsWith('custom:') ? picked.slice(7) : picked;
-	const [provider, model] = raw.includes('|') ? raw.split('|', 2) : [current.provider, raw];
-	if (!provider || !model || !(provider in PROVIDER_LABEL)) {
-		toast.error(
-			'Unknown provider',
-			'Use anthropic, openai, gemini or ollama, e.g. anthropic|claude-opus-5',
-		);
+	const choice = parseModelChoice(
+		picked.startsWith('custom:') ? picked.slice(7) : picked,
+		current.provider,
+	);
+	if (!choice.ok) {
+		toast.error(choice.title, choice.detail);
 		return;
 	}
-	await saveAiSettings({
-		...settings,
-		[slot]: { provider: provider as AiProvider, model: model.trim() },
-	});
-	toast.success(slot === 'chat' ? 'Chat model set' : 'Autocomplete model set', model);
+	await saveAiSettings({ ...settings, [slot]: choice.ref });
+	toast.success(slot === 'chat' ? 'Chat model set' : 'Autocomplete model set', choice.ref.model);
 }

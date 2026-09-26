@@ -1,5 +1,6 @@
 import type { AiProvider } from '@shared/ipc/channels/ai';
 
+import { AnvilError } from '../../core/errors';
 import { obj, type ProviderRequest } from './providers';
 
 export interface CompletionInput {
@@ -16,6 +17,19 @@ Rules: continue naturally from the text right before the cursor; never repeat te
 const OPEN = '<completion>';
 const CLOSE = '</completion>';
 const MAX_TOKENS = 200;
+/** Reasoning models spend part of max_completion_tokens thinking before they answer. */
+const REASONING_MAX_TOKENS = 1_000;
+
+/**
+ * The lowest reasoning effort an OpenAI reasoning model accepts, or null for a plain model.
+ * Without it, reasoning can eat the whole budget and the reply comes back empty.
+ */
+export function completionReasoningEffort(model: string): 'minimal' | 'low' | null {
+	// gpt-5 / -mini / -nano (optionally dated) accept 'minimal'; gpt-5-chat is not a reasoner.
+	if (/^gpt-5(?:-mini|-nano)?(?:-\d{4}-\d{2}-\d{2})?$/.test(model)) return 'minimal';
+	if (/^o\d/.test(model)) return 'low';
+	return null;
+}
 
 function userMessage(input: CompletionInput): string {
 	return `<file path="${input.path.replace(/"/g, "'")}" language="${input.language}">\n${input.prefix}<CURSOR/>${input.suffix}\n</file>`;
@@ -46,19 +60,22 @@ export function buildCompletionRequest(
 					stop_sequences: [CLOSE],
 				},
 			};
-		case 'openai':
+		case 'openai': {
+			const effort = completionReasoningEffort(model);
 			return {
 				url: 'https://api.openai.com/v1/chat/completions',
 				headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
 				body: {
 					model,
-					max_completion_tokens: MAX_TOKENS,
+					max_completion_tokens: effort ? REASONING_MAX_TOKENS : MAX_TOKENS,
+					...(effort ? { reasoning_effort: effort } : {}),
 					messages: [
 						{ role: 'system', content: SYSTEM },
 						{ role: 'user', content: userMessage(input) },
 					],
 				},
 			};
+		}
 		case 'gemini':
 			return {
 				url: `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
@@ -98,6 +115,12 @@ export function parseCompletion(provider: AiProvider, json: unknown): string {
 		case 'openai': {
 			const choice = obj((body['choices'] as unknown[] | undefined)?.[0]);
 			raw = String(obj(choice['message'])['content'] ?? '');
+			if (!raw && choice['finish_reason'] === 'length') {
+				throw new AnvilError(
+					'AI_COMPLETE_EMPTY',
+					'The autocomplete model used its whole token budget without answering (a reasoning model?). Pick a faster model in Settings → AI.',
+				);
+			}
 			break;
 		}
 		case 'gemini': {

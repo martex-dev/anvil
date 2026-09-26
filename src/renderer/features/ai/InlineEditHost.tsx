@@ -1,4 +1,4 @@
-import { Check, CornerDownLeft, Sparkles, X } from 'lucide-react';
+import { Check, CornerDownLeft, Sparkles, Square, X } from 'lucide-react';
 import { type JSX, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -11,6 +11,7 @@ import {
 	submitInlineEdit,
 	useInlineEdit,
 } from './inline-edit';
+import { isAcceptKey } from './inline-edit-keys';
 
 const SUGGESTIONS = [
 	'Add type hints',
@@ -36,14 +37,13 @@ function Box(): JSX.Element {
 			ref={boxRef}
 			tabIndex={-1}
 			onKeyDown={(e) => {
+				// Escape/Enter during an IME composition (CJK input) belong to the IME.
+				if (e.nativeEvent.isComposing) return;
 				if (e.key === 'Escape') {
 					e.preventDefault();
 					e.stopPropagation();
 					cancelInlineEdit();
-				} else if (
-					phase === 'review' &&
-					((e.key === 'Enter' && (e.ctrlKey || e.metaKey)) || e.key === 'Tab')
-				) {
+				} else if (phase === 'review' && isAcceptKey(e, e.target === e.currentTarget)) {
 					e.preventDefault();
 					acceptInlineEdit();
 				}
@@ -87,10 +87,17 @@ function Box(): JSX.Element {
 					<input
 						ref={inputRef}
 						value={text}
-						disabled={phase === 'generating'}
+						// readOnly, not disabled: a disabled input drops focus to <body>, and then
+						// Esc (handled by the box) could no longer stop the generation.
+						readOnly={phase === 'generating'}
 						onChange={(e) => setText(e.target.value)}
 						onKeyDown={(e) => {
-							if (e.key === 'Enter' && !e.shiftKey) {
+							if (
+								e.key === 'Enter' &&
+								!e.shiftKey &&
+								!e.nativeEvent.isComposing &&
+								phase !== 'generating'
+							) {
 								e.preventDefault();
 								void submitInlineEdit(text);
 							}
@@ -121,7 +128,11 @@ function Box(): JSX.Element {
 									<button
 										key={s}
 										type='button'
-										onClick={() => setText(s)}
+										onClick={() => {
+											setText(s);
+											// The chips unmount once there's text; keep typing (or Enter) in the input.
+											inputRef.current?.focus();
+										}}
 										className='rounded-md border border-glass-edge px-1.5 py-0.5 text-10 text-fg-2 hover:border-accent/40 hover:text-fg-1'
 									>
 										{s}
@@ -130,9 +141,19 @@ function Box(): JSX.Element {
 							</span>
 						)
 					)}
-					<Kbd keys='Esc' className='opacity-60' />
-					{phase !== 'generating' && (
-						<CornerDownLeft size={12} className='shrink-0 text-fg-2' />
+					{phase === 'generating' ? (
+						<button
+							type='button'
+							onClick={cancelInlineEdit}
+							className='flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-12 text-fg-1 outline-none hover:bg-down-soft hover:text-down focus-visible:shadow-glow'
+						>
+							<Square size={10} className='fill-current' /> Stop <Kbd keys='Esc' />
+						</button>
+					) : (
+						<>
+							<Kbd keys='Esc' className='opacity-60' />
+							<CornerDownLeft size={12} className='shrink-0 text-fg-2' />
+						</>
 					)}
 				</>
 			)}
