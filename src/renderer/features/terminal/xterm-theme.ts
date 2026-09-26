@@ -2,7 +2,7 @@ import type { ITheme } from '@xterm/xterm';
 
 import { resolveToken } from '../../lib/resolve-color';
 
-/** xterm theme from design tokens; transparent so the glass pane shows through. */
+/** xterm theme from the active theme's tokens (ANSI hues borrow its syntax colors). */
 export function buildXtermTheme(): ITheme {
 	const c = resolveToken;
 	return {
@@ -16,16 +16,16 @@ export function buildXtermTheme(): ITheme {
 		green: c('--up'),
 		yellow: c('--warn'),
 		blue: c('--info'),
-		magenta: c('--accent-magenta'),
-		cyan: c('--accent-cyan'),
+		magenta: c('--syn-keyword'),
+		cyan: c('--syn-function'),
 		white: c('--text-1'),
 		brightBlack: c('--text-2'),
 		brightRed: c('--down'),
-		brightGreen: c('--accent-lime'),
-		brightYellow: c('--accent-amber'),
+		brightGreen: c('--syn-string'),
+		brightYellow: c('--syn-number'),
 		brightBlue: c('--info'),
-		brightMagenta: c('--accent-violet'),
-		brightCyan: c('--accent-cyan'),
+		brightMagenta: c('--syn-control'),
+		brightCyan: c('--syn-type'),
 		brightWhite: c('--text-0'),
 	};
 }
