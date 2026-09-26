@@ -1,6 +1,13 @@
 import { base64UrlToBytes, bytesToHex, utf8Decode, utf8Encode } from './encoding';
 
-export { base58ToHex, decode, encode, type EncodingKind, hexToBase58 } from './encoding';
+export {
+	base58ToHex,
+	convertBytes,
+	decode,
+	encode,
+	type EncodingKind,
+	hexToBase58,
+} from './encoding';
 export { convertTimestamp, type TimestampInfo, type TimestampUnit } from './time';
 export {
 	convertUnits,
@@ -15,7 +22,16 @@ export interface DecodedJwt {
 	header: unknown;
 	payload: unknown;
 	expiresAt: string | null;
-	expired: boolean | null;
+	/** The exp claim in epoch ms, or null without a numeric exp. */
+	expMs: number | null;
+}
+
+/**
+ * Whether the token has expired at `now`, or null without an exp claim. Kept separate from
+ * decoding so the view can re-check against a ticking clock instead of the decode-time one.
+ */
+export function isJwtExpired(jwt: DecodedJwt, now: number): boolean | null {
+	return jwt.expMs === null ? null : jwt.expMs <= now;
 }
 
 function decodeJwtPart(part: string, name: string): unknown {
@@ -30,7 +46,7 @@ function decodeJwtPart(part: string, name: string): unknown {
  * Decodes a JWT's header and payload for inspection. The signature is NOT verified, so nothing
  * read here can be trusted as authentic.
  */
-export function decodeJwt(token: string, now: number = Date.now()): DecodedJwt {
+export function decodeJwt(token: string): DecodedJwt {
 	const parts = token.trim().split('.');
 	if (parts.length !== 3) throw new Error('Invalid JWT: expected three dot-separated parts');
 	const [headerPart = '', payloadPart = ''] = parts;
@@ -41,11 +57,11 @@ export function decodeJwt(token: string, now: number = Date.now()): DecodedJwt {
 			? payload.exp
 			: undefined;
 	if (typeof exp !== 'number' || !Number.isFinite(exp)) {
-		return { header, payload, expiresAt: null, expired: null };
+		return { header, payload, expiresAt: null, expMs: null };
 	}
 	const expMs = exp * 1000;
 	const expiresAt = Math.abs(expMs) <= 8.64e15 ? new Date(expMs).toISOString() : null;
-	return { header, payload, expiresAt, expired: expMs <= now };
+	return { header, payload, expiresAt, expMs };
 }
 
 export type JsonFormatMode = 'pretty' | 'minify' | 'sort';
@@ -115,6 +131,21 @@ export interface RegexResult {
 }
 
 export const MAX_REGEX_MATCHES = 1000;
+
+const REGEX_FLAGS = 'dgimsuvy';
+
+/**
+ * Checks flags on their own so the view can blame the Flags field rather than the pattern.
+ * Returns an error message, or null when `new RegExp` will accept them.
+ */
+export function validateRegexFlags(flags: string): string | null {
+	for (const [i, flag] of [...flags].entries()) {
+		if (!REGEX_FLAGS.includes(flag)) return `Unknown flag '${flag}'. Use ${REGEX_FLAGS}.`;
+		if (flags.indexOf(flag) !== i) return `Flag '${flag}' is repeated.`;
+	}
+	if (flags.includes('u') && flags.includes('v')) return "Flags 'u' and 'v' can't be combined.";
+	return null;
+}
 
 /**
  * Follows exec() semantics: without the g or y flag only the first match is returned.
@@ -220,8 +251,17 @@ export function compoundGrowth(input: CompoundGrowthInput): CompoundGrowthResult
 	}
 	const r = ratePct / 100;
 	const growth = (1 + r) ** periods;
-	const contributions = r === 0 ? contribution * periods : (contribution * (growth - 1)) / r;
-	const final = start * growth + contributions;
+	// A zero term stays zero even when growth overflows to Infinity (0 * Infinity is NaN).
+	const grownStart = start === 0 ? 0 : start * growth;
+	let contributions = 0;
+	if (contribution !== 0) {
+		contributions = r === 0 ? contribution * periods : (contribution * (growth - 1)) / r;
+	}
+	const final = grownStart + contributions;
 	const totalContributed = start + contribution * periods;
-	return { final, totalContributed, gain: final - totalContributed };
+	const gain = final - totalContributed;
+	if (!Number.isFinite(final) || !Number.isFinite(gain)) {
+		throw new Error('Result is too large to represent');
+	}
+	return { final, totalContributed, gain };
 }

@@ -3,6 +3,51 @@
 What changed in each release of Anvil. The release workflow publishes a version's section as
 its GitHub release notes.
 
+## [0.2.3] - 2026-09-26
+
+Toolbox, transforms and snap: 38 fixes from the full bug sweep of 0.2.0.
+
+### Fixed
+
+- **snap:** Add roving arrow-key focus to background swatches
+- **snap:** Keep keyboard focus in the font-size controls
+- **snap:** Stop the loading shimmer under reduced motion
+- **snap:** Fade in the preview's rendering badge and error pill
+- **snap:** Match the ctrl+c copy shortcut by physical key
+- **snap:** Guard copy image against double submits
+- **snap:** Show the real render state in the sheet footer
+- **snap:** Say the file is empty when a whole-file snap has no code
+- **snap:** Ellipsize long titles in the title chrome
+- **snap:** Drop the colorization cache when the appearance changes
+- **snap:** Keep non-ascii letters in saved snap file names
+- **snap:** Keep clipped lines within max columns
+- **toolbox:** Count base58 bytes from the decoded hex input
+- **toolbox:** Show the full value in the copy tooltip
+- **toolbox:** Announce copied values to screen readers
+- **toolbox:** Hint to pick a direction in the encode tool
+- **toolbox:** Re-check jwt expiry against the ticking clock
+- **toolbox:** Show tiny position sizes instead of rounding to 0
+- **toolbox:** Run the regex tester in a worker with a timeout
+- **toolbox:** Flag invalid regex flags on the flags field
+- **toolbox:** Show an empty state in the regex tester
+- **toolbox:** Add tooltips to truncated segmented options
+- **toolbox:** Match the textarea style to the inputs beside it
+- **toolbox:** Announce tool errors to screen readers
+- **toolbox:** Keep tool inputs when leaving the toolbox view
+- **toolbox:** Add a palette command for each tool
+- **toolbox:** Show the full name and hint in tab tooltips
+- **toolbox:** Stop wrapping the unit select in a label
+- **toolbox:** Reject decimal commas in number fields
+- **toolbox:** Stop reading arbitrary text as a date
+- **toolbox:** Report compound overflow instead of nan
+- **toolbox:** Render tab-indented output two columns wide
+- **editor:** Stop overlapping edits when two cursors share a line
+- **editor:** Insert a fresh unique value at each cursor
+- **editor:** Apply the shuffle order shown in the transform preview
+- **editor:** Surface failures of built-in editor actions
+- **editor:** Decode uppercase hex html entities and keep invalid ones
+- **editor:** Evaluate math on lines with trailing comments
+
 ## [0.2.2] - 2026-09-26
 
 Terminal, Python and tasks: 47 fixes from the full bug sweep of 0.2.0.

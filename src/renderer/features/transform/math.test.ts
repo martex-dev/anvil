@@ -179,6 +179,14 @@ describe('evaluateSelection', () => {
 		expect(evaluateSelection('# notional\n2 * 3').replaced).toBe('# notional\n6');
 	});
 
+	it('keeps trailing comments out of the math', () => {
+		expect(evaluateSelection('fee = 25  # maker\nfee * 2 =  # total').replaced).toBe(
+			'fee = 25  # maker\nfee * 2 = 50  # total',
+		);
+		expect(evaluateSelection('  3 * 4 # dozen').replaced).toBe('  12 # dozen');
+		expect(evaluateSelection('2+2#x').replaced).toBe('4#x');
+	});
+
 	it('reports errors with line and position', () => {
 		expect(() => evaluateSelection('x = 1\ny + 1')).toThrow(
 			"Line 2: Unknown name 'y' at position 1",

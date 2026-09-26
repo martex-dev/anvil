@@ -1,18 +1,19 @@
-import { type JSX, useMemo, useState } from 'react';
+import { type JSX, useMemo } from 'react';
 
 import { Badge } from '../../ui/Badge';
 import { attempt, formatGrouped, formatPlain, parseNumber } from './format';
 import { NumberField } from './NumberField';
 import { ResultRow } from './ResultRow';
+import { useToolField } from './toolbox-store';
 import { ToolError } from './ToolError';
 import { positionSize } from './tools';
 
 export function PositionSizeTool(): JSX.Element {
-	const [equity, setEquity] = useState('10000');
-	const [risk, setRisk] = useState('1');
-	const [entry, setEntry] = useState('');
-	const [stop, setStop] = useState('');
-	const [contract, setContract] = useState('');
+	const [equity, setEquity] = useToolField('position.equity', '10000');
+	const [risk, setRisk] = useToolField('position.risk', '1');
+	const [entry, setEntry] = useToolField('position.entry', '');
+	const [stop, setStop] = useToolField('position.stop', '');
+	const [contract, setContract] = useToolField('position.contract', '');
 
 	const result = useMemo(() => {
 		const nums = [equity, risk, entry, stop].map(parseNumber);
