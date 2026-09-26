@@ -53,6 +53,14 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 			const pos = editor.getPosition();
 			const sel = editor.getSelection();
 			const selText = model && sel && !sel.isEmpty() ? model.getValueInRange(sel) : '';
+			useEditorStore
+				.getState()
+				.setGroupLine(
+					group,
+					shown.current && model && pos
+						? { path: shown.current, line: pos.lineNumber }
+						: null,
+				);
 			useEditorStore.getState().setCursor(
 				model && pos
 					? {
@@ -144,6 +152,7 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 			for (const x of extras) x.dispose();
 			for (const s of subs) s.dispose();
 			unregister();
+			useEditorStore.getState().setGroupLine(group, null);
 			editor.dispose();
 			editorRef.current = null;
 		};
@@ -157,8 +166,9 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 		if (shown.current === next) return;
 		if (shown.current) saveViewState(shown.current, editor.saveViewState());
 		const model = next ? getModel(next) : null;
-		editor.setModel(model);
+		// Set before setModel: its change events already report the cursor for this path.
 		shown.current = model ? next : null;
+		editor.setModel(model);
 		if (model && next) {
 			const view = getViewState(next);
 			if (view) editor.restoreViewState(view);

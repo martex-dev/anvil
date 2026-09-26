@@ -163,7 +163,7 @@ function GroupView({
 		>
 			<span aria-hidden className='brackets-frame' data-focused={focused && count > 1} />
 			{group.tabIds.length > 0 && <TabBar group={group} focused={focused} />}
-			{tab && tab.kind === 'code' && <Breadcrumbs tab={tab} focused={focused} />}
+			{tab && tab.kind === 'code' && <Breadcrumbs tab={tab} group={group.id} />}
 			<div className='relative min-h-0 flex-1' style={{ background: 'var(--editor-bg)' }}>
 				{monaco.status === 'ready' && (
 					<CodeEditor

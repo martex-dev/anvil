@@ -51,4 +51,18 @@ describe('editor store', () => {
 		s.update('a.ts', { dirty: true });
 		expect(dirtyCount()).toBe(2);
 	});
+
+	it("keeps each group's last cursor line independently", () => {
+		const s = useEditorStore.getState();
+		s.setGroupLine(0, { path: 'a.py', line: 12 });
+		s.setGroupLine(1, { path: 'b.py', line: 3 });
+		const before = useEditorStore.getState().groupLines;
+		s.setGroupLine(0, { path: 'a.py', line: 12 });
+		// An unchanged line keeps the same object, so subscribers don't re-render.
+		expect(useEditorStore.getState().groupLines).toBe(before);
+		s.setGroupLine(1, null);
+		expect(useEditorStore.getState().groupLines).toEqual({ 0: { path: 'a.py', line: 12 } });
+		s.reset();
+		expect(useEditorStore.getState().groupLines).toEqual({});
+	});
 });

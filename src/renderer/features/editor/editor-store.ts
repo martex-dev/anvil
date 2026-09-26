@@ -35,6 +35,12 @@ export interface CursorInfo {
 	insertSpaces: boolean;
 }
 
+/** Where the cursor last was in one editor group, kept while another group has focus. */
+export interface GroupLine {
+	path: string;
+	line: number;
+}
+
 export interface RevealRequest {
 	path: string;
 	line: number;
@@ -45,6 +51,8 @@ interface EditorState {
 	files: OpenFile[];
 	active: string | null;
 	cursor: CursorInfo | null;
+	/** Last cursor line per editor group, so an unfocused group's breadcrumbs stay put. */
+	groupLines: Readonly<Record<number, GroupLine>>;
 	/** Save conflict awaiting a decision (overwrite / reload). */
 	conflict: string | null;
 	/** Position to scroll to once the file's model is shown. */
@@ -59,6 +67,7 @@ interface EditorState {
 	remove: (path: string) => void;
 	setActive: (path: string | null) => void;
 	setCursor: (cursor: CursorInfo | null) => void;
+	setGroupLine: (group: number, line: GroupLine | null) => void;
 	setConflict: (path: string | null) => void;
 	setReveal: (reveal: RevealRequest | null) => void;
 	setClosing: (path: string | null) => void;
@@ -69,6 +78,7 @@ export const useEditorStore = create<EditorState>((set) => ({
 	files: [],
 	active: null,
 	cursor: null,
+	groupLines: {},
 	conflict: null,
 	reveal: null,
 	closing: null,
@@ -87,11 +97,29 @@ export const useEditorStore = create<EditorState>((set) => ({
 		}),
 	setActive: (active) => set({ active }),
 	setCursor: (cursor) => set({ cursor }),
+	setGroupLine: (group, line) =>
+		set((s) => {
+			const current = s.groupLines[group];
+			if (line && current?.path === line.path && current.line === line.line) return s;
+			if (!line && !current) return s;
+			const others = Object.entries(s.groupLines).filter(([g]) => Number(g) !== group);
+			return {
+				groupLines: Object.fromEntries(line ? [...others, [group, line]] : others),
+			};
+		}),
 	setConflict: (conflict) => set({ conflict }),
 	setReveal: (reveal) => set({ reveal }),
 	setClosing: (closing) => set({ closing }),
 	reset: () =>
-		set({ files: [], active: null, cursor: null, conflict: null, reveal: null, closing: null }),
+		set({
+			files: [],
+			active: null,
+			cursor: null,
+			groupLines: {},
+			conflict: null,
+			reveal: null,
+			closing: null,
+		}),
 }));
 
 export function dirtyCount(): number {
