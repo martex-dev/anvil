@@ -120,6 +120,9 @@ export function ChangeList({
 									{dir && (
 										<span className='truncate text-11 text-fg-2'>{dir}</span>
 									)}
+									{/* The badge letter is aria-hidden (aria-label is ignored on a plain
+									span); the status is spoken with the file name instead. */}
+									<span className='sr-only'>, {badge.label}</span>
 								</button>
 								<IconButton
 									size='sm'
@@ -134,11 +137,11 @@ export function ChangeList({
 									}}
 								/>
 								<span
+									aria-hidden
 									className={cn(
 										'num w-3 text-center text-11 font-semibold',
 										badge.className,
 									)}
-									aria-label={badge.label}
 								>
 									{badge.letter}
 								</span>
