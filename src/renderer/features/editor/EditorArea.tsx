@@ -131,6 +131,21 @@ function GroupView({
 					}
 				/>
 			);
+	} else if (tab.kind === 'diff' && monaco.status === 'error') {
+		// The diff viewer is a Monaco editor too, so it needs the same failure and loading states.
+		body = (
+			<ErrorState
+				title='The diff viewer failed to load'
+				message={monaco.message}
+				onRetry={retry}
+			/>
+		);
+	} else if (tab.kind === 'diff' && monaco.status !== 'ready') {
+		body = (
+			<div className='flex h-full items-center justify-center'>
+				<Spinner label='Loading diff' />
+			</div>
+		);
 	} else if (tab.path || tab.kind === 'diff' || tab.kind === 'welcome') {
 		body = (
 			<Suspense
