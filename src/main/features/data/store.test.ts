@@ -2,14 +2,22 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { DataFormat } from '@shared/ipc/channels/data';
 
 import { DataStore, type LoadSpec, type PageQuery } from './store';
+import type * as textReader from './text-reader';
+import { readHead } from './text-reader';
+
+vi.mock('./text-reader', async (importOriginal) => {
+	const actual = await importOriginal<typeof textReader>();
+	return { ...actual, readHead: vi.fn(actual.readHead) };
+});
 
 let dir = '';
 beforeEach(() => {
+	vi.mocked(readHead).mockClear();
 	dir = mkdtempSync(join(tmpdir(), 'anvil-data-'));
 });
 afterEach(() => {
@@ -42,5 +50,22 @@ describe('DataStore', () => {
 		const spec = file('b.csv', 'id\nx10\nx2\nx9\n');
 		const stats = await store.stats(spec, 0);
 		expect(stats).toMatchObject({ count: 3, min: 'x2', max: 'x10' });
+	});
+
+	it('parses a file once for concurrent requests', async () => {
+		const store = new DataStore();
+		const spec = file('c.csv', 'a\n1\n2\n');
+		const [p0, p1, stats] = await Promise.all([
+			store.page(spec, all),
+			store.page(spec, { ...all, offset: 1 }),
+			store.stats(spec, 0),
+		]);
+		expect(p0.totalRows).toBe(2);
+		expect(p1.rows).toEqual([['2']]);
+		expect(stats.count).toBe(2);
+		expect(readHead).toHaveBeenCalledTimes(1);
+		// Served from the cache afterwards.
+		await store.page(spec, all);
+		expect(readHead).toHaveBeenCalledTimes(1);
 	});
 });

@@ -37,6 +37,10 @@ interface Cached {
  */
 export class DataStore {
 	private readonly cache = new Map<string, Cached>();
+	/** Loads in progress, keyed by path and mtime, shared by concurrent requests. */
+	private readonly loading = new Map<string, Promise<Cached>>();
+	/** Bumped by clear() so loads that were already running don't refill the cache. */
+	private generation = 0;
 
 	async page(spec: LoadSpec, query: PageQuery): Promise<DataPage> {
 		const entry = await this.load(spec);
@@ -66,11 +70,12 @@ export class DataStore {
 	}
 
 	clear(): void {
+		this.generation++;
 		this.cache.clear();
 	}
 
 	private async load(spec: LoadSpec): Promise<Cached> {
-		const { abs, format } = spec;
+		const { abs } = spec;
 		const s = await stat(abs);
 		const hit = this.cache.get(abs);
 		if (hit && hit.mtimeMs === s.mtimeMs) {
@@ -79,9 +84,23 @@ export class DataStore {
 			this.cache.set(abs, hit);
 			return hit;
 		}
+		// The viewer asks for several pages and the stats at once: parse the file only once.
+		const key = `${abs}\0${s.mtimeMs}`;
+		const inFlight = this.loading.get(key);
+		if (inFlight) return inFlight;
+		const pending = this.read(spec, s.mtimeMs, s.size).finally(() => {
+			if (this.loading.get(key) === pending) this.loading.delete(key);
+		});
+		this.loading.set(key, pending);
+		return pending;
+	}
+
+	private async read(spec: LoadSpec, mtimeMs: number, size: number): Promise<Cached> {
+		const { abs, format } = spec;
+		const generation = this.generation;
 		let table: Table;
 		if (isTextFormat(format)) {
-			const { text, truncated } = await readHead(abs, s.size);
+			const { text, truncated } = await readHead(abs, size);
 			table = tableFromText(text, format, truncated);
 		} else {
 			if (!spec.python)
@@ -91,7 +110,9 @@ export class DataStore {
 				);
 			table = await readWithPython(spec.python.path, spec.python.env, abs, PYTHON_ROWS);
 		}
-		const entry: Cached = { mtimeMs: s.mtimeMs, table, format, view: null };
+		const entry: Cached = { mtimeMs, table, format, view: null };
+		// A folder switch cleared the cache while this was loading: don't bring it back.
+		if (generation !== this.generation) return entry;
 		this.cache.set(abs, entry);
 		while (this.cache.size > CACHE_SIZE) {
 			const oldest = this.cache.keys().next();
