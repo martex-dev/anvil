@@ -20,6 +20,16 @@ import { buildXtermTheme } from './xterm-theme';
 
 import '@xterm/xterm/css/xterm.css';
 
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
+
+/** The Reduce motion setting (on <html>) or the OS preference: then the cursor doesn't blink. */
+function reducedMotion(): boolean {
+	return (
+		document.documentElement.dataset['reduceMotion'] === 'true' ||
+		window.matchMedia(REDUCED_MOTION_QUERY).matches
+	);
+}
+
 export type TerminalStatus = 'starting' | 'running' | 'exited' | 'error';
 
 interface Options {
@@ -69,7 +79,7 @@ export function useXterm(
 				"'JetBrains Mono', ui-monospace, monospace",
 			fontSize,
 			lineHeight: 1.2,
-			cursorBlink: true,
+			cursorBlink: !reducedMotion(),
 			scrollback: 5000,
 			allowProposedApi: true,
 			// The glass pane behind the terminal shows through.
@@ -107,8 +117,14 @@ export function useXterm(
 			term.options.fontFamily = getComputedStyle(document.documentElement)
 				.getPropertyValue('--font-code')
 				.trim();
+			term.options.cursorBlink = !reducedMotion();
 		};
 		window.addEventListener('anvil:appearance', recolor);
+		const motion = window.matchMedia(REDUCED_MOTION_QUERY);
+		const updateBlink = (): void => {
+			term.options.cursorBlink = !reducedMotion();
+		};
+		motion.addEventListener('change', updateBlink);
 		// Tracebacks and `file.py:12:5` references open the file at that line.
 		const links = term.registerLinkProvider({
 			provideLinks(y, callback) {
@@ -240,6 +256,7 @@ export function useXterm(
 			unmarkAttached(sessionId);
 			window.removeEventListener(FOCUS_TERMINAL_EVENT, focusRequested);
 			window.removeEventListener('anvil:appearance', recolor);
+			motion.removeEventListener('change', updateBlink);
 			links.dispose();
 			disposed = true;
 			clearTimeout(resizeTimer);
