@@ -1,0 +1,85 @@
+/*
+ * Concrete numeral column: the views switcher as the poster's right margin. Huge condensed
+ * numerals 01-09 over tiny captions; the open view is printed as an accent block.
+ */
+
+html[data-skin='concrete'] .cc-column {
+	display: flex;
+	flex-direction: column;
+	flex-shrink: 0;
+	width: 78px;
+	box-shadow: var(--shadow-panel);
+}
+html[data-skin='concrete'] .cc-column-list {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	overflow-y: auto;
+	scrollbar-width: none;
+}
+html[data-skin='concrete'] .cc-column-spacer {
+	flex: 1 1 0;
+	min-height: 8px;
+}
+html[data-skin='concrete'] .cc-cell {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	flex-shrink: 0;
+	align-items: flex-start;
+	padding: 5px 10px 6px;
+	border-bottom: 2px solid color-mix(in oklab, var(--text-0) 22%, transparent);
+	color: var(--text-0);
+	text-align: left;
+	outline-offset: -4px;
+}
+html[data-skin='concrete'] .cc-column-spacer + .cc-cell {
+	border-top: 2px solid color-mix(in oklab, var(--text-0) 22%, transparent);
+}
+html[data-skin='concrete'] .cc-cell-num {
+	display: flex;
+	align-items: center;
+	height: clamp(24px, 3.9vh, 38px);
+	font-family: 'Bebas Neue', var(--font-display);
+	font-size: clamp(28px, 4.4vh, 42px);
+	line-height: 1;
+	letter-spacing: 0.01em;
+	padding-top: 0.08em;
+}
+html[data-skin='concrete'] .cc-cell-label {
+	font-size: 9px;
+	font-weight: 700;
+	letter-spacing: 0.14em;
+	line-height: 1.2;
+	text-transform: uppercase;
+	color: var(--text-2);
+}
+html[data-skin='concrete'] .cc-cell:hover {
+	background: color-mix(in oklab, var(--text-0) 14%, transparent);
+}
+html[data-skin='concrete'] .cc-cell:hover .cc-cell-label {
+	color: var(--text-0);
+}
+html[data-skin='concrete'] .cc-cell[data-active='true'] {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+html[data-skin='concrete'] .cc-cell[data-active='true'] .cc-cell-label {
+	color: var(--on-accent);
+}
+html[data-skin='concrete'] .cc-cell-badge {
+	position: absolute;
+	top: 7px;
+	right: 7px;
+	min-width: 18px;
+	padding: 1px 4px;
+	background: var(--accent);
+	color: var(--on-accent);
+	font-size: 10px;
+	font-weight: 700;
+	text-align: center;
+}
+html[data-skin='concrete'] .cc-cell[data-active='true'] .cc-cell-badge {
+	background: var(--skin-band);
+	color: var(--text-0);
+}
