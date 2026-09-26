@@ -4,6 +4,7 @@ import { type JSX, useEffect, useRef, useState } from 'react';
 
 import { useSettings } from '../../app/hooks/use-settings';
 import { call } from '../../lib/ipc';
+import { rlog } from '../../lib/log';
 import { toast } from '../../stores/toast-store';
 import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
@@ -13,6 +14,16 @@ import { closeTerminal, type TermTab, useTerminalStore } from './terminal-store'
 import { useXterm } from './use-xterm';
 
 export const PRESETS_KEY = ['terminal', 'presets'] as const;
+
+function copyInstallHint(hint: string): void {
+	navigator.clipboard.writeText(hint).then(
+		() => toast.success('Copied', 'Run it in a PowerShell terminal, then check again.'),
+		(e: unknown) => {
+			rlog.warn('terminal', 'copying the install command failed', e);
+			toast.error('Copy failed', 'Select the command and copy it by hand.');
+		},
+	);
+}
 
 function renameTab(id: string, title: string): void {
 	const store = useTerminalStore.getState();
@@ -90,15 +101,7 @@ export function TerminalPane({ tab, visible }: { tab: TermTab; visible: boolean 
 										size='sm'
 										variant='ghost'
 										icon={<Copy size={12} />}
-										onClick={() => {
-											void navigator.clipboard.writeText(
-												info.installHint ?? '',
-											);
-											toast.success(
-												'Copied',
-												'Run it in a PowerShell terminal, then check again.',
-											);
-										}}
+										onClick={() => copyInstallHint(info.installHint ?? '')}
 									>
 										Copy
 									</Button>
