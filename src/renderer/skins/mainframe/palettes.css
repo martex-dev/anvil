@@ -54,6 +54,7 @@
 	--skin-scan: rgb(0 0 0 / 0.3);
 	--skin-vignette: rgb(0 0 0 / 0.6);
 	--skin-haze: rgb(61 255 110 / 0.035);
+	--skin-flash: rgb(61 255 110 / 0.2);
 }
 
 /* P3 Amber: long-persistence amber, the office terminal of 1983 */
@@ -106,6 +107,7 @@
 	--skin-scan: rgb(0 0 0 / 0.32);
 	--skin-vignette: rgb(0 0 0 / 0.6);
 	--skin-haze: rgb(255 176 0 / 0.035);
+	--skin-flash: rgb(255 176 0 / 0.2);
 }
 
 /* 3270 Fields: IBM's seven field colors on black; green input, blue labels, white heads */
@@ -158,6 +160,7 @@
 	--skin-scan: rgb(0 0 0 / 0.34);
 	--skin-vignette: rgb(0 0 0 / 0.62);
 	--skin-haze: rgb(91 140 255 / 0.03);
+	--skin-flash: rgb(77 255 77 / 0.18);
 }
 
 /* VT White: DEC white phosphor behind cool grey glass */
@@ -210,6 +213,7 @@
 	--skin-scan: rgb(0 0 0 / 0.3);
 	--skin-vignette: rgb(0 0 0 / 0.6);
 	--skin-haze: rgb(200 215 240 / 0.03);
+	--skin-flash: rgb(220 232 255 / 0.18);
 }
 
 /* Greenbar: tractor-feed line-printer paper, carbon-black and red ribbon ink */
@@ -262,6 +266,7 @@
 	--skin-scan: rgb(0 0 0 / 0);
 	--skin-vignette: rgb(60 70 50 / 0.16);
 	--skin-haze: rgb(0 0 0 / 0);
+	--skin-flash: rgb(0 0 0 / 0);
 	--skin-bar: #e4efdb;
 	--skin-hole: #c9d1bd;
 }

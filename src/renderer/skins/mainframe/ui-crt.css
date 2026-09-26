@@ -59,7 +59,30 @@ html[data-skin='mainframe'][data-kind='dark'][data-fx='full'] [data-part='editor
 
 html[data-skin='mainframe'][data-fx='full'][data-kind='dark'] .mf-crt-flicker {
 	display: block;
-	animation: mf-flicker 7s steps(1) infinite;
+	/* Power-on: the tube lights up once when the skin mounts, then settles into a flicker. */
+	animation: mf-flicker 7s steps(1) 650ms infinite;
+}
+html[data-skin='mainframe'][data-fx='full'][data-kind='dark'] .mf-crt-flicker::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: var(--skin-flash);
+	opacity: 0;
+	animation: mf-poweron 650ms ease-out 1;
+}
+@keyframes mf-poweron {
+	0% {
+		opacity: 1;
+		transform: scaleY(0.004);
+	}
+	45% {
+		opacity: 1;
+		transform: scaleY(1);
+	}
+	100% {
+		opacity: 0;
+		transform: scaleY(1);
+	}
 }
 @keyframes mf-flicker {
 	0%,
