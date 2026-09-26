@@ -29,7 +29,13 @@ export async function pickTheme(): Promise<void> {
 		},
 	});
 	if (picked && picked !== current) {
-		await updateSettings({ theme: picked });
+		try {
+			await updateSettings({ theme: picked });
+		} catch (error) {
+			// The save failed, so the preview must not linger as if the theme were set.
+			previewTheme(null);
+			throw error;
+		}
 		toast.info(`Theme: ${themeById(picked).name}`);
 	} else {
 		previewTheme(null);
