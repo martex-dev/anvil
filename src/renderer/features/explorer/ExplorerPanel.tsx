@@ -10,7 +10,7 @@ import { NoFolder } from './NoFolder';
 import { closeFolder } from './workspace-actions';
 
 export function ExplorerPanel(): JSX.Element {
-	const { info, isLoading, error } = useWorkspace();
+	const { info, isLoading, error, refetch } = useWorkspace();
 	const treeRef = useRef<FileTreeHandle | null>(null);
 
 	if (isLoading) {
@@ -20,7 +20,7 @@ export function ExplorerPanel(): JSX.Element {
 			</div>
 		);
 	}
-	if (error) return <ErrorState message={error.message} />;
+	if (error) return <ErrorState message={error.message} onRetry={refetch} />;
 	if (!info.root) {
 		return (
 			<div className='h-full overflow-auto'>
