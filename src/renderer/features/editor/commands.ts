@@ -168,6 +168,7 @@ export const EDITOR_COMMANDS: Command[] = [
 		run: () => {
 			const editor = focusedEditor();
 			if (editor) toggleBookmarkAt(editor);
+			else toast.info('Open a file first');
 		},
 	},
 	{
@@ -179,11 +180,17 @@ export const EDITOR_COMMANDS: Command[] = [
 		icon: BookmarkCheck,
 		run: () => {
 			const editor = focusedEditor();
-			const line = editor ? nextBookmarkLine(editor) : null;
-			if (editor && line) {
-				editor.setPosition({ lineNumber: line, column: 1 });
-				editor.revealLineInCenter(line);
+			if (!editor) {
+				toast.info('Open a file first');
+				return;
 			}
+			const line = nextBookmarkLine(editor);
+			if (!line) {
+				toast.info('No bookmarks in this file', 'Toggle one with Toggle Bookmark.');
+				return;
+			}
+			editor.setPosition({ lineNumber: line, column: 1 });
+			editor.revealLineInCenter(line);
 		},
 	},
 	{
