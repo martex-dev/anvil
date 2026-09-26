@@ -1,0 +1,136 @@
+import {
+	ClipboardCopy,
+	FileText,
+	PanelRight,
+	RefreshCw,
+	Search,
+	Table2,
+	TriangleAlert,
+	X,
+} from 'lucide-react';
+import type { JSX } from 'react';
+
+import type { DataPage } from '@shared/ipc/channels/data';
+
+import { Badge } from '../../ui/Badge';
+import { IconButton } from '../../ui/IconButton';
+import { Input } from '../../ui/Input';
+import { Spinner } from '../../ui/Spinner';
+import { Tooltip } from '../../ui/Tooltip';
+import { fileName, formatCount } from './data-format';
+
+const TEXT_FORMATS = new Set(['csv', 'tsv', 'json', 'jsonl']);
+
+interface DataToolbarProps {
+	path: string;
+	meta: DataPage | undefined;
+	busy: boolean;
+	filter: string;
+	onFilterChange: (value: string) => void;
+	onOpenAsText: () => void;
+	onCopyCsv: () => void;
+	copyLabel: string;
+	onReload: () => void;
+	profileOpen: boolean;
+	onToggleProfile: () => void;
+}
+
+export function DataToolbar({
+	path,
+	meta,
+	busy,
+	filter,
+	onFilterChange,
+	onOpenAsText,
+	onCopyCsv,
+	copyLabel,
+	onReload,
+	profileOpen,
+	onToggleProfile,
+}: DataToolbarProps): JSX.Element {
+	const name = fileName(path);
+	return (
+		<div className='flex h-10 shrink-0 items-center gap-3 border-b border-glass-edge bg-bg-1/40 px-3'>
+			<div className='flex min-w-0 items-center gap-2'>
+				<Table2 size={14} className='shrink-0 text-accent' />
+				<span className='truncate text-13 font-medium text-fg-0' title={path}>
+					{name}
+				</span>
+				{meta && (
+					<>
+						<Badge tone='accent' className='uppercase'>
+							{meta.format}
+						</Badge>
+						<span className='hud hidden shrink-0 lg:inline'>{meta.engine}</span>
+					</>
+				)}
+			</div>
+			{meta && (
+				<span className='num shrink-0 text-12 text-fg-1'>
+					<span className='text-fg-0'>{formatCount(meta.totalRows)}</span> rows ×{' '}
+					<span className='text-fg-0'>{formatCount(meta.columns.length)}</span> cols
+				</span>
+			)}
+			{meta?.truncated && (
+				<Tooltip content='Only the first rows of this very large file were loaded'>
+					<span>
+						<Badge tone='warn'>
+							<TriangleAlert size={11} />
+							Truncated
+						</Badge>
+					</span>
+				</Tooltip>
+			)}
+			<span className='flex-1' />
+			<Input
+				className='w-56 shrink'
+				leading={busy ? <Spinner size={12} label='Filtering' /> : <Search size={13} />}
+				placeholder='Filter rows…'
+				aria-label='Filter rows (substring, any column)'
+				value={filter}
+				spellCheck={false}
+				onChange={(e) => onFilterChange(e.target.value)}
+				onKeyDown={(e) => {
+					if (e.key === 'Escape' && filter) {
+						e.stopPropagation();
+						onFilterChange('');
+					}
+				}}
+			/>
+			{filter && (
+				<IconButton
+					size='sm'
+					label='Clear filter'
+					icon={<X size={14} />}
+					onClick={() => onFilterChange('')}
+				/>
+			)}
+			<div className='flex shrink-0 items-center gap-0.5'>
+				{meta && TEXT_FORMATS.has(meta.format) && (
+					<IconButton
+						label='Open as text'
+						icon={<FileText size={15} />}
+						onClick={onOpenAsText}
+					/>
+				)}
+				<IconButton
+					label={copyLabel}
+					icon={<ClipboardCopy size={15} />}
+					onClick={onCopyCsv}
+					disabled={!meta || meta.totalRows === 0}
+				/>
+				<IconButton
+					label='Reload from disk'
+					icon={<RefreshCw size={15} />}
+					onClick={onReload}
+				/>
+				<IconButton
+					label={profileOpen ? 'Hide column profile' : 'Show column profile'}
+					icon={<PanelRight size={15} />}
+					active={profileOpen}
+					onClick={onToggleProfile}
+				/>
+			</div>
+		</div>
+	);
+}
