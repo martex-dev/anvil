@@ -136,7 +136,13 @@ export function GitPanel(): JSX.Element {
 				)}
 				<IconButton
 					size='sm'
-					label={actions.pulling ? 'Pulling…' : 'Pull'}
+					label={
+						actions.pulling
+							? 'Pulling…'
+							: status.tracking
+								? 'Pull'
+								: 'Pull (no upstream: publish the branch first)'
+					}
 					icon={
 						actions.pulling ? (
 							<Spinner size={12} label='Pulling' />
@@ -144,7 +150,8 @@ export function GitPanel(): JSX.Element {
 							<ArrowDown size={13} />
 						)
 					}
-					disabled={actions.busy}
+					// Without an upstream, git pull can only fail with "no tracking information".
+					disabled={actions.busy || !status.tracking}
 					onClick={actions.pull}
 				/>
 				<IconButton
