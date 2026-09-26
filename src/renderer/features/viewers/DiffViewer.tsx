@@ -76,7 +76,9 @@ export function DiffViewer({
 		<div className='flex h-full flex-col'>
 			<div className='flex h-9 shrink-0 items-center gap-3 border-b border-glass-edge px-3'>
 				<span className='hud'>diff</span>
-				<span className='truncate text-12 text-fg-1'>{diff.title}</span>
+				<span className='truncate text-12 text-fg-1' title={diff.title}>
+					{diff.title}
+				</span>
 				{stats && (
 					<span className='num flex gap-2 text-11'>
 						<span className='text-up'>+{stats.added}</span>

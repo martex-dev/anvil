@@ -116,7 +116,9 @@ export function MarkdownPreview({ path }: { path: string }): JSX.Element {
 		<div className='flex h-full min-h-0 flex-col'>
 			<div className='flex h-9 shrink-0 items-center gap-2 border-b border-glass-edge px-3'>
 				<span className='hud'>Preview</span>
-				<span className='truncate text-12 text-fg-1'>{baseName(path)}</span>
+				<span className='truncate text-12 text-fg-1' title={path}>
+					{baseName(path)}
+				</span>
 				{live !== null && (
 					<span
 						className='hud flex items-center gap-1.5 text-accent'

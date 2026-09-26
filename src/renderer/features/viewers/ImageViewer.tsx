@@ -240,7 +240,9 @@ export function ImageViewer({ path }: { path: string }): JSX.Element {
 		<div className='flex h-full min-h-0 flex-col' onKeyDown={onKeyDown}>
 			<div className='flex h-9 shrink-0 items-center gap-3 border-b border-glass-edge px-3'>
 				<span className='hud'>Image</span>
-				<span className='truncate text-12 text-fg-1'>{baseName(path)}</span>
+				<span className='truncate text-12 text-fg-1' title={path}>
+					{baseName(path)}
+				</span>
 				{natural && (
 					<span className='hud num text-fg-1'>
 						{natural.w}×{natural.h}
