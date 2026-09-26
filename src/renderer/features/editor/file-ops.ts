@@ -12,7 +12,11 @@ interface Tracked {
 	/** Alternative version id at last load/save; differs from the current one when dirty. */
 	savedVersion: number;
 	listener: Monaco.IDisposable;
-	viewState: Monaco.editor.ICodeEditorViewState | null;
+	/**
+	 * Scroll, cursor and folds per editor group: the same file shown in both groups keeps an
+	 * independent position in each.
+	 */
+	viewStates: Map<number, Monaco.editor.ICodeEditorViewState>;
 }
 
 const tracked = new Map<string, Tracked>();
@@ -23,14 +27,20 @@ export function getModel(path: string): Monaco.editor.ITextModel | null {
 
 export function saveViewState(
 	path: string,
+	group: number,
 	state: Monaco.editor.ICodeEditorViewState | null,
 ): void {
 	const t = tracked.get(path);
-	if (t) t.viewState = state;
+	if (!t) return;
+	if (state) t.viewStates.set(group, state);
+	else t.viewStates.delete(group);
 }
 
-export function getViewState(path: string): Monaco.editor.ICodeEditorViewState | null {
-	return tracked.get(path)?.viewState ?? null;
+export function getViewState(
+	path: string,
+	group: number,
+): Monaco.editor.ICodeEditorViewState | null {
+	return tracked.get(path)?.viewStates.get(group) ?? null;
 }
 
 function toUri(monaco: MonacoApi, root: string, path: string): Monaco.Uri {
@@ -137,7 +147,7 @@ export function openScratch(monaco: MonacoApi): void {
 				ref?.dispose();
 			},
 		},
-		viewState: null,
+		viewStates: new Map(),
 	});
 	store.add({
 		path: SCRATCH_PATH,
@@ -205,7 +215,7 @@ export async function openFile(monaco: MonacoApi, root: string, path: string): P
 			model,
 			savedVersion: model.getAlternativeVersionId(),
 			listener: model.onDidChangeContent(() => markDirty(path)),
-			viewState: null,
+			viewStates: new Map(),
 		};
 		tracked.set(path, t);
 		store.update(path, { state: 'ready', mtimeMs: file.mtimeMs });

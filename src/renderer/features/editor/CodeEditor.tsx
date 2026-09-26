@@ -161,7 +161,7 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 		return () => {
 			clearTimeout(contentTimer);
 			clearTimeout(navTimer);
-			if (shown.current) saveViewState(shown.current, editor.saveViewState());
+			if (shown.current) saveViewState(shown.current, group, editor.saveViewState());
 			for (const x of extras) x.dispose();
 			for (const s of subs) s.dispose();
 			unregister();
@@ -171,20 +171,20 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 		};
 	}, [monaco, group]);
 
-	// Show the tab's model, remembering scroll and cursor per file.
+	// Show the tab's model, remembering scroll and cursor per file in this group.
 	useEffect(() => {
 		const editor = editorRef.current;
 		if (!editor) return;
 		const next = path && ready ? path : null;
 		if (shown.current === next) return;
-		if (shown.current) saveViewState(shown.current, editor.saveViewState());
+		if (shown.current) saveViewState(shown.current, group, editor.saveViewState());
 		const model = next ? getModel(next) : null;
 		// Set before setModel: its change events already report the cursor for this path.
 		shown.current = model ? next : null;
 		editor.setModel(model);
 		editor.updateOptions({ ariaLabel: ariaLabelFor(shown.current, group) });
 		if (model && next) {
-			const view = getViewState(next);
+			const view = getViewState(next, group);
 			if (view) editor.restoreViewState(view);
 			if (visible) editor.focus();
 		}
