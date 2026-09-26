@@ -8,7 +8,8 @@ vi.mock('../../stores/toast-store', () => ({
 }));
 
 const { queryClient } = await import('../../lib/query-client');
-const { runInTerminal, useTerminalStore } = await import('./terminal-store');
+const { markAttached, runInTerminal, unmarkAttached, useTerminalStore } =
+	await import('./terminal-store');
 
 const run = (command: string): Promise<void> =>
 	runInTerminal({ role: 'run', preset: 'powershell', title: 'run', command });
@@ -22,7 +23,10 @@ beforeEach(() => {
 describe('runInTerminal', () => {
 	it('reuses the role terminal of the same folder', async () => {
 		await run('python a.py');
+		const id = useTerminalStore.getState().tabs[0]?.id ?? '';
+		markAttached(id);
 		await run('python a.py');
+		unmarkAttached(id);
 		expect(useTerminalStore.getState().tabs).toHaveLength(1);
 		expect(call).toHaveBeenCalledWith(
 			'terminal:write',
@@ -37,6 +41,26 @@ describe('runInTerminal', () => {
 		const tabs = useTerminalStore.getState().tabs;
 		expect(tabs.map((t) => t.root)).toEqual(['C:/a', 'C:/b']);
 		expect(tabs[1]?.initialCommand).toBe('python b.py');
+		expect(call).not.toHaveBeenCalled();
+	});
+
+	it("hands a restored tab's command to its pane instead of racing its open", async () => {
+		useTerminalStore.setState({
+			tabs: [
+				{
+					id: 'anvil-restored',
+					preset: 'powershell',
+					title: 'run',
+					role: 'run',
+					root: 'C:/a',
+				},
+			],
+			active: null,
+		});
+		await run('python a.py');
+		const tab = useTerminalStore.getState().tabs[0];
+		expect(tab?.initialCommand).toBe('python a.py');
+		expect(useTerminalStore.getState().active).toBe('anvil-restored');
 		expect(call).not.toHaveBeenCalled();
 	});
 });

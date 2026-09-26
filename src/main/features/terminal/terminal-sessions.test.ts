@@ -170,6 +170,24 @@ describe('TerminalSessions', () => {
 		expect(ptys).toHaveLength(2);
 	});
 
+	it('lets a write wait for a start in flight, even one that fails', async () => {
+		let release = (): void => undefined;
+		const gate = new Promise<void>((r) => (release = r));
+		const started = sessions.ensure('s1', async () => {
+			await gate;
+			sessions.start('s1', 'powershell', spec, 'C:/p', 80, 24);
+		});
+		const settled = sessions.settled('s1');
+		expect(sessions.write('s1', 'x')).toBe(false);
+		release();
+		await settled;
+		expect(sessions.write('s1', 'x')).toBe(true);
+		await started;
+		const failing = sessions.ensure('s2', () => Promise.reject(new Error('no shell')));
+		await expect(sessions.settled('s2')).resolves.toBeUndefined();
+		await expect(failing).rejects.toThrow('no shell');
+	});
+
 	it('kills a still-running process instead of orphaning it on a second start', () => {
 		sessions.start('s1', 'powershell', spec, 'C:/p', 80, 24);
 		sessions.start('s1', 'powershell', spec, 'C:/p', 80, 24);

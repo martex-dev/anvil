@@ -13,7 +13,7 @@ import { queryClient } from '../../lib/query-client';
 import { requestOpenFile } from '../../stores/workbench-store';
 import { useClipboardHistory } from '../editor/extras/clipboard';
 import { findFileLinks } from './file-links';
-import { FOCUS_TERMINAL_EVENT } from './terminal-store';
+import { FOCUS_TERMINAL_EVENT, markAttached, unmarkAttached } from './terminal-store';
 import { buildXtermTheme } from './xterm-theme';
 
 import '@xterm/xterm/css/xterm.css';
@@ -174,6 +174,7 @@ export function useXterm(
 		observer.observe(host);
 		if (host.clientWidth > 0) fit.fit();
 
+		markAttached(sessionId);
 		call('terminal:open', {
 			sessionId,
 			preset,
@@ -203,6 +204,7 @@ export function useXterm(
 		window.addEventListener(FOCUS_TERMINAL_EVENT, focusRequested);
 
 		return () => {
+			unmarkAttached(sessionId);
 			window.removeEventListener(FOCUS_TERMINAL_EVENT, focusRequested);
 			window.removeEventListener('anvil:appearance', recolor);
 			links.dispose();

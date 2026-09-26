@@ -74,6 +74,11 @@ export class TerminalSessions {
 		return this.startOnce(id, () => !this.sessions.has(id), launch);
 	}
 
+	/** Resolves once a start in flight for `id` (if any) has finished, whether or not it worked. */
+	async settled(id: string): Promise<void> {
+		await this.starting.get(id)?.catch(() => undefined);
+	}
+
 	/** Starts an exited session again; no-op while it runs or is already starting. */
 	relaunch(id: string, launch: () => Promise<void>): Promise<boolean> {
 		return this.startOnce(id, () => this.sessions.get(id)?.pty === null, launch);

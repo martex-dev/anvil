@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Copy, TerminalSquare } from 'lucide-react';
-import { type JSX, useEffect, useRef, useState } from 'react';
+import { type JSX, useEffect, useRef } from 'react';
 
 import { useSettings } from '../../app/hooks/use-settings';
 import { call } from '../../lib/ipc';
@@ -36,8 +36,9 @@ export function TerminalPane({ tab, visible }: { tab: TermTab; visible: boolean 
 	const info = presets.data?.find((p) => p.id === tab.preset);
 	const { settings } = useSettings();
 	const hostRef = useRef<HTMLDivElement>(null);
-	// Captured once: the command is typed only into the session this pane starts.
-	const [initial] = useState(tab.initialCommand);
+	// Read when the session opens (it may be set after mount, by a Run on a restored tab); main
+	// types it only into a session that this open started.
+	const initial = tab.initialCommand;
 	const { status, error, retry } = useXterm(hostRef, {
 		sessionId: tab.id,
 		preset: tab.preset,

@@ -78,12 +78,16 @@ export const terminalFeature: MainFeature = {
 			},
 		);
 		ctx.ipc.handle('terminal:write', async ({ sessionId, data, restart }) => {
-			const s = live.get(sessionId);
-			// Run / REPL / task commands restart a shell that has exited instead of vanishing.
-			if (restart && s)
-				await live.relaunch(sessionId, () =>
-					startSession(sessionId, s.preset, s.cols, s.rows),
-				);
+			if (restart) {
+				// A pane that just mounted may still be starting this session: write once it's up.
+				await live.settled(sessionId);
+				const s = live.get(sessionId);
+				// Run / REPL / task commands restart a shell that has exited instead of vanishing.
+				if (s)
+					await live.relaunch(sessionId, () =>
+						startSession(sessionId, s.preset, s.cols, s.rows),
+					);
+			}
 			return live.write(sessionId, data);
 		});
 		ctx.ipc.handle('terminal:resize', ({ sessionId, cols, rows }) =>

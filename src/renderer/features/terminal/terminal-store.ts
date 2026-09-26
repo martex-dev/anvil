@@ -159,6 +159,20 @@ export function closeTerminal(id: string): void {
 }
 
 /**
+ * Sessions a mounted pane has opened (or is opening). A restored tab that isn't among them gets
+ * its command as the pane's initial command instead of a write racing the pane's open.
+ */
+const attached = new Set<string>();
+
+export function markAttached(id: string): void {
+	attached.add(id);
+}
+
+export function unmarkAttached(id: string): void {
+	attached.delete(id);
+}
+
+/**
  * Runs a command in the terminal that has `role`, creating it if needed. Reusing one terminal
  * per role (Run, REPL, a task) keeps repeated runs from piling up tabs.
  */
@@ -171,6 +185,12 @@ export async function runInTerminal(options: {
 	const store = useTerminalStore.getState();
 	useLayoutStore.getState().showPanel('terminal');
 	const existing = findRoleTab(options.role);
+	if (existing && !attached.has(existing.id)) {
+		// A restored tab whose pane hasn't opened it: the pane starts it with the command.
+		store.setInitial(existing.id, options.command);
+		store.setActive(existing.id);
+		return;
+	}
 	if (existing) {
 		store.setActive(existing.id);
 		let alive: boolean;
@@ -189,8 +209,9 @@ export async function runInTerminal(options: {
 			);
 			return;
 		}
-		// Not started yet (a restored tab never shown): it starts with the command when it mounts.
-		if (!alive) store.setInitial(existing.id, options.command);
+		// The pane's start failed (its error state offers Retry).
+		if (!alive)
+			toast.error(`Could not run in ${existing.title}`, 'The terminal is not running.');
 		return;
 	}
 	store.add({
