@@ -1,0 +1,328 @@
+/*
+ * Concrete palettes: printed matter. Each block is a paper stock, an ink and one accent.
+ * Extra --skin-* colors:
+ *   ink / shadow        the 3px rules and the hard offset shadow under every pane
+ *   band*               the solid bars (title band, status strip, numeral column, pane headers)
+ *                       and the text colors that read on them
+ *   accent-text         the accent when it has to be read as text on paper
+ *   grid / dot          the backdrop grid and halftone
+ *   close / on-close    the window close box
+ *
+ * The attribute is doubled on purpose: Cyber Glass declares its palette on `:root` too, which
+ * has the same specificity as a lone [data-theme] and loads after this file, so it would win.
+ */
+
+/* Poster: off-white paper, pure black ink, one screaming yellow */
+[data-theme][data-theme='cc-poster'] {
+	color-scheme: light;
+
+	--bg-0: #e6e2d6;
+	--bg-1: #f7f4ec;
+	--bg-2: #eeeadf;
+	--bg-3: #e0dbcd;
+	--border: #9a9384;
+	--border-strong: #0b0b0b;
+
+	--glass: #f7f4ec;
+	--glass-strong: #f7f4ec;
+	--glass-edge: #0b0b0b;
+	--glass-highlight: #f7f4ec;
+	--editor-bg: #fbf9f3;
+	--scrim: rgb(11 11 11 / 0.55);
+
+	--text-0: #0b0b0b;
+	--text-1: #3b3831;
+	--text-2: #6b665b;
+
+	--up: #0a7a33;
+	--down: #c8140c;
+	--warn: #9a5600;
+	--info: #1740b8;
+
+	--theme-accent: #ffe500;
+	--theme-accent-2: #e8261c;
+	--on-accent: #0b0b0b;
+
+	--syn-comment: #726c60;
+	--syn-keyword: #c8140c;
+	--syn-control: #a3001e;
+	--syn-string: #1740b8;
+	--syn-number: #9a4d00;
+	--syn-function: #0b0b0b;
+	--syn-type: #6a2bb0;
+	--syn-variable: #1d1b17;
+	--syn-parameter: #8a4200;
+	--syn-property: #26487a;
+	--syn-decorator: #b8155a;
+	--syn-builtin: #a8231b;
+	--syn-operator: #4f4b43;
+	--syn-regexp: #0a7a33;
+
+	--skin-ink: #0b0b0b;
+	--skin-shadow: #0b0b0b;
+	--skin-band: #0b0b0b;
+	--skin-band-text: #f7f4ec;
+	--skin-band-text-1: #cdc8ba;
+	--skin-band-text-2: #948e80;
+	--skin-band-up: #45e07a;
+	--skin-band-down: #ff5a4a;
+	--skin-band-warn: #ffb02e;
+	--skin-band-accent: #ffe500;
+	--skin-accent-text: #b8120a;
+	--skin-grid: rgb(11 11 11 / 0.07);
+	--skin-dot: rgb(11 11 11 / 0.16);
+	--skin-close: #e8261c;
+	--skin-on-close: #ffffff;
+}
+
+/* Riso: blue risograph ink with a misregistered fluoro-pink second pass, on cream */
+[data-theme][data-theme='cc-riso'] {
+	color-scheme: light;
+
+	--bg-0: #ebe2cc;
+	--bg-1: #faf4e6;
+	--bg-2: #f2ead6;
+	--bg-3: #e7dcc2;
+	--border: #9ba0c2;
+	--border-strong: #1b2f86;
+
+	--glass: #faf4e6;
+	--glass-strong: #faf4e6;
+	--glass-edge: #1b2f86;
+	--glass-highlight: #faf4e6;
+	--editor-bg: #fcf8ee;
+	--scrim: rgb(22 34 100 / 0.5);
+
+	--text-0: #172a7a;
+	--text-1: #3f4a8c;
+	--text-2: #6f73a0;
+
+	--up: #0b7250;
+	--down: #c8145f;
+	--warn: #9a5200;
+	--info: #1b5fc2;
+
+	--theme-accent: #ff4aa6;
+	--theme-accent-2: #ffd23f;
+	--on-accent: #141f5c;
+
+	--syn-comment: #726c90;
+	--syn-keyword: #c8146a;
+	--syn-control: #9a0e56;
+	--syn-string: #006f73;
+	--syn-number: #b04300;
+	--syn-function: #172a7a;
+	--syn-type: #6a3da8;
+	--syn-variable: #1f2b66;
+	--syn-parameter: #944600;
+	--syn-property: #2c47a0;
+	--syn-decorator: #c8146a;
+	--syn-builtin: #a5105f;
+	--syn-operator: #4f557f;
+	--syn-regexp: #006f73;
+
+	--skin-ink: #1b2f86;
+	--skin-shadow: #ff4aa6;
+	--skin-band: #1b2f86;
+	--skin-band-text: #faf4e6;
+	--skin-band-text-1: #cdd1ee;
+	--skin-band-text-2: #9ca3d6;
+	--skin-band-up: #7af0b2;
+	--skin-band-down: #ff9ccb;
+	--skin-band-warn: #ffd23f;
+	--skin-band-accent: #ff7cc0;
+	--skin-accent-text: #c2126a;
+	--skin-grid: rgb(27 47 134 / 0.08);
+	--skin-dot: rgb(255 74 166 / 0.28);
+	--skin-close: #ff4aa6;
+	--skin-on-close: #141f5c;
+}
+
+/* Mint: mint card stock, black ink, a tomato-red accent */
+[data-theme][data-theme='cc-mint'] {
+	color-scheme: light;
+
+	--bg-0: #b4e6cb;
+	--bg-1: #e6f7ed;
+	--bg-2: #d6f1e2;
+	--bg-3: #c3e9d4;
+	--border: #6c9a82;
+	--border-strong: #0b0b0b;
+
+	--glass: #e6f7ed;
+	--glass-strong: #e6f7ed;
+	--glass-edge: #0b0b0b;
+	--glass-highlight: #e6f7ed;
+	--editor-bg: #eefaf3;
+	--scrim: rgb(11 11 11 / 0.5);
+
+	--text-0: #0b0b0b;
+	--text-1: #2c4638;
+	--text-2: #557263;
+
+	--up: #06703a;
+	--down: #b8260c;
+	--warn: #875000;
+	--info: #1747b0;
+
+	--theme-accent: #ff5a36;
+	--theme-accent-2: #ffd84a;
+	--on-accent: #0b0b0b;
+
+	--syn-comment: #536d5e;
+	--syn-keyword: #b8260c;
+	--syn-control: #9a0e45;
+	--syn-string: #1747b0;
+	--syn-number: #874800;
+	--syn-function: #0b0b0b;
+	--syn-type: #6528a8;
+	--syn-variable: #10201a;
+	--syn-parameter: #8a4000;
+	--syn-property: #1c566b;
+	--syn-decorator: #a81062;
+	--syn-builtin: #a8231b;
+	--syn-operator: #3d5749;
+	--syn-regexp: #06703a;
+
+	--skin-ink: #0b0b0b;
+	--skin-shadow: #0b0b0b;
+	--skin-band: #0b0b0b;
+	--skin-band-text: #e6f7ed;
+	--skin-band-text-1: #b6dac5;
+	--skin-band-text-2: #7fa893;
+	--skin-band-up: #5be391;
+	--skin-band-down: #ff7a5c;
+	--skin-band-warn: #ffc94a;
+	--skin-band-accent: #ff6a48;
+	--skin-accent-text: #ad2a0b;
+	--skin-grid: rgb(11 11 11 / 0.08);
+	--skin-dot: rgb(11 11 11 / 0.14);
+	--skin-close: #ff5a36;
+	--skin-on-close: #0b0b0b;
+}
+
+/* Blueprint: cyanotype blue paper, white rules, safety-orange accent */
+[data-theme][data-theme='cc-blueprint'] {
+	color-scheme: dark;
+
+	--bg-0: #0a2e70;
+	--bg-1: #0d3a8a;
+	--bg-2: #104299;
+	--bg-3: #174faa;
+	--border: #4d74bf;
+	--border-strong: #e8f0ff;
+
+	--glass: #0d3a8a;
+	--glass-strong: #0d3a8a;
+	--glass-edge: #e8f0ff;
+	--glass-highlight: #0d3a8a;
+	--editor-bg: #0c3783;
+	--scrim: rgb(3 14 40 / 0.6);
+
+	--text-0: #f4f8ff;
+	--text-1: #bccdf0;
+	--text-2: #90a8d9;
+
+	--up: #7cf0a0;
+	--down: #ff9a8a;
+	--warn: #ffc24a;
+	--info: #a6d8ff;
+
+	--theme-accent: #ff7a1a;
+	--theme-accent-2: #ffd23f;
+	--on-accent: #071e4d;
+
+	--syn-comment: #93aadb;
+	--syn-keyword: #ffa05c;
+	--syn-control: #ff8ab4;
+	--syn-string: #ffe27a;
+	--syn-number: #86e4ff;
+	--syn-function: #ffffff;
+	--syn-type: #a2f5cc;
+	--syn-variable: #e3ecff;
+	--syn-parameter: #ffd4ae;
+	--syn-property: #bcd6ff;
+	--syn-decorator: #ffa0cf;
+	--syn-builtin: #ff9670;
+	--syn-operator: #b0c3ea;
+	--syn-regexp: #cdf57f;
+
+	--skin-ink: #e8f0ff;
+	--skin-shadow: #041a45;
+	--skin-band: #061d4a;
+	--skin-band-text: #f4f8ff;
+	--skin-band-text-1: #bccdf0;
+	--skin-band-text-2: #8399c9;
+	--skin-band-up: #7cf0a0;
+	--skin-band-down: #ff9a8a;
+	--skin-band-warn: #ffc24a;
+	--skin-band-accent: #ff8a2e;
+	--skin-accent-text: #ffa35e;
+	--skin-grid: rgb(232 240 255 / 0.1);
+	--skin-dot: rgb(232 240 255 / 0.14);
+	--skin-close: #ff7a1a;
+	--skin-on-close: #071e4d;
+}
+
+/* Night: black paper, white ink, signal red */
+[data-theme][data-theme='cc-night'] {
+	color-scheme: dark;
+
+	--bg-0: #0a0a0a;
+	--bg-1: #131313;
+	--bg-2: #1c1c1c;
+	--bg-3: #282828;
+	--border: #4a4a4a;
+	--border-strong: #f2f0ea;
+
+	--glass: #131313;
+	--glass-strong: #131313;
+	--glass-edge: #f2f0ea;
+	--glass-highlight: #131313;
+	--editor-bg: #111111;
+	--scrim: rgb(0 0 0 / 0.66);
+
+	--text-0: #f2f0ea;
+	--text-1: #b8b5ab;
+	--text-2: #827e75;
+
+	--up: #45e07a;
+	--down: #ff4a3d;
+	--warn: #ffb02e;
+	--info: #7cb0ff;
+
+	--theme-accent: #ff2a1f;
+	--theme-accent-2: #ffe500;
+	--on-accent: #0a0a0a;
+
+	--syn-comment: #8c887e;
+	--syn-keyword: #ff5247;
+	--syn-control: #ff7fa3;
+	--syn-string: #ffe500;
+	--syn-number: #80c6ff;
+	--syn-function: #ffffff;
+	--syn-type: #9ef0b4;
+	--syn-variable: #e8e6df;
+	--syn-parameter: #ffc89c;
+	--syn-property: #cbc8be;
+	--syn-decorator: #ff9d45;
+	--syn-builtin: #ff6f63;
+	--syn-operator: #aaa69c;
+	--syn-regexp: #c8f060;
+
+	--skin-ink: #f2f0ea;
+	--skin-shadow: #ff2a1f;
+	--skin-band: #f2f0ea;
+	--skin-band-text: #0a0a0a;
+	--skin-band-text-1: #38362f;
+	--skin-band-text-2: #666258;
+	--skin-band-up: #08702e;
+	--skin-band-down: #c0130b;
+	--skin-band-warn: #8a4c00;
+	--skin-band-accent: #d3150b;
+	--skin-accent-text: #ff5a4f;
+	--skin-grid: rgb(242 240 234 / 0.06);
+	--skin-dot: rgb(242 240 234 / 0.1);
+	--skin-close: #ff2a1f;
+	--skin-on-close: #0a0a0a;
+}
