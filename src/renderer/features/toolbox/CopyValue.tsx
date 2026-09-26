@@ -44,7 +44,8 @@ export function CopyValue({
 		<button
 			type='button'
 			onClick={copy}
-			title='Click to copy'
+			// Single-line values truncate, so the tooltip is the only way to read them in full.
+			title={multiline ? 'Click to copy' : `${value}\n(click to copy)`}
 			aria-label={`Copy ${label}`}
 			className={cn(
 				'group flex w-full min-w-0 items-start gap-1.5 rounded-sm px-1.5 py-0.5 text-left',
