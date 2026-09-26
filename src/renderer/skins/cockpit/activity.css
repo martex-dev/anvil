@@ -1,0 +1,84 @@
+/*
+ * Cockpit: the views switcher is a function-key strip, "F1 FILES  F2 SEARCH ...", each key a
+ * ruled cell. The active view is an inverted block, like a lit key on a desk keyboard.
+ */
+
+html[data-skin='cockpit'] [data-part='activity-row'] {
+	padding-bottom: var(--pane-gap);
+}
+
+html[data-skin='cockpit'] [data-part='activity'][data-orientation='horizontal'] {
+	height: 22px;
+	gap: 0;
+	padding: 0;
+	border-color: var(--border);
+	background: var(--bg-0);
+}
+
+html[data-skin='cockpit'] [data-part='activity-item'] {
+	height: 100%;
+	gap: 5px;
+	padding: 0 8px 0 3px;
+	border-right: 1px solid var(--border);
+	color: var(--text-1);
+	transition: none;
+}
+html[data-skin='cockpit'] [data-part='activity-item']:hover {
+	background: var(--bg-3);
+	color: var(--text-0);
+}
+
+/* Numbered views print their F-key as a keycap; the label is enough, so the icon goes. */
+html[data-skin='cockpit'] [data-part='activity-item'][data-index]::before {
+	content: 'F' attr(data-index);
+	min-width: 20px;
+	padding: 0 3px;
+	background: var(--bg-3);
+	color: var(--accent);
+	font-family: var(--font-code);
+	font-size: 10px;
+	font-weight: 700;
+	line-height: 14px;
+	text-align: center;
+}
+html[data-skin='cockpit'] [data-part='activity-item'][data-index] > .skin-icon {
+	display: none;
+}
+html[data-skin='cockpit'] [data-part='activity-item'] > .skin-icon {
+	filter: none;
+}
+
+html[data-skin='cockpit'] [data-part='activity-label'] {
+	font-family: var(--font-display);
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: var(--ck-caps);
+	text-transform: uppercase;
+}
+
+html[data-skin='cockpit'] [data-part='activity-item'][data-active='true'] {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+html[data-skin='cockpit'] [data-part='activity-item'][data-active='true']:hover {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+html[data-skin='cockpit'] [data-part='activity-item'][data-active='true']::before {
+	background: var(--on-accent);
+	color: var(--accent);
+}
+
+html[data-skin='cockpit'] [data-part='activity-badge'] {
+	height: 14px;
+	min-width: 14px;
+	background: var(--warn);
+	color: var(--skin-on-go);
+	font-size: 10px;
+}
+
+/* AI and Setup sit at the right end, split off by a heavier rule. */
+html[data-skin='cockpit'] [data-part='activity-spacer'] + [data-part='activity-item'],
+html[data-skin='cockpit'] [data-part='activity-spacer'] + * {
+	border-left: 1px solid var(--border-strong);
+}
