@@ -1,5 +1,6 @@
 import {
 	Bot,
+	Minimize2,
 	PanelBottom,
 	PanelLeft,
 	PanelRight,
@@ -30,6 +31,8 @@ export function TitleBar(): JSX.Element {
 	const sideOpen = useLayoutStore((s) => s.sideOpen);
 	const panelOpen = useLayoutStore((s) => s.panelOpen);
 	const aiOpen = useLayoutStore((s) => s.aiOpen);
+	// Zen hides the panes, so the toggles show what is visible, not what is remembered.
+	const zen = useLayoutStore((s) => s.zen);
 	return (
 		<header
 			className='drag relative z-20 flex shrink-0 items-center gap-2 pr-[150px] pl-3'
@@ -76,11 +79,20 @@ export function TitleBar(): JSX.Element {
 					onClick={() => runCommandById('python.runFile')}
 				/>
 				<span className='mx-1 h-4 w-px bg-glass-edge' />
+				{zen && (
+					<IconButton
+						size='sm'
+						label='Exit Zen mode'
+						shortcut={shortcutFor('view.zen')}
+						icon={<Minimize2 size={14} />}
+						onClick={() => useLayoutStore.getState().toggleZen()}
+					/>
+				)}
 				<IconButton
 					size='sm'
 					label='Toggle side bar'
 					shortcut={shortcutFor('view.toggleSide')}
-					active={sideOpen}
+					active={sideOpen && !zen}
 					icon={<PanelLeft size={14} />}
 					onClick={() => useLayoutStore.getState().toggleSide()}
 				/>
@@ -88,7 +100,7 @@ export function TitleBar(): JSX.Element {
 					size='sm'
 					label='Toggle panel'
 					shortcut={shortcutFor('view.togglePanel')}
-					active={panelOpen}
+					active={panelOpen && !zen}
 					icon={<PanelBottom size={14} />}
 					onClick={() => useLayoutStore.getState().togglePanel()}
 				/>
@@ -96,8 +108,8 @@ export function TitleBar(): JSX.Element {
 					size='sm'
 					label='Toggle AI'
 					shortcut={shortcutFor('view.toggleAi')}
-					active={aiOpen}
-					icon={aiOpen ? <PanelRight size={14} /> : <Bot size={14} />}
+					active={aiOpen && !zen}
+					icon={aiOpen && !zen ? <PanelRight size={14} /> : <Bot size={14} />}
 					onClick={() => useLayoutStore.getState().toggleAi()}
 				/>
 				<IconButton

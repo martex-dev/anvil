@@ -24,6 +24,7 @@ import { useFsInvalidation } from './hooks/use-fs-invalidation';
 import { useLayoutPersistence } from './hooks/use-layout-persistence';
 import { useMonacoExtras } from './hooks/use-monaco-extras';
 import { useApplySettings } from './hooks/use-settings';
+import { useZenEscape } from './hooks/use-zen-escape';
 import { QuickOpen } from './QuickOpen';
 import { SettingsDialog } from './settings/SettingsDialog';
 import { ShortcutsDialog } from './ShortcutsDialog';
@@ -103,6 +104,7 @@ export function AppShell(): JSX.Element {
 	useFitPanesToWindow();
 	useLayoutPersistence();
 	useMonacoExtras();
+	useZenEscape();
 
 	const showSide = sideOpen && !zen;
 	const showPanel = panelOpen && !zen;

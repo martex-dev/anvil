@@ -154,17 +154,26 @@ export const useLayoutStore = create<LayoutState & LayoutActions>((rawSet, get) 
 					: { sideView: view, sideOpen: true, zen: false },
 			),
 		showView: (view) => set(() => ({ sideView: view, sideOpen: true, zen: false })),
-		toggleSide: () => set((s) => ({ sideOpen: !s.sideOpen })),
+		// Zen hides every pane, so a toggle there reveals the pane (and leaves zen) instead of
+		// flipping state nobody can see.
+		toggleSide: () =>
+			set((s) => (s.zen ? { sideOpen: true, zen: false } : { sideOpen: !s.sideOpen })),
 		togglePanel: (tab) =>
-			set((s) =>
-				tab && s.panelOpen && s.panelTab !== tab
+			set((s) => {
+				if (s.zen)
+					return { panelOpen: true, zen: false, ...(tab ? { panelTab: tab } : {}) };
+				return tab && s.panelOpen && s.panelTab !== tab
 					? { panelTab: tab }
-					: { panelOpen: !s.panelOpen, ...(tab ? { panelTab: tab } : {}) },
-			),
-		showPanel: (tab) => set(() => ({ panelOpen: true, panelTab: tab })),
+					: { panelOpen: !s.panelOpen, ...(tab ? { panelTab: tab } : {}) };
+			}),
+		showPanel: (tab) => set(() => ({ panelOpen: true, panelTab: tab, zen: false })),
 		toggleMaximizePanel: () =>
-			set((s) => ({ panelMaximized: !s.panelMaximized, panelOpen: true })),
-		toggleAi: (open) => set((s) => ({ aiOpen: open ?? !s.aiOpen })),
+			set((s) => ({ panelMaximized: !s.panelMaximized, panelOpen: true, zen: false })),
+		toggleAi: (open) =>
+			set((s) => {
+				const next = open ?? (s.zen ? true : !s.aiOpen);
+				return next ? { aiOpen: true, zen: false } : { aiOpen: false };
+			}),
 		toggleZen: () => set((s) => ({ zen: !s.zen })),
 		resize: (patch) =>
 			set(

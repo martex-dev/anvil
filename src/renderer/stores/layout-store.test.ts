@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
-import { fitWidths, LAYOUT_DEFAULTS, MIN_EDITOR_WIDTH } from './layout-store';
+import { fitWidths, LAYOUT_DEFAULTS, MIN_EDITOR_WIDTH, useLayoutStore } from './layout-store';
 
 const wide = { ...LAYOUT_DEFAULTS, sideWidth: 600, aiWidth: 900 };
 
@@ -30,5 +30,38 @@ describe('fitWidths', () => {
 	it('ignores hidden panes and zen', () => {
 		expect(fitWidths({ ...wide, aiOpen: false }, 1100)).toEqual({});
 		expect(fitWidths({ ...wide, zen: true }, 400)).toEqual({});
+	});
+});
+
+describe('zen mode', () => {
+	beforeEach(() => useLayoutStore.setState({ ...LAYOUT_DEFAULTS, zen: true }));
+
+	it('reveals the side bar instead of hiding it invisibly', () => {
+		useLayoutStore.getState().toggleSide();
+		expect(useLayoutStore.getState()).toMatchObject({ zen: false, sideOpen: true });
+	});
+
+	it('reveals the panel on the requested tab', () => {
+		useLayoutStore.getState().togglePanel('problems');
+		expect(useLayoutStore.getState()).toMatchObject({
+			zen: false,
+			panelOpen: true,
+			panelTab: 'problems',
+		});
+	});
+
+	it('leaves zen when the panel is shown or maximized', () => {
+		useLayoutStore.getState().showPanel('terminal');
+		expect(useLayoutStore.getState().zen).toBe(false);
+		useLayoutStore.setState({ zen: true });
+		useLayoutStore.getState().toggleMaximizePanel();
+		expect(useLayoutStore.getState().zen).toBe(false);
+	});
+
+	it('reveals the AI pane, but closing it keeps zen', () => {
+		useLayoutStore.getState().toggleAi(false);
+		expect(useLayoutStore.getState()).toMatchObject({ zen: true, aiOpen: false });
+		useLayoutStore.getState().toggleAi();
+		expect(useLayoutStore.getState()).toMatchObject({ zen: false, aiOpen: true });
 	});
 });
