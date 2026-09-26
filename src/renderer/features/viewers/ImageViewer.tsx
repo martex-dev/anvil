@@ -21,6 +21,7 @@ import { IconButton } from '../../ui/IconButton';
 import { Spinner } from '../../ui/Spinner';
 import { Tooltip } from '../../ui/Tooltip';
 import { ReloadErrorBadge } from './ReloadErrorBadge';
+import { useViewerActions } from './viewer-actions';
 import { baseName, formatBytes } from './viewer-paths';
 
 import './viewers.css';
@@ -155,6 +156,18 @@ export function ImageViewer({ path }: { path: string }): JSX.Element {
 
 	// Clamped at render so pane resizes or a regenerated plot never leave the image off-screen.
 	const pos = clampOffset(offset);
+
+	// Zooming needs the decoded size, as the (disabled) toolbar buttons do.
+	const whenLoaded = (action: () => void) => (): void => {
+		if (natural) action();
+	};
+	useViewerActions('image', path, {
+		zoomIn: whenLoaded(() => zoomTo(scale * STEP)),
+		zoomOut: whenLoaded(() => zoomTo(scale / STEP)),
+		fit: whenLoaded(() => zoomTo('fit')),
+		actualSize: whenLoaded(() => zoomTo(1)),
+		reload: () => void refetch(),
+	});
 
 	const onPointerDown = (event: PointerEvent<HTMLDivElement>): void => {
 		if (!pannable || event.button !== 0) return;

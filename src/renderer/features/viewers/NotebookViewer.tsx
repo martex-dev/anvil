@@ -14,6 +14,7 @@ import { IconButton } from '../../ui/IconButton';
 import { Spinner } from '../../ui/Spinner';
 import { type Notebook, notebookToScript, parseNotebook, scriptFileName } from './notebook-model';
 import { NotebookCell } from './NotebookCell';
+import { useViewerActions } from './viewer-actions';
 import { baseName, dirName } from './viewer-paths';
 
 type Parsed = { ok: true; notebook: Notebook } | { ok: false; message: string };
@@ -90,6 +91,20 @@ export function NotebookViewer({ path }: { path: string }): JSX.Element {
 		onError: (error) => toast.error('Could not convert notebook', error.message),
 	});
 
+	const toggleAll = (): void => setCollapsed(allCollapsed ? new Set() : new Set(withOutputs));
+	const convertable = notebook !== null && notebook.cells.length > 0;
+	useViewerActions('notebook', path, {
+		toggleOutputs: () => {
+			if (withOutputs.length > 0) toggleAll();
+			else toast.info('This notebook has no outputs');
+		},
+		convert: () => {
+			if (notebook && convertable) convert.mutate(notebook);
+			else toast.info('This notebook has no cells to convert');
+		},
+		reload: () => void refetch(),
+	});
+
 	let body: JSX.Element;
 	if (query.isPending) {
 		body = (
@@ -164,7 +179,7 @@ export function NotebookViewer({ path }: { path: string }): JSX.Element {
 						allCollapsed ? <ChevronsUpDown size={14} /> : <ChevronsDownUp size={14} />
 					}
 					disabled={withOutputs.length === 0}
-					onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(withOutputs))}
+					onClick={toggleAll}
 				/>
 				<IconButton
 					size='sm'
@@ -177,7 +192,7 @@ export function NotebookViewer({ path }: { path: string }): JSX.Element {
 					variant='ghost'
 					icon={<FileCode2 size={13} />}
 					loading={convert.isPending}
-					disabled={!notebook || notebook.cells.length === 0}
+					disabled={!convertable}
 					onClick={() => notebook && convert.mutate(notebook)}
 				>
 					Convert to # %% script

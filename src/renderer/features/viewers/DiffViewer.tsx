@@ -8,6 +8,7 @@ import type { DiffPayload } from '../../stores/tabs-store';
 import { requestOpenFile } from '../../stores/workbench-store';
 import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
+import { useViewerActions } from './viewer-actions';
 
 /** Side-by-side (or inline) read-only diff: git changes, local history, AI proposals. */
 export function DiffViewer({
@@ -72,6 +73,9 @@ export function DiffViewer({
 		editorRef.current?.updateOptions({ renderSideBySide: !inline });
 	}, [inline]);
 
+	const toggleInline = (): void => setInline((v) => !v);
+	useViewerActions('diff', diff, { toggleInline });
+
 	return (
 		<div className='flex h-full flex-col'>
 			<div className='flex h-9 shrink-0 items-center gap-3 border-b border-glass-edge px-3'>
@@ -86,7 +90,7 @@ export function DiffViewer({
 					</span>
 				)}
 				<span className='flex-1' />
-				<Button size='sm' variant='ghost' onClick={() => setInline((v) => !v)}>
+				<Button size='sm' variant='ghost' onClick={toggleInline}>
 					{inline ? 'Side by side' : 'Inline'}
 				</Button>
 				{diff.path && (

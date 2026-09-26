@@ -12,6 +12,7 @@ import { Spinner } from '../../ui/Spinner';
 import { useEditorStore } from '../editor/editor-store';
 import { getModel } from '../editor/file-ops';
 import { MarkdownHtml } from './MarkdownHtml';
+import { useViewerActions } from './viewer-actions';
 import { baseName } from './viewer-paths';
 
 const DEBOUNCE_MS = 150;
@@ -66,6 +67,11 @@ export function MarkdownPreview({ path }: { path: string }): JSX.Element {
 	useAnvilEvent('fs:changed', ({ files }) => {
 		if (files.includes(path)) void client.invalidateQueries({ queryKey: diskKey });
 	});
+
+	const editSource = (): void => {
+		requestOpenFile({ path, as: 'code' });
+	};
+	useViewerActions('markdown', path, { reload: () => void refetch(), editSource });
 
 	const text =
 		live ?? (disk.data && !disk.data.binary && !disk.data.tooLarge ? disk.data.content : null);
@@ -151,7 +157,7 @@ export function MarkdownPreview({ path }: { path: string }): JSX.Element {
 					size='sm'
 					label='Edit source'
 					icon={<FilePenLine size={14} />}
-					onClick={() => requestOpenFile({ path, as: 'code' })}
+					onClick={editSource}
 				/>
 			</div>
 			<div

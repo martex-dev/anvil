@@ -5,6 +5,7 @@ import { GIT_COMMANDS } from '../../features/git/commands';
 import { PYTHON_COMMANDS } from '../../features/python/commands';
 import { TERMINAL_COMMANDS } from '../../features/terminal/commands';
 import { TOOL_COMMANDS } from '../../features/tools/commands';
+import { VIEWER_COMMANDS } from '../../features/viewers/commands';
 import { CORE_COMMANDS } from './core-commands';
 import { setCommands } from './run';
 import type { Command } from './types';
@@ -15,6 +16,7 @@ export const ALL_COMMANDS: readonly Command[] = [
 	...EDITOR_COMMANDS,
 	...PYTHON_COMMANDS,
 	...DATA_COMMANDS,
+	...VIEWER_COMMANDS,
 	...AI_COMMANDS,
 	...GIT_COMMANDS,
 	...TERMINAL_COMMANDS,
