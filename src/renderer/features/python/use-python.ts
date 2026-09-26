@@ -4,6 +4,7 @@ import type { PythonEnv } from '@shared/ipc/channels/python';
 
 import { useWorkspace } from '../../app/hooks/use-workspace';
 import { call } from '../../lib/ipc';
+import { rlog } from '../../lib/log';
 import { queryClient } from '../../lib/query-client';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { toast } from '../../stores/toast-store';
@@ -73,21 +74,31 @@ export async function pickPythonEnv(): Promise<void> {
 	const picked = await quickPick({
 		title: 'python',
 		placeholder: 'Select the interpreter for this folder',
-		items: call('python:envs', { refresh: true }).then((envs) => [
-			...envs.map((e) => ({
-				id: e.path,
-				label: `${e.label}${e.version ? `  ·  Python ${e.version}` : ''}`,
-				description: `${KIND_LABEL[e.kind]}${e.local ? ' · this folder' : ''}`,
-				detail: e.path,
-				current: current?.path.toLowerCase() === e.path.toLowerCase(),
-			})),
-			{
-				id: '__auto__',
-				label: 'Automatic',
-				description: "the folder's .venv if there is one",
-				detail: 'Anvil picks',
-			},
-		]),
+		items: call('python:envs', { refresh: true })
+			.catch((error: unknown): PythonEnv[] => {
+				// Still offer Automatic: the folder's own venv may resolve without discovery.
+				rlog.error('python', 'listing interpreters failed', error);
+				toast.error(
+					'Could not list interpreters',
+					error instanceof Error ? error.message : undefined,
+				);
+				return [];
+			})
+			.then((envs) => [
+				...envs.map((e) => ({
+					id: e.path,
+					label: `${e.label}${e.version ? `  ·  Python ${e.version}` : ''}`,
+					description: `${KIND_LABEL[e.kind]}${e.local ? ' · this folder' : ''}`,
+					detail: e.path,
+					current: current?.path.toLowerCase() === e.path.toLowerCase(),
+				})),
+				{
+					id: '__auto__',
+					label: 'Automatic',
+					description: "the folder's .venv if there is one",
+					detail: 'Anvil picks',
+				},
+			]),
 	});
 	if (!picked) return;
 	try {
