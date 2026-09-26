@@ -70,9 +70,12 @@ interface Candidate {
 
 function condaRoots(): string[] {
 	const home = homedir();
+	// All-users installs go to %ProgramData%, which isn't always on C:.
+	const programData =
+		process.env['ProgramData'] ?? process.env['ALLUSERSPROFILE'] ?? 'C:\\ProgramData';
 	const roots = ['anaconda3', 'miniconda3', 'miniforge3', 'mambaforge'].flatMap((n) => [
 		join(home, n),
-		...(WIN ? [join('C:\\ProgramData', n)] : []),
+		...(WIN ? [join(programData, n)] : []),
 	]);
 	const fromEnv = process.env['CONDA_PREFIX'];
 	if (fromEnv)
