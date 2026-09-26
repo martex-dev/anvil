@@ -24,6 +24,7 @@ interface Options {
 	sessionId: string;
 	preset: TerminalPresetId;
 	fontSize: number;
+	/** Whether the session may start; ignored once it has opened. */
 	enabled: boolean;
 	/** Typed into the shell when the session is first created (Run file, tasks). */
 	initialCommand?: string | undefined;
@@ -45,10 +46,13 @@ export function useXterm(
 	const [error, setError] = useState<string | null>(null);
 	// Bumped by retry(): re-runs the effect so a failed start can be attempted again.
 	const [attempt, setAttempt] = useState(0);
+	// `enabled` only gates the start: an opened session stays attached even if a later presets
+	// refetch fails or reports the profile unavailable (disposing would blank a live shell).
+	const attach = enabled || status !== 'starting';
 
 	useEffect(() => {
 		const host = hostRef.current;
-		if (!host || !enabled) return;
+		if (!host || !attach) return;
 		let disposed = false;
 		let exited = false;
 
@@ -212,7 +216,7 @@ export function useXterm(
 		};
 		// initialCommand/focus/onOpen only matter for the first open of a session.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [hostRef, sessionId, preset, fontSize, enabled, attempt]);
+	}, [hostRef, sessionId, preset, fontSize, attach, attempt]);
 
 	const retry = (): void => {
 		setError(null);

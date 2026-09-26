@@ -41,74 +41,83 @@ export function TerminalPane({ tab, visible }: { tab: TermTab; visible: boolean 
 		if (initial && status !== 'starting') useTerminalStore.getState().clearInitial(tab.id);
 	}, [initial, status, tab.id]);
 
-	if (presets.isLoading) {
-		return (
-			<div className='flex h-full items-center justify-center'>
-				<Spinner label='Checking terminal tools' />
-			</div>
-		);
-	}
-	if (presets.error)
-		return (
-			<ErrorState message={presets.error.message} onRetry={() => void presets.refetch()} />
-		);
-	if (presets.data && !info) {
-		// cmd / Git Bash off Windows, or a profile from an older version of Anvil.
-		return (
-			<EmptyState
-				icon={<TerminalSquare size={22} />}
-				title="This terminal profile isn't available on this system"
-				description={`"${tab.preset}" can't be started here.`}
-				action={
-					<Button size='sm' onClick={() => closeTerminal(tab.id)}>
-						Close terminal
-					</Button>
-				}
-			/>
-		);
-	}
-	if (info && !info.available) {
-		return (
-			<EmptyState
-				icon={<TerminalSquare size={22} />}
-				title={`${info.label} isn't available`}
-				description={
-					<span className='flex flex-col items-center gap-2'>
-						<span>{info.reason}</span>
-						{info.installHint && (
-							<span className='flex items-center gap-1'>
-								<code className='selectable rounded-sm bg-bg-2 px-2 py-1 text-12 text-fg-0'>
-									{info.installHint}
-								</code>
-								<Button
-									size='sm'
-									variant='ghost'
-									icon={<Copy size={12} />}
-									onClick={() => {
-										void navigator.clipboard.writeText(info.installHint ?? '');
-										toast.success(
-											'Copied',
-											'Run it in a PowerShell terminal, then check again.',
-										);
-									}}
-								>
-									Copy
-								</Button>
-							</span>
-						)}
-					</span>
-				}
-				action={
-					<Button
-						size='sm'
-						loading={presets.isFetching}
-						onClick={() => void presets.refetch()}
-					>
-						Check again
-					</Button>
-				}
-			/>
-		);
+	// Profile checks only matter before the session starts; afterwards the host div must stay
+	// mounted or xterm would be left rendering into a detached element.
+	if (status === 'starting') {
+		if (presets.isLoading) {
+			return (
+				<div className='flex h-full items-center justify-center'>
+					<Spinner label='Checking terminal tools' />
+				</div>
+			);
+		}
+		if (presets.error)
+			return (
+				<ErrorState
+					message={presets.error.message}
+					onRetry={() => void presets.refetch()}
+				/>
+			);
+		if (presets.data && !info) {
+			// cmd / Git Bash off Windows, or a profile from an older version of Anvil.
+			return (
+				<EmptyState
+					icon={<TerminalSquare size={22} />}
+					title="This terminal profile isn't available on this system"
+					description={`"${tab.preset}" can't be started here.`}
+					action={
+						<Button size='sm' onClick={() => closeTerminal(tab.id)}>
+							Close terminal
+						</Button>
+					}
+				/>
+			);
+		}
+		if (info && !info.available) {
+			return (
+				<EmptyState
+					icon={<TerminalSquare size={22} />}
+					title={`${info.label} isn't available`}
+					description={
+						<span className='flex flex-col items-center gap-2'>
+							<span>{info.reason}</span>
+							{info.installHint && (
+								<span className='flex items-center gap-1'>
+									<code className='selectable rounded-sm bg-bg-2 px-2 py-1 text-12 text-fg-0'>
+										{info.installHint}
+									</code>
+									<Button
+										size='sm'
+										variant='ghost'
+										icon={<Copy size={12} />}
+										onClick={() => {
+											void navigator.clipboard.writeText(
+												info.installHint ?? '',
+											);
+											toast.success(
+												'Copied',
+												'Run it in a PowerShell terminal, then check again.',
+											);
+										}}
+									>
+										Copy
+									</Button>
+								</span>
+							)}
+						</span>
+					}
+					action={
+						<Button
+							size='sm'
+							loading={presets.isFetching}
+							onClick={() => void presets.refetch()}
+						>
+							Check again
+						</Button>
+					}
+				/>
+			);
+		}
 	}
 	if (status === 'error') {
 		// The host div is unmounted here; retry() re-runs the start once it is back.
