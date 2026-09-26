@@ -136,14 +136,15 @@ export function MessageView({ message }: { message: ChatMessage }): JSX.Element 
 						{message.context.map((c) => (
 							<span
 								key={`${c.kind}:${c.label}`}
-								className='rounded-md bg-bg-3/70 px-1.5 text-11 text-fg-2'
+								title={c.label}
+								className='max-w-full truncate rounded-md bg-bg-3/70 px-1.5 text-11 text-fg-2'
 							>
 								{c.kind}: {c.label}
 							</span>
 						))}
 					</div>
 				)}
-				<p className='selectable text-13 whitespace-pre-wrap text-fg-0'>
+				<p className='selectable text-13 break-words whitespace-pre-wrap text-fg-0 [overflow-wrap:anywhere]'>
 					{message.content}
 				</p>
 			</div>
