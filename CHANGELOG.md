@@ -3,6 +3,51 @@
 What changed in each release of Anvil. The release workflow publishes a version's section as
 its GitHub release notes.
 
+## [0.2.6] - 2026-09-26
+
+Explorer, welcome, snippets and templates: 38 fixes from the full bug sweep of 0.2.0.
+
+### Fixed
+
+- **templates:** Stop trading bot re-buying right after a stop-loss
+- **templates:** Keep unsaved changes when creating a project from a template
+- **templates:** Clean up the project folder when writing a template fails
+- **templates:** Show error and empty states in the templates dialog
+- **templates:** Ignore repeated Enter while a project is being created
+- **templates:** Validate project names with one shared schema
+- **templates:** Give template choices radio semantics and arrow keys
+- **ui:** Stop the shimmer animation under reduced motion
+- **templates:** Show full file paths on hover in the template preview
+- **explorer:** Add Retry to the explorer error state
+- **explorer:** Make explorer actions reachable from the command palette
+- **explorer:** Show a spinner on Refresh while folders are reloading
+- **explorer:** Keep the inline name input focused after a context-menu action
+- **explorer:** Clear the context-menu target when right-clicking non-entry rows
+- **explorer:** Open the keyboard context menu on the focused row
+- **explorer:** Return focus to the tree after closing the inline name input
+- **explorer:** Scroll a revealed file into view once its folders load
+- **explorer:** Confirm copied paths and add Copy Path to the explorer menu
+- **explorer:** Report failures to reveal a path or forget a recent folder
+- **explorer:** Disable Compare with Selected on the selected file itself
+- **explorer:** Move focus to the neighbouring item after deleting
+- **explorer:** Validate inline names and keep the input open on failure
+- **explorer:** Fade the remove-from-recent button in and out
+- **explorer:** Expand symlinked folders and junctions like folders
+- **explorer:** Announce the focused tree row to screen readers
+- **explorer:** Stop rebuilding tree rows on every render
+- **explorer:** Add type-ahead to the tree and pass modified keys through
+- **explorer:** Keep focus on an expanded folder that has no children yet
+- **explorer:** Drop missing folders from recent and allow removal on Welcome
+- **snippets:** Show the full snippet name on hover
+- **explorer:** Focus the Explorer and Snippets views when shown by command
+- **snippets:** Keep focus in the panel after clearing filters
+- **snippets:** Replace the whole hyphenated prefix on completion
+- **welcome:** Show the missing-key banner only once keys have loaded
+- **welcome:** Fade the feature-card glow in on hover
+- **welcome:** Add a focus ring and hover transition to the API-key banner
+- **welcome:** Stack the Welcome layout in narrow editor groups
+- **welcome:** Truncate long recent folder names and show the full path on hover
+
 ## [0.2.5] - 2026-09-26
 
 Git, search and navigation: 69 fixes from the full bug sweep of 0.2.0.

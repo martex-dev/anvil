@@ -2,7 +2,18 @@ import { describe, expect, it } from 'vitest';
 
 import type { FsEntry } from '@shared/ipc/channels/fs';
 
-import { ancestorsOf, buildRows, type DirState, joinPath, parentOf } from './tree-model';
+import {
+	ancestorsOf,
+	buildRows,
+	type DirState,
+	isFolder,
+	joinPath,
+	neighbourAfterRemoval,
+	newNameProblem,
+	parentOf,
+	siblingNames,
+	treeItemId,
+} from './tree-model';
 
 const e = (path: string, kind: FsEntry['kind'] = 'file'): FsEntry => ({
 	name: path.split('/').at(-1) ?? path,
@@ -62,5 +73,96 @@ describe('path helpers', () => {
 		expect(ancestorsOf('README.md')).toEqual([]);
 		expect(joinPath('', 'a.ts')).toBe('a.ts');
 		expect(joinPath('src', 'a.ts')).toBe('src/a.ts');
+	});
+});
+
+describe('neighbourAfterRemoval', () => {
+	const dirs = new Map<string, DirState>([
+		['', { entries: [e('src', 'dir'), e('README.md'), e('setup.py')] }],
+		['src', { entries: [e('src/a.py'), e('src/b.py')] }],
+	]);
+	const rows = buildRows(dirs, new Set(['src']));
+
+	it('picks the next visible entry', () => {
+		expect(neighbourAfterRemoval(rows, 'src/a.py')).toBe('src/b.py');
+	});
+
+	it('skips the children of a removed folder', () => {
+		expect(neighbourAfterRemoval(rows, 'src')).toBe('README.md');
+	});
+
+	it('falls back to the previous entry at the end', () => {
+		expect(neighbourAfterRemoval(rows, 'setup.py')).toBe('README.md');
+	});
+
+	it('returns null when nothing is left or the path is not shown', () => {
+		const single = buildRows(new Map([['', { entries: [e('only.py')] }]]), new Set());
+		expect(neighbourAfterRemoval(single, 'only.py')).toBeNull();
+		expect(neighbourAfterRemoval(rows, 'missing.py')).toBeNull();
+	});
+});
+
+describe('siblingNames', () => {
+	const dirs = new Map<string, DirState>([
+		['', { entries: [e('src', 'dir'), e('README.md')] }],
+		['src', { entries: [e('src/a.py'), e('src/b.py')] }],
+	]);
+	const rows = buildRows(dirs, new Set(['src']));
+
+	it('lists the direct children of a folder', () => {
+		expect(siblingNames(rows, '')).toEqual(['src', 'README.md']);
+		expect(siblingNames(rows, 'src')).toEqual(['a.py', 'b.py']);
+	});
+
+	it('leaves out the item being renamed', () => {
+		expect(siblingNames(rows, 'src', 'src/a.py')).toEqual(['b.py']);
+	});
+});
+
+describe('newNameProblem', () => {
+	it('accepts a free, valid name', () => {
+		expect(newNameProblem('c.py', ['a.py', 'b.py'])).toBeNull();
+	});
+
+	it('flags names Windows does not allow', () => {
+		expect(newNameProblem('a:b.py', [])).toMatch(/characters/);
+		expect(newNameProblem('con.txt', [])).toMatch(/reserved/);
+		expect(newNameProblem('notes.', [])).toMatch(/dot or space/);
+	});
+
+	it('flags an existing sibling, ignoring case', () => {
+		expect(newNameProblem('A.PY', ['a.py'])).toBe('"A.PY" already exists');
+	});
+});
+
+describe('folder links', () => {
+	const link = (path: string, targetKind?: 'file' | 'dir'): FsEntry => ({
+		...e(path, 'symlink'),
+		...(targetKind ? { targetKind } : {}),
+	});
+
+	it('treats a link to a folder as a folder, but not a file link or a broken one', () => {
+		expect(isFolder(link('pkg', 'dir'))).toBe(true);
+		expect(isFolder(link('a.py', 'file'))).toBe(false);
+		expect(isFolder(link('gone'))).toBe(false);
+	});
+
+	it('expands a linked folder like a real one', () => {
+		const dirs = new Map<string, DirState>([
+			['', { entries: [link('pkg', 'dir')] }],
+			['pkg', { entries: [e('pkg/mod.py')] }],
+		]);
+		const rows = buildRows(dirs, new Set(['pkg']));
+		expect(rows.map((r) => (r.kind === 'entry' ? r.entry.path : r.kind))).toEqual([
+			'pkg',
+			'pkg/mod.py',
+		]);
+	});
+});
+
+describe('treeItemId', () => {
+	it('gives each path a distinct id without spaces', () => {
+		expect(treeItemId('My Data/a b.csv')).toBe('tree-My%20Data%2Fa%20b.csv');
+		expect(treeItemId('a/b')).not.toBe(treeItemId('a%2Fb'));
 	});
 });

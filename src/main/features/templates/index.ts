@@ -1,25 +1,9 @@
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-
 import { BrowserWindow, dialog } from 'electron';
 
-import { AnvilError } from '../../core/errors';
+import { AnvilError, errorMessage } from '../../core/errors';
 import type { MainFeature } from '../../core/features';
-import { type TemplateDef, TEMPLATES } from './catalog';
-
-/** Writes a template into a new folder. Never overwrites: the folder must not exist yet. */
-export function writeTemplate(template: TemplateDef, parent: string, name: string): string {
-	const root = join(parent, name);
-	if (existsSync(root)) throw new AnvilError('TEMPLATE_EXISTS', `${root} already exists`);
-	for (const [rel, content] of Object.entries(template.files)) {
-		if (rel.includes('..') || rel.startsWith('/') || /^[A-Za-z]:/.test(rel))
-			throw new AnvilError('TEMPLATE_BAD_PATH', `Template path escapes its folder: ${rel}`);
-		const abs = join(root, ...rel.split('/'));
-		mkdirSync(dirname(abs), { recursive: true });
-		writeFileSync(abs, content.replaceAll('{{name}}', name), 'utf8');
-	}
-	return root;
-}
+import { TEMPLATES } from './catalog';
+import { writeTemplate } from './write-template';
 
 export const templatesFeature: MainFeature = {
 	id: 'templates',
@@ -48,9 +32,19 @@ export const templatesFeature: MainFeature = {
 				: await dialog.showOpenDialog(options);
 			const parent = picked.filePaths[0];
 			if (picked.canceled || !parent) return { root: null };
-			const root = writeTemplate(template, parent, name);
+			let root: string;
+			try {
+				root = writeTemplate(template, parent, name);
+			} catch (error) {
+				ctx.log.error('creating project from template failed', {
+					templateId,
+					parent,
+					message: errorMessage(error),
+				});
+				throw error;
+			}
 			ctx.log.info('project created from template', { templateId, root });
-			ctx.workspace.open(root);
+			// The renderer opens it, so its unsaved-changes guard applies like any folder switch.
 			return { root };
 		});
 	},

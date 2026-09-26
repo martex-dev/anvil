@@ -16,12 +16,12 @@ import {
 
 import { VIEW_META } from '../../app/ActivityBar';
 import { closeFolder, openFolderDialog } from '../../features/explorer/workspace-actions';
-import { useSearchFocus } from '../../features/search/use-search';
 import { call } from '../../lib/ipc';
 import { SIDE_VIEWS, type SideView, useLayoutStore } from '../../stores/layout-store';
 import { useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
 import { useUiStore } from '../../stores/ui-store';
+import { useViewFocus } from '../../stores/view-focus-store';
 import { getSettings, updateSettings } from '../hooks/use-settings';
 import type { Command } from './types';
 
@@ -42,7 +42,7 @@ const viewCommands: Command[] = SIDE_VIEWS.map((view) => ({
 	icon: VIEW_META[view].icon,
 	run: () => {
 		useLayoutStore.getState().showView(view);
-		if (view === 'search') useSearchFocus.getState().focus();
+		useViewFocus.getState().request(view);
 	},
 }));
 

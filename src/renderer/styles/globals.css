@@ -275,15 +275,6 @@
 		background-size: 200% 100%;
 		animation: shimmer 1.6s linear infinite;
 	}
-	/* Fixed duration (not a --dur-* token), so reduced motion must switch it off explicitly. */
-	html[data-reduce-motion='true'] .shimmer {
-		animation: none;
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.shimmer {
-			animation: none;
-		}
-	}
 }
 
 @layer utilities {
@@ -384,7 +375,8 @@ html[data-reduce-motion='true'] .ambient::before {
 html[data-ambient='false'] .ambient::before {
 	display: none;
 }
-/* The loading sweep is a literal-duration loop, so the --dur-* tokens can't turn it off. */
+/* The shimmer sweep is a literal-duration loop the --dur-* tokens can't reach, so reduced motion
+   stops it outright; its static tint keeps the busy state visible. */
 html[data-reduce-motion='true'] .shimmer {
 	animation: none;
 }

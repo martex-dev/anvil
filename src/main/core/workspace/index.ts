@@ -1,3 +1,5 @@
+import { sep } from 'node:path';
+
 import { BrowserWindow, dialog, shell } from 'electron';
 import log from 'electron-log/main';
 
@@ -81,7 +83,10 @@ export function createWorkspace(
 	router.handle('fs:trash', (rel) => fs.trash(rel));
 	router.handle('fs:reveal', (rel) => fs.reveal(rel));
 	router.handle('fs:readDataUrl', (rel) => fs.readDataUrl(rel));
-	router.handle('fs:copyPath', ({ path, absolute }) => (absolute ? fs.absolute(path) : path));
+	// Relative paths use the OS separator too, so a copied path pastes cleanly into a shell.
+	router.handle('fs:copyPath', ({ path, absolute }) =>
+		absolute ? fs.absolute(path) : path.split('/').join(sep),
+	);
 
 	return { workspace, fs, watcher };
 }

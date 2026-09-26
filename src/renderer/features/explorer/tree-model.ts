@@ -1,3 +1,4 @@
+import { fileNameProblem } from '@shared/fs-names';
 import type { FsEntry } from '@shared/ipc/channels/fs';
 
 export type TreeRow =
@@ -14,6 +15,11 @@ export interface DirState {
 export interface PendingCreate {
 	parent: string;
 	kind: 'file' | 'dir';
+}
+
+/** Folders and links that point at folders (junctions, pnpm links) expand like folders. */
+export function isFolder(entry: FsEntry): boolean {
+	return entry.kind === 'dir' || (entry.kind === 'symlink' && entry.targetKind === 'dir');
 }
 
 /** Flattens the visible part of the tree (root + expanded folders) into rows for rendering. */
@@ -37,7 +43,7 @@ export function buildRows(
 			return;
 		}
 		for (const entry of state.entries ?? []) {
-			const isOpen = entry.kind === 'dir' && expanded.has(entry.path);
+			const isOpen = isFolder(entry) && expanded.has(entry.path);
 			rows.push({ kind: 'entry', entry, depth, expanded: isOpen });
 			if (isOpen) walk(entry.path, depth + 1);
 		}
@@ -59,4 +65,47 @@ export function ancestorsOf(path: string): string[] {
 
 export function joinPath(dir: string, name: string): string {
 	return dir ? `${dir}/${name}` : name;
+}
+
+/** `path` itself or anything inside it (a deleted folder takes its children with it). */
+export function isWithin(path: string, ancestor: string): boolean {
+	return path === ancestor || path.startsWith(`${ancestor}/`);
+}
+
+/**
+ * The entry that should take focus once `path` is removed: the next visible entry outside it,
+ * else the previous one, else null when nothing is left.
+ */
+export function neighbourAfterRemoval(rows: readonly TreeRow[], path: string): string | null {
+	const paths = rows.flatMap((r) => (r.kind === 'entry' ? [r.entry.path] : []));
+	const index = paths.indexOf(path);
+	if (index === -1) return null;
+	const after = paths.slice(index + 1).find((p) => !isWithin(p, path));
+	return after ?? paths[index - 1] ?? null;
+}
+
+/** Names of the visible entries directly inside `dir`, leaving out `except` (a renamed item). */
+export function siblingNames(rows: readonly TreeRow[], dir: string, except?: string): string[] {
+	return rows.flatMap((r) =>
+		r.kind === 'entry' && r.entry.path !== except && parentOf(r.entry.path) === dir
+			? [r.entry.name]
+			: [],
+	);
+}
+
+/**
+ * Why `name` can't be used for a new or renamed item next to `siblings`, or null. Windows
+ * names are case-insensitive, so "Data.csv" clashes with "data.csv".
+ */
+export function newNameProblem(name: string, siblings: readonly string[]): string | null {
+	const lower = name.toLowerCase();
+	return (
+		fileNameProblem(name) ??
+		(siblings.some((s) => s.toLowerCase() === lower) ? `"${name}" already exists` : null)
+	);
+}
+
+/** DOM id of a tree row, so the tree can point `aria-activedescendant` at the focused one. */
+export function treeItemId(path: string): string {
+	return `tree-${encodeURIComponent(path)}`;
 }

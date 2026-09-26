@@ -1409,6 +1409,9 @@ log = logging.getLogger('bot')
 @dataclass
 class BotState:
 	entry_price: float | None = None
+	# Set when a stop fires; blocks re-entry until the signal turns flat, otherwise the next
+	# poll sees the same 'long' candle and buys straight back in.
+	stopped_out: bool = False
 
 
 def make_exchange(settings: Settings, live: bool) -> ccxt.Exchange:
@@ -1449,12 +1452,18 @@ async def step(
 
 	stop_price = state.entry_price * (1 - risk.stop_loss_pct) if state.entry_price else None
 	stopped = stop_price is not None and price <= stop_price
+	if signal == 'flat':
+		state.stopped_out = False
 	if position > 0 and (signal == 'flat' or stopped):
 		fill = await broker.market_order('sell', position, price)
 		state.entry_price = None
+		state.stopped_out = stopped and signal != 'flat'
 		reason = 'Stop hit' if stopped else 'Exit'
 		log.info('%s: sold %.6f at %.2f', reason, fill.amount, fill.price)
 	elif position <= 0 and signal == 'long':
+		if state.stopped_out:
+			log.info('Stopped out: waiting for a flat signal before re-entering')
+			return
 		if not can_enter:
 			log.warning('Daily loss limit reached: no new entries until tomorrow (UTC)')
 			return
