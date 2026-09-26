@@ -1,0 +1,105 @@
+/*
+ * Zen Paper chat: the assistant is a facing page. Its header becomes a chapter title with the
+ * model as an italic byline; the composer sits under a hairline like a note at the foot.
+ */
+
+html[data-skin='zen'] [data-ai-chat] > header {
+	height: auto;
+	padding: 22px 14px 12px 22px;
+	border-bottom: 0;
+	align-items: baseline;
+	position: relative;
+}
+html[data-skin='zen'] [data-ai-chat] > header::after {
+	content: '';
+	position: absolute;
+	left: 22px;
+	right: 14px;
+	bottom: 0;
+	height: 1px;
+	background: linear-gradient(90deg, var(--zn-rule), var(--zn-rule-soft) 60%, transparent);
+}
+html[data-skin='zen'] [data-ai-chat] > header > svg:first-child {
+	display: none;
+}
+html[data-skin='zen'] [data-ai-chat] > header > .hud {
+	font-family: var(--font-display);
+	font-style: italic;
+	font-size: 27px;
+	line-height: 1.05;
+	letter-spacing: 0;
+	text-transform: none;
+	color: var(--text-0);
+}
+html[data-skin='zen'] [data-ai-chat] > header > .hud::first-letter {
+	color: var(--accent);
+	font-size: 1.22em;
+}
+/* The model as a byline: "claude-opus-5", italic, underlined on hover. */
+html[data-skin='zen'] [data-ai-chat] > header > button:not([aria-label]) {
+	height: auto;
+	margin-left: 10px;
+	padding: 0;
+	border: 0;
+	background: none;
+	font-family: var(--font-ui);
+	font-size: 13px;
+	font-style: italic;
+	color: var(--text-2);
+	text-decoration: underline 1px transparent;
+	text-underline-offset: 4px;
+}
+html[data-skin='zen'] [data-ai-chat] > header > button:not([aria-label]):hover {
+	color: var(--text-0);
+	text-decoration-color: var(--accent);
+}
+
+/* The missing-key notice: a marginal note, not a warning banner. */
+html[data-skin='zen'] [data-ai-chat] > header + .bg-warn-soft {
+	margin: 10px 14px 0 22px;
+	padding: 6px 0 6px 12px;
+	border: 0;
+	border-left: 1px solid var(--warn);
+	background: none;
+	font-style: italic;
+}
+
+/* The empty page: no glowing orb, suggestions as underlined phrases. */
+html[data-skin='zen'] [data-ai-chat] .blur-xl {
+	display: none;
+}
+html[data-skin='zen'] [data-ai-chat] .rounded-full.border {
+	border-color: transparent;
+	border-bottom-color: var(--zn-rule);
+	border-radius: 0;
+	background: none;
+	padding-inline: 2px;
+	font-size: 12.5px;
+	font-style: italic;
+}
+html[data-skin='zen'] [data-ai-chat] .rounded-full.border:hover {
+	border-bottom-color: var(--accent);
+	color: var(--text-0);
+}
+
+/* The composer: a hairline above, the field ruled like writing paper. */
+html[data-skin='zen'] [data-ai-chat] > .border-t {
+	border-top-color: var(--zn-rule-soft);
+	padding: 10px 14px 12px 22px;
+}
+html[data-skin='zen'] [data-ai-chat] textarea {
+	border-color: var(--zn-rule-soft);
+	border-radius: 0;
+	font-size: 14px;
+	line-height: 22px;
+	background: repeating-linear-gradient(
+			to bottom,
+			transparent 0 21px,
+			var(--zn-rule-soft) 21px 22px
+		)
+		0 8px / 100% 22px local;
+}
+html[data-skin='zen'] [data-ai-chat] textarea:focus {
+	border-color: color-mix(in oklab, var(--accent) 55%, transparent);
+	box-shadow: none;
+}
