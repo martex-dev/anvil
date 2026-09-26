@@ -13,7 +13,7 @@ import {
 	TextSelect,
 	X,
 } from 'lucide-react';
-import { type JSX, useEffect, useMemo, useRef, useState } from 'react';
+import { type JSX, useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { runCommandById } from '../../app/commands/run';
 import { useWorkspace } from '../../app/hooks/use-workspace';
@@ -29,7 +29,7 @@ import { attachCurrent, attachDiff, attachPath } from './chat-attach';
 import { useChatFocus } from './chat-focus';
 import { chatTrigger, mentionStatus, SLASH_COMMANDS, STARTERS } from './chat-shortcuts';
 import { useChat } from './chat-store';
-import { ChatSuggestions } from './ChatSuggestions';
+import { ChatSuggestions, suggestionOptionId } from './ChatSuggestions';
 import { MessageView } from './MessageView';
 import { useStickToBottom } from './use-stick-to-bottom';
 
@@ -50,6 +50,7 @@ export function ChatPanel(): JSX.Element {
 		jump: jumpToLatest,
 	} = useStickToBottom(messages);
 	const inputRef = useRef<HTMLTextAreaElement>(null);
+	const listId = useId();
 	const focusTick = useChatFocus((s) => s.tick);
 	const tr = chatTrigger(text);
 	const files = useQuery({
@@ -83,6 +84,7 @@ export function ChatPanel(): JSX.Element {
 				})
 			: null;
 	const popupOpen = (suggestions.length > 0 || status !== null) && dismissedAt !== text;
+	const listOpen = popupOpen && suggestions.length > 0;
 
 	useEffect(() => {
 		if (focusTick > 0) inputRef.current?.focus();
@@ -281,6 +283,7 @@ export function ChatPanel(): JSX.Element {
 				<div className='relative'>
 					{popupOpen && tr && (
 						<ChatSuggestions
+							listId={listId}
 							kind={tr.kind}
 							suggestions={suggestions}
 							pick={pick}
@@ -291,6 +294,15 @@ export function ChatPanel(): JSX.Element {
 					<textarea
 						ref={inputRef}
 						aria-label='Message'
+						// The @ / slash popup is this field's listbox; the highlighted option is
+						// announced through aria-activedescendant while focus stays here.
+						role='combobox'
+						aria-autocomplete='list'
+						aria-expanded={listOpen}
+						aria-controls={listOpen ? listId : undefined}
+						aria-activedescendant={
+							listOpen ? suggestionOptionId(listId, pick) : undefined
+						}
 						value={text}
 						onChange={(e) => {
 							setText(e.target.value);
@@ -306,7 +318,7 @@ export function ChatPanel(): JSX.Element {
 								return;
 							}
 							// A status-only popup (loading, no matches) leaves Enter free to send.
-							if (popupOpen && suggestions.length > 0) {
+							if (listOpen) {
 								if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
 									e.preventDefault();
 									setPick(
