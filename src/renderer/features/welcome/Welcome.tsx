@@ -140,13 +140,14 @@ export function Welcome(): JSX.Element {
 										<button
 											type='button'
 											onClick={() => openRecentFolder(path)}
+											title={path}
 											className='group flex min-w-0 flex-1 items-baseline gap-2 rounded-md px-2 py-1.5 text-left outline-none hover:bg-accent-faint focus-visible:bg-accent-faint'
 										>
 											<History
 												size={12}
 												className='shrink-0 text-fg-2 group-hover:text-accent'
 											/>
-											<span className='shrink-0 text-13 text-fg-0'>
+											<span className='max-w-[60%] min-w-0 shrink-0 truncate text-13 text-fg-0'>
 												{path.split(/[\\/]/).at(-1)}
 											</span>
 											<span className='truncate font-mono text-11 text-fg-2'>
