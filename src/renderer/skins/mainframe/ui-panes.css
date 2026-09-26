@@ -125,10 +125,15 @@ html[data-skin='mainframe'] [data-part='terminal-chip'][data-active='true']::aft
 	order: 2;
 	color: var(--accent);
 }
-html[data-skin='mainframe'] [data-part='terminal-chip'] > button {
+/* The chip is the tab button (dot and title), then the kill button: the '*' goes between. */
+html[data-skin='mainframe'] [data-part='terminal-chip'] > button:not([role='tab']) {
 	order: 3;
 }
-html[data-skin='mainframe'] [data-part='terminal-chip'] > span:first-child {
+html[data-skin='mainframe'] [data-part='terminal-chip'] [role='tab'] {
+	gap: 4px;
+	padding-left: 0;
+}
+html[data-skin='mainframe'] [data-part='terminal-chip'] [role='tab'] > span:first-child {
 	width: 0.5em;
 	height: 0.5em;
 }

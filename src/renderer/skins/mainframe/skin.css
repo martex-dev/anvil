@@ -73,7 +73,7 @@ html[data-skin='mainframe'] [class*='rounded-['] {
 }
 
 /* No glass anywhere: drop every backdrop blur the shared chrome asks for. */
-html[data-skin='mainframe'] [class*='backdrop-blur'] {
+html[data-skin='mainframe'] :is([class*='backdrop-blur'], .glass-blur, .scrim-blur) {
 	backdrop-filter: none;
 }
 

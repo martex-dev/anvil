@@ -4,10 +4,11 @@ import { type JSX, useState } from 'react';
 import { cn } from '../lib/cn';
 import { useRegisterOverlay } from '../stores/overlay-store';
 import { Kbd } from '../ui/Kbd';
-import { getCommands, runCommand } from './commands/run';
+import { getCommands } from './commands/run';
 import type { CommandCategory } from './commands/types';
+import { useMenuCommand } from './hooks/use-menu-command';
 
-/** The menu bar: each menu lists the commands of its categories. */
+/** The menu bar: each menu lists the commands of its categories (TitleMenus renders them). */
 export const TITLE_MENUS: Array<{ label: string; categories: CommandCategory[] }> = [
 	{ label: 'File', categories: ['File'] },
 	{ label: 'Edit', categories: ['Edit'] },
@@ -20,8 +21,9 @@ export const TITLE_MENUS: Array<{ label: string; categories: CommandCategory[] }
 ];
 
 /**
- * One menu of the menu bar. Shared so replacement title bars can reuse it: restyle it through
- * `[data-part='menu-trigger']` / `[data-part='menu']`, or pass a className for the trigger.
+ * One standalone title menu, for replacement title bars that lay their menus out themselves (the
+ * shared title bar uses the TitleMenus menubar). Restyle it through `[data-part='menu-trigger']` /
+ * `[data-part='menu']`, or pass a className for the trigger.
  */
 export function TitleMenu({
 	label,
@@ -30,6 +32,7 @@ export function TitleMenu({
 }: (typeof TITLE_MENUS)[number] & { className?: string }): JSX.Element {
 	const [open, setOpen] = useState(false);
 	useRegisterOverlay(open);
+	const { pick, onCloseAutoFocus } = useMenuCommand();
 	const items = getCommands().filter((c) => categories.includes(c.category));
 	return (
 		<DropdownMenu.Root open={open} onOpenChange={setOpen}>
@@ -48,6 +51,7 @@ export function TitleMenu({
 					data-part='menu'
 					align='start'
 					sideOffset={4}
+					onCloseAutoFocus={onCloseAutoFocus}
 					className='glass-strong animate-in z-50 max-h-[70vh] min-w-64 overflow-auto p-1'
 				>
 					{categories.map((cat, ci) => {
@@ -68,7 +72,7 @@ export function TitleMenu({
 									return (
 										<DropdownMenu.Item
 											key={c.id}
-											onSelect={() => void runCommand(c)}
+											onSelect={() => pick(c)}
 											className='group flex h-7 cursor-default items-center gap-2 rounded-md px-2 text-12 text-fg-1 outline-none data-[highlighted]:bg-accent-faint data-[highlighted]:text-fg-0'
 										>
 											{Icon ? (

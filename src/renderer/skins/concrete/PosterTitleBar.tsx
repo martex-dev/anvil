@@ -89,6 +89,7 @@ export function PosterTitleBar(): JSX.Element {
 					size='md'
 					label='Toggle side bar'
 					shortcut={shortcutFor('view.toggleSide')}
+					toggle
 					active={layout.sideOpen}
 					icon={<SkinIcon name='sidebar' size={15} />}
 					onClick={layout.toggleSide}
@@ -98,6 +99,7 @@ export function PosterTitleBar(): JSX.Element {
 					size='md'
 					label='Toggle panel'
 					shortcut={shortcutFor('view.togglePanel')}
+					toggle
 					active={layout.panelOpen}
 					icon={<SkinIcon name='panel' size={15} />}
 					onClick={() => layout.togglePanel()}
@@ -107,6 +109,7 @@ export function PosterTitleBar(): JSX.Element {
 					size='md'
 					label='Toggle AI'
 					shortcut={shortcutFor('view.toggleAi')}
+					toggle
 					active={layout.aiOpen}
 					icon={<SkinIcon name='ai' size={15} />}
 					onClick={() => layout.toggleAi()}

@@ -79,14 +79,19 @@ html[data-skin='workbench'] [data-part='terminal-chip'] {
 	background: var(--skin-face);
 	color: var(--text-1);
 	box-shadow: var(--wb-raised);
-	padding-inline: 6px 2px;
+	padding-inline: 0 2px;
+}
+/* The chip's tab button carries the left inset (and the focus rectangle). */
+html[data-skin='workbench'] [data-part='terminal-chip'] > [role='tab'] {
+	padding-left: 6px;
+	border-radius: 0;
 }
 html[data-skin='workbench'] [data-part='terminal-chip'][data-active='true'] {
 	background: var(--wb-dither);
 	color: var(--text-0);
 	box-shadow: var(--wb-pressed);
 }
-html[data-skin='workbench'] [data-part='terminal-chip'] > span:first-child {
+html[data-skin='workbench'] [data-part='terminal-chip'] [role='tab'] > span:first-child {
 	border-radius: 0;
 }
 

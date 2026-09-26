@@ -12,7 +12,11 @@ html[data-skin='workbench'] [data-part='statusbar'] {
 	font-family: var(--wb-ui);
 	font-size: 12px;
 }
-html[data-skin='workbench'] [data-part='statusbar'] > :not(.flex-1) {
+/* Items sit in status groups (so a narrow window clips them); each item is its own field. */
+html[data-skin='workbench'] [data-part='status-group'] {
+	gap: 2px;
+}
+html[data-skin='workbench'] [data-part='status-group'] > * {
 	padding: 0 6px;
 	border-radius: 0;
 	box-shadow: var(--wb-thin-sunken);
@@ -21,7 +25,10 @@ html[data-skin='workbench'] [data-part='statusbar'] > .flex-1 {
 	box-shadow: var(--wb-thin-sunken);
 }
 /* The taskbar tray has the clock. */
-html[data-skin='workbench'] [data-part='statusbar'] > :last-child {
+html[data-skin='workbench']
+	[data-part='statusbar']
+	> [data-part='status-group']:last-child
+	> :last-child {
 	display: none;
 }
 html[data-skin='workbench'] [data-part='statusbar'] .num {

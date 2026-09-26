@@ -96,7 +96,11 @@ html[data-skin='concrete'] [data-part='statusbar'] > span.flex-1 + [data-part='s
 html[data-skin='concrete'] [data-part='statusbar'] > span.flex-1 + * {
 	border-left: var(--cc-rule) solid var(--text-2);
 }
-html[data-skin='concrete'] [data-part='statusbar'] > :last-child {
+html[data-skin='concrete'] [data-part='statusbar'] > :last-child,
+html[data-skin='concrete']
+	[data-part='statusbar']
+	> [data-part='status-group']:last-child
+	> :last-child {
 	border-right: 0;
 }
 html[data-skin='concrete'] button[data-part='status-item']:hover {

@@ -55,7 +55,7 @@ html[data-skin='workbench'] button.inline-flex.size-7:hover {
 }
 html[data-skin='workbench'] button.inline-flex.size-6:active,
 html[data-skin='workbench'] button.inline-flex.size-7:active,
-html[data-skin='workbench'] button.inline-flex[aria-pressed='true'] {
+html[data-skin='workbench'] button.inline-flex:is([aria-pressed='true'], [data-active='true']) {
 	background: var(--wb-dither);
 	color: var(--text-0);
 	box-shadow: var(--wb-thin-sunken);

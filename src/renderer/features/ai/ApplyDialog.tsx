@@ -202,7 +202,7 @@ export function ApplyDialog(): JSX.Element {
 			}}
 		>
 			<RadixDialog.Portal>
-				<RadixDialog.Overlay className='animate-fade fixed inset-0 z-40 bg-scrim backdrop-blur-[2px]' />
+				<RadixDialog.Overlay className='animate-fade fixed inset-0 z-40 bg-scrim scrim-blur' />
 				<RadixDialog.Content
 					className='animate-in fixed top-1/2 left-1/2 z-50 h-[80vh] w-[min(1200px,94vw)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border border-glass-edge bg-bg-1 shadow-panel outline-none'
 					onCloseAutoFocus={(e) => {

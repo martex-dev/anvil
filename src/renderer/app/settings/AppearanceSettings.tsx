@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 
-import { UI_FONTS } from '@shared/fonts';
+import { UI_FONTS, uiFontFamily } from '@shared/fonts';
 import type { Settings } from '@shared/settings';
 
 import { SkinGallery } from '../../features/themes/SkinGallery';
@@ -72,15 +72,21 @@ export function AppearanceSettings({
 					aria-label='Interface font'
 					value={look.uiFontId}
 					onValueChange={(id) => update(uiFontPatch(s, id))}
-					options={skin.fonts.ui.map((id) => ({
-						value: id,
-						label: UI_FONTS.find((f) => f.id === id)?.name ?? id,
-					}))}
+					options={skin.fonts.ui.map((id) => {
+						// Each font previews in its own face, like the editor font list.
+						const family = uiFontFamily(id);
+						return {
+							value: id,
+							label: UI_FONTS.find((f) => f.id === id)?.name ?? id,
+							...(family ? { fontFamily: family } : {}),
+						};
+					})}
 					className='w-52'
 				/>
 			</SettingRow>
 			<SettingRow label='Density' description='Spacing across the whole interface.'>
 				<SettingSegmented
+					aria-label='Density'
 					value={s.density}
 					options={['compact', 'cozy', 'roomy'] as const}
 					onChange={(density) => update({ density })}
@@ -91,6 +97,7 @@ export function AppearanceSettings({
 				description='Scanlines, glows, sweeps and grain. "Off" is calmest and cheapest.'
 			>
 				<SettingSegmented
+					aria-label='Effects'
 					value={s.fx}
 					options={['full', 'subtle', 'off'] as const}
 					onChange={(fx) => update({ fx })}
@@ -105,6 +112,7 @@ export function AppearanceSettings({
 				}
 			>
 				<SettingSegmented
+					aria-label='Side bar'
 					value={s.sidebarSide}
 					options={['skin', 'left', 'right'] as const}
 					onChange={(sidebarSide) => update({ sidebarSide })}
@@ -117,6 +125,7 @@ export function AppearanceSettings({
 						description='Blur and translucency on the panes. "Off" is fastest on integrated GPUs and battery.'
 					>
 						<SettingSegmented
+							aria-label='Glass'
 							value={s.glass}
 							options={['full', 'subtle', 'off'] as const}
 							onChange={(glass) => update({ glass })}

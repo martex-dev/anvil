@@ -78,7 +78,7 @@ function Item({
 		>
 			<button
 				type='button'
-				aria-label={label}
+				aria-label={badge !== undefined && badge > 0 ? `${label}, ${badge} changes` : label}
 				aria-pressed={active}
 				data-part='activity-item'
 				data-view={icon}

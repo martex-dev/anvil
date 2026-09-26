@@ -5,83 +5,21 @@ import { REPO_URL } from '@shared/constants';
 import { SECRET_SPECS } from '@shared/secrets';
 import type { Settings } from '@shared/settings';
 
-import {
-	pickModel,
-	PROVIDER_LABEL,
-	saveAiSettings,
-	useAiSettings,
-} from '../../features/ai/ai-settings';
 import { call } from '../../lib/ipc';
-import { toast } from '../../stores/toast-store';
 import { type SettingsTab, useUiStore } from '../../stores/ui-store';
 import { Button } from '../../ui/Button';
 import { Dialog } from '../../ui/Dialog';
-import { Input } from '../../ui/Input';
+import { ErrorState } from '../../ui/ErrorState';
 import { Tabs } from '../../ui/Tabs';
 import { useSettings } from '../hooks/use-settings';
+import { AiSettings } from './AiSettings';
 import { AppearanceSettings } from './AppearanceSettings';
 import { EditorSettings } from './EditorSettings';
 import { SecretRow } from './SecretRow';
-import { SettingRow } from './SettingRow';
-import { SettingStepper } from './SettingStepper';
-import { SettingToggle } from './SettingToggle';
+import { toastFailure } from './toast-failure';
 import { UpdatesSetting } from './UpdatesSetting';
 
 const SAVED_SECRETS_KEY = ['secrets', 'saved'] as const;
-
-function Ai({ s, update }: { s: Settings; update: (p: Partial<Settings>) => void }): JSX.Element {
-	const { settings, keys } = useAiSettings();
-	if (!settings) return <div className='shimmer h-24 rounded-md' />;
-	return (
-		<div className='divide-y divide-glass-edge'>
-			<SettingRow
-				label='Chat model'
-				description={`Chat, inline edit (Ctrl+I) and one-click actions · ${PROVIDER_LABEL[settings.chat.provider]}${keys?.[settings.chat.provider] ? '' : ' · key missing'}`}
-			>
-				<Button size='sm' onClick={() => void pickModel('chat')}>
-					<span className='font-mono'>{settings.chat.model}</span>
-				</Button>
-			</SettingRow>
-			<SettingRow
-				label='Autocomplete model'
-				description={`Ghost text while typing · ${PROVIDER_LABEL[settings.completion.provider]}. Pick something fast and cheap.`}
-			>
-				<Button size='sm' onClick={() => void pickModel('completion')}>
-					<span className='font-mono'>{settings.completion.model}</span>
-				</Button>
-			</SettingRow>
-			<SettingToggle
-				label='AI autocomplete'
-				description='Suggestions appear in gray; Tab accepts, Esc dismisses.'
-				value={s.ghostText}
-				onChange={(ghostText) => update({ ghostText })}
-			/>
-			<SettingStepper
-				label='Autocomplete delay (×50 ms)'
-				description='Wait this long after you stop typing before asking.'
-				value={Math.round(s.ghostDelayMs / 50)}
-				min={2}
-				max={40}
-				onChange={(v) => update({ ghostDelayMs: v * 50 })}
-			/>
-			<SettingRow
-				label='Ollama server'
-				description='Local models, no key needed (ollama serve).'
-			>
-				<Input
-					key={settings.ollamaUrl}
-					defaultValue={settings.ollamaUrl}
-					className='w-56 font-mono text-12'
-					onBlur={(e) => {
-						const url = e.target.value.trim();
-						if (url && url !== settings.ollamaUrl)
-							void saveAiSettings({ ...settings, ollamaUrl: url });
-					}}
-				/>
-			</SettingRow>
-		</div>
-	);
-}
 
 function Keys(): JSX.Element {
 	const client = useQueryClient();
@@ -89,13 +27,37 @@ function Keys(): JSX.Element {
 		queryKey: SAVED_SECRETS_KEY,
 		queryFn: () => call('secrets:listSaved'),
 	});
-	const set = new Set(saved.data ?? []);
+	const note = (
+		<p className='text-12 text-fg-2'>
+			Encrypted with Windows DPAPI and kept in the main process only. A saved key is never
+			shown again or sent to the UI.
+		</p>
+	);
+	// Without the saved list every row would claim "Missing" and invite re-pasting keys.
+	if (saved.isError)
+		return (
+			<div className='flex flex-col gap-3'>
+				{note}
+				<ErrorState
+					title='Could not read saved keys'
+					message={saved.error.message}
+					onRetry={() => void saved.refetch()}
+				/>
+			</div>
+		);
+	if (!saved.data)
+		return (
+			<div className='flex flex-col gap-3'>
+				{note}
+				{SECRET_SPECS.map((spec) => (
+					<div key={spec.key} className='shimmer h-16 rounded-lg' />
+				))}
+			</div>
+		);
+	const set = new Set(saved.data);
 	return (
 		<div className='flex flex-col gap-3'>
-			<p className='text-12 text-fg-2'>
-				Encrypted with Windows DPAPI and kept in the main process only. A saved key is never
-				shown again or sent to the UI.
-			</p>
+			{note}
 			<ul className='divide-y divide-glass-edge rounded-lg border border-glass-edge'>
 				{SECRET_SPECS.map((spec) => (
 					<SecretRow
@@ -135,8 +97,8 @@ function About({
 						ANVIL
 					</p>
 					<p className='num text-12 text-fg-2'>
-						v{version.data ?? '…'} · an AI code editor for quant, trading, crypto, ML
-						and data work
+						{version.isError ? 'version unknown' : `v${version.data ?? '…'}`} · an AI
+						code editor for quant, trading, crypto, ML and data work
 					</p>
 				</div>
 			</div>
@@ -147,25 +109,20 @@ function About({
 			<div className='flex gap-2'>
 				<Button
 					size='sm'
-					onClick={() => {
-						call('app:openExternal', REPO_URL).catch(() =>
-							toast.error('Could not open link', REPO_URL),
-						);
-					}}
+					onClick={() =>
+						call('app:openExternal', REPO_URL).catch(
+							toastFailure('Could not open GitHub'),
+						)
+					}
 				>
 					Source on GitHub
 				</Button>
 				<Button
 					size='sm'
 					variant='ghost'
-					onClick={() => {
-						call('app:openLogs').catch((error: unknown) => {
-							toast.error(
-								'Could not open the log folder',
-								error instanceof Error ? error.message : undefined,
-							);
-						});
-					}}
+					onClick={() =>
+						call('app:openLogs').catch(toastFailure('Could not open the logs'))
+					}
 				>
 					Open logs
 				</Button>
@@ -179,8 +136,25 @@ export function SettingsDialog(): JSX.Element {
 	const setOpen = useUiStore((st) => st.setSettingsOpen);
 	const tab = useUiStore((st) => st.settingsTab);
 	const setTab = useUiStore((st) => st.setSettingsTab);
-	const { settings, update } = useSettings();
+	const { settings, update, isLoading, error, refetch } = useSettings();
 	const pane = (node: ReactNode): JSX.Element => <div className='px-5 py-2'>{node}</div>;
+	// Editing defaults shown in place of unloaded settings would overwrite the real ones.
+	if (error || isLoading)
+		return (
+			<Dialog open={open} onOpenChange={setOpen} title='Settings' width='lg'>
+				<div className='-mx-4 -my-3 h-[62vh] px-5 py-4'>
+					{error ? (
+						<ErrorState
+							title='Could not load settings'
+							message={error.message}
+							onRetry={refetch}
+						/>
+					) : (
+						<div className='shimmer h-full rounded-md' />
+					)}
+				</div>
+			</Dialog>
+		);
 	return (
 		<Dialog open={open} onOpenChange={setOpen} title='Settings' width='lg'>
 			<div className='-mx-4 -my-3 h-[62vh]'>
@@ -204,7 +178,7 @@ export function SettingsDialog(): JSX.Element {
 						{
 							value: 'ai',
 							label: 'AI',
-							content: pane(<Ai s={settings} update={update} />),
+							content: pane(<AiSettings s={settings} update={update} />),
 						},
 						{ value: 'keys', label: 'API Keys', content: pane(<Keys />) },
 						{

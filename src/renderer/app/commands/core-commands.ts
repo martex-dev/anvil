@@ -17,12 +17,14 @@ import {
 import { VIEW_META } from '../../app/ActivityBar';
 import { closeFolder, openFolderDialog } from '../../features/explorer/workspace-actions';
 import { call } from '../../lib/ipc';
+import { focusedEditor } from '../../lib/monaco/editors';
 import { SIDE_VIEWS, type SideView, useLayoutStore } from '../../stores/layout-store';
 import { useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
 import { useUiStore } from '../../stores/ui-store';
 import { useViewFocus } from '../../stores/view-focus-store';
 import { getSettings, updateSettings } from '../hooks/use-settings';
+import { updateCheckToast } from '../update-text';
 import type { Command } from './types';
 
 const VIEW_KEYS: Partial<Record<SideView, string>> = {
@@ -45,6 +47,27 @@ const viewCommands: Command[] = SIDE_VIEWS.map((view) => ({
 		useViewFocus.getState().request(view);
 	},
 }));
+
+/**
+ * Ctrl+1 / Ctrl+2: make the group current and move the keyboard there too, so typing goes into
+ * it even when the shortcut was pressed in the terminal or side bar.
+ */
+function focusGroup(index: number): void {
+	const group = useTabsStore.getState().groups[index];
+	if (!group) return;
+	useTabsStore.getState().focus(group.id);
+	const editor = focusedEditor();
+	if (editor) {
+		editor.focus();
+		return;
+	}
+	// A viewer (data grid, diff, image) or an empty group: land on its active tab instead.
+	document
+		.querySelector<HTMLElement>(
+			`section[aria-label="Editor group ${group.id + 1}"] [role="tab"][aria-selected="true"]`,
+		)
+		?.focus();
+}
 
 export const CORE_COMMANDS: Command[] = [
 	{
@@ -168,28 +191,25 @@ export const CORE_COMMANDS: Command[] = [
 		title: 'Toggle Full Screen',
 		category: 'View',
 		shortcut: 'F11',
+		allowInOverlay: true,
 		icon: Maximize,
-		run: () => void call('app:toggleFullScreen'),
+		run: async () => {
+			await call('app:toggleFullScreen');
+		},
 	},
 	{
 		id: 'view.focusGroup1',
 		title: 'Focus First Editor Group',
 		category: 'View',
 		shortcut: 'Ctrl+1',
-		run: () => {
-			const g = useTabsStore.getState().groups[0];
-			if (g) useTabsStore.getState().focus(g.id);
-		},
+		run: () => focusGroup(0),
 	},
 	{
 		id: 'view.focusGroup2',
 		title: 'Focus Second Editor Group',
 		category: 'View',
 		shortcut: 'Ctrl+2',
-		run: () => {
-			const g = useTabsStore.getState().groups[1];
-			if (g) useTabsStore.getState().focus(g.id);
-		},
+		run: () => focusGroup(1),
 	},
 	{
 		id: 'anvil.welcome',
@@ -240,34 +260,33 @@ export const CORE_COMMANDS: Command[] = [
 		title: 'Reload Window',
 		category: 'Anvil',
 		icon: RefreshCw,
-		run: () => void call('app:reloadWindow'),
+		run: async () => {
+			await call('app:reloadWindow');
+		},
 	},
 	{
 		id: 'anvil.devtools',
 		title: 'Toggle Developer Tools',
 		category: 'Anvil',
-		run: () => void call('app:toggleDevTools'),
+		run: async () => {
+			await call('app:toggleDevTools');
+		},
 	},
 	{
 		id: 'anvil.logs',
 		title: 'Open Log Folder',
 		category: 'Anvil',
-		run: () => call('app:openLogs'),
+		run: async () => {
+			await call('app:openLogs');
+		},
 	},
 	{
 		id: 'anvil.checkUpdates',
 		title: 'Check for Updates',
 		category: 'Anvil',
 		run: async () => {
-			const s = await call('update:check');
-			toast.info(
-				'Updates',
-				s.state === 'disabled'
-					? s.reason
-					: s.state === 'idle'
-						? 'You are up to date'
-						: s.state,
-			);
+			const t = updateCheckToast(await call('update:check'));
+			toast[t.tone](t.title, t.description);
 		},
 	},
 ];

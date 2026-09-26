@@ -69,6 +69,7 @@ export function HoloTitleBar(): JSX.Element {
 					size='sm'
 					label='Toggle side bar'
 					shortcut={shortcutFor('view.toggleSide')}
+					toggle
 					active={layout.sideOpen}
 					icon={<SkinIcon name='sidebar' size={15} />}
 					onClick={layout.toggleSide}
@@ -77,6 +78,7 @@ export function HoloTitleBar(): JSX.Element {
 					size='sm'
 					label='Toggle panel'
 					shortcut={shortcutFor('view.togglePanel')}
+					toggle
 					active={layout.panelOpen}
 					icon={<SkinIcon name='panel' size={15} />}
 					onClick={() => layout.togglePanel()}
@@ -85,6 +87,7 @@ export function HoloTitleBar(): JSX.Element {
 					size='sm'
 					label='Toggle AI'
 					shortcut={shortcutFor('view.toggleAi')}
+					toggle
 					active={layout.aiOpen}
 					icon={<SkinIcon name='ai' size={16} />}
 					onClick={() => layout.toggleAi()}
