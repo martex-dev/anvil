@@ -128,10 +128,13 @@ export function EditorBridge(): null {
 				.open({ id: 'welcome', kind: 'welcome', path: null, title: 'Welcome' });
 			return;
 		}
+		// Switching folders again mid-restore stops this loop: its tabs belong to the old root.
+		let cancelled = false;
 		void (async () => {
 			try {
 				for (const [gi, g] of session.groups.entries()) {
 					for (const t of g.tabs) {
+						if (cancelled) return;
 						if (!t.path) continue;
 						await openPath(root, {
 							path: t.path,
@@ -144,6 +147,7 @@ export function EditorBridge(): null {
 							focus: false,
 						});
 					}
+					if (cancelled) return;
 					const group = useTabsStore.getState().groups[gi];
 					const active = group?.tabIds[g.active];
 					if (group && active) useTabsStore.getState().activate(group.id, active);
@@ -154,6 +158,9 @@ export function EditorBridge(): null {
 				rlog.warn('editor', 'session restore failed', error);
 			}
 		})();
+		return () => {
+			cancelled = true;
+		};
 	}, [root]);
 
 	useEffect(() => {

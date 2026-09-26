@@ -99,3 +99,21 @@ describe('canOpenAsTable', () => {
 			expect(canOpenAsTable(path), path).toBe(false);
 	});
 });
+
+describe('openPath after its tab closed', () => {
+	it('does not read a file whose tab closed while Monaco loaded', async () => {
+		let finish = (): void => undefined;
+		loadMonaco.mockReturnValueOnce(
+			new Promise((resolve) => {
+				finish = () => resolve({});
+			}),
+		);
+		openFile.mockClear();
+		const opening = openPath('C:/old', { path: 'a.py', focus: false });
+		// The folder changes mid-restore: every tab of the old one closes.
+		closeAllTabs();
+		finish();
+		await opening;
+		expect(openFile).not.toHaveBeenCalled();
+	});
+});

@@ -124,6 +124,8 @@ export async function openPath(root: string, request: OpenFileRequest): Promise<
 		return;
 	}
 	unloaded.delete(request.path);
+	// The tab was closed while Monaco loaded (e.g. the folder changed): nothing to read into.
+	if (!useTabsStore.getState().tabs[tab.id]) return;
 	await openFile(monaco, root, request.path);
 }
 
