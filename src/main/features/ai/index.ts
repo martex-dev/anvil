@@ -2,7 +2,8 @@ import { type AiProvider, type AiSettings, AiSettingsSchema } from '@shared/ipc/
 
 import { AnvilError } from '../../core/errors';
 import type { MainFeature } from '../../core/features';
-import { AiService, gitDiff } from './ai-service';
+import { AiService } from './ai-service';
+import { gitDiff } from './git-diff';
 import { PROVIDER_SECRET } from './providers';
 
 /**
@@ -45,7 +46,8 @@ export const aiFeature: MainFeature = {
 			// Fire and forget: the reply streams back as events, so the IPC call returns at once.
 			void ai.stream(requestId, mode, model, messages, context, {
 				delta: (text) => ctx.emit('ai:delta', { requestId, text }),
-				done: (usage, cancelled) => ctx.emit('ai:done', { requestId, ...usage, cancelled }),
+				done: (usage, cancelled, truncated = false) =>
+					ctx.emit('ai:done', { requestId, ...usage, cancelled, truncated }),
 				error: (message) => {
 					ctx.log.warn('ai request failed', { ...model, mode, message });
 					ctx.emit('ai:error', { requestId, message });
@@ -58,6 +60,7 @@ export const aiFeature: MainFeature = {
 				return { text: await ai.complete(requestId, settings().completion, input) };
 			} catch (error) {
 				// Surface it (the status bar shows the reason) but never as an unhandled crash.
+				if (error instanceof AnvilError) throw error;
 				throw new AnvilError(
 					'AI_COMPLETE_FAILED',
 					error instanceof Error ? error.message : String(error),

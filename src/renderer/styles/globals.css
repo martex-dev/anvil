@@ -383,6 +383,16 @@ html[data-reduce-motion='true'] .shimmer {
 	}
 }
 
+/* The loading sweep is infinite, so the zeroed --dur tokens don't reach it: stop it outright. */
+html[data-reduce-motion='true'] .shimmer {
+	animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+	.shimmer {
+		animation: none;
+	}
+}
+
 @keyframes grid-drift {
 	from {
 		transform: translateY(0);
@@ -424,6 +434,15 @@ html[data-reduce-motion='true'] .shimmer {
 	}
 	50% {
 		opacity: 0.35;
+	}
+}
+/* Same for the busy pulse (AI generating, ghost text status): it stays fully visible. */
+html[data-reduce-motion='true'] .pulse-dot {
+	animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+	.pulse-dot {
+		animation: none;
 	}
 }
 

@@ -37,15 +37,22 @@ export function activeEditor(): ActiveEditor | null {
 	return { path, language: model.getLanguageId(), editor, model, selection };
 }
 
-const MAX_FILE = 200_000;
+/** Per-file cap, well under the 400k-character limit on each context item. */
+export const MAX_FILE = 200_000;
+
+/** A file's text cut to fit one context item, marked so the model knows it's partial. */
+export function truncateForContext(text: string): { text: string; truncated: boolean } {
+	return text.length > MAX_FILE
+		? { text: `${text.slice(0, MAX_FILE)}\n… (truncated)`, truncated: true }
+		: { text, truncated: false };
+}
 
 export function fileContext(editor: Pick<ActiveEditor, 'path' | 'language' | 'model'>): AiContext {
-	const text = editor.model.getValue();
 	return {
 		kind: 'file',
 		label: editor.path,
 		language: editor.language,
-		text: text.length > MAX_FILE ? `${text.slice(0, MAX_FILE)}\n… (truncated)` : text,
+		text: truncateForContext(editor.model.getValue()).text,
 	};
 }
 

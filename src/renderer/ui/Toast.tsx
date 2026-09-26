@@ -45,6 +45,15 @@ export function Toaster(): JSX.Element {
 							</RadixToast.Description>
 						)}
 					</div>
+					{t.action && (
+						<RadixToast.Action
+							altText={t.action.label}
+							onClick={t.action.run}
+							className='rounded-sm px-1.5 py-0.5 text-12 font-medium text-accent outline-none hover:bg-bg-3 focus-visible:shadow-glow'
+						>
+							{t.action.label}
+						</RadixToast.Action>
+					)}
 					<RadixToast.Close
 						aria-label='Dismiss'
 						className='rounded-sm p-0.5 text-fg-2 hover:bg-bg-3 hover:text-fg-0'

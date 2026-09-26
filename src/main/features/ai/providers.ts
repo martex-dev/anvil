@@ -22,7 +22,14 @@ export interface StreamChunk {
 	error?: string;
 	inputTokens?: number;
 	outputTokens?: number;
+	/** The reply hit the output-token limit and was cut off. */
+	truncated?: boolean;
+	/** The provider withheld the reply (safety filter, prompt blocked); a readable reason. */
+	blocked?: string;
 }
+
+/** SAFETY / PROHIBITED_CONTENT → "safety" / "prohibited content". */
+const readable = (reason: unknown): string => String(reason).toLowerCase().replace(/_/g, ' ');
 
 export const PROVIDER_SECRET: Record<Exclude<AiProvider, 'ollama'>, string> = {
 	anthropic: 'anthropic.key',
@@ -115,6 +122,9 @@ const parse = (data: string): Obj | null => {
 	}
 };
 
+/** Gemini finish reasons that are not a block (MAX_TOKENS is reported as truncation). */
+const GEMINI_OK_FINISH = new Set(['STOP', 'MAX_TOKENS', 'FINISH_REASON_UNSPECIFIED']);
+
 /** One SSE event → what it means for the conversation. */
 export function parseEvent(provider: AiProvider, event: SseEvent): StreamChunk {
 	if ((provider === 'openai' || provider === 'ollama') && event.data === '[DONE]')
@@ -140,12 +150,16 @@ export function parseEvent(provider: AiProvider, event: SseEvent): StreamChunk {
 				return { inputTokens: Number(usage['input_tokens'] ?? 0) + cached };
 			}
 			if (type === 'message_delta') {
-				if (obj(json['delta'])['stop_reason'] === 'refusal') {
+				const stop = obj(json['delta'])['stop_reason'];
+				if (stop === 'refusal') {
 					return {
 						error: 'Claude declined this request. Rephrase it or try another model.',
 					};
 				}
-				return { outputTokens: Number(obj(json['usage'])['output_tokens'] ?? 0) };
+				return {
+					outputTokens: Number(obj(json['usage'])['output_tokens'] ?? 0),
+					...(stop === 'max_tokens' ? { truncated: true } : {}),
+				};
 			}
 			if (type === 'message_stop') return { done: true };
 			return {};
@@ -155,8 +169,11 @@ export function parseEvent(provider: AiProvider, event: SseEvent): StreamChunk {
 			const choice = obj((json['choices'] as unknown[] | undefined)?.[0]);
 			const usage = obj(json['usage']);
 			const content = obj(choice['delta'])['content'];
+			const finish = choice['finish_reason'];
 			return {
 				...(typeof content === 'string' && content ? { text: content } : {}),
+				...(finish === 'length' ? { truncated: true } : {}),
+				...(finish === 'content_filter' ? { blocked: 'content filter' } : {}),
 				...(usage['prompt_tokens'] !== undefined
 					? {
 							inputTokens: Number(usage['prompt_tokens']),
@@ -170,8 +187,18 @@ export function parseEvent(provider: AiProvider, event: SseEvent): StreamChunk {
 			const parts = (obj(candidate['content'])['parts'] as unknown[] | undefined) ?? [];
 			const text = parts.map((p) => String(obj(p)['text'] ?? '')).join('');
 			const usage = obj(json['usageMetadata']);
+			const finish = candidate['finishReason'];
+			const promptBlock = obj(json['promptFeedback'])['blockReason'];
+			const blocked =
+				promptBlock !== undefined
+					? `prompt: ${readable(promptBlock)}`
+					: typeof finish === 'string' && !GEMINI_OK_FINISH.has(finish)
+						? readable(finish)
+						: undefined;
 			return {
 				...(text ? { text } : {}),
+				...(finish === 'MAX_TOKENS' ? { truncated: true } : {}),
+				...(blocked ? { blocked } : {}),
 				...(usage['promptTokenCount'] !== undefined
 					? {
 							inputTokens: Number(usage['promptTokenCount']),
