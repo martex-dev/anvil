@@ -3,6 +3,20 @@
 What changed in each release of Anvil. The release workflow publishes a version's section as
 its GitHub release notes.
 
+## [0.3.1] - 2026-09-27
+
+Updates reach installed copies on their own.
+
+### Changed
+
+- **release:** Merging a version bump to main publishes the release: the workflow tags the commit, builds the installer and uploads it, with no tag to push by hand
+- **release:** Release notes list every changelog section since the previous release
+
+### Fixed
+
+- **update:** Check for updates after the computer wakes from sleep, instead of waiting up to six hours
+- **release:** Only the highest version is marked Latest, so an older release published late can't be offered to installed copies
+
 ## [0.2.9] - 2026-09-26
 
 Data and file viewers: 50 fixes from the full bug sweep of 0.2.0.
