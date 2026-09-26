@@ -39,6 +39,9 @@ function detectEol(text: string): '\n' | '\r\n' {
 	return crlf !== -1 && crlf < lf + 1 ? '\r\n' : '\n';
 }
 
+/** Folders and links to folders (junctions, pnpm links) sort and behave as folders. */
+const isFolderLike = (e: FsEntry): boolean => e.kind === 'dir' || e.targetKind === 'dir';
+
 /** Workspace-scoped file operations. Every path goes through the guard first. */
 export class FsService {
 	constructor(private readonly host: FsHost) {}
@@ -59,13 +62,15 @@ export class FsService {
 			dirents.map(async (d): Promise<FsEntry | null> => {
 				const abs = join(dir, d.name);
 				try {
-					const s = d.isSymbolicLink()
-						? await stat(abs).catch(() => lstat(abs))
-						: await lstat(abs);
+					const link = d.isSymbolicLink();
+					// A broken link has no target to stat; fall back to the link itself.
+					const target = link ? await stat(abs).catch(() => null) : null;
+					const s = target ?? (await lstat(abs));
 					return {
 						name: d.name,
 						path: toRelative(root, abs),
-						kind: d.isSymbolicLink() ? 'symlink' : s.isDirectory() ? 'dir' : 'file',
+						kind: link ? 'symlink' : s.isDirectory() ? 'dir' : 'file',
+						...(target ? { targetKind: target.isDirectory() ? 'dir' : 'file' } : {}),
 						size: s.size,
 						mtimeMs: s.mtimeMs,
 					};
@@ -78,8 +83,8 @@ export class FsService {
 		return entries
 			.filter((e): e is FsEntry => e !== null)
 			.sort((a, b) => {
-				const ad = a.kind === 'dir' ? 0 : 1;
-				const bd = b.kind === 'dir' ? 0 : 1;
+				const ad = isFolderLike(a) ? 0 : 1;
+				const bd = isFolderLike(b) ? 0 : 1;
 				return (
 					ad - bd ||
 					a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true })
@@ -181,10 +186,12 @@ export class FsService {
 
 	private async entry(root: string, abs: string): Promise<FsEntry> {
 		const s = await lstat(abs);
+		const target = s.isSymbolicLink() ? await stat(abs).catch(() => null) : null;
 		return {
 			name: basename(abs),
 			path: toRelative(root, abs),
 			kind: s.isSymbolicLink() ? 'symlink' : s.isDirectory() ? 'dir' : 'file',
+			...(target ? { targetKind: target.isDirectory() ? 'dir' : 'file' } : {}),
 			size: s.size,
 			mtimeMs: s.mtimeMs,
 		};

@@ -9,6 +9,8 @@ export const FsEntrySchema = z.object({
 	name: z.string(),
 	path: z.string(),
 	kind: z.enum(['file', 'dir', 'symlink']),
+	/** For a symlink or junction: what it points at. Absent when the link is broken. */
+	targetKind: z.enum(['file', 'dir']).optional(),
 	size: z.number(),
 	mtimeMs: z.number(),
 });

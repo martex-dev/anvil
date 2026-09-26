@@ -2,7 +2,7 @@ import type { KeyboardEvent } from 'react';
 
 import type { FsEntry } from '@shared/ipc/channels/fs';
 
-import { parentOf, type TreeRow } from './tree-model';
+import { isFolder, parentOf, type TreeRow } from './tree-model';
 
 interface KeyboardDeps {
 	rows: TreeRow[];
@@ -40,14 +40,13 @@ export function treeKeyHandler(deps: KeyboardDeps): (event: KeyboardEvent) => vo
 				move(entries.length - 1);
 				break;
 			case 'ArrowRight':
-				if (!current || current.entry.kind !== 'dir') return;
+				if (!current || !isFolder(current.entry)) return;
 				if (!current.expanded) deps.toggle(current.entry.path);
 				else move(index + 1);
 				break;
 			case 'ArrowLeft':
 				if (!current) return;
-				if (current.entry.kind === 'dir' && current.expanded)
-					deps.toggle(current.entry.path);
+				if (isFolder(current.entry) && current.expanded) deps.toggle(current.entry.path);
 				else if (parentOf(current.entry.path))
 					deps.setFocused(parentOf(current.entry.path));
 				break;

@@ -5,6 +5,7 @@ import type { FsEntry } from '@shared/ipc/channels/fs';
 
 import { cn } from '../../lib/cn';
 import { EntryIcon } from './EntryIcon';
+import { isFolder } from './tree-model';
 
 const IGNORED = new Set([
 	'node_modules',
@@ -38,7 +39,7 @@ export function TreeRowView({
 	onDoubleClick,
 	onContextMenu,
 }: TreeRowViewProps): JSX.Element {
-	const isDir = entry.kind === 'dir';
+	const isDir = isFolder(entry);
 	return (
 		<div
 			role='treeitem'

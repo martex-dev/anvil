@@ -6,6 +6,7 @@ import {
 	ancestorsOf,
 	buildRows,
 	type DirState,
+	isFolder,
 	joinPath,
 	neighbourAfterRemoval,
 	newNameProblem,
@@ -130,5 +131,30 @@ describe('newNameProblem', () => {
 
 	it('flags an existing sibling, ignoring case', () => {
 		expect(newNameProblem('A.PY', ['a.py'])).toBe('"A.PY" already exists');
+	});
+});
+
+describe('folder links', () => {
+	const link = (path: string, targetKind?: 'file' | 'dir'): FsEntry => ({
+		...e(path, 'symlink'),
+		...(targetKind ? { targetKind } : {}),
+	});
+
+	it('treats a link to a folder as a folder, but not a file link or a broken one', () => {
+		expect(isFolder(link('pkg', 'dir'))).toBe(true);
+		expect(isFolder(link('a.py', 'file'))).toBe(false);
+		expect(isFolder(link('gone'))).toBe(false);
+	});
+
+	it('expands a linked folder like a real one', () => {
+		const dirs = new Map<string, DirState>([
+			['', { entries: [link('pkg', 'dir')] }],
+			['pkg', { entries: [e('pkg/mod.py')] }],
+		]);
+		const rows = buildRows(dirs, new Set(['pkg']));
+		expect(rows.map((r) => (r.kind === 'entry' ? r.entry.path : r.kind))).toEqual([
+			'pkg',
+			'pkg/mod.py',
+		]);
 	});
 });

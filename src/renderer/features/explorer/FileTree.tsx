@@ -14,6 +14,7 @@ import { useFsActions } from './fs-actions';
 import { InlineNameInput } from './InlineNameInput';
 import {
 	ancestorsOf,
+	isFolder,
 	isWithin,
 	neighbourAfterRemoval,
 	parentOf,
@@ -45,7 +46,7 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 
 	const focusedEntry = tree.rows.find((r) => r.kind === 'entry' && r.entry.path === focused);
 	const baseDir = (entry: FsEntry | null | undefined): string =>
-		!entry ? '' : entry.kind === 'dir' ? entry.path : parentOf(entry.path);
+		!entry ? '' : isFolder(entry) ? entry.path : parentOf(entry.path);
 
 	const startCreate = (kind: 'file' | 'dir', target?: FsEntry | null): void => {
 		const parent = baseDir(
@@ -111,7 +112,7 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 	}, [focused, tree.rows]);
 
 	const openEntry = (entry: FsEntry): void => {
-		if (entry.kind === 'dir') {
+		if (isFolder(entry)) {
 			tree.toggle(entry.path);
 			return;
 		}
@@ -252,7 +253,7 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 								active={activeFile === row.entry.path}
 								onClick={() => {
 									setFocused(row.entry.path);
-									if (row.entry.kind === 'dir') tree.toggle(row.entry.path);
+									if (isFolder(row.entry)) tree.toggle(row.entry.path);
 									else openEntry(row.entry);
 								}}
 								onDoubleClick={() => undefined}

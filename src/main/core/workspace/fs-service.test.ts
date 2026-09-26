@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -28,6 +36,20 @@ describe('FsService', () => {
 			['src', 'dir', 'src'],
 			['img.png', 'file', 'img.png'],
 			['README.md', 'file', 'README.md'],
+		]);
+	});
+
+	it('lists links to folders as folders, and says what a link points at', async () => {
+		// 'junction' needs no admin rights on Windows and is ignored elsewhere.
+		symlinkSync(join(root, 'src'), join(root, 'linked'), 'junction');
+		symlinkSync(join(root, 'missing'), join(root, 'broken'), 'junction');
+		const entries = await fs.list('');
+		expect(entries.map((e) => [e.name, e.kind, e.targetKind])).toEqual([
+			['linked', 'symlink', 'dir'],
+			['src', 'dir', undefined],
+			['broken', 'symlink', undefined],
+			['img.png', 'file', undefined],
+			['README.md', 'file', undefined],
 		]);
 	});
 

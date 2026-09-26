@@ -17,6 +17,11 @@ export interface PendingCreate {
 	kind: 'file' | 'dir';
 }
 
+/** Folders and links that point at folders (junctions, pnpm links) expand like folders. */
+export function isFolder(entry: FsEntry): boolean {
+	return entry.kind === 'dir' || (entry.kind === 'symlink' && entry.targetKind === 'dir');
+}
+
 /** Flattens the visible part of the tree (root + expanded folders) into rows for rendering. */
 export function buildRows(
 	dirs: ReadonlyMap<string, DirState>,
@@ -38,7 +43,7 @@ export function buildRows(
 			return;
 		}
 		for (const entry of state.entries ?? []) {
-			const isOpen = entry.kind === 'dir' && expanded.has(entry.path);
+			const isOpen = isFolder(entry) && expanded.has(entry.path);
 			rows.push({ kind: 'entry', entry, depth, expanded: isOpen });
 			if (isOpen) walk(entry.path, depth + 1);
 		}
