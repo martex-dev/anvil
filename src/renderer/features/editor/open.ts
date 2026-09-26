@@ -121,13 +121,10 @@ export async function openPath(root: string, request: OpenFileRequest): Promise<
 	try {
 		monaco = await loadMonaco(editorPrefs());
 	} catch (error) {
-		// The tab stays open behind the editor's error state; Retry picks the file up again.
+		// The tab stays open behind the editor's error state, which reports the failure (no toast
+		// per file: a session restore would stack one for every tab); Retry picks the file up.
 		unloaded.set(request.path, root);
-		rlog.error('editor', 'editor failed to load', error);
-		toast.error(
-			'The editor failed to load',
-			error instanceof Error ? error.message : undefined,
-		);
+		rlog.error('editor', `editor failed to load for ${request.path}`, error);
 		return;
 	}
 	unloaded.delete(request.path);

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { MonacoApi } from '../../lib/monaco/setup';
 import { useTabsStore } from '../../stores/tabs-store';
+import { useToastStore } from '../../stores/toast-store';
 import { useEditorStore } from './editor-store';
 
 vi.mock('../../lib/ipc', () => ({ call: vi.fn() }));
@@ -134,6 +135,8 @@ describe('opening files after Monaco failed to load', () => {
 		await openPath('C:/proj', { path: 'a.py' });
 		await openPath('C:/proj', { path: 'b.py' });
 		expect(openFile).not.toHaveBeenCalled();
+		// The editor area's error state reports it once; no toast per file.
+		expect(useToastStore.getState().toasts).toEqual([]);
 		// b.py's tab was closed in the meantime; only a.py is still waiting.
 		useTabsStore.getState().close(0, 'code:b.py');
 		await openUnloadedFiles(monaco);
