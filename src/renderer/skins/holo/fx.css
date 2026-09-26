@@ -1,0 +1,230 @@
+/*
+ * Holo HUD space and effects. Every moving part animates transform or opacity only, and only
+ * with effects set to full; 'subtle' keeps the static grid and rings, 'off' leaves plain space.
+ */
+
+/* ---- Backdrop: deep space, hex grid, targeting ring ---------------------------------------- */
+
+html[data-skin='holo'] .ho-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 0;
+	pointer-events: none;
+	overflow: hidden;
+	background:
+		radial-gradient(
+			ellipse 60% 55% at 50% 52%,
+			color-mix(in oklab, var(--skin-void) 85%, transparent),
+			transparent 72%
+		),
+		radial-gradient(
+			1000px 460px at 50% 115%,
+			color-mix(in oklab, var(--accent) 16%, transparent),
+			transparent 70%
+		),
+		radial-gradient(
+			800px 420px at -5% -10%,
+			color-mix(in oklab, var(--accent-2) 12%, transparent),
+			transparent 70%
+		),
+		var(--bg-0);
+}
+
+html[data-skin='holo'] .ho-hexgrid {
+	position: absolute;
+	inset: 0;
+	mask-image: radial-gradient(ellipse 85% 75% at 50% 50%, var(--bg-0) 25%, transparent 90%);
+}
+html[data-skin='holo'] .ho-hexgrid path {
+	fill: none;
+	stroke: var(--skin-grid);
+	stroke-width: 1;
+}
+
+html[data-skin='holo'] .ho-radar {
+	position: absolute;
+	left: 50%;
+	top: 52%;
+	width: min(120vmin, 1180px);
+	aspect-ratio: 1;
+	transform: translate(-50%, -50%);
+}
+html[data-skin='holo'] .ho-radar-layer {
+	position: absolute;
+	inset: 0;
+	display: block;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+}
+html[data-skin='holo'] .ho-radar-layer > svg {
+	display: block;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+}
+html[data-skin='holo'] .ho-ring {
+	fill: none;
+	stroke: color-mix(in oklab, var(--accent) 24%, transparent);
+	stroke-width: 1.2;
+	vector-effect: non-scaling-stroke;
+}
+html[data-skin='holo'] .ho-ring-faint {
+	stroke: color-mix(in oklab, var(--accent) 13%, transparent);
+}
+html[data-skin='holo'] .ho-ring-dash {
+	stroke-dasharray: 6 10;
+}
+html[data-skin='holo'] .ho-ring-hot {
+	stroke: color-mix(in oklab, var(--accent) 50%, transparent);
+}
+html[data-skin='holo'] .ho-ring-arcs {
+	stroke: color-mix(in oklab, var(--accent) 32%, transparent);
+	stroke-width: 3;
+	stroke-dasharray: 300 140 80 400 30 1312;
+}
+html[data-skin='holo'] .ho-ring-arcs-sm {
+	stroke: color-mix(in oklab, var(--accent-2) 38%, transparent);
+	stroke-width: 2;
+	stroke-dasharray: 120 60 20 300 200 808;
+}
+html[data-skin='holo'] .ho-ring-label {
+	font-family: var(--font-display);
+	font-size: 15px;
+	font-weight: 700;
+	letter-spacing: 0.2em;
+	fill: color-mix(in oklab, var(--accent) 55%, transparent);
+}
+html[data-skin='holo'] .ho-sweep {
+	border-radius: 50%;
+	background: conic-gradient(
+		transparent 0deg 290deg,
+		color-mix(in oklab, var(--accent) 16%, transparent) 359deg,
+		transparent 360deg
+	);
+	mask-image: radial-gradient(circle closest-side, var(--bg-0) 93%, transparent 94%);
+	opacity: 0;
+}
+
+/* ---- Overlay: interlace and a scan beam ---------------------------------------------------- */
+
+html[data-skin='holo'] .ho-overlay {
+	display: none;
+}
+
+/* ---- Effects: full ------------------------------------------------------------------------- */
+
+html[data-skin='holo'][data-fx='full'] .ho-spin {
+	animation: ho-rotate 150s linear infinite;
+	will-change: transform;
+}
+html[data-skin='holo'][data-fx='full'] .ho-spin-rev {
+	animation: ho-rotate 240s linear infinite reverse;
+	will-change: transform;
+}
+html[data-skin='holo'][data-fx='full'] .ho-sweep {
+	opacity: 1;
+	animation: ho-rotate 10s linear infinite;
+	will-change: transform;
+}
+
+html[data-skin='holo'][data-fx='full'] .ho-overlay {
+	display: block;
+	position: fixed;
+	inset: 0;
+	z-index: 40;
+	pointer-events: none;
+	overflow: hidden;
+}
+html[data-skin='holo'][data-fx='full'] .ho-overlay::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: repeating-linear-gradient(0deg, var(--skin-beam) 0 1px, transparent 1px 3px);
+	opacity: 0.3;
+}
+html[data-skin='holo'][data-fx='full'] .ho-scanbeam {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 160px;
+	background: linear-gradient(
+		180deg,
+		transparent,
+		var(--skin-beam) 75%,
+		color-mix(in oklab, var(--accent) 28%, transparent) 99%,
+		transparent
+	);
+	transform: translateY(-180px);
+	animation: ho-scan 12s linear infinite 2s;
+	will-change: transform;
+}
+
+/* Panes materialize when they mount: a quick flicker while they unfold. */
+html[data-skin='holo'][data-fx='full'] .glass {
+	animation: ho-boot 460ms var(--ease-out) both;
+}
+html[data-skin='holo'][data-fx='full'] [data-part='sidebar-slot'] .glass {
+	animation-delay: 60ms;
+}
+html[data-skin='holo'][data-fx='full'] [data-part='chat'].glass {
+	animation-delay: 120ms;
+}
+
+@keyframes ho-rotate {
+	to {
+		transform: rotate(360deg);
+	}
+}
+@keyframes ho-scan {
+	0% {
+		transform: translateY(-180px);
+	}
+	40%,
+	100% {
+		transform: translateY(100vh);
+	}
+}
+@keyframes ho-boot {
+	0% {
+		opacity: 0;
+		transform: scaleY(0.92);
+	}
+	35% {
+		opacity: 0.75;
+	}
+	50% {
+		opacity: 0.3;
+	}
+	70% {
+		opacity: 0.9;
+	}
+	100% {
+		opacity: 1;
+		transform: none;
+	}
+}
+@keyframes ho-blink {
+	50% {
+		opacity: 0.25;
+	}
+}
+
+/* ---- Effects: off -------------------------------------------------------------------------- */
+
+html[data-skin='holo'][data-fx='off'] .ho-backdrop {
+	background: var(--bg-0);
+}
+html[data-skin='holo'][data-fx='off'] .ho-hexgrid,
+html[data-skin='holo'][data-fx='off'] .ho-radar,
+html[data-skin='holo'][data-ambient='false'] .ho-hexgrid,
+html[data-skin='holo'][data-ambient='false'] .ho-radar {
+	display: none;
+}
+html[data-skin='holo'][data-fx='off'] * {
+	text-shadow: none !important;
+}
+html[data-skin='holo'][data-fx='off'] [data-part='pane-header'] {
+	background: none;
+}
