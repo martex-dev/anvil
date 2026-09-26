@@ -1,10 +1,11 @@
-import { ChevronRight, Folder, FolderOpen, Link2 } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import type { JSX } from 'react';
 
 import type { FsEntry } from '@shared/ipc/channels/fs';
 
 import { cn } from '../../lib/cn';
-import { FileBadge } from '../../ui/FileBadge';
+import { EntryIcon } from './EntryIcon';
+import { isFolder, treeItemId } from './tree-model';
 
 const IGNORED = new Set([
 	'node_modules',
@@ -16,17 +17,6 @@ const IGNORED = new Set([
 	'.ruff_cache',
 	'.pytest_cache',
 ]);
-
-function FileIcon({ entry, open }: { entry: FsEntry; open: boolean }): JSX.Element {
-	if (entry.kind === 'dir')
-		return open ? (
-			<FolderOpen size={14} className='text-accent/80' />
-		) : (
-			<Folder size={14} className='text-accent/60' />
-		);
-	if (entry.kind === 'symlink') return <Link2 size={14} className='text-fg-2' />;
-	return <FileBadge name={entry.name} />;
-}
 
 interface TreeRowViewProps {
 	entry: FsEntry;
@@ -49,11 +39,12 @@ export function TreeRowView({
 	onDoubleClick,
 	onContextMenu,
 }: TreeRowViewProps): JSX.Element {
-	const isDir = entry.kind === 'dir';
+	const isDir = isFolder(entry);
 	return (
 		<div
 			role='treeitem'
 			data-part='tree-row'
+			id={treeItemId(entry.path)}
 			aria-level={depth + 1}
 			aria-expanded={isDir ? expanded : undefined}
 			aria-selected={focused}
@@ -82,7 +73,7 @@ export function TreeRowView({
 				)}
 			/>
 			<span className='flex w-7 shrink-0 justify-center'>
-				<FileIcon entry={entry} open={expanded} />
+				<EntryIcon kind={entry.kind} name={entry.name} open={expanded} />
 			</span>
 			<span className='truncate'>{entry.name}</span>
 		</div>

@@ -14,8 +14,10 @@ import { joinPath, parentOf } from './tree-model';
  * invalidating here makes the tree update without waiting for its debounce.
  */
 export function useFsActions(root: string): {
-	create: (parent: string, name: string, kind: 'file' | 'dir') => Promise<FsEntry | null>;
-	rename: (path: string, newName: string) => Promise<FsEntry | null>;
+	/** Rejects on failure; the inline name input shows the reason next to the typed name. */
+	create: (parent: string, name: string, kind: 'file' | 'dir') => Promise<FsEntry>;
+	/** Rejects on failure, like `create`. */
+	rename: (path: string, newName: string) => Promise<FsEntry>;
 	trash: (path: string) => Promise<boolean>;
 } {
 	const client = useQueryClient();
@@ -26,7 +28,6 @@ export function useFsActions(root: string): {
 		mutationFn: (v: { parent: string; name: string; kind: 'file' | 'dir' }) =>
 			call('fs:create', v),
 		onSuccess: (_e, v) => refresh(v.parent),
-		onError: (error) => toast.error('Could not create', error.message),
 	});
 	const renameM = useMutation({
 		mutationFn: (v: { path: string; newName: string }) => call('fs:rename', v),
@@ -35,7 +36,6 @@ export function useFsActions(root: string): {
 			// Open tabs and unsaved buffers follow the file (or everything in a renamed folder).
 			renameOpenPath(root, v.path, joinPath(parentOf(v.path), entry.name));
 		},
-		onError: (error) => toast.error('Could not rename', error.message),
 	});
 	const trashM = useMutation({
 		mutationFn: (path: string) => call('fs:trash', path),
@@ -49,9 +49,8 @@ export function useFsActions(root: string): {
 	});
 
 	return {
-		create: (parent, name, kind) =>
-			createM.mutateAsync({ parent, name, kind }).catch(() => null),
-		rename: (path, newName) => renameM.mutateAsync({ path, newName }).catch(() => null),
+		create: (parent, name, kind) => createM.mutateAsync({ parent, name, kind }),
+		rename: (path, newName) => renameM.mutateAsync({ path, newName }),
 		trash: (path) =>
 			trashM
 				.mutateAsync(path)

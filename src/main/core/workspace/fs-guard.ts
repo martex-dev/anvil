@@ -1,6 +1,8 @@
 import { realpathSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 
+import { fileNameProblem } from '@shared/fs-names';
+
 import { AnvilError } from '../errors';
 
 /**
@@ -48,26 +50,8 @@ export function assertRealInside(root: string, abs: string): void {
 	}
 }
 
-const RESERVED = /^(con|prn|aux|nul|com[0-9]|lpt[0-9])(\..*)?$/i;
-const ILLEGAL_CHARS = /[<>:"/\\|?*]/;
-const hasControlChar = (s: string): boolean => [...s].some((c) => c.charCodeAt(0) < 0x20);
-const ILLEGAL = { test: (s: string): boolean => ILLEGAL_CHARS.test(s) || hasControlChar(s) };
-
 /** Validates a single file/folder name for Windows (the strictest target). */
 export function validateName(name: string): void {
-	const problem =
-		name.length === 0
-			? 'Name is empty'
-			: name.length > 255
-				? 'Name is too long'
-				: name === '.' || name === '..'
-					? 'Name is reserved'
-					: ILLEGAL.test(name)
-						? 'Name contains characters Windows does not allow (<>:"/\\|?*)'
-						: RESERVED.test(name)
-							? `"${name}" is a reserved Windows name`
-							: /[. ]$/.test(name)
-								? 'Name cannot end with a dot or space'
-								: null;
+	const problem = fileNameProblem(name);
 	if (problem) throw new AnvilError('FS_BAD_NAME', problem);
 }

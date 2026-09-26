@@ -95,6 +95,13 @@ describe('template catalog', () => {
 		}
 	});
 
+	it('keeps the trading bot out after a stop until the signal turns flat', () => {
+		const main = TEMPLATES.find((t) => t.id === 'trading-bot')?.files['src/bot/main.py'] ?? '';
+		expect(main).toContain('stopped_out: bool = False');
+		expect(main).toContain('if state.stopped_out:');
+		expect(main).toContain("if signal == 'flat':\n\t\tstate.stopped_out = False");
+	});
+
 	it('only uses {{name}} as a placeholder', () => {
 		for (const { path, content } of entries) {
 			const placeholders = content.match(/\{\{[^}]*\}\}/g) ?? [];

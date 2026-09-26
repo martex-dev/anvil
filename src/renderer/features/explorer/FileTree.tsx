@@ -2,27 +2,33 @@ import { type JSX, useEffect, useImperativeHandle, useRef, useState } from 'reac
 
 import type { FsEntry } from '@shared/ipc/channels/fs';
 
-import { call } from '../../lib/ipc';
 import { toast } from '../../stores/toast-store';
+import { useFocusOnViewRequest } from '../../stores/view-focus-store';
 import { requestOpenFile, useWorkbenchStore } from '../../stores/workbench-store';
-import { Button } from '../../ui/Button';
-import { Dialog } from '../../ui/Dialog';
 import { ErrorState } from '../../ui/ErrorState';
 import { Spinner } from '../../ui/Spinner';
-import { compareWithSelected, selectedForCompare, selectForCompare } from '../editor/compare';
-import { ExplorerContextMenu, type MenuItem } from './ExplorerContextMenu';
+import { ConfirmTrashDialog } from './ConfirmTrashDialog';
+import { explorerMenuItems } from './explorer-menu';
+import { type FileTreeHandle, registerExplorerTree } from './explorer-tree-registry';
+import { ExplorerContextMenu } from './ExplorerContextMenu';
 import { useFsActions } from './fs-actions';
 import { InlineNameInput } from './InlineNameInput';
-import { ancestorsOf, joinPath, parentOf, type PendingCreate } from './tree-model';
+import {
+	ancestorsOf,
+	isFolder,
+	isWithin,
+	neighbourAfterRemoval,
+	parentOf,
+	type PendingCreate,
+	siblingNames,
+	treeItemId,
+} from './tree-model';
 import { TreeRowView } from './TreeRowView';
+import { TreeStatusRow } from './TreeStatusRow';
 import { useFileTree } from './use-file-tree';
-import { treeKeyHandler } from './use-tree-keyboard';
+import { createTypeAhead, treeKeyHandler } from './use-tree-keyboard';
 
-export interface FileTreeHandle {
-	startCreate: (kind: 'file' | 'dir') => void;
-	collapseAll: () => void;
-	refresh: () => void;
-}
+export type { FileTreeHandle } from './explorer-tree-registry';
 
 interface FileTreeProps {
 	root: string;
@@ -38,12 +44,14 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 	const tree = useFileTree(root, pending);
 	const actions = useFsActions(root);
 	const activeFile = useWorkbenchStore((s) => s.activeFile);
-	const reveal = useWorkbenchStore((s) => s.reveal);
+	const revealRequest = useWorkbenchStore((s) => s.reveal);
 	const containerRef = useRef<HTMLDivElement>(null);
+	// The tree only renders once the root listing has loaded; focus it then.
+	useFocusOnViewRequest('explorer', containerRef, !tree.isRootLoading && !tree.rootError);
 
 	const focusedEntry = tree.rows.find((r) => r.kind === 'entry' && r.entry.path === focused);
 	const baseDir = (entry: FsEntry | null | undefined): string =>
-		!entry ? '' : entry.kind === 'dir' ? entry.path : parentOf(entry.path);
+		!entry ? '' : isFolder(entry) ? entry.path : parentOf(entry.path);
 
 	const startCreate = (kind: 'file' | 'dir', target?: FsEntry | null): void => {
 		const parent = baseDir(
@@ -53,51 +61,83 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 		setPending({ parent, kind });
 	};
 
+	const reveal = (path: string): void => {
+		tree.expand(ancestorsOf(path));
+		setFocused(path);
+	};
+	const focusedPath = focusedEntry?.kind === 'entry' ? focusedEntry.entry.path : null;
+	// Closing an inline name input unmounts the focused element, dropping focus to <body>. Hand
+	// it back to the tree (after the unmount) so arrows, F2 and Delete keep working, unless the
+	// user already moved focus somewhere else, e.g. by clicking the editor.
+	const restoreFocus = (): void => {
+		requestAnimationFrame(() => {
+			const active = document.activeElement;
+			if (!active || active === document.body) {
+				containerRef.current?.focus({ preventScroll: true });
+			}
+		});
+	};
+	const withFocused = (action: (path: string) => void) => (): void => {
+		if (focusedPath) action(focusedPath);
+		else toast.info('Select a file or folder in the Explorer first');
+	};
+
 	useImperativeHandle(handleRef, () => ({
 		startCreate: (kind) => startCreate(kind),
 		collapseAll: tree.collapseAll,
 		refresh: tree.refetchAll,
+		revealActive: () => {
+			if (activeFile) reveal(activeFile);
+			else toast.info('No active file to reveal');
+		},
+		renameFocused: withFocused(setRenaming),
+		deleteFocused: withFocused(setConfirmDelete),
 	}));
+	// Palette commands reach the tree through this registration (see explorer/commands.ts).
+	useEffect(() => registerExplorerTree(handleRef), [handleRef]);
 
 	// Follow the editor: reveal and highlight the active file. Adjusting state during render
 	// (instead of in an effect) avoids an extra render pass.
 	const [seenActive, setSeenActive] = useState<string | null>(null);
 	if (activeFile !== seenActive) {
 		setSeenActive(activeFile);
-		if (activeFile) {
-			tree.expand(ancestorsOf(activeFile));
-			setFocused(activeFile);
-		}
+		if (activeFile) reveal(activeFile);
 	}
 
 	// An explicit "Reveal in Explorer View" (e.g. from a tab): same, and the tree takes focus.
 	const [seenReveal, setSeenReveal] = useState<number | null>(null);
-	if (reveal && reveal.nonce !== seenReveal) {
-		setSeenReveal(reveal.nonce);
-		tree.expand(ancestorsOf(reveal.path));
-		setFocused(reveal.path);
+	if (revealRequest && revealRequest.nonce !== seenReveal) {
+		setSeenReveal(revealRequest.nonce);
+		reveal(revealRequest.path);
 	}
 
 	useEffect(() => {
 		// Still loading: the tree isn't mounted yet, so wait for it before taking focus.
 		const container = containerRef.current;
-		if (!reveal || !container) return;
+		if (!revealRequest || !container) return;
 		container.focus();
+		// The row may already be focused (and scrolled to once) but out of view now; rows still
+		// waiting on folder listings are scrolled to by the effect below once they appear.
 		container
-			.querySelector(`[data-path="${CSS.escape(reveal.path)}"]`)
+			.querySelector(`[data-path="${CSS.escape(revealRequest.path)}"]`)
 			?.scrollIntoView({ block: 'nearest' });
 		useWorkbenchStore.getState().clearReveal();
-	}, [reveal, tree.isRootLoading]);
+	}, [revealRequest, tree.isRootLoading]);
 
+	// Scroll the focused row into view once it exists: revealing a nested file expands folders
+	// whose listings load later, so the row may only appear after a few more renders.
+	const scrolledTo = useRef<string | null>(null);
 	useEffect(() => {
-		if (!focused) return;
-		containerRef.current
-			?.querySelector(`[data-path="${CSS.escape(focused)}"]`)
-			?.scrollIntoView({ block: 'nearest' });
-	}, [focused]);
+		if (!focused) scrolledTo.current = null;
+		if (!focused || scrolledTo.current === focused) return;
+		const row = containerRef.current?.querySelector(`[data-path="${CSS.escape(focused)}"]`);
+		if (!row) return;
+		scrolledTo.current = focused;
+		row.scrollIntoView({ block: 'nearest' });
+	}, [focused, tree.rows]);
 
 	const openEntry = (entry: FsEntry): void => {
-		if (entry.kind === 'dir') {
+		if (isFolder(entry)) {
 			tree.toggle(entry.path);
 			return;
 		}
@@ -106,45 +146,27 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 		}
 	};
 
-	const menuItems: Array<MenuItem | 'separator'> = [
-		{ label: 'New File', onSelect: () => startCreate('file', menuTarget) },
-		{ label: 'New Folder', onSelect: () => startCreate('dir', menuTarget) },
-		'separator',
-		{
-			label: 'Rename',
-			shortcut: 'F2',
-			disabled: !menuTarget,
-			onSelect: () => menuTarget && setRenaming(menuTarget.path),
-		},
-		{
-			label: 'Delete',
-			shortcut: 'Delete',
-			danger: true,
-			disabled: !menuTarget,
-			onSelect: () => menuTarget && setConfirmDelete(menuTarget.path),
-		},
-		'separator',
-		{
-			label: 'Copy Relative Path',
-			disabled: !menuTarget,
-			onSelect: () => menuTarget && void navigator.clipboard.writeText(menuTarget.path),
-		},
-		{
-			label: 'Reveal in File Explorer',
-			onSelect: () => void call('fs:reveal', menuTarget?.path ?? '').catch(() => undefined),
-		},
-		'separator',
-		{
-			label: 'Select for Compare',
-			disabled: menuTarget?.kind !== 'file',
-			onSelect: () => menuTarget && selectForCompare(menuTarget.path),
-		},
-		{
-			label: 'Compare with Selected',
-			disabled: menuTarget?.kind !== 'file' || !selectedForCompare(),
-			onSelect: () => menuTarget && void compareWithSelected(menuTarget.path),
-		},
-	];
+	const [typeAhead] = useState(() => createTypeAhead());
+	const onTreeKey = treeKeyHandler({
+		rows: tree.rows,
+		focused,
+		setFocused,
+		toggle: tree.toggle,
+		open: openEntry,
+		rename: setRenaming,
+		remove: setConfirmDelete,
+		typeAhead,
+	});
+	// A keyboard-opened menu fires `contextmenu` on the tree itself, like a right-click on its
+	// empty area; the key that opened it tells the two apart.
+	const menuFromKeyboard = useRef(false);
+
+	const menuItems = explorerMenuItems({
+		target: menuTarget,
+		startCreate,
+		rename: setRenaming,
+		remove: setConfirmDelete,
+	});
 
 	if (tree.isRootLoading) {
 		return (
@@ -163,86 +185,93 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 					ref={containerRef}
 					role='tree'
 					aria-label='Files'
+					// DOM focus stays on the tree; this tells screen readers which row is current.
+					aria-activedescendant={
+						focusedPath && focusedPath !== renaming
+							? treeItemId(focusedPath)
+							: undefined
+					}
 					tabIndex={0}
 					className='min-h-full py-1 outline-none focus-visible:shadow-[inset_0_0_0_1px_var(--accent)]'
-					onContextMenu={(e) => {
-						if (e.target === e.currentTarget) setMenuTarget(null);
+					onPointerDown={() => {
+						menuFromKeyboard.current = false;
 					}}
-					onKeyDown={treeKeyHandler({
-						rows: tree.rows,
-						focused,
-						setFocused,
-						toggle: tree.toggle,
-						open: openEntry,
-						rename: setRenaming,
-						remove: setConfirmDelete,
-					})}
+					onContextMenu={(e) => {
+						// Shift+F10 / the Menu key target the focused tree, so act on its focused row.
+						if (menuFromKeyboard.current) {
+							menuFromKeyboard.current = false;
+							setMenuTarget(
+								focusedEntry?.kind === 'entry' ? focusedEntry.entry : null,
+							);
+							return;
+						}
+						// Entry rows set their own target. Anything else (empty space, a loading or
+						// error row, an inline input) has none, not the previously right-clicked one.
+						const onRow =
+							e.target instanceof Element && e.target.closest('[role="treeitem"]');
+						if (!onRow) setMenuTarget(null);
+					}}
+					onKeyDown={(e) => {
+						menuFromKeyboard.current =
+							e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey);
+						onTreeKey(e);
+					}}
 				>
 					{tree.rows.map((row) => {
 						if (row.kind === 'input') {
 							return (
 								<InlineNameInput
 									key={`input-${row.parent}`}
+									mode='create'
+									kind={row.create}
 									initial=''
 									depth={row.depth}
-									onCancel={() => setPending(null)}
-									onSubmit={(name) => {
+									siblings={siblingNames(tree.rows, row.parent)}
+									onCancel={() => {
 										setPending(null);
-										void actions
-											.create(row.parent, name, row.create)
-											.then((created) => {
-												if (!created) return;
-												setFocused(created.path);
-												if (created.kind === 'file')
-													requestOpenFile({ path: created.path });
-											});
+										restoreFocus();
+									}}
+									onSubmit={async (name) => {
+										// Stays open until this settles, so a failure keeps the typed name.
+										const created = await actions.create(
+											row.parent,
+											name,
+											row.create,
+										);
+										setPending(null);
+										restoreFocus();
+										setFocused(created.path);
+										if (created.kind === 'file')
+											requestOpenFile({ path: created.path });
 									}}
 								/>
 							);
 						}
-						if (row.kind === 'loading') {
-							return (
-								<div
-									key={`loading-${row.dir}`}
-									className='flex h-6 items-center'
-									style={{ paddingLeft: 8 + row.depth * 12 + 16 }}
-								>
-									<Spinner size={12} />
-								</div>
-							);
-						}
-						if (row.kind === 'error') {
-							return (
-								<div
-									key={`error-${row.dir}`}
-									className='flex h-6 items-center truncate text-11 text-down'
-									style={{ paddingLeft: 8 + row.depth * 12 + 16 }}
-									title={row.message}
-								>
-									{row.message}
-								</div>
-							);
+						if (row.kind === 'loading' || row.kind === 'error') {
+							return <TreeStatusRow key={`${row.kind}-${row.dir}`} row={row} />;
 						}
 						if (renaming === row.entry.path) {
 							return (
 								<InlineNameInput
 									key={`rename-${row.entry.path}`}
+									mode='rename'
+									kind={row.entry.kind}
 									initial={row.entry.name}
 									depth={row.depth}
-									onCancel={() => setRenaming(null)}
-									onSubmit={(name) => {
+									siblings={siblingNames(
+										tree.rows,
+										parentOf(row.entry.path),
+										row.entry.path,
+									)}
+									onCancel={() => {
 										setRenaming(null);
-										void actions
-											.rename(row.entry.path, name)
-											.then((renamed) => {
-												if (renamed)
-													setFocused(
-														joinPath(
-															parentOf(row.entry.path),
-															renamed.name,
-														),
-													);
-											});
+										restoreFocus();
+									}}
+									onSubmit={async (name) => {
+										const renamed = await actions.rename(row.entry.path, name);
+										setRenaming(null);
+										restoreFocus();
+										setFocused(renamed.path);
 									}}
 								/>
 							);
@@ -257,7 +286,7 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 								active={activeFile === row.entry.path}
 								onClick={() => {
 									setFocused(row.entry.path);
-									if (row.entry.kind === 'dir') tree.toggle(row.entry.path);
+									if (isFolder(row.entry)) tree.toggle(row.entry.path);
 									else openEntry(row.entry);
 								}}
 								onDoubleClick={() => undefined}
@@ -270,30 +299,17 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 					})}
 				</div>
 			</ExplorerContextMenu>
-			<Dialog
-				open={confirmDelete !== null}
-				onOpenChange={(open) => !open && setConfirmDelete(null)}
-				title='Move to Recycle Bin?'
-				description={<span className='selectable font-mono'>{confirmDelete}</span>}
-				width='sm'
-				footer={
-					<>
-						<Button variant='ghost' onClick={() => setConfirmDelete(null)}>
-							Cancel
-						</Button>
-						<Button
-							variant='danger'
-							autoFocus
-							onClick={() => {
-								const path = confirmDelete;
-								setConfirmDelete(null);
-								if (path) void actions.trash(path);
-							}}
-						>
-							Move to Recycle Bin
-						</Button>
-					</>
-				}
+			<ConfirmTrashDialog
+				path={confirmDelete}
+				onCancel={() => setConfirmDelete(null)}
+				onConfirm={(path) => {
+					setConfirmDelete(null);
+					// Keep keyboard navigation in place: focus the neighbour, not the top.
+					const next = neighbourAfterRemoval(tree.rows, path);
+					void actions.trash(path).then((trashed) => {
+						if (trashed) setFocused((f) => (f && isWithin(f, path) ? next : f));
+					});
+				}}
 			/>
 		</>
 	);

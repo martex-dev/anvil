@@ -21,6 +21,16 @@ interface ContextMenuProps {
 const itemClass =
 	'flex h-7 cursor-default items-center gap-4 rounded-md px-2 text-12 outline-none data-[disabled]:opacity-40 data-[highlighted]:bg-accent-faint';
 
+/**
+ * Radix returns focus to the trigger shortly after the menu closes. If the chosen item already
+ * moved focus somewhere on purpose (an inline rename/new-file input), keep it there: stealing
+ * it back blurs that input, which cancels it.
+ */
+function keepFocusMovedByItem(event: Event): void {
+	const active = document.activeElement;
+	if (active && active !== document.body) event.preventDefault();
+}
+
 /** Right-click menu, drawn as floating glass. */
 export function AppContextMenu({ items, children }: ContextMenuProps): JSX.Element {
 	const [open, setOpen] = useState(false);
@@ -29,7 +39,10 @@ export function AppContextMenu({ items, children }: ContextMenuProps): JSX.Eleme
 		<ContextMenu.Root onOpenChange={setOpen}>
 			<ContextMenu.Trigger asChild>{children}</ContextMenu.Trigger>
 			<ContextMenu.Portal>
-				<ContextMenu.Content className='glass-strong animate-in z-50 min-w-52 p-1'>
+				<ContextMenu.Content
+					className='glass-strong animate-in z-50 min-w-52 p-1'
+					onCloseAutoFocus={keepFocusMovedByItem}
+				>
 					{items.map((item, i) =>
 						item === 'separator' ? (
 							<ContextMenu.Separator

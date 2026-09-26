@@ -1,6 +1,7 @@
 import { CornerDownLeft, Puzzle, Search } from 'lucide-react';
 import { type JSX, type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 
+import { useFocusOnViewRequest } from '../../stores/view-focus-store';
 import { Badge } from '../../ui/Badge';
 import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
@@ -21,6 +22,8 @@ export function SnippetsView(): JSX.Element {
 	const [category, setCategory] = useState<SnippetCategory | null>(null);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const listRef = useRef<HTMLDivElement>(null);
+	const inputRef = useRef<HTMLInputElement>(null);
+	useFocusOnViewRequest('snippets', inputRef);
 
 	const results = useMemo(() => searchSnippets(query), [query]);
 	const counts = useMemo(() => {
@@ -82,12 +85,15 @@ export function SnippetsView(): JSX.Element {
 	const clearFilters = (): void => {
 		setQuery('');
 		setCategory(null);
+		// The focused "Clear filters" button unmounts with the empty state; keep the keyboard here.
+		inputRef.current?.focus();
 	};
 
 	return (
 		<div className='flex h-full flex-col'>
 			<div className='flex shrink-0 flex-col gap-2 border-b border-border p-2'>
 				<Input
+					ref={inputRef}
 					role='combobox'
 					aria-label='Search snippets'
 					aria-controls={LISTBOX_ID}
