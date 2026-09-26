@@ -173,6 +173,38 @@ html[data-skin='workbench'] [cmdk-dialog]::before {
 	color: var(--skin-title-text);
 	font: 700 13px/20px var(--font-display);
 }
+/*
+ * The command palette is the Start menu: it opens from the bottom-left corner, above the Start
+ * button, with the program's name running up a banner.
+ */
+html[data-skin='workbench'] [cmdk-dialog][aria-label='Command palette'] {
+	top: auto;
+	bottom: 33px;
+	left: 2px;
+	width: min(600px, calc(100vw - 1rem));
+	padding-left: 27px;
+	transform: none;
+	translate: none;
+}
+html[data-skin='workbench'] [cmdk-dialog][aria-label='Command palette']::before {
+	content: 'Anvil 95';
+	position: absolute;
+	top: 3px;
+	bottom: 3px;
+	left: 3px;
+	width: 22px;
+	height: auto;
+	padding: 8px 0 0;
+	writing-mode: vertical-rl;
+	transform: rotate(180deg);
+	background: linear-gradient(var(--skin-title-a), var(--skin-title-b));
+	color: var(--skin-title-text);
+	font: 700 19px/22px var(--font-display);
+	letter-spacing: 1px;
+}
+html[data-skin='workbench'][data-fx='off'] [cmdk-dialog][aria-label='Command palette']::before {
+	background: var(--skin-title-a);
+}
 html[data-skin='workbench'] [cmdk-dialog] [cmdk-root] > div:has([cmdk-input]) {
 	margin: 8px 6px 6px;
 	border: 0;
