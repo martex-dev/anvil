@@ -2,11 +2,11 @@ import { AlertTriangle, Copy, FileDiff, TextCursorInput } from 'lucide-react';
 import { type JSX, useMemo } from 'react';
 
 import { cn } from '../../lib/cn';
-import { call } from '../../lib/ipc';
 import { renderMarkdown } from '../../lib/markdown/markdown';
 import { toast } from '../../stores/toast-store';
 import { Button } from '../../ui/Button';
 import { openApply } from './ApplyDialog';
+import { openChatLink } from './chat-links';
 import type { ChatMessage } from './chat-store';
 import { activeEditor } from './editor-context';
 import { splitFences } from './fences';
@@ -113,11 +113,11 @@ function Prose({ text }: { text: string }): JSX.Element {
 				const a = (e.target as HTMLElement).closest('a');
 				if (!a) return;
 				e.preventDefault();
-				if (a.href.startsWith('https://')) {
-					call('app:openExternal', a.href).catch(() =>
-						toast.error('Could not open link'),
-					);
-				}
+				// Links resolve against the app's own URL, so check the resolved href but show
+				// the link as written.
+				openChatLink(
+					a.href.startsWith('https://') ? a.href : (a.getAttribute('href') ?? a.href),
+				);
 			}}
 		/>
 	);
