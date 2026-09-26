@@ -57,6 +57,11 @@ export function RegexTool(): JSX.Element {
 					onChange={(e) => setText(e.target.value)}
 				/>
 			</Field>
+			{pattern === '' && !flagsError && (
+				<p className='text-12 text-fg-2'>
+					Type a pattern to see matches live. Flags: d g i m s u v y.
+				</p>
+			)}
 			{flagsError && <ToolError message={flagsError} />}
 			{outcome?.kind === 'timeout' && (
 				<ToolError message='Pattern took too long (catastrophic backtracking?). Try removing nested quantifiers like (a+)+.' />
