@@ -161,9 +161,15 @@ function GroupView({
 				}
 			>
 				{tab.kind === 'data' && tab.path && <DataViewer path={tab.path} />}
-				{tab.kind === 'image' && tab.path && <ImageViewer path={tab.path} />}
-				{tab.kind === 'notebook' && tab.path && <NotebookViewer path={tab.path} />}
-				{tab.kind === 'markdown' && tab.path && <MarkdownPreview path={tab.path} />}
+				{/* Keyed by path: a tab slot showing another file (preview tabs, tab switches) must
+				    start with fresh scroll, zoom and collapse state, not the previous file's. */}
+				{tab.kind === 'image' && tab.path && <ImageViewer key={tab.path} path={tab.path} />}
+				{tab.kind === 'notebook' && tab.path && (
+					<NotebookViewer key={tab.path} path={tab.path} />
+				)}
+				{tab.kind === 'markdown' && tab.path && (
+					<MarkdownPreview key={tab.path} path={tab.path} />
+				)}
 				{tab.kind === 'welcome' && <Welcome />}
 			</Suspense>
 		);

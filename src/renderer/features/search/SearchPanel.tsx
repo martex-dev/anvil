@@ -10,7 +10,7 @@ import { Input } from '../../ui/Input';
 import { Spinner } from '../../ui/Spinner';
 import { Tooltip } from '../../ui/Tooltip';
 import { SearchResults } from './SearchResults';
-import { useFileSearch, useSearchParams } from './use-search';
+import { useFileSearch, useSearchParams, useSearchRequest } from './use-search';
 
 const DEBOUNCE_MS = 250;
 
@@ -73,6 +73,18 @@ export function SearchPanel(): JSX.Element {
 	const [showGlobs, setShowGlobs] = useState(Boolean(include || exclude));
 	const inputRef = useRef<HTMLInputElement>(null);
 	useFocusOnViewRequest('search', inputRef, info.root !== null);
+	const requestTick = useSearchRequest((s) => s.tick);
+	const requested = useSearchRequest((s) => s.query);
+	// searchInFiles() replaces the query from outside and bumps the tick: adopt it during render
+	// (not in an effect) so an already-open panel shows and runs the new search.
+	const [seenTick, setSeenTick] = useState(requestTick);
+	if (seenTick !== requestTick) {
+		setSeenTick(requestTick);
+		if (requested !== null && requested !== text) {
+			setText(requested);
+			setQuery(requested);
+		}
+	}
 
 	useEffect(() => {
 		const id = setTimeout(() => {

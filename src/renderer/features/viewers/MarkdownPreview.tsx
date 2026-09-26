@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FilePenLine, FileText, RotateCw } from 'lucide-react';
 import { type JSX, useEffect, useState } from 'react';
 
@@ -12,6 +12,7 @@ import { Spinner } from '../../ui/Spinner';
 import { useEditorStore } from '../editor/editor-store';
 import { getModel } from '../editor/file-ops';
 import { MarkdownHtml } from './MarkdownHtml';
+import { useViewerActions } from './viewer-actions';
 import { baseName } from './viewer-paths';
 
 const DEBOUNCE_MS = 150;
@@ -52,16 +53,25 @@ function wordCount(text: string): number {
 
 export function MarkdownPreview({ path }: { path: string }): JSX.Element {
 	const live = useLiveBuffer(path);
+	const client = useQueryClient();
+	const diskKey = ['fs-text', path];
 	const disk = useQuery({
-		queryKey: ['fs-text', path],
+		queryKey: diskKey,
 		queryFn: () => call('fs:readFile', path),
 		enabled: live === null,
 	});
 	const { refetch } = disk;
 
+	// Invalidate even while the editor buffer is shown: the disabled query is then marked stale,
+	// so closing the editor re-reads the saved file instead of showing the pre-edit cache.
 	useAnvilEvent('fs:changed', ({ files }) => {
-		if (live === null && files.includes(path)) void refetch();
+		if (files.includes(path)) void client.invalidateQueries({ queryKey: diskKey });
 	});
+
+	const editSource = (): void => {
+		requestOpenFile({ path, as: 'code' });
+	};
+	useViewerActions('markdown', path, { reload: () => void refetch(), editSource });
 
 	const text =
 		live ?? (disk.data && !disk.data.binary && !disk.data.tooLarge ? disk.data.content : null);
@@ -112,7 +122,9 @@ export function MarkdownPreview({ path }: { path: string }): JSX.Element {
 		<div className='flex h-full min-h-0 flex-col'>
 			<div className='flex h-9 shrink-0 items-center gap-2 border-b border-glass-edge px-3'>
 				<span className='hud'>Preview</span>
-				<span className='truncate text-12 text-fg-1'>{baseName(path)}</span>
+				<span className='truncate text-12 text-fg-1' title={path}>
+					{baseName(path)}
+				</span>
 				{live !== null && (
 					<span
 						className='hud flex items-center gap-1.5 text-accent'
@@ -131,7 +143,12 @@ export function MarkdownPreview({ path }: { path: string }): JSX.Element {
 						size='sm'
 						label='Reload from disk'
 						icon={
-							<RotateCw size={14} className={disk.isFetching ? 'animate-spin' : ''} />
+							<RotateCw
+								size={14}
+								className={
+									disk.isFetching ? 'animate-spin motion-reduce:animate-none' : ''
+								}
+							/>
 						}
 						onClick={() => void refetch()}
 					/>
@@ -140,13 +157,13 @@ export function MarkdownPreview({ path }: { path: string }): JSX.Element {
 					size='sm'
 					label='Edit source'
 					icon={<FilePenLine size={14} />}
-					onClick={() => requestOpenFile({ path, as: 'code' })}
+					onClick={editSource}
 				/>
 			</div>
 			<div
 				tabIndex={0}
 				aria-label='Markdown preview'
-				className='min-h-0 flex-1 overflow-auto focus-visible:outline-none'
+				className='min-h-0 flex-1 overflow-auto focus-visible:-outline-offset-1'
 			>
 				{body}
 			</div>

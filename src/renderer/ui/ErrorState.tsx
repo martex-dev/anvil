@@ -1,5 +1,5 @@
 import { TriangleAlert } from 'lucide-react';
-import type { JSX } from 'react';
+import type { JSX, ReactNode } from 'react';
 
 import { cn } from '@renderer/lib/cn';
 
@@ -10,6 +10,8 @@ interface ErrorStateProps {
 	message: string;
 	code?: string;
 	onRetry?: () => void;
+	/** A way to fix the cause (e.g. "Select interpreter"), shown beside Retry. */
+	action?: ReactNode;
 	className?: string;
 }
 
@@ -18,6 +20,7 @@ export function ErrorState({
 	message,
 	code,
 	onRetry,
+	action,
 	className,
 }: ErrorStateProps): JSX.Element {
 	return (
@@ -32,10 +35,15 @@ export function ErrorState({
 			<p className='text-14 font-medium text-fg-0'>{title}</p>
 			<p className='selectable max-w-96 text-12 text-fg-1'>{message}</p>
 			{code && <code className='text-11 text-fg-2'>{code}</code>}
-			{onRetry && (
-				<Button size='sm' onClick={onRetry} className='mt-2'>
-					Retry
-				</Button>
+			{(onRetry || action) && (
+				<div className='mt-2 flex items-center gap-2'>
+					{action}
+					{onRetry && (
+						<Button size='sm' onClick={onRetry}>
+							Retry
+						</Button>
+					)}
+				</div>
 			)}
 		</div>
 	);

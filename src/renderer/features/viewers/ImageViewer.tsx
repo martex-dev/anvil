@@ -20,6 +20,8 @@ import { ErrorState } from '../../ui/ErrorState';
 import { IconButton } from '../../ui/IconButton';
 import { Spinner } from '../../ui/Spinner';
 import { Tooltip } from '../../ui/Tooltip';
+import { ReloadErrorBadge } from './ReloadErrorBadge';
+import { useViewerActions } from './viewer-actions';
 import { baseName, formatBytes } from './viewer-paths';
 
 import './viewers.css';
@@ -155,6 +157,18 @@ export function ImageViewer({ path }: { path: string }): JSX.Element {
 	// Clamped at render so pane resizes or a regenerated plot never leave the image off-screen.
 	const pos = clampOffset(offset);
 
+	// Zooming needs the decoded size, as the (disabled) toolbar buttons do.
+	const whenLoaded = (action: () => void) => (): void => {
+		if (natural) action();
+	};
+	useViewerActions('image', path, {
+		zoomIn: whenLoaded(() => zoomTo(scale * STEP)),
+		zoomOut: whenLoaded(() => zoomTo(scale / STEP)),
+		fit: whenLoaded(() => zoomTo('fit')),
+		actualSize: whenLoaded(() => zoomTo(1)),
+		reload: () => void refetch(),
+	});
+
 	const onPointerDown = (event: PointerEvent<HTMLDivElement>): void => {
 		if (!pannable || event.button !== 0) return;
 		event.currentTarget.setPointerCapture(event.pointerId);
@@ -176,8 +190,12 @@ export function ImageViewer({ path }: { path: string }): JSX.Element {
 		setDragging(false);
 	};
 
+	// Handled on the whole viewer, not just the image pane, so the advertised shortcuts keep
+	// working after a toolbar button was clicked (focus stays on the button).
 	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
 		if (event.ctrlKey || event.altKey || event.metaKey) return;
+		if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)
+			return;
 		const pan = (dx: number, dy: number): void =>
 			setOffset(clampOffset({ x: pos.x + dx, y: pos.y + dy }));
 		const actions: Record<string, () => void> = {
@@ -232,16 +250,19 @@ export function ImageViewer({ path }: { path: string }): JSX.Element {
 	}
 
 	return (
-		<div className='flex h-full min-h-0 flex-col'>
+		<div className='flex h-full min-h-0 flex-col' onKeyDown={onKeyDown}>
 			<div className='flex h-9 shrink-0 items-center gap-3 border-b border-glass-edge px-3'>
 				<span className='hud'>Image</span>
-				<span className='truncate text-12 text-fg-1'>{baseName(path)}</span>
+				<span className='truncate text-12 text-fg-1' title={path}>
+					{baseName(path)}
+				</span>
 				{natural && (
 					<span className='hud num text-fg-1'>
 						{natural.w}×{natural.h}
 					</span>
 				)}
 				{data && <span className='hud num'>{formatBytes(data.size)}</span>}
+				{query.isError && data && <ReloadErrorBadge message={query.error.message} />}
 				<span className='flex-1' />
 				{query.isFetching && !query.isPending && <Spinner size={12} label='Refreshing' />}
 				<IconButton
@@ -300,10 +321,9 @@ export function ImageViewer({ path }: { path: string }): JSX.Element {
 				role='img'
 				aria-label={`${baseName(path)}${natural ? `, ${natural.w} by ${natural.h} pixels` : ''}`}
 				className={cn(
-					'relative min-h-0 flex-1 overflow-hidden focus-visible:outline-none',
+					'relative min-h-0 flex-1 overflow-hidden focus-visible:-outline-offset-1',
 					pannable && (dragging ? 'cursor-grabbing' : 'cursor-grab'),
 				)}
-				onKeyDown={onKeyDown}
 				onPointerDown={onPointerDown}
 				onPointerMove={onPointerMove}
 				onPointerUp={endDrag}

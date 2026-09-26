@@ -2,7 +2,7 @@ import type { JSX } from 'react';
 
 import type { ColumnStats } from '@shared/ipc/channels/data';
 
-import { formatCount } from './data-format';
+import { formatCount, histogramSummary } from './data-format';
 
 interface HistogramProps {
 	bins: ColumnStats['histogram'];
@@ -23,7 +23,7 @@ export function Histogram({ bins, numeric, edges }: HistogramProps): JSX.Element
 				<div
 					className='flex h-28 items-end gap-px border-b border-border'
 					role='img'
-					aria-label='Value distribution'
+					aria-label={histogramSummary(bins, first, last)}
 				>
 					{bins.map((bin, i) => (
 						<div

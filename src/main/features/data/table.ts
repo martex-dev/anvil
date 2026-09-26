@@ -9,6 +9,10 @@ export interface Table {
 	engine: string;
 }
 
+function isBlank(record: Cell[] | undefined): boolean {
+	return record?.length === 1 && record[0] === null;
+}
+
 /**
  * RFC 4180 CSV: quoted fields, doubled quotes, newlines inside quotes, CRLF. Stops after
  * `maxRows` data rows. Empty unquoted fields become null (missing).
@@ -32,9 +36,11 @@ export function parseDelimited(
 	};
 	const endRecord = (): boolean => {
 		endField();
-		if (!(record.length === 1 && record[0] === null)) records.push(record);
+		// A blank line is a missing value in a one-column file, and noise anywhere else.
+		if (!isBlank(record) || records[0]?.length === 1) records.push(record);
 		record = [];
-		if (records.length > maxRows) {
+		// Header + maxRows rows + one more: only then was something actually left out.
+		if (records.length > maxRows + 1) {
 			truncated = true;
 			return false;
 		}
@@ -61,6 +67,8 @@ export function parseDelimited(
 		} else field += ch;
 	}
 	if (!truncated && (field !== '' || record.length > 0)) endRecord();
+	// Trailing blank lines are the end of the file, not missing values.
+	while (records.length > 1 && isBlank(records.at(-1))) records.pop();
 	const [head = [], ...rows] = records;
 	const width = Math.max(head.length, ...rows.slice(0, 1000).map((r) => r.length));
 	const header = Array.from({ length: width }, (_, c) => {
@@ -153,6 +161,12 @@ export function tableFromRecords(records: unknown[], truncated: boolean): Table 
 
 const NUMERIC: ReadonlySet<ColumnType> = new Set(['int', 'float']);
 
+/** Like Number(), but also reads the 'inf' / '-inf' spellings that FLOAT accepts. */
+function toNumber(v: string): number {
+	if (/^[+-]?inf$/i.test(v)) return v.startsWith('-') ? -Infinity : Infinity;
+	return Number(v);
+}
+
 /** Row indices after filtering and sorting (numbers compare numerically, missing last). */
 export function view(
 	table: Table,
@@ -170,12 +184,22 @@ export function view(
 		const numeric = NUMERIC.has(table.columns[sort.column]?.type ?? 'string');
 		const dir = sort.desc ? -1 : 1;
 		const key = (i: number): Cell => table.rows[i]?.[sort.column] ?? null;
+		// A Collator is much faster than localeCompare over a million rows (same ordering).
+		const collator = new Intl.Collator(undefined, { numeric: true });
 		idx.sort((a, b) => {
 			const x = key(a);
 			const y = key(b);
 			if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1;
-			if (numeric) return (Number(x) - Number(y)) * dir;
-			return x.localeCompare(y, undefined, { numeric: true }) * dir;
+			if (numeric) {
+				const a = toNumber(x);
+				const b = toNumber(y);
+				// NaN has no order: keep it after the numbers (like missing) so the sort stays consistent.
+				const aNaN = Number.isNaN(a);
+				const bNaN = Number.isNaN(b);
+				if (aNaN || bNaN) return aNaN === bNaN ? 0 : aNaN ? 1 : -1;
+				return a === b ? 0 : (a < b ? -1 : 1) * dir;
+			}
+			return collator.compare(x, y) * dir;
 		});
 	}
 	return idx;
@@ -241,13 +265,20 @@ export function columnStats(table: Table, c: number): ColumnStats {
 	const freq = new Map<string, number>();
 	for (const v of values) freq.set(v, (freq.get(v) ?? 0) + 1);
 	const top = [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
-	const sorted = [...values].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+	// One linear pass: sorting a copy of a million strings just for min/max is far slower.
+	const collator = new Intl.Collator(undefined, { numeric: true });
+	let min: string | null = null;
+	let max: string | null = null;
+	for (const v of values) {
+		if (min === null || collator.compare(v, min) < 0) min = v;
+		if (max === null || collator.compare(v, max) > 0) max = v;
+	}
 	return {
 		count: values.length,
 		nulls,
 		unique,
-		min: sorted[0] ?? null,
-		max: sorted.at(-1) ?? null,
+		min,
+		max,
 		mean: null,
 		std: null,
 		histogram: top.map(([label, count]) => ({ label, count })),

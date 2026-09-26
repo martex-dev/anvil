@@ -15,6 +15,7 @@ const ORDER: CommandCategory[] = [
 	'View',
 	'Go',
 	'Python',
+	'Data',
 	'Run',
 	'AI',
 	'Git',

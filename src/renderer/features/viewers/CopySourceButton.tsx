@@ -12,22 +12,26 @@ export function CopySourceButton({ text }: { text: string }): JSX.Element {
 		const timer = setTimeout(() => setCopied(false), 1200);
 		return () => clearTimeout(timer);
 	}, [copied]);
+	// The fade lives on a wrapper: IconButton already transitions background and colour, and a
+	// second transition-property class on the button would override one or the other.
 	return (
-		<IconButton
-			size='sm'
-			label={copied ? 'Copied' : 'Copy cell source'}
-			icon={copied ? <Check size={13} className='text-up' /> : <Copy size={13} />}
-			className='bg-bg-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100'
-			onClick={() => {
-				navigator.clipboard.writeText(text).then(
-					() => setCopied(true),
-					(error: unknown) =>
-						toast.error(
-							'Could not copy',
-							error instanceof Error ? error.message : String(error),
-						),
-				);
-			}}
-		/>
+		<span className='inline-flex opacity-0 transition-opacity transition-fast group-focus-within:opacity-100 group-hover:opacity-100'>
+			<IconButton
+				size='sm'
+				label={copied ? 'Copied' : 'Copy cell source'}
+				icon={copied ? <Check size={13} className='text-up' /> : <Copy size={13} />}
+				className='bg-bg-2'
+				onClick={() => {
+					navigator.clipboard.writeText(text).then(
+						() => setCopied(true),
+						(error: unknown) =>
+							toast.error(
+								'Could not copy',
+								error instanceof Error ? error.message : String(error),
+							),
+					);
+				}}
+			/>
+		</span>
 	);
 }

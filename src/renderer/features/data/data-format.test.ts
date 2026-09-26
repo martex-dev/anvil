@@ -7,15 +7,20 @@ import {
 	formatCount,
 	formatStat,
 	formatStatText,
+	histogramSummary,
 	initialColumnWidth,
+	isTrueText,
 	MAX_SCROLL_PX,
 	nextSort,
 	pagesForRange,
+	profileScope,
 	ROW_HEIGHT,
+	rowCountLabel,
 	scrollTopForRow,
 	toDelimited,
 	typeTag,
 	visibleColumns,
+	visibleRowRange,
 } from './data-format';
 
 describe('labels and numbers', () => {
@@ -110,5 +115,58 @@ describe('virtual window', () => {
 		expect(pagesForRange(0, 500)).toEqual([0]);
 		expect(pagesForRange(450, 520)).toEqual([0, 1]);
 		expect(pagesForRange(10, 10)).toEqual([]);
+	});
+});
+
+describe('profileScope', () => {
+	it('says when only the loaded head of the file was profiled', () => {
+		expect(profileScope(false, 10)).toBe('Computed over the whole file, ignoring the filter.');
+		expect(profileScope(true, 250000)).toBe(
+			'Computed over the first 250,000 rows (all that was loaded), ignoring the filter.',
+		);
+	});
+});
+
+describe('rowCountLabel', () => {
+	it('says how many rows a filter kept', () => {
+		expect(rowCountLabel(12, 1204331)).toBe('12 of 1,204,331 rows');
+		expect(rowCountLabel(1204331, 1204331)).toBe('1,204,331 rows');
+	});
+});
+
+describe('visibleRowRange', () => {
+	it('spans the rows on screen, including a partly shown last one', () => {
+		expect(visibleRowRange(495, 24 * 35 + 10, 10_000)).toEqual({ top: 495, bottom: 530 });
+	});
+
+	it('stops at the last row', () => {
+		expect(visibleRowRange(8, 24 * 20, 10)).toEqual({ top: 8, bottom: 9 });
+		expect(visibleRowRange(0, 0, 1)).toEqual({ top: 0, bottom: 0 });
+	});
+});
+
+describe('isTrueText', () => {
+	it('matches true in any case, as the bool type check does', () => {
+		expect(['true', 'True', 'TRUE'].map(isTrueText)).toEqual([true, true, true]);
+		expect(['false', 'False', 'yes'].map(isTrueText)).toEqual([false, false, false]);
+	});
+});
+
+describe('histogramSummary', () => {
+	it('names the range and the tallest bin', () => {
+		const bins = [
+			{ label: '0', count: 3 },
+			{ label: '10', count: 1200 },
+			{ label: '20', count: 1200 },
+		];
+		expect(histogramSummary(bins, '0', '30')).toBe(
+			'Value distribution from 0 to 30; 3 bins, peak 1,200 at 10',
+		);
+	});
+
+	it('says when every bin is empty', () => {
+		expect(histogramSummary([{ label: '0', count: 0 }], '0', '0')).toBe(
+			'Value distribution from 0 to 0; no values',
+		);
 	});
 });

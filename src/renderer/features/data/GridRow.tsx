@@ -3,7 +3,8 @@ import { type JSX, memo, type ReactNode } from 'react';
 import type { DataColumn } from '@shared/ipc/channels/data';
 
 import { cn } from '../../lib/cn';
-import { isNegative, isNumericType, ROW_HEIGHT } from './data-format';
+import { isNegative, isNumericType, isTrueText, ROW_HEIGHT } from './data-format';
+import { cellId } from './grid-selection';
 
 interface GridRowProps {
 	index: number;
@@ -19,6 +20,8 @@ interface GridRowProps {
 	/** Selected column span for this row, or -1/-1 when the row is outside the selection. */
 	selLeft: number;
 	selRight: number;
+	/** Prefix for cell ids so the grid can point aria-activedescendant at the focus cell. */
+	idPrefix: string;
 }
 
 function renderCell(value: string | null | undefined, column: DataColumn): ReactNode {
@@ -30,7 +33,9 @@ function renderCell(value: string | null | undefined, column: DataColumn): React
 	}
 	if (column.type === 'bool') {
 		return (
-			<span className={cn('num', value === 'true' ? 'text-info' : 'text-fg-1')}>{value}</span>
+			<span className={cn('num', isTrueText(value) ? 'text-info' : 'text-fg-1')}>
+				{value}
+			</span>
 		);
 	}
 	if (column.type === 'date') return <span className='num text-fg-1'>{value}</span>;
@@ -50,6 +55,7 @@ export const GridRow = memo(function GridRow({
 	colEnd,
 	selLeft,
 	selRight,
+	idPrefix,
 }: GridRowProps): JSX.Element {
 	const inSelection = selLeft >= 0;
 	const items: JSX.Element[] = [];
@@ -60,18 +66,29 @@ export const GridRow = memo(function GridRow({
 		const w = (offsets[c + 1] ?? 0) - (offsets[c] ?? 0);
 		const selected = inSelection && c >= selLeft && c <= selRight;
 		let content: ReactNode;
+		// Cells truncate with an ellipsis; the native tooltip lets long values be read in full.
+		let title: string | undefined;
 		if (cells === 'loading') {
 			content = <span className='shimmer block h-2 w-3/5 rounded-sm bg-bg-3/60' />;
 		} else if (cells === 'error') {
-			content = <span className='text-fg-2'>—</span>;
+			// Tinted so failed rows don't read as data; the banner below the grid explains.
+			content = <span className='text-down/70'>—</span>;
 		} else {
-			content = renderCell(cells[c], column);
+			const value = cells[c];
+			content = renderCell(value, column);
+			title = value ?? undefined;
 		}
 		items.push(
 			<div
 				key={c}
+				id={cellId(idPrefix, index, c)}
+				role='gridcell'
+				// Column 1 is the row-number header, so data columns start at 2.
+				aria-colindex={c + 2}
+				aria-selected={selected}
 				data-row={index}
 				data-col={c}
+				title={title}
 				className={cn(
 					'absolute top-0 flex h-full items-center truncate border-r border-border/40 px-2',
 					isNumericType(column.type) && 'justify-end text-right',
@@ -95,8 +112,12 @@ export const GridRow = memo(function GridRow({
 		>
 			{items}
 			<div
+				data-gutter={index}
+				role='rowheader'
+				aria-colindex={1}
+				title='Select row (Shift+click to extend)'
 				className={cn(
-					'num sticky left-0 z-10 flex h-full items-center justify-end border-r border-glass-edge bg-bg-1 pr-2 text-11',
+					'num sticky left-0 z-10 cursor-default flex h-full items-center justify-end border-r border-glass-edge bg-bg-1 pr-2 text-11',
 					inSelection ? 'text-accent' : 'text-fg-2',
 				)}
 				style={{ width: gutter }}

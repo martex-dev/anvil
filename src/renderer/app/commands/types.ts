@@ -7,6 +7,7 @@ export type CommandCategory =
 	| 'Go'
 	| 'Run'
 	| 'Python'
+	| 'Data'
 	| 'AI'
 	| 'Git'
 	| 'Terminal'

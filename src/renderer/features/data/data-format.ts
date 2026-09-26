@@ -1,4 +1,4 @@
-import type { ColumnType, DataColumn } from '@shared/ipc/channels/data';
+import type { ColumnType, DataColumn, DataFormat } from '@shared/ipc/channels/data';
 
 export const PAGE_SIZE = 500;
 export const ROW_HEIGHT = 24;
@@ -23,6 +23,18 @@ const TYPE_TAGS: Record<ColumnType, string> = {
 	string: 'STR',
 	empty: 'NULL',
 };
+
+const TEXT_FORMATS: ReadonlySet<DataFormat> = new Set(['csv', 'tsv', 'json', 'jsonl']);
+
+/** Formats that are readable text, so "Open as text" makes sense. */
+export function isTextFormat(format: DataFormat): boolean {
+	return TEXT_FORMATS.has(format);
+}
+
+/** Bool cells arrive as 'true', 'True' (Python's str(True)) or 'TRUE'. */
+export function isTrueText(value: string): boolean {
+	return value.toLowerCase() === 'true';
+}
 
 export function typeTag(type: ColumnType): string {
 	return TYPE_TAGS[type];
@@ -61,6 +73,22 @@ export function formatCount(value: number): string {
 	return countFormat.format(value);
 }
 
+/**
+ * Spoken summary of a numeric histogram. The bars are only visible (and hoverable) to a mouse, so
+ * screen readers get the range and the tallest bin instead of a bare "Value distribution".
+ */
+export function histogramSummary(
+	bins: { label: string; count: number }[],
+	min: string,
+	max: string,
+): string {
+	const range = `Value distribution from ${min} to ${max}`;
+	let peak: { label: string; count: number } | null = null;
+	for (const bin of bins) if (bin.count > (peak?.count ?? 0)) peak = bin;
+	if (!peak) return `${range}; no values`;
+	return `${range}; ${bins.length} bins, peak ${formatCount(peak.count)} at ${peak.label}`;
+}
+
 const statFormat = new Intl.NumberFormat('en-US', { maximumSignificantDigits: 6 });
 
 /** Stats values: grouped and trimmed, scientific when tiny or astronomically large. */
@@ -78,6 +106,20 @@ export function formatStatText(value: string | null, numeric: boolean): string {
 	if (!numeric) return value;
 	const parsed = Number(value);
 	return Number.isFinite(parsed) ? formatStat(parsed) : value;
+}
+
+/** What the column profile covers: stats see every loaded row, which for a big file is the head. */
+/** "1,204 rows", or "12 of 1,204 rows" while a filter hides some of them. */
+export function rowCountLabel(totalRows: number, loadedRows: number): string {
+	if (totalRows < loadedRows)
+		return `${formatCount(totalRows)} of ${formatCount(loadedRows)} rows`;
+	return `${formatCount(totalRows)} rows`;
+}
+
+export function profileScope(truncated: boolean, loadedRows: number): string {
+	return truncated
+		? `Computed over the first ${formatCount(loadedRows)} rows (all that was loaded), ignoring the filter.`
+		: 'Computed over the whole file, ignoring the filter.';
 }
 
 /** Header click cycle: ascending → descending → unsorted. */
@@ -139,6 +181,18 @@ export function computeWindow(
 		Math.ceil((virtualTop + viewportHeight) / rowHeight) + overscan,
 	);
 	return { start, end, top: clamped - (virtualTop - start * rowHeight), height, ratio };
+}
+
+/** Rows [top, bottom] on screen, counting a partly shown last row; what "copy visible" copies. */
+export function visibleRowRange(
+	firstVisible: number,
+	viewportHeight: number,
+	totalRows: number,
+	rowHeight = ROW_HEIGHT,
+): { top: number; bottom: number } {
+	const top = Math.min(Math.max(0, firstVisible), Math.max(0, totalRows - 1));
+	const count = Math.max(1, Math.ceil(viewportHeight / rowHeight));
+	return { top, bottom: Math.max(top, Math.min(totalRows - 1, top + count - 1)) };
 }
 
 /** Smallest scroll change that brings `row` fully into view. */

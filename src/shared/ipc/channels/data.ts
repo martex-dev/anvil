@@ -26,6 +26,8 @@ export const DataPageSchema = z.object({
 	rows: z.array(z.array(z.string().nullable())),
 	/** Rows after filtering. */
 	totalRows: z.number().int(),
+	/** Rows in the loaded table before filtering (all of them unless truncated). */
+	loadedRows: z.number().int(),
 	/** Only the first rows of a very large file were loaded. */
 	truncated: z.boolean(),
 	/** Which engine read it: built-in, or the selected Python env (polars / pandas). */
