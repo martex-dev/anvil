@@ -47,6 +47,9 @@ function firstLine(text: string): string | null {
 /** PowerShell single-quoted literal: only ' needs escaping (as ''). */
 export const psQuote = (s: string): string => `'${s.replace(/'/g, "''")}'`;
 
+/** POSIX shell single-quoted literal: close, add an escaped ', reopen. */
+export const shQuote = (s: string): string => `'${s.replace(/'/g, `'\\''`)}'`;
+
 /** `pkg/sub/mod.py` → `pkg.sub.mod`, for `python -m`. */
 export function moduleName(rel: string): string {
 	return rel
@@ -225,12 +228,11 @@ export const pythonFeature: MainFeature = {
 			const python = current();
 			const abs = toAbsolute(root, path);
 			const rel = relative(root, abs).split(sep).join('/');
-			const target = module ? `-m ${moduleName(rel)}` : psQuote(abs);
+			const win = process.platform === 'win32';
+			const quote = win ? psQuote : shQuote;
+			const target = module ? `-m ${moduleName(rel)}` : quote(abs);
 			return {
-				command:
-					process.platform === 'win32'
-						? `& ${psQuote(python)} ${target}`
-						: `'${python}' ${module ? `-m ${moduleName(rel)}` : `'${abs}'`}`,
+				command: win ? `& ${psQuote(python)} ${target}` : `${quote(python)} ${target}`,
 			};
 		});
 
