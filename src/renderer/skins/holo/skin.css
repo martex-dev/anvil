@@ -74,6 +74,11 @@ html[data-skin='holo'] .glass {
 	);
 }
 
+/* The terminal gets the editor's near-opaque surface: text never sits over moving space. */
+html[data-skin='holo'] [data-part='panel'].glass {
+	background: var(--editor-bg);
+}
+
 /* The outline: four straight edges and the two chamfer diagonals. */
 html[data-skin='holo'] .glass::before {
 	inset: 0;
