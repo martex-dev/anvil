@@ -13,3 +13,10 @@ export function problemKeys(problems: readonly Problem[]): string[] {
 		return n === 0 ? base : `${base}#${n}`;
 	});
 }
+
+const RANK: Record<Problem['severity'], number> = { error: 0, warning: 1, info: 2 };
+
+/** Panel order: by file, then errors before warnings before infos, then by line. */
+export function compareProblems(a: Problem, b: Problem): number {
+	return a.path.localeCompare(b.path) || RANK[a.severity] - RANK[b.severity] || a.line - b.line;
+}
