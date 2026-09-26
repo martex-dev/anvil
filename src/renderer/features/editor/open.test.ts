@@ -1,26 +1,31 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { MonacoApi } from '../../lib/monaco/setup';
 import { useTabsStore } from '../../stores/tabs-store';
 import { useEditorStore } from './editor-store';
 
 vi.mock('../../lib/ipc', () => ({ call: vi.fn() }));
 vi.mock('../../lib/log', () => ({ rlog: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 vi.mock('../../app/hooks/use-settings', () => ({ getSettings: () => ({}) }));
-vi.mock('../../lib/monaco/load', () => ({ loadMonaco: vi.fn(() => Promise.resolve({})) }));
+const loadMonaco = vi.fn(() => Promise.resolve({}));
+vi.mock('../../lib/monaco/load', () => ({ loadMonaco: () => loadMonaco() }));
+const openFile = vi.fn((..._args: unknown[]) => Promise.resolve());
 vi.mock('./file-ops', () => ({
 	SCRATCH_PATH: '__scratch__',
 	isScratch: (path: string | null | undefined) => path === '__scratch__',
-	openFile: vi.fn(() => Promise.resolve()),
+	openFile: (...args: unknown[]) => openFile(...args),
 	openScratch: vi.fn(),
 	closeFile: vi.fn(),
 }));
 
-const { closeAllTabs, openPath, takeQuietOpen } = await import('./open');
+const { closeAllTabs, openPath, openUnloadedFiles, takeQuietOpen } = await import('./open');
+const monaco = {} as MonacoApi;
 
 describe('openPath focus', () => {
 	beforeEach(() => {
 		closeAllTabs();
 		useEditorStore.getState().reset();
+		openFile.mockClear();
 	});
 
 	it('takes focus for a normal open', async () => {
@@ -58,5 +63,29 @@ describe('openPath focus', () => {
 		useTabsStore.getState().focus(0);
 		await openPath('C:/proj', { path: 'a.py', line: 7 });
 		expect(useEditorStore.getState().reveal).toMatchObject({ line: 7, group: 0 });
+	});
+});
+
+describe('opening files after Monaco failed to load', () => {
+	beforeEach(() => {
+		closeAllTabs();
+		useEditorStore.getState().reset();
+		openFile.mockClear();
+	});
+
+	it('reads the files of tabs opened during the failure once Monaco is up', async () => {
+		loadMonaco.mockRejectedValueOnce(new Error('boom'));
+		loadMonaco.mockRejectedValueOnce(new Error('boom'));
+		await openPath('C:/proj', { path: 'a.py' });
+		await openPath('C:/proj', { path: 'b.py' });
+		expect(openFile).not.toHaveBeenCalled();
+		// b.py's tab was closed in the meantime; only a.py is still waiting.
+		useTabsStore.getState().close(0, 'code:b.py');
+		await openUnloadedFiles(monaco);
+		expect(openFile).toHaveBeenCalledTimes(1);
+		expect(openFile).toHaveBeenCalledWith(monaco, 'C:/proj', 'a.py');
+		// Done once: a second pass has nothing left to load.
+		await openUnloadedFiles(monaco);
+		expect(openFile).toHaveBeenCalledTimes(1);
 	});
 });

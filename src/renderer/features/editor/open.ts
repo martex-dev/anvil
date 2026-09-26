@@ -2,6 +2,7 @@ import { getSettings } from '../../app/hooks/use-settings';
 import { call } from '../../lib/ipc';
 import { rlog } from '../../lib/log';
 import { loadMonaco } from '../../lib/monaco/load';
+import type { MonacoApi } from '../../lib/monaco/setup';
 import { codeTabId, type Tab, type TabKind, useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
 import type { OpenFileRequest } from '../../stores/workbench-store';
@@ -48,6 +49,9 @@ export async function openScratchTab(): Promise<void> {
 		);
 	}
 }
+
+/** Code tabs opened while Monaco failed to load: path → workspace root. */
+const unloaded = new Map<string, string>();
 
 /**
  * Code files opened without taking focus (session restore, previews). The group's editor reads
@@ -101,16 +105,38 @@ export async function openPath(root: string, request: OpenFileRequest): Promise<
 			: null,
 	);
 	tabs.open(tab, group === undefined ? {} : { group });
+	let monaco: MonacoApi;
 	try {
-		const monaco = await loadMonaco(editorPrefs());
-		await openFile(monaco, root, request.path);
+		monaco = await loadMonaco(editorPrefs());
 	} catch (error) {
+		// The tab stays open behind the editor's error state; Retry picks the file up again.
+		unloaded.set(request.path, root);
 		rlog.error('editor', 'editor failed to load', error);
 		toast.error(
 			'The editor failed to load',
 			error instanceof Error ? error.message : undefined,
 		);
+		return;
 	}
+	unloaded.delete(request.path);
+	await openFile(monaco, root, request.path);
+}
+
+/**
+ * Loads the files whose tabs opened while Monaco failed to boot, once it's up (after Retry).
+ * Without this their tabs would wait for a buffer that nothing is loading.
+ */
+export async function openUnloadedFiles(monaco: MonacoApi): Promise<void> {
+	const waiting = [...unloaded];
+	unloaded.clear();
+	const { tabs } = useTabsStore.getState();
+	await Promise.all(
+		waiting.map(async ([path, root]) => {
+			const hasTab = Object.values(tabs).some((t) => t.kind === 'code' && t.path === path);
+			const loaded = useEditorStore.getState().files.some((f) => f.path === path);
+			if (hasTab && !loaded) await openFile(monaco, root, path);
+		}),
+	);
 }
 
 /**
@@ -151,6 +177,7 @@ export function closeOtherTabs(group: number, keep: string): void {
 
 export function closeAllTabs(): void {
 	quietOpens.clear();
+	unloaded.clear();
 	for (const f of [...useEditorStore.getState().files]) closeFile(f.path);
 	useTabsStore.getState().reset();
 }

@@ -16,6 +16,7 @@ import { Breadcrumbs } from './Breadcrumbs';
 import { CodeEditor } from './CodeEditor';
 import { useEditorStore } from './editor-store';
 import { EditorDialogs } from './EditorDialogs';
+import { openUnloadedFiles } from './open';
 import { TabBar } from './TabBar';
 import { Watermark } from './Watermark';
 
@@ -51,7 +52,14 @@ function useMonaco(needed: boolean): [MonacoState, () => void] {
 		if (!needed || state.status === 'ready' || state.status === 'error') return;
 		let cancelled = false;
 		loadMonaco(settings)
-			.then((monaco) => !cancelled && setState({ status: 'ready', monaco }))
+			.then((monaco) => {
+				if (cancelled) return;
+				setState({ status: 'ready', monaco });
+				// Tabs opened while an earlier load failed still need their files read.
+				openUnloadedFiles(monaco).catch((error: unknown) =>
+					rlog.error('editor', 'reopening files after load failed', error),
+				);
+			})
 			.catch((error: unknown) => {
 				rlog.error('editor', 'monaco failed to load', error);
 				if (!cancelled)
