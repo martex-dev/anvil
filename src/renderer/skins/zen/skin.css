@@ -1,0 +1,238 @@
+/*
+ * Zen Paper, the page: shape, type and surfaces. Everything is printed on one sheet of paper;
+ * panes are areas of the page separated by whitespace and hairline rules, never boxes or glass.
+ * Chrome lives in chrome.css, the editor in editor.css, menus and dialogs in sheets.css.
+ */
+
+html[data-skin='zen'] {
+	--r-sm: 2px;
+	--r-md: 2px;
+	--r-lg: 3px;
+	--r-xl: 4px;
+	--glass-blur: 0px;
+
+	/* Focus is a fine ink ring, never a glow. */
+	--glow: 0 0 0 1px color-mix(in oklab, var(--accent) 65%, transparent);
+	--glow-soft: none;
+	--shadow-panel: none;
+	--shadow-float:
+		0 22px 48px -22px var(--skin-shadow), 0 3px 10px -4px var(--skin-shadow),
+		0 0 0 1px color-mix(in oklab, var(--text-0) 6%, transparent);
+	--grain: transparent;
+
+	/* Hairlines: a rule is ink at low strength, so it follows every paper. */
+	--zn-rule: color-mix(in oklab, var(--text-0) 16%, transparent);
+	--zn-rule-soft: color-mix(in oklab, var(--text-0) 9%, transparent);
+	--zn-wash: color-mix(in oklab, var(--accent) 7%, transparent);
+	--zn-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+	--zn-slow: 320ms;
+
+	/* The hedera (see Fleuron.tsx) as a mask, for ornaments drawn in CSS. */
+	--zn-fleuron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cg transform='rotate(-28 8 8)'%3E%3Cpath fill-rule='evenodd' d='M8 15.6C7 12.6 3 10.8 2.4 7.4 2 4.6 5.4 3.4 8 5.9c2.6-2.5 6-1.3 5.6 1.5-.6 3.4-4.6 5.2-5.6 8.2zM8 7.4 7.72 13h.56z'/%3E%3Cpath d='M7.6 6C7 3.6 8.2 1.2 11.4.8c1.2-.1 2 .6 1.8 1.6-.4-.8-1.2-1-2-.8C9 2 8.1 3.8 8.4 6z'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+html[data-skin='zen'] [data-zen='fleuron'] {
+	color: var(--accent);
+}
+
+html[data-skin='zen'] body {
+	background: var(--bg-1);
+	font-feature-settings: 'kern', 'liga', 'onum';
+	line-height: 1.5;
+}
+
+html[data-skin='zen'] ::selection {
+	background: color-mix(in oklab, var(--accent) 22%, transparent);
+}
+
+/* ---- The paper -------------------------------------------------------------------------- */
+
+html[data-skin='zen'] [data-zen='paper'] {
+	position: fixed;
+	inset: 0;
+	z-index: 0;
+	pointer-events: none;
+	overflow: hidden;
+	background: var(--bg-1);
+	/* Its own layer: the texture is rasterized once, not on every repaint above it. */
+	transform: translateZ(0);
+}
+html[data-skin='zen'] .zn-paper-texture {
+	position: absolute;
+	inset: 0;
+}
+html[data-skin='zen'] .zn-fibre-ink {
+	flood-color: var(--skin-fibre);
+}
+html[data-skin='zen'] .zn-grain-ink {
+	flood-color: var(--skin-grain);
+}
+/* Deckled, sun-touched edges: the sheet darkens a little toward the margins. */
+html[data-skin='zen'] [data-zen='paper']::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: radial-gradient(
+		ellipse 120% 110% at 50% 45%,
+		transparent 62%,
+		color-mix(in oklab, var(--skin-vignette) 55%, transparent) 88%,
+		var(--skin-vignette) 100%
+	);
+}
+html[data-skin='zen'][data-fx='off'] .zn-paper-texture,
+html[data-skin='zen'][data-fx='off'] [data-zen='paper']::after {
+	display: none;
+}
+
+/* ---- Panes: areas of the page, not boxes ----------------------------------------------- */
+
+html[data-skin='zen'] .glass {
+	background: transparent;
+	backdrop-filter: none;
+	border: 0;
+	border-radius: 0;
+	box-shadow: none;
+}
+html[data-skin='zen'] .glass::before,
+html[data-skin='zen'] .brackets-frame {
+	display: none;
+}
+html[data-skin='zen'] .pane-focus:focus-within {
+	border-color: transparent;
+	box-shadow: none;
+}
+
+/* The editor sits directly on the page. */
+html[data-skin='zen'] [data-part='editor-group'] {
+	background: transparent;
+}
+
+/* The bottom panel: a slightly different stock under a rule with a centered fleuron. */
+html[data-skin='zen'] [data-part='panel'] {
+	padding-top: 14px;
+	background: linear-gradient(
+		to bottom,
+		transparent 7px,
+		color-mix(in oklab, var(--skin-tone) 70%, transparent) 7px
+	);
+}
+html[data-skin='zen'] [data-part='panel']::before {
+	display: block;
+	content: '';
+	inset: 0 0 auto 0;
+	height: 14px;
+	padding: 0;
+	mask: none;
+	-webkit-mask: none;
+	border-radius: 0;
+	opacity: 1;
+	background:
+		linear-gradient(var(--zn-rule), var(--zn-rule)) no-repeat left 7px / calc(50% - 22px) 1px,
+		linear-gradient(var(--zn-rule), var(--zn-rule)) no-repeat right 7px / calc(50% - 22px) 1px;
+}
+html[data-skin='zen'] [data-part='panel']::after {
+	content: '';
+	position: absolute;
+	top: 1px;
+	left: calc(50% - 7px);
+	width: 14px;
+	height: 13px;
+	background: color-mix(in oklab, var(--accent) 80%, var(--text-2));
+	mask: var(--zn-fleuron) center / contain no-repeat;
+	pointer-events: none;
+}
+
+/* The chat: a facing page, set off by a single vertical rule. */
+html[data-skin='zen'] [data-part='chat'] {
+	background: color-mix(in oklab, var(--skin-tone) 55%, transparent);
+	border-left: 1px solid var(--zn-rule-soft);
+}
+
+/* Splitters are the whitespace itself; a hairline appears only while you grab one. */
+html[data-skin='zen'] [data-part='splitter-handle'] {
+	background: var(--zn-rule);
+	background-image: none;
+	border-radius: 0;
+}
+html[data-skin='zen'] [data-part='splitter'][data-axis='x'] [data-part='splitter-handle'] {
+	width: 1px;
+}
+html[data-skin='zen'] [data-part='splitter'][data-axis='y'] [data-part='splitter-handle'] {
+	height: 1px;
+}
+
+/* ---- Type voice ------------------------------------------------------------------------- */
+
+/* The HUD voice becomes letter-spaced small capitals. */
+html[data-skin='zen'] .hud {
+	font-family: var(--font-ui);
+	font-size: 10.5px;
+	font-weight: 400;
+	letter-spacing: 0.14em;
+	color: var(--text-2);
+}
+html[data-skin='zen'] .accent-line,
+html[data-skin='zen'] .accent-gradient {
+	background-image: none;
+	background-color: var(--accent);
+	box-shadow: none;
+}
+html[data-skin='zen'] .text-gradient {
+	background: none;
+	color: var(--accent);
+}
+html[data-skin='zen'] .neon {
+	text-shadow: none;
+}
+html[data-skin='zen'] .shadow-glow {
+	box-shadow: none;
+}
+
+/* Content icons drawn with a fine pen. */
+html[data-skin='zen'] svg.lucide {
+	stroke-width: 1.25;
+}
+
+/* Keys set as small capitals rather than keycaps. */
+html[data-skin='zen'] kbd {
+	height: auto;
+	min-width: 0;
+	border: 0;
+	background: none;
+	padding: 0 1px;
+	font-family: var(--font-ui);
+	font-size: 11px;
+	font-variant-caps: all-small-caps;
+	letter-spacing: 0.06em;
+	color: var(--text-2);
+}
+
+html[data-skin='zen'] ::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+html[data-skin='zen'] ::-webkit-scrollbar-thumb {
+	background: color-mix(in oklab, var(--text-2) 22%, transparent);
+	border: 3px solid transparent;
+	background-clip: padding-box;
+	border-radius: 0;
+}
+html[data-skin='zen'] ::-webkit-scrollbar-thumb:hover {
+	background-color: color-mix(in oklab, var(--accent) 45%, transparent);
+}
+
+/* Terminal sessions: italic names, the one in front underscored; no chips. */
+html[data-skin='zen'] [data-part='terminal-chip'] {
+	border-color: transparent;
+	background: none;
+	font-family: var(--font-ui);
+	font-size: 13px;
+	font-style: italic;
+}
+html[data-skin='zen'] [data-part='terminal-chip'][data-active='true'] {
+	border-color: transparent;
+	background: none;
+	color: var(--text-0);
+	text-decoration: underline 1px var(--accent);
+	text-underline-offset: 4px;
+}
