@@ -16,7 +16,7 @@
 	--border-strong: #dca6d6;
 
 	--glass: rgb(255 248 253 / 0.9);
-	--glass-strong: rgb(255 249 254 / 0.97);
+	--glass-strong: #fff9fe;
 	--glass-edge: rgb(222 120 196 / 0.32);
 	--glass-highlight: rgb(255 255 255 / 0.95);
 	--editor-bg: rgb(255 251 254 / 0.97);
@@ -89,7 +89,7 @@
 	--border-strong: #98afc8;
 
 	--glass: rgb(248 251 254 / 0.92);
-	--glass-strong: rgb(250 252 255 / 0.97);
+	--glass-strong: #fafcff;
 	--glass-edge: rgb(60 120 200 / 0.26);
 	--glass-highlight: rgb(255 255 255 / 0.95);
 	--editor-bg: rgb(251 253 255 / 0.97);
@@ -162,7 +162,7 @@
 	--border-strong: #a2a8b8;
 
 	--glass: rgb(246 247 250 / 0.92);
-	--glass-strong: rgb(248 249 252 / 0.97);
+	--glass-strong: #f8f9fc;
 	--glass-edge: rgb(110 100 160 / 0.28);
 	--glass-highlight: rgb(255 255 255 / 0.95);
 	--editor-bg: rgb(250 250 252 / 0.97);
@@ -235,7 +235,7 @@
 	--border-strong: #5e4196;
 
 	--glass: rgb(35 20 63 / 0.92);
-	--glass-strong: rgb(30 17 56 / 0.97);
+	--glass-strong: #1e1138;
 	--glass-edge: rgb(255 120 220 / 0.3);
 	--glass-highlight: rgb(255 255 255 / 0.18);
 	--editor-bg: rgb(28 16 52 / 0.97);
@@ -308,7 +308,7 @@
 	--border-strong: #a9c86c;
 
 	--glass: rgb(253 255 246 / 0.92);
-	--glass-strong: rgb(253 255 247 / 0.97);
+	--glass-strong: #fdfff7;
 	--glass-edge: rgb(110 170 30 / 0.3);
 	--glass-highlight: rgb(255 255 255 / 0.95);
 	--editor-bg: rgb(254 255 250 / 0.97);

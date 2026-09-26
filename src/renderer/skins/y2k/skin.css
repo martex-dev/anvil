@@ -60,9 +60,12 @@ html[data-skin='y2k'] body {
 	letter-spacing: 0.005em;
 }
 
-html[data-skin='y2k'] :focus-visible {
-	outline: 2px solid var(--accent);
-	outline-offset: 2px;
+/* In the base layer, so components that draw their own focus (outline-none + glow) still win. */
+@layer base {
+	html[data-skin='y2k'] :focus-visible {
+		outline: 2px solid var(--accent);
+		outline-offset: 2px;
+	}
 }
 
 html[data-skin='y2k'] ::selection {
