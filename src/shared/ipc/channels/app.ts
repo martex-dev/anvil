@@ -10,6 +10,10 @@ export const AppMetricsSchema = z.object({
 });
 export type AppMetrics = z.infer<typeof AppMetricsSchema>;
 
+/** A main-process module that threw while starting; its panels will not work this session. */
+export const FeatureFailureSchema = z.object({ id: z.string(), message: z.string() });
+export type FeatureFailure = z.infer<typeof FeatureFailureSchema>;
+
 export const appChannels = defineChannels({
 	'app:getVersion': { input: z.void(), output: z.string() },
 	'app:getPlatform': { input: z.void(), output: z.string() },
@@ -17,6 +21,8 @@ export const appChannels = defineChannels({
 	'app:toggleFullScreen': { input: z.void(), output: z.boolean() },
 	'app:toggleDevTools': { input: z.void(), output: z.void() },
 	'app:metrics': { input: z.void(), output: AppMetricsSchema },
+	/** Modules that failed to start, so the shell can say which integration is down and why. */
+	'app:featureErrors': { input: z.void(), output: z.array(FeatureFailureSchema) },
 	/** Opens Anvil's log folder in Explorer. */
 	'app:openLogs': { input: z.void(), output: z.void() },
 	'app:openExternal': { input: z.url({ protocol: /^https$/ }), output: z.void() },

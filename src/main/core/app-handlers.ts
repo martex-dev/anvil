@@ -5,6 +5,7 @@ import { app, BrowserWindow, shell } from 'electron';
 import log from 'electron-log/main';
 import { z } from 'zod';
 
+import type { FeatureFailure } from '@shared/ipc/channels/app';
 import { parseSettings, type Settings, SettingsSchema } from '@shared/settings';
 
 import { AnvilError } from './errors';
@@ -34,7 +35,11 @@ export function readSettings(store: SettingsStore): Settings {
 	return settings;
 }
 
-export function registerAppHandlers(store: SettingsStore): void {
+export function registerAppHandlers(
+	store: SettingsStore,
+	featureFailures: () => readonly FeatureFailure[],
+): void {
+	router.handle('app:featureErrors', () => [...featureFailures()]);
 	router.handle('app:getVersion', () => app.getVersion());
 	router.handle('app:getPlatform', () => process.platform);
 	router.handle('app:reloadWindow', () => {

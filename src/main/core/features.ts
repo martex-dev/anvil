@@ -1,8 +1,10 @@
 import log from 'electron-log/main';
 import type { z } from 'zod';
 
+import type { FeatureFailure } from '@shared/ipc/channels/app';
 import type { AnvilEvent, Channel, EventPayload } from '@shared/ipc/contract';
 
+import { errorMessage } from './errors';
 import { emitEvent, router } from './ipc';
 import type { Handler } from './ipc-router';
 import type { SecretsService } from './secrets/secrets-service';
@@ -53,22 +55,28 @@ type Disposer = () => void | Promise<void>;
 
 /**
  * Starts every feature with its own context. A feature that throws on activation is logged
- * and skipped: one broken integration must not take the editor down with it.
+ * and skipped: one broken integration must not take the editor down with it. Failures are
+ * returned so the shell can name the broken module instead of showing per-panel errors.
  */
 export async function startFeatures(
 	features: readonly MainFeature[],
 	host: FeatureHost,
-): Promise<{ stopAll(): Promise<void> }> {
+): Promise<{ stopAll(): Promise<void>; failures: FeatureFailure[] }> {
 	const disposers: Disposer[] = [];
+	const failures: FeatureFailure[] = [];
 	for (const feature of features) {
 		try {
 			// Built inside the try: dataDir creates a folder, which can fail (EPERM, disk full).
 			await feature.activate(createContext(feature.id, host, disposers));
 		} catch (error) {
 			log.scope(feature.id).error('feature failed to start', error);
+			const message = errorMessage(error);
+			failures.push({ id: feature.id, message });
+			router.markUnavailable(feature.id, message);
 		}
 	}
 	return {
+		failures,
 		async stopAll() {
 			for (const dispose of disposers.reverse()) {
 				try {

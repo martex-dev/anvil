@@ -5,6 +5,7 @@ import { app, BrowserWindow } from 'electron';
 import log from 'electron-log/main';
 
 import { APP_ID } from '@shared/constants';
+import type { FeatureFailure } from '@shared/ipc/channels/app';
 
 import { readSettings, registerAppHandlers } from './core/app-handlers';
 import { registerAppScheme, serveRenderer } from './core/app-protocol';
@@ -36,6 +37,7 @@ if (process.platform === 'win32') app.setAppUserModelId(APP_ID);
 
 let store: JsonStore | null = null;
 let features: { stopAll(): Promise<void> } | null = null;
+let featureFailures: readonly FeatureFailure[] = [];
 let watcher: WorkspaceWatcher | null = null;
 let mainWindow: BrowserWindow | null = null;
 
@@ -50,7 +52,7 @@ async function start(): Promise<void> {
 	);
 	const settings = store;
 	const secrets = createSecretsService();
-	registerAppHandlers(settings);
+	registerAppHandlers(settings, () => featureFailures);
 	registerSecretsHandlers(secrets);
 	registerUpdater(() => readSettings(settings).autoUpdate);
 
@@ -68,7 +70,7 @@ async function start(): Promise<void> {
 	});
 	watcher = ws.watcher;
 
-	features = await startFeatures(
+	const started = await startFeatures(
 		[
 			aiFeature,
 			gitFeature,
@@ -83,6 +85,8 @@ async function start(): Promise<void> {
 		],
 		{ settings, secrets, workspace: ws.workspace, dataDir },
 	);
+	features = started;
+	featureFailures = started.failures;
 
 	openWindow();
 	app.on('activate', () => {
