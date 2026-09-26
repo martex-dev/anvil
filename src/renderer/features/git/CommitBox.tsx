@@ -1,5 +1,5 @@
 import { Check, Sparkles } from 'lucide-react';
-import { type JSX, useState } from 'react';
+import { type JSX, useRef, useState } from 'react';
 
 import { toast } from '../../stores/toast-store';
 import { Button } from '../../ui/Button';
@@ -31,6 +31,8 @@ export function CommitBox({
 	const writing = useCommitDrafts((s) => s.writingRoot === root);
 	const setWritingRoot = useCommitDrafts((s) => s.setWritingRoot);
 	const [confirmReplace, setConfirmReplace] = useState(false);
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const commitRef = useRef<HTMLButtonElement>(null);
 
 	const generate = (): void => {
 		setWritingRoot(root);
@@ -59,6 +61,12 @@ export function CommitBox({
 		if (!canCommit) return;
 		void onCommit(message.trim()).then((ok) => {
 			if (ok) setMessage('');
+			// The Commit button is disabled while committing (and stays so once the message is
+			// cleared), which drops focus to <body>. Hand it back to the message box, unless the
+			// user has already moved on to something else.
+			const active = document.activeElement;
+			if (!active || active === document.body || active === commitRef.current)
+				textareaRef.current?.focus();
 		});
 	};
 
@@ -66,6 +74,7 @@ export function CommitBox({
 		<div className='flex flex-col gap-1.5 p-2'>
 			<div className='relative'>
 				<textarea
+					ref={textareaRef}
 					value={message}
 					// The stream replaces the text on every chunk; typing now would be erased.
 					readOnly={writing}
@@ -95,6 +104,7 @@ export function CommitBox({
 				/>
 			</div>
 			<Button
+				ref={commitRef}
 				variant='primary'
 				size='sm'
 				icon={<Check size={12} />}
