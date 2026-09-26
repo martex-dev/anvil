@@ -1,0 +1,166 @@
+/*
+ * Concrete sheets: editor tabs as ruled boxes, the panel's tabs, and every popup (menus,
+ * pickers, dialogs, tooltips, toasts) as a flat sheet of paper with a hard shadow.
+ */
+
+/* ---- Editor tabs ----------------------------------------------------------------------- */
+
+html[data-skin='concrete'] [data-part='tabbar'] {
+	height: 40px;
+	border-bottom: var(--cc-rule) solid var(--skin-ink);
+	background: var(--bg-2);
+}
+html[data-skin='concrete'] [data-part='tab'] {
+	gap: 7px;
+	padding-left: 12px;
+	border-right: var(--cc-rule) solid var(--skin-ink);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	color: var(--text-1);
+	transition: none;
+}
+html[data-skin='concrete'] [data-part='tab'] > span.absolute {
+	display: none;
+}
+html[data-skin='concrete'] [data-part='tab']:hover {
+	background: var(--bg-3);
+	color: var(--text-0);
+}
+html[data-skin='concrete'] [data-part='tab'][data-active='true'] {
+	background: var(--accent) !important;
+	color: var(--on-accent);
+}
+html[data-skin='concrete'] [data-part='tab'][data-active='true'] :is(.text-fg-2, .text-warn) {
+	color: var(--on-accent);
+}
+html[data-skin='concrete'] [data-part='tab'][data-active='true'] .bg-accent {
+	background: var(--on-accent);
+	box-shadow: none;
+}
+html[data-skin='concrete'] [data-part='tab'][data-active='true'] button:hover {
+	background: var(--on-accent);
+	color: var(--accent);
+}
+html[data-skin='concrete'] [data-part='tab']:focus-visible {
+	outline: 3px solid var(--skin-ink);
+	outline-offset: -6px;
+	box-shadow: none;
+}
+html[data-skin='concrete']
+	[data-part='editor-group']:not(:focus-within)
+	[data-part='tab'][data-active='true'] {
+	background: var(--bg-1) !important;
+	color: var(--text-0);
+	box-shadow: inset 0 -5px 0 var(--accent);
+}
+html[data-skin='concrete']
+	[data-part='editor-group']:not(:focus-within)
+	[data-part='tab'][data-active='true']
+	.bg-accent {
+	background: var(--text-0);
+}
+
+/* ---- Bottom panel ---------------------------------------------------------------------- */
+
+html[data-skin='concrete'] [data-part='panel-tab'] {
+	padding: 0 12px;
+	font-family: var(--font-display);
+	font-size: 13px;
+	font-weight: 400;
+	letter-spacing: 0.03em;
+	color: var(--text-1);
+}
+html[data-skin='concrete'] [data-part='panel-tab']:hover {
+	color: var(--text-0);
+}
+html[data-skin='concrete'] [data-part='panel-tab'][data-active='true'] {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+html[data-skin='concrete'] [data-part='panel-tab'] [data-part='tab-marker'] {
+	display: none;
+}
+html[data-skin='concrete'] [data-part='panel-tab'][data-active='true'] .text-accent {
+	background: var(--on-accent);
+	color: var(--accent);
+}
+html[data-skin='concrete'] [data-part='terminal-chip'] {
+	height: 26px;
+	border: 2px solid var(--text-2);
+	font-weight: 700;
+	text-transform: uppercase;
+	color: var(--text-1);
+}
+html[data-skin='concrete'] [data-part='terminal-chip'][data-active='true'] {
+	border-color: var(--text-0);
+	background: var(--text-0);
+	color: var(--skin-band);
+}
+
+/* ---- Sheets: menus, pickers, dialogs, tooltips, toasts ---------------------------------- */
+
+html[data-skin='concrete'] .glass-strong {
+	background: var(--bg-1);
+	backdrop-filter: none;
+	border: var(--cc-rule) solid var(--skin-ink);
+	border-radius: 0;
+	box-shadow: 8px 8px 0 var(--skin-shadow);
+}
+html[data-skin='concrete'] .glass-strong.animate-fade {
+	border-width: 2px;
+	box-shadow: 4px 4px 0 var(--skin-shadow);
+	font-weight: 600;
+}
+html[data-skin='concrete'] .cc-sheet-rule {
+	height: var(--cc-rule);
+	margin: 4px -4px;
+	background: var(--skin-ink);
+}
+html[data-skin='concrete'] .glass-strong :is([data-highlighted], [data-selected='true']) {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+html[data-skin='concrete']
+	.glass-strong
+	:is([data-highlighted], [data-selected='true'])
+	:is(.text-fg-0, .text-fg-1, .text-fg-2, .text-accent) {
+	color: var(--on-accent);
+}
+html[data-skin='concrete'] .glass-strong .hud {
+	color: var(--text-0);
+}
+
+/* Dialogs and the command palette print their first row as an ink bar. */
+html[data-skin='concrete'] [role='dialog'].glass-strong {
+	border-width: 4px;
+	box-shadow: 12px 12px 0 var(--skin-shadow);
+}
+html[data-skin='concrete'] [role='dialog'].glass-strong > :first-child {
+	--text-0: var(--skin-band-text);
+	--text-1: var(--skin-band-text-1);
+	--text-2: var(--skin-band-text-2);
+	--skin-ink: var(--skin-band-text);
+	--cc-focus: var(--skin-band-accent);
+	--cc-accent-text: var(--skin-band-accent);
+	border-bottom: 0;
+	background: var(--skin-band);
+	color: var(--text-0);
+}
+html[data-skin='concrete'] [role='dialog'].glass-strong > :first-child input {
+	font-weight: 600;
+}
+
+html[data-skin='concrete'] kbd {
+	border: 2px solid var(--skin-ink);
+	border-bottom-width: 2px;
+	background: var(--bg-1);
+	color: var(--text-0);
+	font-weight: 700;
+}
+html[data-skin='concrete'] :is([data-highlighted], [data-selected='true']) kbd {
+	background: var(--on-accent);
+	border-color: var(--on-accent);
+	color: var(--accent);
+}
