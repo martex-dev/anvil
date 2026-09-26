@@ -197,6 +197,8 @@ export function attachBookmarks(
 					options: {
 						stickiness:
 							monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
+						// The lane right of the cells' run arrow (cells.ts), so both stay readable.
+						glyphMargin: { position: monaco.editor.GlyphMarginLane.Right },
 						glyphMarginClassName: 'anvil-bookmark',
 						glyphMarginHoverMessage: { value: 'Bookmark' },
 					},

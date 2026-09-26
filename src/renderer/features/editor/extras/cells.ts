@@ -50,6 +50,9 @@ export function attachCells(
 					options: {
 						isWholeLine: true,
 						className: 'anvil-cell-line',
+						// Own lanes for the run arrow and bookmarks: on a `# %%` line with a bookmark
+						// Monaco widens the margin instead of drawing one glyph over the other.
+						glyphMargin: { position: monaco.editor.GlyphMarginLane.Left },
 						glyphMarginClassName: 'anvil-cell-glyph',
 						glyphMarginHoverMessage: {
 							value: `Run cell${c.title ? ` "${c.title}"` : ''} (Ctrl+Enter)`,
