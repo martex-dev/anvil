@@ -103,18 +103,25 @@ function GroupView({
 	);
 	const codePath = tab?.kind === 'code' ? (tab.path ?? null) : null;
 
+	// Code and diff tabs both wait on Monaco: a spinner while it boots, Retry if it failed.
+	const monacoPending =
+		monaco.status === 'error' ? (
+			<ErrorState
+				title='The editor failed to load'
+				message={monaco.message}
+				onRetry={retry}
+			/>
+		) : monaco.status !== 'ready' ? (
+			<div className='flex h-full items-center justify-center'>
+				<Spinner label='Loading editor' />
+			</div>
+		) : null;
+
 	let body: JSX.Element | null = null;
 	if (!tab) body = <Watermark />;
 	else if (tab.kind === 'code') {
-		if (monaco.status === 'error')
-			body = (
-				<ErrorState
-					title='The editor failed to load'
-					message={monaco.message}
-					onRetry={retry}
-				/>
-			);
-		else if (monaco.status !== 'ready' || !file || file.state === 'loading')
+		if (monacoPending) body = monacoPending;
+		else if (!file || file.state === 'loading')
 			body = (
 				<div className='flex h-full items-center justify-center'>
 					<Spinner label='Loading editor' />
@@ -139,7 +146,29 @@ function GroupView({
 					}
 				/>
 			);
-	} else if (tab.path || tab.kind === 'diff' || tab.kind === 'welcome') {
+	} else if (tab.kind === 'diff') {
+		if (monacoPending) body = monacoPending;
+		else if (!tab.diff)
+			body = (
+				<EmptyState
+					icon={<FileWarning size={22} />}
+					title='Nothing to compare'
+					description='This diff has no content. Run the comparison again.'
+				/>
+			);
+		else if (monaco.status === 'ready')
+			body = (
+				<Suspense
+					fallback={
+						<div className='flex h-full items-center justify-center'>
+							<Spinner label='Loading viewer' />
+						</div>
+					}
+				>
+					<DiffViewer diff={tab.diff} monaco={monaco.monaco} />
+				</Suspense>
+			);
+	} else if (tab.path || tab.kind === 'welcome') {
 		body = (
 			<Suspense
 				fallback={
@@ -152,9 +181,6 @@ function GroupView({
 				{tab.kind === 'image' && tab.path && <ImageViewer path={tab.path} />}
 				{tab.kind === 'notebook' && tab.path && <NotebookViewer path={tab.path} />}
 				{tab.kind === 'markdown' && tab.path && <MarkdownPreview path={tab.path} />}
-				{tab.kind === 'diff' && tab.diff && monaco.status === 'ready' && (
-					<DiffViewer diff={tab.diff} monaco={monaco.monaco} />
-				)}
 				{tab.kind === 'welcome' && <Welcome />}
 			</Suspense>
 		);
