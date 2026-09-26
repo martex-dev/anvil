@@ -75,6 +75,19 @@ describe('ResultCollector', () => {
 	});
 });
 
+describe('ResultCollector per-file cap', () => {
+	it('marks files that reached the per-file line cap', () => {
+		const c = new ResultCollector(100, 2);
+		c.add(match('full.py', 'foo', 1, [[0, 3]]));
+		c.add(match('full.py', 'foo', 2, [[0, 3]]));
+		c.add(match('one.py', 'foo', 1, [[0, 3]]));
+		expect(c.result().map((f) => [f.path, f.capped ?? false])).toEqual([
+			['full.py', true],
+			['one.py', false],
+		]);
+	});
+});
+
 describe('splitGlobs', () => {
 	it('splits and trims comma-separated globs', () => {
 		expect(splitGlobs(' src/**, *.py ,, ')).toEqual(['src/**', '*.py']);

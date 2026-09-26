@@ -6,7 +6,7 @@ import { SearchQuerySchema } from '@shared/ipc/channels/search';
 
 import { AnvilError } from '../../core/errors';
 import { IGNORED_DIRS } from '../../core/workspace/watcher';
-import { ResultCollector, splitGlobs } from './rg-parse';
+import { PER_FILE_LIMIT, ResultCollector, splitGlobs } from './rg-parse';
 
 export const MATCH_LIMIT = 2_000;
 const TIMEOUT_MS = 20_000;
@@ -34,7 +34,7 @@ export function rgArgs(input: SearchQuery): string[] {
 		'2M',
 		// Per-file cap: one huge generated file shouldn't eat the whole result budget.
 		'--max-count',
-		'200',
+		String(PER_FILE_LIMIT),
 		q.caseSensitive ? '--case-sensitive' : '--ignore-case',
 	];
 	if (!q.regex) args.push('--fixed-strings');

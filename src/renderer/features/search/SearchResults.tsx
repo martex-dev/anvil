@@ -54,8 +54,16 @@ export function SearchResults({ files }: { files: SearchFile[] }): JSX.Element {
 							<span className='truncate text-11 text-fg-2'>
 								{slash > 0 ? file.path.slice(0, slash) : ''}
 							</span>
-							<span className='num ml-auto shrink-0 rounded-full bg-bg-3 px-1.5 text-11 text-fg-1'>
+							<span
+								className='num ml-auto shrink-0 rounded-full bg-bg-3 px-1.5 text-11 text-fg-1'
+								title={
+									file.capped
+										? 'Only the first matching lines of this file are listed'
+										: undefined
+								}
+							>
 								{file.matches.length}
+								{file.capped && '+'}
 							</span>
 						</button>
 						{open && (

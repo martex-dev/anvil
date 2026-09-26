@@ -59,13 +59,19 @@ export function parseMatch(event: RgMatch): { path: string; match: SearchMatch }
 	};
 }
 
+/** Matching lines kept per file (rg --max-count): one generated file can't eat the budget. */
+export const PER_FILE_LIMIT = 200;
+
 /** Accumulates matches per file, in the order ripgrep reports them, up to `limit`. */
 export class ResultCollector {
 	private files = new Map<string, SearchFile>();
 	count = 0;
 	truncated = false;
 
-	constructor(private readonly limit: number) {}
+	constructor(
+		private readonly limit: number,
+		private readonly perFileLimit: number = PER_FILE_LIMIT,
+	) {}
 
 	/** Feed one line of `rg --json` output. Returns false once the limit is reached. */
 	add(line: string): boolean {
@@ -94,7 +100,10 @@ export class ResultCollector {
 	}
 
 	result(): SearchFile[] {
-		return [...this.files.values()];
+		// rg stops a file at the per-file cap silently; a full file may have had more lines.
+		return [...this.files.values()].map((f) =>
+			f.matches.length >= this.perFileLimit ? { ...f, capped: true } : f,
+		);
 	}
 }
 

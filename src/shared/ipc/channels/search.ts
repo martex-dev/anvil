@@ -29,6 +29,8 @@ export const SearchFileSchema = z.object({
 	/** Workspace-relative, '/'-separated. */
 	path: z.string(),
 	matches: z.array(SearchMatchSchema),
+	/** Hit the per-file line cap: the file may have more matches than listed. */
+	capped: z.boolean().optional(),
 });
 export type SearchFile = z.infer<typeof SearchFileSchema>;
 
