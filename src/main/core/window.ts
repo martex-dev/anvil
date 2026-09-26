@@ -10,6 +10,7 @@ import { APP_ORIGIN } from './app-protocol';
 import { errorMessage } from './errors';
 import { lockWindowNavigation } from './security';
 import type { SettingsStore } from './store/json-store';
+import { readWindowState, trackWindowState } from './window-state';
 
 const CHROME_KEY = 'window:chrome';
 const SHOW_FALLBACK_MS = 8_000;
@@ -37,13 +38,15 @@ export function applyWindowChrome(
 	}
 }
 
-export function createMainWindow(chrome: WindowChrome = DEFAULT_CHROME): BrowserWindow {
+/** The main window, restored to the theme colors, size, position and maximized state of last time. */
+export function createMainWindow(store: SettingsStore): BrowserWindow {
+	const chrome = readWindowChrome(store);
+	const state = readWindowState(store);
 	// No native menu: its default accelerators (Ctrl+W, Ctrl+R…) would fight app shortcuts.
 	Menu.setApplicationMenu(null);
 
 	const win = new BrowserWindow({
-		width: 1440,
-		height: 900,
+		...(state.bounds ?? { width: 1440, height: 900 }),
 		minWidth: 960,
 		minHeight: 600,
 		title: APP_NAME,
@@ -77,8 +80,10 @@ export function createMainWindow(chrome: WindowChrome = DEFAULT_CHROME): Browser
 	}, SHOW_FALLBACK_MS);
 	win.once('ready-to-show', () => {
 		clearTimeout(showFallback);
+		if (state.maximized) win.maximize();
 		win.show();
 	});
+	trackWindowState(win, store);
 	win.once('closed', () => clearTimeout(showFallback));
 	watchRenderer(win);
 

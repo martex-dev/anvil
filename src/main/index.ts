@@ -15,7 +15,7 @@ import { createSecretsService, registerSecretsHandlers } from './core/secrets/se
 import { installGlobalSecurity } from './core/security';
 import { JsonStore } from './core/store/json-store';
 import { registerUpdater } from './core/update/updater';
-import { createMainWindow, readWindowChrome } from './core/window';
+import { createMainWindow } from './core/window';
 import { createWorkspace } from './core/workspace';
 import type { WorkspaceWatcher } from './core/workspace/watcher';
 import { aiFeature } from './features/ai';
@@ -94,14 +94,14 @@ async function start(): Promise<void> {
 	features = started;
 	featureFailures = started.failures;
 
-	openWindow();
+	openWindow(settings);
 	app.on('activate', () => {
-		if (BrowserWindow.getAllWindows().length === 0) openWindow();
+		if (BrowserWindow.getAllWindows().length === 0) openWindow(settings);
 	});
 }
 
-function openWindow(): void {
-	const win = createMainWindow(store ? readWindowChrome(store) : undefined);
+function openWindow(settings: JsonStore): void {
+	const win = createMainWindow(settings);
 	mainWindow = win;
 	win.on('closed', () => {
 		if (mainWindow === win) mainWindow = null;
