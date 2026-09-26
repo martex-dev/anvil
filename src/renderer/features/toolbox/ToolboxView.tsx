@@ -1,16 +1,4 @@
-import {
-	Binary,
-	Braces,
-	Clock,
-	Crosshair,
-	Hash,
-	KeyRound,
-	type LucideIcon,
-	Regex,
-	Ruler,
-	TrendingUp,
-} from 'lucide-react';
-import { type ComponentType, type JSX, type KeyboardEvent, useRef, useState } from 'react';
+import { type ComponentType, type JSX, type KeyboardEvent, useRef } from 'react';
 
 import { cn } from '../../lib/cn';
 import { CompoundTool } from './CompoundTool';
@@ -21,99 +9,27 @@ import { JwtTool } from './JwtTool';
 import { PositionSizeTool } from './PositionSizeTool';
 import { RegexTool } from './RegexTool';
 import { TimeTool } from './TimeTool';
+import { type ToolId, TOOLS } from './tool-list';
+import { useToolboxStore } from './toolbox-store';
 import { UnitsTool } from './UnitsTool';
 
-interface ToolDef {
-	id: string;
-	label: string;
-	hint: string;
-	icon: LucideIcon;
-	Component: ComponentType;
-}
-
-const TOOLS: readonly ToolDef[] = [
-	{
-		id: 'time',
-		label: 'Time',
-		hint: 'Unix timestamps and dates',
-		icon: Clock,
-		Component: TimeTool,
-	},
-	{
-		id: 'units',
-		label: 'Units',
-		hint: 'bps, wei/gwei, lamports, sats',
-		icon: Ruler,
-		Component: UnitsTool,
-	},
-	{
-		id: 'encode',
-		label: 'Encode',
-		hint: 'Base64, hex, base58, URL',
-		icon: Binary,
-		Component: EncodeTool,
-	},
-	{
-		id: 'jwt',
-		label: 'JWT',
-		hint: 'Inspect header and claims',
-		icon: KeyRound,
-		Component: JwtTool,
-	},
-	{
-		id: 'json',
-		label: 'JSON',
-		hint: 'Pretty, minify, sort keys',
-		icon: Braces,
-		Component: JsonTool,
-	},
-	{ id: 'regex', label: 'Regex', hint: 'Test a pattern live', icon: Regex, Component: RegexTool },
-	{ id: 'hash', label: 'Hash', hint: 'SHA-256 of text', icon: Hash, Component: HashTool },
-	{
-		id: 'position',
-		label: 'Size',
-		hint: 'Position size from risk and stop',
-		icon: Crosshair,
-		Component: PositionSizeTool,
-	},
-	{
-		id: 'compound',
-		label: 'Compound',
-		hint: 'Compound growth with contributions',
-		icon: TrendingUp,
-		Component: CompoundTool,
-	},
-];
-
-const STORAGE_KEY = 'anvil.toolbox.lastTool';
-
-function loadLastTool(): string {
-	try {
-		const saved = localStorage.getItem(STORAGE_KEY);
-		if (saved && TOOLS.some((t) => t.id === saved)) return saved;
-	} catch {
-		// Storage can be unavailable (blocked or quota); the first tool is a fine default.
-	}
-	return TOOLS[0]?.id ?? 'time';
-}
-
-function saveLastTool(id: string): void {
-	try {
-		localStorage.setItem(STORAGE_KEY, id);
-	} catch {
-		// Remembering the tool is a convenience; losing it is harmless.
-	}
-}
+const COMPONENTS: Record<ToolId, ComponentType> = {
+	time: TimeTool,
+	units: UnitsTool,
+	encode: EncodeTool,
+	jwt: JwtTool,
+	json: JsonTool,
+	regex: RegexTool,
+	hash: HashTool,
+	position: PositionSizeTool,
+	compound: CompoundTool,
+};
 
 export function ToolboxView(): JSX.Element {
-	const [active, setActive] = useState(loadLastTool);
+	const active = useToolboxStore((s) => s.activeTool);
+	const select = useToolboxStore((s) => s.setActiveTool);
 	const tabRefs = useRef(new Map<string, HTMLButtonElement>());
 	const current = TOOLS.find((t) => t.id === active) ?? TOOLS[0];
-
-	const select = (id: string): void => {
-		setActive(id);
-		saveLastTool(id);
-	};
 
 	// Roving focus: arrows move between tools like a native tab strip.
 	const onKeyDown = (e: KeyboardEvent<HTMLDivElement>): void => {
@@ -181,18 +97,21 @@ export function ToolboxView(): JSX.Element {
 			<div className='min-h-0 flex-1 overflow-auto'>
 				{/* Tools stay mounted while hidden, and their inputs live in toolbox-store, so they
 				    survive both tab switches and the side bar leaving the toolbox view. */}
-				{TOOLS.map(({ id, Component }) => (
-					<div
-						key={id}
-						role='tabpanel'
-						id={`toolbox-panel-${id}`}
-						aria-labelledby={`toolbox-tab-${id}`}
-						hidden={id !== current?.id}
-						className='animate-in p-3'
-					>
-						<Component />
-					</div>
-				))}
+				{TOOLS.map(({ id }) => {
+					const Component = COMPONENTS[id];
+					return (
+						<div
+							key={id}
+							role='tabpanel'
+							id={`toolbox-panel-${id}`}
+							aria-labelledby={`toolbox-tab-${id}`}
+							hidden={id !== current?.id}
+							className='animate-in p-3'
+						>
+							<Component />
+						</div>
+					);
+				})}
 			</div>
 		</div>
 	);
