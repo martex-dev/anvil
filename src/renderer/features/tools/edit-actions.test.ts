@@ -2,7 +2,7 @@ import type * as Monaco from 'monaco-editor';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { toast } from '../../stores/toast-store';
-import { replaceTargets } from './edit-actions';
+import { insertAtCursors, replaceTargets } from './edit-actions';
 
 vi.mock('../../lib/monaco/editors', () => ({ focusedEditor: () => null }));
 vi.mock('../../stores/toast-store', () => ({
@@ -113,5 +113,22 @@ describe('replaceTargets', () => {
 		};
 		expect(replaceTargets(editor, (t) => t.toUpperCase(), 'Nope')).toBe(false);
 		expect(toast.warn).toHaveBeenCalledWith('Nope', 'read-only');
+	});
+});
+
+describe('insertAtCursors', () => {
+	it('inserts the same text at every cursor', () => {
+		const { editor, edits } = fakeEditor(['', ''], [cursor(1, 1), cursor(2, 1)]);
+		insertAtCursors(editor, 'x');
+		expect(edits.map((e) => e.text)).toEqual(['x', 'x']);
+	});
+
+	it('asks a factory for a fresh value per cursor', () => {
+		const { editor, edits } = fakeEditor(
+			['', '', ''],
+			[cursor(1, 1), cursor(2, 1), cursor(3, 1)],
+		);
+		insertAtCursors(editor, (i) => `id-${i}`);
+		expect(edits.map((e) => e.text)).toEqual(['id-0', 'id-1', 'id-2']);
 	});
 });

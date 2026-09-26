@@ -90,11 +90,14 @@ export function replaceTargets(
 	return true;
 }
 
-/** Types `text` at every cursor, replacing selections. */
-export function insertAtCursors(editor: Editor, text: string): void {
-	const edits = (editor.getSelections() ?? []).map((range) => ({
+/**
+ * Types `text` at every cursor, replacing selections. Pass a function to get a fresh value per
+ * cursor (index 0 is the primary one), so "unique" values like UUIDs stay unique.
+ */
+export function insertAtCursors(editor: Editor, text: string | ((index: number) => string)): void {
+	const edits = (editor.getSelections() ?? []).map((range, i) => ({
 		range,
-		text,
+		text: typeof text === 'string' ? text : text(i),
 		forceMoveMarkers: true,
 	}));
 	editor.pushUndoStop();
