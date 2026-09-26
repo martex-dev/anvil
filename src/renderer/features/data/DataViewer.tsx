@@ -13,15 +13,7 @@ import { ErrorState } from '../../ui/ErrorState';
 import { Spinner } from '../../ui/Spinner';
 import { ColumnProfile } from './ColumnProfile';
 import { registerDataViewer } from './data-actions';
-import {
-	fileName,
-	formatCount,
-	initialColumnWidth,
-	isTextFormat,
-	nextSort,
-	PAGE_SIZE,
-	toDelimited,
-} from './data-format';
+import { fileName, initialColumnWidth, isTextFormat, nextSort, PAGE_SIZE } from './data-format';
 import {
 	changeFilter,
 	type DataViewPatch,
@@ -31,11 +23,9 @@ import {
 import { DataGrid } from './DataGrid';
 import { DataStatusBar } from './DataStatusBar';
 import { DataToolbar } from './DataToolbar';
-import { type CellRange, type GridSelection, selectionRange } from './grid-selection';
-import { fetchRows, useDataMeta } from './use-data-pages';
-
-/** Clipboard exports beyond this would stall the UI and rarely paste anywhere useful. */
-const MAX_COPY_ROWS = 50_000;
+import { type GridSelection, selectionRange } from './grid-selection';
+import { useDataMeta } from './use-data-pages';
+import { useTableCopy } from './use-table-copy';
 
 export function DataViewer({ path }: { path: string }): JSX.Element {
 	const client = useQueryClient();
@@ -61,43 +51,21 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 		[savedWidths, gridKey, columns],
 	);
 
+	const { copying, copy } = useTableCopy(params, columns);
+
 	const changeSelection = (next: GridSelection | null): void => {
 		update(next ? { selection: next, profileColumn: next.focus.col } : { selection: null });
-	};
-
-	const copyRange = async (
-		range: CellRange,
-		sep: ',' | '\t',
-		withHeader: boolean,
-	): Promise<void> => {
-		const bottom = Math.min(range.bottom, range.top + MAX_COPY_ROWS - 1);
-		try {
-			const rows = await fetchRows(client, params, range.top, bottom);
-			const body = rows.map((row) => row.slice(range.left, range.right + 1));
-			const header = columns.slice(range.left, range.right + 1).map((c) => c.name);
-			await navigator.clipboard.writeText(
-				toDelimited(withHeader ? [header, ...body] : body, sep),
-			);
-			const what = `${formatCount(body.length)} × ${formatCount(range.right - range.left + 1)}`;
-			if (bottom < range.bottom) {
-				toast.warn(`Copied the first ${formatCount(MAX_COPY_ROWS)} rows`, `${what} cells`);
-			} else {
-				toast.success(sep === ',' ? 'Copied as CSV' : 'Copied', `${what} cells`);
-			}
-		} catch (err) {
-			toast.error('Copy failed', err instanceof Error ? err.message : String(err));
-		}
 	};
 
 	const copyCsv = (): void => {
 		if (!data || data.totalRows === 0) return;
 		if (selection) {
-			void copyRange(selectionRange(selection), ',', true);
+			copy(selectionRange(selection), { csv: true, header: true });
 			return;
 		}
 		const top = Math.floor(firstRowRef.current / PAGE_SIZE) * PAGE_SIZE;
 		const bottom = Math.min(data.totalRows, top + PAGE_SIZE) - 1;
-		void copyRange({ top, bottom, left: 0, right: columns.length - 1 }, ',', true);
+		copy({ top, bottom, left: 0, right: columns.length - 1 }, { csv: true, header: true });
 	};
 
 	/**
@@ -228,9 +196,7 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 				onSort={(column) =>
 					update((v) => ({ sort: nextSort(v.sort, column), selection: null }))
 				}
-				onCopy={(range, options) =>
-					void copyRange(range, options?.csv ? ',' : '\t', options?.header ?? false)
-				}
+				onCopy={copy}
 				firstRowRef={firstRowRef}
 			/>
 		);
@@ -247,6 +213,7 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 				onFilterClear={() => changeFilter(path, '', true)}
 				onOpenAsText={openAsText}
 				onCopyCsv={copyCsv}
+				copying={copying}
 				copyLabel={selection ? 'Copy selection as CSV' : 'Copy current page as CSV'}
 				onReload={() => void reload()}
 				profileOpen={profileOpen}

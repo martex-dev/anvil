@@ -29,6 +29,8 @@ interface DataToolbarProps {
 	onFilterClear: () => void;
 	onOpenAsText: () => void;
 	onCopyCsv: () => void;
+	/** A copy is still fetching rows. */
+	copying: boolean;
 	copyLabel: string;
 	onReload: () => void;
 	profileOpen: boolean;
@@ -52,6 +54,7 @@ export function DataToolbar({
 	onFilterClear,
 	onOpenAsText,
 	onCopyCsv,
+	copying,
 	copyLabel,
 	onReload,
 	profileOpen,
@@ -133,10 +136,17 @@ export function DataToolbar({
 					/>
 				)}
 				<IconButton
-					label={copyLabel}
-					icon={<ClipboardCopy size={15} />}
+					label={copying ? 'Copying…' : copyLabel}
+					icon={
+						copying ? (
+							<Spinner size={12} label='Copying' />
+						) : (
+							<ClipboardCopy size={15} />
+						)
+					}
 					onClick={onCopyCsv}
-					disabled={!meta || meta.totalRows === 0}
+					disabled={copying || !meta || meta.totalRows === 0}
+					aria-busy={copying || undefined}
 				/>
 				<IconButton
 					label='Reload from disk'
