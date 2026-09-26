@@ -33,7 +33,9 @@ export function tableFromText(
 ): Table {
 	if (format === 'csv' || format === 'tsv') {
 		const delimiter = format === 'tsv' ? '\t' : sniffDelimiter(text.slice(0, 4096));
-		const parsed = parseDelimited(text, delimiter, maxRows);
+		// Only the head of the file was read: its last record is usually cut off mid-row.
+		const whole = truncated ? text.slice(0, text.lastIndexOf('\n') + 1) : text;
+		const parsed = parseDelimited(whole, delimiter, maxRows);
 		return buildTable(parsed.header, parsed.rows, truncated || parsed.truncated, 'built-in');
 	}
 	let records: unknown[];
