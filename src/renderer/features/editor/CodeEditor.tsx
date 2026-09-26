@@ -17,6 +17,7 @@ import { attachShield } from './extras/shield';
 import { attachSpotlight } from './extras/spotlight';
 import { getModel, getViewState, isScratch, saveViewState } from './file-ops';
 import { navHistory } from './nav-history';
+import { baseName } from './open';
 
 interface CodeEditorProps {
 	monaco: MonacoApi;
@@ -24,6 +25,13 @@ interface CodeEditorProps {
 	/** Path of the code tab to show, or null when the group shows something else. */
 	path: string | null;
 	visible: boolean;
+}
+
+/** What a screen reader announces for the editor: the file, then which group it is in. */
+function ariaLabelFor(path: string | null, group: number): string {
+	const where = `editor group ${group + 1}`;
+	if (!path) return `Editor, ${where}`;
+	return `${isScratch(path) ? 'Scratchpad' : baseName(path)}, ${where}`;
 }
 
 /**
@@ -42,6 +50,7 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 		if (!hostRef.current) return;
 		const editor = monaco.editor.create(hostRef.current, {
 			model: null,
+			ariaLabel: ariaLabelFor(null, group),
 			automaticLayout: true,
 			fixedOverflowWidgets: true,
 		});
@@ -169,12 +178,13 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 		// Set before setModel: its change events already report the cursor for this path.
 		shown.current = model ? next : null;
 		editor.setModel(model);
+		editor.updateOptions({ ariaLabel: ariaLabelFor(shown.current, group) });
 		if (model && next) {
 			const view = getViewState(next);
 			if (view) editor.restoreViewState(view);
 			if (visible) editor.focus();
 		}
-	}, [path, ready, visible]);
+	}, [path, ready, visible, group]);
 
 	// Go-to-line requests (search results, problems, outline) for the file on screen.
 	const reveal = useEditorStore((s) => s.reveal);
