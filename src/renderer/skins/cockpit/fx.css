@@ -1,0 +1,57 @@
+/*
+ * Cockpit effects. 'full': the command-line cursor blinks, the tape scrolls and figures flash
+ * on each tick. 'subtle': the same things, standing still. 'off': no decoration at all.
+ * Only opacity and transform are animated.
+ */
+
+html[data-skin='cockpit'][data-fx='full'] .ck-caret {
+	animation: ck-blink 1.06s steps(1, end) infinite;
+}
+html[data-skin='cockpit'][data-fx='full'] .ck-tape-track {
+	animation: ck-tape linear infinite;
+}
+html[data-skin='cockpit'][data-fx='full'] .ck-tape:hover .ck-tape-track {
+	animation-play-state: paused;
+}
+html[data-skin='cockpit'][data-fx='full'] .ck-tick-flash {
+	animation: ck-flash 400ms ease-out;
+}
+
+/* Standing still, the second copy of the tape would only be clipped noise. */
+html[data-skin='cockpit']:not([data-fx='full']) .ck-tape-row + .ck-tape-row {
+	display: none;
+}
+
+html[data-skin='cockpit'][data-fx='off'] .ck-caret,
+html[data-skin='cockpit'][data-fx='off'] .ck-tick-arrow {
+	display: none;
+}
+html[data-skin='cockpit'][data-fx='off'] .ck-tape {
+	mask-image: none;
+}
+
+@keyframes ck-blink {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0;
+	}
+}
+@keyframes ck-tape {
+	from {
+		transform: translateX(0);
+	}
+	to {
+		transform: translateX(-50%);
+	}
+}
+@keyframes ck-flash {
+	from {
+		opacity: 0.4;
+	}
+	to {
+		opacity: 0;
+	}
+}
