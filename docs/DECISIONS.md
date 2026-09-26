@@ -138,7 +138,7 @@ Short ADRs: the context, what was decided, and what it costs.
 
 **Consequences.** Projects that rely on their own TypeScript version or tsserver plugins need one explicit opt-in per folder. Nothing in an untrusted folder runs just by opening it.
 
-## ADR-015: The data viewer works in a worker thread
+## ADR-018: The data viewer works in a worker thread
 
 **Context.** The data viewer parses up to 200 MB of CSV/JSON and filters, sorts and profiles up to a million rows. Done inside IPC handlers, that ran on Electron's main process, so opening a big file, typing a filter or clicking a column header froze windows, menus, terminals and every other IPC call for seconds.
 
