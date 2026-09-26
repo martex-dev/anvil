@@ -56,14 +56,23 @@ export function SideBar(): JSX.Element {
 	return (
 		<aside
 			aria-label={VIEW_META[view].label}
+			data-part='sidebar'
+			data-view={view}
 			className='glass pane-focus flex h-full min-w-0 flex-col overflow-hidden'
 		>
-			<header className='flex h-9 shrink-0 items-center gap-2 border-b border-glass-edge px-3'>
-				<span className='num text-10 text-accent'>{String(index).padStart(2, '0')}</span>
-				<span className='h-3 w-px bg-glass-edge' />
-				<h2 className='hud text-fg-1'>{VIEW_META[view].label}</h2>
+			<header
+				data-part='pane-header'
+				className='flex h-9 shrink-0 items-center gap-2 border-b border-glass-edge px-3'
+			>
+				<span data-part='pane-index' className='num text-10 text-accent'>
+					{String(index).padStart(2, '0')}
+				</span>
+				<span data-part='pane-rule' className='h-3 w-px bg-glass-edge' />
+				<h2 data-part='pane-title' className='hud text-fg-1'>
+					{VIEW_META[view].label}
+				</h2>
 			</header>
-			<div className='min-h-0 flex-1'>
+			<div data-part='pane-body' className='min-h-0 flex-1'>
 				<Suspense
 					fallback={
 						<div className='flex h-24 items-center justify-center'>

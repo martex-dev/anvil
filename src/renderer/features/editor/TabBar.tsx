@@ -66,6 +66,8 @@ function TabView({
 			<div
 				role='tab'
 				aria-selected={active}
+				data-part='tab'
+				data-active={active}
 				tabIndex={active ? 0 : -1}
 				title={tab.path ?? label}
 				draggable
@@ -189,7 +191,10 @@ export function TabBar({ group, focused }: { group: Group; focused: boolean }): 
 	const isPython = activeTab?.kind === 'code' && activeTab.path?.endsWith('.py');
 	const isMarkdown = activeTab?.kind === 'code' && /\.(md|markdown)$/i.test(activeTab.path ?? '');
 	return (
-		<div className='flex h-9 shrink-0 items-stretch border-b border-glass-edge'>
+		<div
+			data-part='tabbar'
+			className='flex h-9 shrink-0 items-stretch border-b border-glass-edge'
+		>
 			<div
 				role='tablist'
 				aria-label='Open editors'

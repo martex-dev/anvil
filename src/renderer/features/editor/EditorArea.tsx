@@ -155,6 +155,8 @@ function GroupView({
 	return (
 		<section
 			aria-label={`Editor group ${group.id + 1}`}
+			data-part='editor-group'
+			data-focused={focused}
 			onMouseDown={() => useTabsStore.getState().focus(group.id)}
 			className={cn(
 				'glass flex h-full min-w-0 flex-1 flex-col overflow-hidden',
@@ -164,7 +166,11 @@ function GroupView({
 			<span aria-hidden className='brackets-frame' data-focused={focused && count > 1} />
 			{group.tabIds.length > 0 && <TabBar group={group} focused={focused} />}
 			{tab && tab.kind === 'code' && <Breadcrumbs tab={tab} focused={focused} />}
-			<div className='relative min-h-0 flex-1' style={{ background: 'var(--editor-bg)' }}>
+			<div
+				data-part='editor-surface'
+				className='relative min-h-0 flex-1'
+				style={{ background: 'var(--editor-bg)' }}
+			>
 				{monaco.status === 'ready' && (
 					<CodeEditor
 						monaco={monaco.monaco}

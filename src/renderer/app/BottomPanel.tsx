@@ -76,6 +76,8 @@ function TabButton({
 			type='button'
 			role='tab'
 			aria-selected={active}
+			data-part='panel-tab'
+			data-active={active}
 			onClick={() => useLayoutStore.getState().showPanel(tab)}
 			className={cn(
 				'hud relative flex h-full items-center gap-1.5 px-2 outline-none transition-colors transition-fast focus-visible:text-fg-0',
@@ -87,7 +89,10 @@ function TabButton({
 				<span className='num rounded-full bg-accent-soft px-1.5 text-accent'>{count}</span>
 			)}
 			{active && (
-				<span className='accent-line absolute inset-x-2 bottom-0 h-[2px] rounded-full' />
+				<span
+					data-part='tab-marker'
+					className='accent-line absolute inset-x-2 bottom-0 h-[2px] rounded-full'
+				/>
 			)}
 		</button>
 	);
@@ -108,9 +113,13 @@ export function BottomPanel(): JSX.Element {
 	return (
 		<section
 			aria-label='Panel'
+			data-part='panel'
 			className='glass pane-focus flex h-full min-h-0 flex-col overflow-hidden'
 		>
-			<div className='flex h-9 shrink-0 items-center gap-1 border-b border-glass-edge pr-1.5 pl-1'>
+			<div
+				data-part='pane-header'
+				className='flex h-9 shrink-0 items-center gap-1 border-b border-glass-edge pr-1.5 pl-1'
+			>
 				<div role='tablist' className='flex h-full items-center'>
 					<TabButton tab='terminal' label='Terminal' />
 					<TabButton tab='problems' label='Problems' count={problems} />
@@ -120,6 +129,8 @@ export function BottomPanel(): JSX.Element {
 						{terms.map((t) => (
 							<div
 								key={t.id}
+								data-part='terminal-chip'
+								data-active={t.id === activeTerm}
 								className={cn(
 									'group flex h-6 shrink-0 cursor-default items-center gap-1.5 rounded-md border pr-0.5 pl-2 font-mono text-11 transition-colors transition-fast',
 									t.id === activeTerm
@@ -184,7 +195,7 @@ export function BottomPanel(): JSX.Element {
 					/>
 				</div>
 			</div>
-			<div className='relative min-h-0 flex-1'>
+			<div data-part='pane-body' className='relative min-h-0 flex-1'>
 				{tab === 'problems' && <ProblemsView />}
 				{terms.length === 0 && tab === 'terminal' && (
 					<EmptyState

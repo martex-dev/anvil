@@ -40,6 +40,7 @@ function Item({
 		<Tag
 			{...(onClick ? { type: 'button' as const, onClick } : {})}
 			title={title}
+			data-part='status-item'
 			className={cn(
 				'flex h-full items-center gap-1 px-1.5 whitespace-nowrap outline-none',
 				onClick &&
@@ -207,7 +208,10 @@ function ShieldItem(): JSX.Element {
 
 export function StatusBar(): JSX.Element {
 	return (
-		<footer className='relative z-10 flex h-[26px] shrink-0 items-stretch gap-0.5 border-t border-glass-edge bg-glass-strong px-1.5 text-11 text-fg-2 backdrop-blur-xl'>
+		<footer
+			data-part='statusbar'
+			className='relative z-10 flex h-[26px] shrink-0 items-stretch gap-0.5 border-t border-glass-edge bg-glass-strong px-1.5 text-11 text-fg-2 backdrop-blur-xl'
+		>
 			<GitItem />
 			<ProblemsItem />
 			<PythonEnvChip />
