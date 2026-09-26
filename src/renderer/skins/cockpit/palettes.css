@@ -1,0 +1,290 @@
+/*
+ * Cockpit palettes: the only file in this skin with raw colors.
+ * Extra named colors:
+ *   --skin-grid       the rules between tiles (the pane gap shows it)
+ *   --skin-header     inverted pane header block, --skin-on-header its text
+ *   --skin-go         the <GO> key, --skin-on-go its text
+ *   --skin-tape       the status tape and command line background
+ *   --skin-label      tiny all-caps field labels
+ *   --skin-value      bright figures next to those labels
+ */
+
+/* Amber Terminal (default): the classic desk, amber and orange on pure black */
+[data-theme='ck-amber'] {
+	color-scheme: dark;
+
+	--bg-0: #000000;
+	--bg-1: #0a0805;
+	--bg-2: #15100a;
+	--bg-3: #231a0e;
+	--border: #2e2310;
+	--border-strong: #5a4318;
+
+	--glass: #0a0805;
+	--glass-strong: #0f0c07;
+	--glass-edge: #342812;
+	--glass-highlight: rgb(255 170 40 / 0.04);
+	--editor-bg: #030201;
+	--scrim: rgb(0 0 0 / 0.72);
+
+	--text-0: #ffb238;
+	--text-1: #d4943a;
+	--text-2: #93692a;
+
+	--up: #2fe06b;
+	--down: #ff3b30;
+	--warn: #ffd23f;
+	--info: #4fb3ff;
+
+	--theme-accent: #ff8c00;
+	--theme-accent-2: #ffd23f;
+	--on-accent: #000000;
+
+	--syn-comment: #85663a;
+	--syn-keyword: #ff8c00;
+	--syn-control: #ff6a3d;
+	--syn-string: #6fdc8c;
+	--syn-number: #ffd84a;
+	--syn-function: #f6f1e7;
+	--syn-type: #4fc3f7;
+	--syn-variable: #ffbf5e;
+	--syn-parameter: #ffd9a0;
+	--syn-property: #e9c690;
+	--syn-decorator: #ff7aa2;
+	--syn-builtin: #6cc8ff;
+	--syn-operator: #c99447;
+	--syn-regexp: #ffe066;
+
+	--skin-grid: #1e170b;
+	--skin-header: #ff8c00;
+	--skin-on-header: #000000;
+	--skin-go: #20b24a;
+	--skin-on-go: #000000;
+	--skin-tape: #000000;
+	--skin-label: #b07a2c;
+	--skin-value: #f6f1e7;
+}
+
+/* Eikon Navy: deep navy tiles, cyan headers, white figures */
+[data-theme='ck-refinitiv'] {
+	color-scheme: dark;
+
+	--bg-0: #010814;
+	--bg-1: #051329;
+	--bg-2: #0a1d3a;
+	--bg-3: #11294f;
+	--border: #15305a;
+	--border-strong: #25497e;
+
+	--glass: #051329;
+	--glass-strong: #071831;
+	--glass-edge: #1b3a68;
+	--glass-highlight: rgb(120 200 255 / 0.05);
+	--editor-bg: #030d1e;
+	--scrim: rgb(0 4 12 / 0.72);
+
+	--text-0: #eaf2ff;
+	--text-1: #93b6df;
+	--text-2: #5f82ad;
+
+	--up: #19d27c;
+	--down: #ff4d5e;
+	--warn: #ffc542;
+	--info: #5aa9ff;
+
+	--theme-accent: #1ec8ff;
+	--theme-accent-2: #7cf0ff;
+	--on-accent: #01101f;
+
+	--syn-comment: #5a7aa3;
+	--syn-keyword: #4fc3ff;
+	--syn-control: #ff7aa8;
+	--syn-string: #9be28c;
+	--syn-number: #ffc86b;
+	--syn-function: #ffffff;
+	--syn-type: #5ef0e0;
+	--syn-variable: #d7e6fa;
+	--syn-parameter: #ffd9a8;
+	--syn-property: #9ecbff;
+	--syn-decorator: #ff9e64;
+	--syn-builtin: #7fd8ff;
+	--syn-operator: #8fb3dc;
+	--syn-regexp: #ffe27a;
+
+	--skin-grid: #0b2244;
+	--skin-header: #1ec8ff;
+	--skin-on-header: #01101f;
+	--skin-go: #19d27c;
+	--skin-on-go: #01101f;
+	--skin-tape: #020c1c;
+	--skin-label: #6f9fd4;
+	--skin-value: #ffffff;
+}
+
+/* Trading Floor: LED-board green and red on black */
+[data-theme='ck-floor'] {
+	color-scheme: dark;
+
+	--bg-0: #000000;
+	--bg-1: #030805;
+	--bg-2: #08130c;
+	--bg-3: #0f2016;
+	--border: #123020;
+	--border-strong: #1f5233;
+
+	--glass: #030805;
+	--glass-strong: #050c07;
+	--glass-edge: #16392a;
+	--glass-highlight: rgb(0 255 102 / 0.04);
+	--editor-bg: #010301;
+	--scrim: rgb(0 0 0 / 0.72);
+
+	--text-0: #c4ffd4;
+	--text-1: #5fd982;
+	--text-2: #3d8f57;
+
+	--up: #00ff66;
+	--down: #ff3344;
+	--warn: #ffd000;
+	--info: #33ccff;
+
+	--theme-accent: #00ff66;
+	--theme-accent-2: #ff3344;
+	--on-accent: #000000;
+
+	--syn-comment: #3f7d55;
+	--syn-keyword: #00ff66;
+	--syn-control: #ff5566;
+	--syn-string: #ffd000;
+	--syn-number: #33ccff;
+	--syn-function: #eafff0;
+	--syn-type: #7dffb0;
+	--syn-variable: #c4ffd4;
+	--syn-parameter: #ffe680;
+	--syn-property: #8fe8b0;
+	--syn-decorator: #ff9f40;
+	--syn-builtin: #66e0ff;
+	--syn-operator: #5fd982;
+	--syn-regexp: #ffaa33;
+
+	--skin-grid: #0a1d12;
+	--skin-header: #00e05a;
+	--skin-on-header: #000000;
+	--skin-go: #ff3344;
+	--skin-on-go: #000000;
+	--skin-tape: #000000;
+	--skin-label: #46a866;
+	--skin-value: #ffffff;
+}
+
+/* Carbon Blue: graphite panels, electric blue edge */
+[data-theme='ck-carbon'] {
+	color-scheme: dark;
+
+	--bg-0: #0a0b0d;
+	--bg-1: #131519;
+	--bg-2: #1b1e23;
+	--bg-3: #252930;
+	--border: #2a2e35;
+	--border-strong: #40464f;
+
+	--glass: #131519;
+	--glass-strong: #16191d;
+	--glass-edge: #30353d;
+	--glass-highlight: rgb(255 255 255 / 0.03);
+	--editor-bg: #0e1013;
+	--scrim: rgb(4 5 7 / 0.72);
+
+	--text-0: #e6e9ee;
+	--text-1: #a3aab5;
+	--text-2: #6e7682;
+
+	--up: #1fd67a;
+	--down: #ff4b55;
+	--warn: #ffb020;
+	--info: #3d9bff;
+
+	--theme-accent: #3d9bff;
+	--theme-accent-2: #00e5ff;
+	--on-accent: #03070d;
+
+	--syn-comment: #646c78;
+	--syn-keyword: #3d9bff;
+	--syn-control: #c77dff;
+	--syn-string: #7ee787;
+	--syn-number: #ffb86b;
+	--syn-function: #56d4ff;
+	--syn-type: #4fe3c1;
+	--syn-variable: #d6dbe1;
+	--syn-parameter: #ffcf9e;
+	--syn-property: #9fc2ff;
+	--syn-decorator: #ff9e64;
+	--syn-builtin: #ff7ab2;
+	--syn-operator: #8b949e;
+	--syn-regexp: #ffd866;
+
+	--skin-grid: #050607;
+	--skin-header: #3d9bff;
+	--skin-on-header: #03070d;
+	--skin-go: #1fd67a;
+	--skin-on-go: #03070d;
+	--skin-tape: #0b0c0f;
+	--skin-label: #7c8591;
+	--skin-value: #ffffff;
+}
+
+/* Daylight Desk (light): light grey terminal, navy type, orange signal */
+[data-theme='ck-daylight'] {
+	color-scheme: light;
+
+	--bg-0: #c3c8cf;
+	--bg-1: #eef0f3;
+	--bg-2: #e1e5ea;
+	--bg-3: #d2d8e0;
+	--border: #b3bac5;
+	--border-strong: #8a93a2;
+
+	--glass: #eef0f3;
+	--glass-strong: #f6f7f9;
+	--glass-edge: #a9b1bd;
+	--glass-highlight: rgb(255 255 255 / 0.6);
+	--editor-bg: #f8f9fb;
+	--scrim: rgb(30 40 60 / 0.35);
+
+	--text-0: #0b1f44;
+	--text-1: #34466b;
+	--text-2: #5d6b85;
+
+	--up: #0a7d3b;
+	--down: #c4162a;
+	--warn: #9a5a00;
+	--info: #0b5cc2;
+
+	--theme-accent: #c24e00;
+	--theme-accent-2: #0b3d91;
+	--on-accent: #ffffff;
+
+	--syn-comment: #737e92;
+	--syn-keyword: #0b3d91;
+	--syn-control: #a8176f;
+	--syn-string: #0a7d3b;
+	--syn-number: #b04e00;
+	--syn-function: #1d5fb8;
+	--syn-type: #0b7480;
+	--syn-variable: #0b1f44;
+	--syn-parameter: #7a4a00;
+	--syn-property: #2b4d80;
+	--syn-decorator: #94468f;
+	--syn-builtin: #c24e00;
+	--syn-operator: #4b5870;
+	--syn-regexp: #9a5a00;
+
+	--skin-grid: #9aa3b0;
+	--skin-header: #0b2a5e;
+	--skin-on-header: #ffffff;
+	--skin-go: #c24e00;
+	--skin-on-go: #ffffff;
+	--skin-tape: #dde1e7;
+	--skin-label: #5d6b85;
+	--skin-value: #0b1f44;
+}
