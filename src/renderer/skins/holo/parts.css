@@ -1,0 +1,214 @@
+/*
+ * Holo HUD pane furniture: headers read like instrument labels (index plate, Orbitron title,
+ * system code on the right), tabs are angled plates, splitters are faint light rails.
+ */
+
+/* ---- Pane headers ------------------------------------------------------------------------ */
+
+html[data-skin='holo'] [data-part='pane-header'] {
+	position: relative;
+	border-bottom: 1px solid var(--ho-edge);
+	background:
+		linear-gradient(90deg, var(--ho-dim), transparent 70%),
+		repeating-linear-gradient(
+			90deg,
+			transparent 0 3px,
+			color-mix(in oklab, var(--accent) 5%, transparent) 3px 4px
+		);
+}
+
+/* Room for the chamfer in the top-left corner. */
+html[data-skin='holo'] [data-part='sidebar'] > [data-part='pane-header'] {
+	padding-left: calc(var(--ho-cut) + 4px);
+}
+
+html[data-skin='holo'] [data-part='pane-index'] {
+	display: inline-flex;
+	align-items: center;
+	height: 16px;
+	padding: 0 6px 0 5px;
+	font-family: var(--font-display);
+	font-size: 9px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	color: var(--on-accent);
+	background: var(--accent);
+	clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px);
+}
+html[data-skin='holo'] [data-part='pane-index']::before {
+	content: 'SYS.';
+	opacity: 0.7;
+}
+
+html[data-skin='holo'] [data-part='pane-rule'] {
+	width: 14px;
+	height: 1px;
+	background: var(--ho-edge-hot);
+}
+
+html[data-skin='holo'] [data-part='pane-title'] {
+	font-size: 10px;
+	letter-spacing: 0.24em;
+	color: var(--text-0);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* A system code on the right of every side bar header. */
+html[data-skin='holo'] [data-part='sidebar'] > [data-part='pane-header']::after {
+	margin-left: auto;
+	padding-right: 4px;
+	font-family: var(--font-display);
+	font-size: 8px;
+	font-weight: 500;
+	letter-spacing: 0.2em;
+	color: var(--text-2);
+	white-space: nowrap;
+}
+html[data-skin='holo']
+	[data-part='sidebar'][data-view='explorer']
+	> [data-part='pane-header']::after {
+	content: 'NAV//FS';
+}
+html[data-skin='holo']
+	[data-part='sidebar'][data-view='search']
+	> [data-part='pane-header']::after {
+	content: 'SCAN//GREP';
+}
+html[data-skin='holo'] [data-part='sidebar'][data-view='git'] > [data-part='pane-header']::after {
+	content: 'NAV//GIT';
+}
+html[data-skin='holo'] [data-part='sidebar'][data-view='run'] > [data-part='pane-header']::after {
+	content: 'ENG//PY';
+}
+html[data-skin='holo']
+	[data-part='sidebar'][data-view='outline']
+	> [data-part='pane-header']::after {
+	content: 'MAP//SYM';
+}
+html[data-skin='holo'] [data-part='sidebar'][data-view='todos'] > [data-part='pane-header']::after {
+	content: 'LOG//TASK';
+}
+html[data-skin='holo']
+	[data-part='sidebar'][data-view='history']
+	> [data-part='pane-header']::after {
+	content: 'REC//TIME';
+}
+html[data-skin='holo']
+	[data-part='sidebar'][data-view='snippets']
+	> [data-part='pane-header']::after {
+	content: 'LIB//SNIP';
+}
+html[data-skin='holo']
+	[data-part='sidebar'][data-view='toolbox']
+	> [data-part='pane-header']::after {
+	content: 'AUX//TOOL';
+}
+
+/* ---- Editor tabs: angled plates ------------------------------------------------------------ */
+
+html[data-skin='holo'] [data-part='tabbar'] {
+	height: 34px;
+	padding-left: calc(var(--ho-cut) - 2px);
+	border-bottom: 1px solid var(--ho-edge);
+	background: linear-gradient(180deg, transparent 60%, var(--ho-dim));
+}
+
+html[data-skin='holo'] [data-part='tab'] {
+	--s: 10px;
+	margin: 5px -4px 0 0;
+	padding-left: calc(var(--s) + 6px);
+	padding-right: calc(var(--s) + 2px);
+	font-weight: 600;
+	letter-spacing: 0.03em;
+	background: var(--ho-plate);
+	clip-path: polygon(var(--s) 0, 100% 0, calc(100% - var(--s)) 100%, 0 100%);
+}
+html[data-skin='holo'] [data-part='tab']:hover {
+	background: color-mix(in oklab, var(--accent) 10%, var(--bg-2));
+}
+html[data-skin='holo'] [data-part='tab'][data-active='true'] {
+	color: var(--text-0);
+	background: linear-gradient(
+		180deg,
+		color-mix(in oklab, var(--accent) 26%, transparent),
+		color-mix(in oklab, var(--accent) 8%, transparent)
+	);
+	text-shadow: 0 0 10px color-mix(in oklab, var(--accent) 55%, transparent);
+}
+/* The divider after each tab is Cyber's; the angle already separates them. */
+html[data-skin='holo'] [data-part='tab'] > span.absolute:last-child {
+	display: none;
+}
+/* The active marker becomes a hot line along the tab's top edge. */
+html[data-skin='holo'] [data-part='tab'] > span.absolute.top-0 {
+	left: var(--s);
+	right: 0;
+	height: 2px;
+	border-radius: 0;
+}
+html[data-skin='holo']
+	[data-part='editor-group'][data-focused='true']
+	[data-part='tab'][data-active='true'] {
+	background: linear-gradient(
+		180deg,
+		color-mix(in oklab, var(--accent) 34%, transparent),
+		color-mix(in oklab, var(--accent) 10%, transparent)
+	);
+}
+
+/* ---- Bottom panel ---------------------------------------------------------------------------- */
+
+html[data-skin='holo'] [data-part='panel'] > [data-part='pane-header'] {
+	padding-left: calc(var(--ho-cut) - 4px);
+}
+
+html[data-skin='holo'] [data-part='panel-tab'] {
+	font-size: 9px;
+	letter-spacing: 0.22em;
+	padding: 0 12px;
+}
+html[data-skin='holo'] [data-part='panel-tab'][data-active='true'] {
+	color: var(--accent);
+	text-shadow: 0 0 8px color-mix(in oklab, var(--accent) 60%, transparent);
+}
+html[data-skin='holo'] [data-part='panel-tab'] [data-part='tab-marker'] {
+	left: 6px;
+	right: 6px;
+	height: 2px;
+	border-radius: 0;
+}
+
+html[data-skin='holo'] [data-part='terminal-chip'] {
+	--c: 5px;
+	border: 0;
+	background: var(--ho-plate);
+	clip-path: polygon(
+		var(--c) 0,
+		100% 0,
+		100% calc(100% - var(--c)),
+		calc(100% - var(--c)) 100%,
+		0 100%,
+		0 var(--c)
+	);
+}
+html[data-skin='holo'] [data-part='terminal-chip'][data-active='true'] {
+	background: color-mix(in oklab, var(--accent) 18%, transparent);
+	box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+/* ---- Chat pane ------------------------------------------------------------------------------ */
+
+html[data-skin='holo'] [data-part='chat'] > * > header:first-child,
+html[data-skin='holo'] [data-part='chat'] header {
+	border-bottom-color: var(--ho-edge);
+}
+
+/* ---- Splitters: a light rail that brightens under the pointer -------------------------------- */
+
+html[data-skin='holo'] [data-part='splitter-handle'] {
+	border-radius: 0;
+	background: var(--accent);
+	box-shadow: 0 0 10px var(--accent);
+}
