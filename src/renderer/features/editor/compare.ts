@@ -11,6 +11,11 @@ export function selectedForCompare(): string | null {
 	return selected;
 }
 
+/** Another folder was opened: the selected path belonged to the old one. */
+export function clearCompareSelection(): void {
+	selected = null;
+}
+
 export function selectForCompare(path: string): void {
 	selected = path;
 	toast.info(
@@ -64,6 +69,30 @@ export async function compareWithSelected(path: string): Promise<void> {
 			a.text,
 			b.text,
 			b.language ?? a.language,
+			path,
+		);
+	} catch (error) {
+		toast.error('Compare failed', error instanceof Error ? error.message : undefined);
+	}
+}
+
+/** What changed on disk under an open buffer: the disk version against yours (unsaved edits). */
+export async function compareWithDisk(path: string): Promise<void> {
+	const model = getModel(path);
+	if (!model) return;
+	try {
+		const file = await call('fs:readFile', path);
+		if (file.binary || file.tooLarge) {
+			toast.warn('Cannot compare', `${path} is ${file.binary ? 'binary' : 'too large'} now.`);
+			return;
+		}
+		openDiffTab(
+			`diff:disk:${path}`,
+			`${baseName(path)} (disk ↔ yours)`,
+			`${path}: on disk ↔ your unsaved version`,
+			file.content,
+			model.getValue(),
+			model.getLanguageId(),
 			path,
 		);
 	} catch (error) {

@@ -8,14 +8,18 @@ import { useWorkspace, WORKSPACE_KEY } from '../../app/hooks/use-workspace';
 import { rememberRecentFile } from '../../app/QuickOpen';
 import { rlog } from '../../lib/log';
 import { refreshEditorConfiguration } from '../../lib/monaco/load';
+import { REDUCED_MOTION_QUERY } from '../../lib/monaco/theme';
 import { setMonacoWorkspaceRoot } from '../../lib/monaco/workspace-root';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { focusedTab, type Tab, useTabsStore } from '../../stores/tabs-store';
 import { useWorkbenchStore } from '../../stores/workbench-store';
+import { clearCompareSelection } from './compare';
 import { dirtyCount, useEditorStore } from './editor-store';
+import { setBookmarksRoot } from './extras/bookmarks';
 import { invalidateGitLines } from './extras/git-lines';
 import { onExternalChange } from './file-ops';
-import { closeAllTabs, openPath } from './open';
+import { navHistory } from './nav-history';
+import { closeAllTabs, openPath, remembersRecent } from './open';
 
 interface SavedTab {
 	kind: Tab['kind'];
@@ -67,15 +71,19 @@ export function EditorBridge(): null {
 	const client = useQueryClient();
 	const { info } = useWorkspace();
 	const root = info.root;
-	// Language features read other files through Monaco's file service, scoped to this folder.
-	useEffect(() => setMonacoWorkspaceRoot(root), [root]);
+	// Language features read other files through Monaco's file service, scoped to this folder;
+	// bookmarks are kept per folder too.
+	useEffect(() => {
+		setMonacoWorkspaceRoot(root);
+		setBookmarksRoot(root);
+	}, [root]);
 
 	useEffect(() => {
 		const { setOpenFileHandler } = useWorkbenchStore.getState();
 		setOpenFileHandler((request) => {
 			const current = client.getQueryData<WorkspaceInfo>(WORKSPACE_KEY)?.root;
 			if (!current) return;
-			rememberRecentFile(request.path);
+			if (remembersRecent(request)) rememberRecentFile(request.path);
 			void openPath(current, request);
 		});
 		const removeGuard = useWorkbenchStore.getState().addLeaveGuard(() => {
@@ -106,9 +114,13 @@ export function EditorBridge(): null {
 	useAnvilEvent('fs:changed', ({ files }) => onExternalChange(files));
 	useAnvilEvent('git:changed', () => invalidateGitLines());
 
-	// New folder: close the old folder's tabs and restore this folder's session.
+	// New folder: close the old folder's tabs, forget its places, compare pick and HEAD
+	// contents (all keyed by relative path), and restore this folder's session.
 	useEffect(() => {
 		closeAllTabs();
+		navHistory.clear();
+		clearCompareSelection();
+		invalidateGitLines();
 		if (!root) {
 			useTabsStore
 				.getState()
@@ -122,10 +134,13 @@ export function EditorBridge(): null {
 				.open({ id: 'welcome', kind: 'welcome', path: null, title: 'Welcome' });
 			return;
 		}
+		// Switching folders again mid-restore stops this loop: its tabs belong to the old root.
+		let cancelled = false;
 		void (async () => {
 			try {
 				for (const [gi, g] of session.groups.entries()) {
 					for (const t of g.tabs) {
+						if (cancelled) return;
 						if (!t.path) continue;
 						await openPath(root, {
 							path: t.path,
@@ -134,8 +149,11 @@ export function EditorBridge(): null {
 									? t.kind
 									: undefined,
 							side: gi > 0 && useTabsStore.getState().groups.length === 1,
+							// Restoring must not pull focus from wherever you're already typing.
+							focus: false,
 						});
 					}
+					if (cancelled) return;
 					const group = useTabsStore.getState().groups[gi];
 					const active = group?.tabIds[g.active];
 					if (group && active) useTabsStore.getState().activate(group.id, active);
@@ -146,6 +164,9 @@ export function EditorBridge(): null {
 				rlog.warn('editor', 'session restore failed', error);
 			}
 		})();
+		return () => {
+			cancelled = true;
+		};
 	}, [root]);
 
 	useEffect(() => {
@@ -176,9 +197,13 @@ export function EditorBridge(): null {
 			}, 60);
 		};
 		window.addEventListener('anvil:appearance', refresh);
+		// The OS reduced-motion switch also changes the editor's scroll and cursor animations.
+		const motion = window.matchMedia(REDUCED_MOTION_QUERY);
+		motion.addEventListener('change', refresh);
 		return () => {
 			clearTimeout(timer);
 			window.removeEventListener('anvil:appearance', refresh);
+			motion.removeEventListener('change', refresh);
 		};
 	}, []);
 

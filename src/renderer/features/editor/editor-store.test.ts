@@ -15,24 +15,20 @@ const file = (path: string, patch: Partial<OpenFile> = {}): OpenFile => ({
 describe('editor store', () => {
 	beforeEach(() => useEditorStore.getState().reset());
 
-	it('adding a file activates it', () => {
+	it('adding a file in the background keeps the active one', () => {
 		const s = useEditorStore.getState();
 		s.add(file('a.ts'));
+		s.setActive('a.ts');
 		s.add(file('b.ts'));
-		expect(useEditorStore.getState().active).toBe('b.ts');
+		expect(useEditorStore.getState().active).toBe('a.ts');
 	});
 
-	it('closing the active tab activates its right neighbour, else the left one', () => {
+	it('removing the active file clears it rather than guessing a neighbour', () => {
 		const s = useEditorStore.getState();
 		s.add(file('a.ts'));
 		s.add(file('b.ts'));
-		s.add(file('c.ts'));
 		s.setActive('b.ts');
 		s.remove('b.ts');
-		expect(useEditorStore.getState().active).toBe('c.ts');
-		s.remove('c.ts');
-		expect(useEditorStore.getState().active).toBe('a.ts');
-		s.remove('a.ts');
 		expect(useEditorStore.getState().active).toBeNull();
 	});
 
@@ -40,6 +36,7 @@ describe('editor store', () => {
 		const s = useEditorStore.getState();
 		s.add(file('a.ts'));
 		s.add(file('b.ts'));
+		s.setActive('b.ts');
 		s.remove('a.ts');
 		expect(useEditorStore.getState().active).toBe('b.ts');
 	});
@@ -50,5 +47,19 @@ describe('editor store', () => {
 		s.add(file('b.ts', { dirty: true }));
 		s.update('a.ts', { dirty: true });
 		expect(dirtyCount()).toBe(2);
+	});
+
+	it("keeps each group's last cursor line independently", () => {
+		const s = useEditorStore.getState();
+		s.setGroupLine(0, { path: 'a.py', line: 12 });
+		s.setGroupLine(1, { path: 'b.py', line: 3 });
+		const before = useEditorStore.getState().groupLines;
+		s.setGroupLine(0, { path: 'a.py', line: 12 });
+		// An unchanged line keeps the same object, so subscribers don't re-render.
+		expect(useEditorStore.getState().groupLines).toBe(before);
+		s.setGroupLine(1, null);
+		expect(useEditorStore.getState().groupLines).toEqual({ 0: { path: 'a.py', line: 12 } });
+		s.reset();
+		expect(useEditorStore.getState().groupLines).toEqual({});
 	});
 });

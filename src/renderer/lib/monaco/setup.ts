@@ -17,9 +17,8 @@ import getThemeServiceOverride from '@codingame/monaco-vscode-theme-service-over
 import * as monaco from 'monaco-editor';
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
 
-import { requestOpenFile } from '../../stores/workbench-store';
+import { openDefinition } from './open-definition';
 import { WorkspaceFileSystem } from './workspace-fs';
-import { toWorkspacePath } from './workspace-root';
 
 // Runs VS Code extensions (the LSP client uses the `vscode` API) in this renderer thread.
 import 'vscode/localExtensionHost';
@@ -51,13 +50,11 @@ export type MonacoApi = typeof monaco;
 
 /** Go to definition / peek into another file: open it in Anvil's editor at that position. */
 const openEditor: OpenEditor = (modelRef, options) => {
-	const path = toWorkspacePath(modelRef.object.textEditorModel.uri);
+	const uri = modelRef.object.textEditorModel.uri;
 	const selection = (options as { selection?: { startLineNumber: number; startColumn: number } })
 		?.selection;
 	modelRef.dispose();
-	if (path) {
-		requestOpenFile({ path, line: selection?.startLineNumber, column: selection?.startColumn });
-	}
+	openDefinition({ uri, selection });
 	return Promise.resolve(undefined);
 };
 

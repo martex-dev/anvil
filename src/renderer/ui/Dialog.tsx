@@ -13,6 +13,8 @@ interface DialogProps {
 	children?: ReactNode;
 	footer?: ReactNode;
 	width?: 'sm' | 'md' | 'lg';
+	/** Called before focus returns to the opener; preventDefault to move focus elsewhere. */
+	onCloseAutoFocus?: (event: Event) => void;
 }
 
 const widths = { sm: 'w-96', md: 'w-[32rem]', lg: 'w-[48rem]' } as const;
@@ -25,6 +27,7 @@ export function Dialog({
 	children,
 	footer,
 	width = 'md',
+	onCloseAutoFocus,
 }: DialogProps): JSX.Element {
 	useRegisterOverlay(open);
 
@@ -33,6 +36,7 @@ export function Dialog({
 			<RadixDialog.Portal>
 				<RadixDialog.Overlay className='animate-fade fixed inset-0 z-40 bg-scrim backdrop-blur-[2px]' />
 				<RadixDialog.Content
+					onCloseAutoFocus={onCloseAutoFocus}
 					className={cn(
 						'fixed top-1/2 left-1/2 z-50 max-h-[85vh] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2',
 						'glass-strong animate-in flex flex-col rounded-xl outline-none',

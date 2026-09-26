@@ -103,7 +103,8 @@ Side bar and panel: `sidebar-slot`, `sidebar` (+ `data-view`), `drawer`, `drawer
 `pane-header`, `pane-index`, `pane-rule`, `pane-title`, `pane-body`, `panel`, `panel-tab`
 (+ `data-active`), `terminal-chip`, `chat`.
 
-Editor: `editor-column`, `editor-group` (+ `data-focused`), `tabbar`, `tab` (+ `data-active`),
+Editor: `editor-column`, `editor-group` (+ `data-focused`), `tabbar`, `tab` (+ `data-active`,
+`data-drop` while a dragged tab hovers it: `before` or `after`),
 `tab-label`, `tab-error`, `tab-close` (+ `data-dirty`), `tab-marker`, `breadcrumbs`,
 `editor-surface`, `watermark`, `welcome`.
 

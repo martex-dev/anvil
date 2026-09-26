@@ -26,9 +26,19 @@ export const FileContentSchema = z.object({
 });
 export type FileContent = z.infer<typeof FileContentSchema>;
 
+/** Metadata only, for callers (Monaco's file service) that must not read the whole file. */
+export const FsStatSchema = z.object({
+	kind: z.enum(['file', 'dir']),
+	size: z.number(),
+	mtimeMs: z.number(),
+	ctimeMs: z.number(),
+});
+export type FsStat = z.infer<typeof FsStatSchema>;
+
 export const fsChannels = defineChannels({
 	'fs:list': { input: RelPathSchema, output: z.array(FsEntrySchema) },
 	'fs:readFile': { input: RelPathSchema, output: FileContentSchema },
+	'fs:stat': { input: RelPathSchema, output: FsStatSchema },
 	'fs:writeFile': {
 		input: z.object({
 			path: RelPathSchema,

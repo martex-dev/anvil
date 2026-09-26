@@ -16,51 +16,21 @@ import {
 
 import type { Command } from '../../app/commands/types';
 import { getSettings, updateSettings } from '../../app/hooks/use-settings';
-import { call } from '../../lib/ipc';
 import { focusedEditor } from '../../lib/monaco/editors';
 import { toWorkspacePath } from '../../lib/monaco/workspace-root';
 import { focusedTab, useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
 import { requestOpenFile } from '../../stores/workbench-store';
-import { quickPick } from '../../ui/QuickPick';
 import { nextBookmarkLine, toggleBookmarkAt } from './extras/bookmarks';
-import { isBlameEnabled, setBlameEnabled } from './extras/git-lines';
 import { repaintShield } from './extras/shield';
-import { saveAll, saveFile } from './file-ops';
+import { isScratch, saveAll, saveFile } from './file-ops';
+import { newFile } from './new-file';
 import { closeTab } from './open';
+import { copyPath, revealInExplorer } from './tab-actions';
 
 function activePath(): string | null {
 	const tab = focusedTab(useTabsStore.getState());
 	return tab?.path ?? null;
-}
-
-async function newFile(): Promise<void> {
-	const picked = await quickPick({
-		title: 'new file',
-		placeholder: 'Path relative to the folder, e.g. src/strategy/momentum.py',
-		items: [],
-		allowCustom: { label: (text) => `Create ${text}` },
-	});
-	if (!picked?.startsWith('custom:')) return;
-	const rel = picked.slice(7).replace(/\\/g, '/').replace(/^\/+/, '');
-	const parts = rel.split('/');
-	const name = parts.pop() ?? '';
-	let parent = '';
-	try {
-		for (const dir of parts) {
-			const next = parent ? `${parent}/${dir}` : dir;
-			// Existing folders are fine; create only what's missing.
-			await call('fs:create', { parent, name: dir, kind: 'dir' }).catch(() => undefined);
-			parent = next;
-		}
-		const entry = await call('fs:create', { parent, name, kind: 'file' });
-		requestOpenFile({ path: entry.path });
-	} catch (error) {
-		toast.error(
-			'Could not create the file',
-			error instanceof Error ? error.message : undefined,
-		);
-	}
 }
 
 export const EDITOR_COMMANDS: Command[] = [
@@ -127,6 +97,16 @@ export const EDITOR_COMMANDS: Command[] = [
 		},
 	},
 	{
+		id: 'view.keepEditor',
+		title: 'Keep Editor Open',
+		category: 'View',
+		keywords: ['pin', 'preview'],
+		run: () => {
+			const tab = focusedTab(useTabsStore.getState());
+			if (tab) useTabsStore.getState().pin(tab.id);
+		},
+	},
+	{
 		id: 'view.closeGroup',
 		title: 'Close Editor Group',
 		category: 'View',
@@ -186,6 +166,7 @@ export const EDITOR_COMMANDS: Command[] = [
 		run: () => {
 			const editor = focusedEditor();
 			if (editor) toggleBookmarkAt(editor);
+			else toast.info('Open a file first');
 		},
 	},
 	{
@@ -197,11 +178,17 @@ export const EDITOR_COMMANDS: Command[] = [
 		icon: BookmarkCheck,
 		run: () => {
 			const editor = focusedEditor();
-			const line = editor ? nextBookmarkLine(editor) : null;
-			if (editor && line) {
-				editor.setPosition({ lineNumber: line, column: 1 });
-				editor.revealLineInCenter(line);
+			if (!editor) {
+				toast.info('Open a file first');
+				return;
 			}
+			const line = nextBookmarkLine(editor);
+			if (!line) {
+				toast.info('No bookmarks in this file', 'Toggle one with Toggle Bookmark.');
+				return;
+			}
+			editor.setPosition({ lineNumber: line, column: 1 });
+			editor.revealLineInCenter(line);
 		},
 	},
 	{
@@ -221,9 +208,10 @@ export const EDITOR_COMMANDS: Command[] = [
 		title: 'Toggle Inline Blame',
 		category: 'Git',
 		icon: GitCommitHorizontal,
-		run: () => {
-			setBlameEnabled(!isBlameEnabled());
-			toast.info(`Inline blame ${isBlameEnabled() ? 'on' : 'off'}`);
+		run: async () => {
+			const on = !getSettings().inlineBlame;
+			await updateSettings({ inlineBlame: on });
+			toast.info(`Inline blame ${on ? 'on' : 'off'}`);
 		},
 	},
 	{
@@ -252,16 +240,29 @@ export const EDITOR_COMMANDS: Command[] = [
 		run: () => void updateSettings({ editorFontSize: 14 }),
 	},
 	{
+		id: 'explorer.revealActive',
+		title: 'Reveal Active File in Explorer View',
+		category: 'File',
+		keywords: ['locate', 'tree', 'sidebar'],
+		run: () => {
+			const path = activePath();
+			if (!path || isScratch(path)) toast.info('Open a file first');
+			else revealInExplorer(path);
+		},
+	},
+	{
 		id: 'file.copyPath',
 		title: 'Copy Path of Active File',
 		category: 'File',
 		run: async () => {
 			const model = focusedEditor()?.getModel();
+			// The scratchpad (an in-memory model) and viewers without a file have no path to copy.
 			const path = model ? toWorkspacePath(model.uri) : activePath();
-			if (!path) return;
-			const text = await call('fs:copyPath', { path, absolute: true });
-			await navigator.clipboard.writeText(text);
-			toast.success('Path copied', text);
+			if (!path || isScratch(path)) {
+				toast.info('Open a file first');
+				return;
+			}
+			await copyPath(path, true);
 		},
 	},
 ];

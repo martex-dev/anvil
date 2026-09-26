@@ -46,10 +46,17 @@ interface TabsState {
 	closeOthers: (group: number, keep: string) => string[];
 	/** Opens the tab in the other group (creating it), like "Split Editor Right". */
 	split: (id: string) => void;
+	/**
+	 * Opens a tab in a new second group without touching the focused one ("Open to the Side").
+	 * With two groups already, it opens in the other one.
+	 */
+	openInNewGroup: (tab: Tab) => void;
 	closeGroup: (group: number) => void;
 	move: (group: number, from: number, to: number) => void;
 	pin: (id: string) => void;
 	rename: (id: string, patch: Partial<Pick<Tab, 'path' | 'title'>>) => void;
+	/** Swaps a tab for another (a new id, e.g. after its file was renamed), in place. */
+	replace: (id: string, tab: Tab) => void;
 	reset: () => void;
 }
 
@@ -142,6 +149,24 @@ export const useTabsStore = create<TabsState>((set, get) => ({
 				focused: target.id,
 			};
 		}),
+	openInNewGroup: (tab) => {
+		const s = get();
+		const other = s.groups.find((g) => g.id !== s.focused);
+		if (other) {
+			s.open(tab, { group: other.id });
+			return;
+		}
+		const next: Group = {
+			id: Math.max(...s.groups.map((g) => g.id)) + 1,
+			tabIds: [tab.id],
+			active: tab.id,
+		};
+		set({
+			tabs: { ...s.tabs, [tab.id]: s.tabs[tab.id] ?? tab },
+			groups: [...s.groups, next],
+			focused: next.id,
+		});
+	},
 	closeGroup: (group) =>
 		set((s) => {
 			if (s.groups.length === 1) return s;
@@ -181,6 +206,21 @@ export const useTabsStore = create<TabsState>((set, get) => ({
 		set((s) => {
 			const tab = s.tabs[id];
 			return tab ? { tabs: { ...s.tabs, [id]: { ...tab, ...patch } } } : s;
+		}),
+	replace: (id, tab) =>
+		set((s) => {
+			if (!s.tabs[id]) return s;
+			const tabs = Object.fromEntries(Object.entries(s.tabs).filter(([key]) => key !== id));
+			tabs[tab.id] = tab;
+			const swap = (t: string): string => (t === id ? tab.id : t);
+			return {
+				tabs,
+				groups: s.groups.map((g) => ({
+					...g,
+					tabIds: [...new Set(g.tabIds.map(swap))],
+					active: g.active === null ? null : swap(g.active),
+				})),
+			};
 		}),
 	reset: () => set({ tabs: {}, groups: [{ id: 0, tabIds: [], active: null }], focused: 0 }),
 }));

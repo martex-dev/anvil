@@ -27,6 +27,15 @@ interface KeyLike {
 	metaKey?: boolean;
 	shiftKey: boolean;
 	altKey: boolean;
+	getModifierState?: (key: string) => boolean;
+}
+
+/**
+ * AltGr arrives on Windows as Ctrl+Alt, and on many layouts it types a character (Polish ś is
+ * AltGr+S, ł is AltGr+L). Such a keystroke is text, never a Ctrl+Alt shortcut.
+ */
+export function isAltGraph(event: Pick<KeyLike, 'getModifierState'>): boolean {
+	return event.getModifierState?.('AltGraph') ?? false;
 }
 
 const CODE_ALIASES: Record<string, string> = {
@@ -43,6 +52,7 @@ const CODE_ALIASES: Record<string, string> = {
 };
 
 export function matchesShortcut(event: KeyLike, shortcut: string): boolean {
+	if (isAltGraph(event)) return false;
 	const s = parseShortcut(shortcut);
 	const ctrl = event.ctrlKey || Boolean(event.metaKey);
 	if (ctrl !== s.ctrl || event.shiftKey !== s.shift || event.altKey !== s.alt) return false;

@@ -16,6 +16,8 @@ import { Breadcrumbs } from './Breadcrumbs';
 import { CodeEditor } from './CodeEditor';
 import { useEditorStore } from './editor-store';
 import { EditorDialogs } from './EditorDialogs';
+import { FileStatus } from './FileStatus';
+import { openUnloadedFiles } from './open';
 import { TabBar } from './TabBar';
 import { Watermark } from './Watermark';
 
@@ -51,7 +53,14 @@ function useMonaco(needed: boolean): [MonacoState, () => void] {
 		if (!needed || state.status === 'ready' || state.status === 'error') return;
 		let cancelled = false;
 		loadMonaco(settings)
-			.then((monaco) => !cancelled && setState({ status: 'ready', monaco }))
+			.then((monaco) => {
+				if (cancelled) return;
+				setState({ status: 'ready', monaco });
+				// Tabs opened while an earlier load failed still need their files read.
+				openUnloadedFiles(monaco).catch((error: unknown) =>
+					rlog.error('editor', 'reopening files after load failed', error),
+				);
+			})
 			.catch((error: unknown) => {
 				rlog.error('editor', 'monaco failed to load', error);
 				if (!cancelled)
@@ -95,43 +104,54 @@ function GroupView({
 	);
 	const codePath = tab?.kind === 'code' ? (tab.path ?? null) : null;
 
+	// Code and diff tabs both wait on Monaco: a spinner while it boots, Retry if it failed.
+	const monacoPending =
+		monaco.status === 'error' ? (
+			<ErrorState
+				title='The editor failed to load'
+				message={monaco.message}
+				onRetry={retry}
+			/>
+		) : monaco.status !== 'ready' ? (
+			<div className='flex h-full items-center justify-center'>
+				<Spinner label='Loading editor' />
+			</div>
+		) : null;
+
 	let body: JSX.Element | null = null;
 	if (!tab) body = <Watermark />;
 	else if (tab.kind === 'code') {
-		if (monaco.status === 'error')
-			body = (
-				<ErrorState
-					title='The editor failed to load'
-					message={monaco.message}
-					onRetry={retry}
-				/>
-			);
-		else if (monaco.status !== 'ready' || !file || file.state === 'loading')
+		if (monacoPending) body = monacoPending;
+		else if (!file || file.state === 'loading')
 			body = (
 				<div className='flex h-full items-center justify-center'>
 					<Spinner label='Loading editor' />
 				</div>
 			);
-		else if (file.state === 'error')
-			body = (
-				<ErrorState
-					title={`Couldn't open ${file.name}`}
-					message={file.error ?? 'Unknown error'}
-				/>
-			);
-		else if (file.state === 'binary' || file.state === 'tooLarge')
+		else if (file.state !== 'ready') body = <FileStatus file={file} />;
+	} else if (tab.kind === 'diff') {
+		if (monacoPending) body = monacoPending;
+		else if (!tab.diff)
 			body = (
 				<EmptyState
 					icon={<FileWarning size={22} />}
-					title={file.state === 'binary' ? 'Binary file' : 'File too large'}
-					description={
-						file.state === 'binary'
-							? `${file.name} isn't text, so it isn't shown here.`
-							: `${file.name} is over 5 MB. Open it in another program.`
-					}
+					title='Nothing to compare'
+					description='This diff has no content. Run the comparison again.'
 				/>
 			);
-	} else if (tab.path || tab.kind === 'diff' || tab.kind === 'welcome') {
+		else if (monaco.status === 'ready')
+			body = (
+				<Suspense
+					fallback={
+						<div className='flex h-full items-center justify-center'>
+							<Spinner label='Loading viewer' />
+						</div>
+					}
+				>
+					<DiffViewer diff={tab.diff} monaco={monaco.monaco} />
+				</Suspense>
+			);
+	} else if (tab.path || tab.kind === 'welcome') {
 		body = (
 			<Suspense
 				fallback={
@@ -144,9 +164,6 @@ function GroupView({
 				{tab.kind === 'image' && tab.path && <ImageViewer path={tab.path} />}
 				{tab.kind === 'notebook' && tab.path && <NotebookViewer path={tab.path} />}
 				{tab.kind === 'markdown' && tab.path && <MarkdownPreview path={tab.path} />}
-				{tab.kind === 'diff' && tab.diff && monaco.status === 'ready' && (
-					<DiffViewer diff={tab.diff} monaco={monaco.monaco} />
-				)}
 				{tab.kind === 'welcome' && <Welcome />}
 			</Suspense>
 		);
@@ -159,13 +176,13 @@ function GroupView({
 			data-focused={focused}
 			onMouseDown={() => useTabsStore.getState().focus(group.id)}
 			className={cn(
-				'glass flex h-full min-w-0 flex-1 flex-col overflow-hidden',
+				'glass glass-solid flex h-full min-w-0 flex-1 flex-col overflow-hidden',
 				focused && count > 1 && 'pane-focus',
 			)}
 		>
 			<span aria-hidden className='brackets-frame' data-focused={focused && count > 1} />
 			{group.tabIds.length > 0 && <TabBar group={group} focused={focused} />}
-			{tab && tab.kind === 'code' && <Breadcrumbs tab={tab} focused={focused} />}
+			{tab && tab.kind === 'code' && <Breadcrumbs tab={tab} group={group.id} />}
 			<div
 				data-part='editor-surface'
 				className='relative min-h-0 flex-1'

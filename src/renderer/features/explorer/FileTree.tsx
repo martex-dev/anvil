@@ -38,6 +38,7 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 	const tree = useFileTree(root, pending);
 	const actions = useFsActions(root);
 	const activeFile = useWorkbenchStore((s) => s.activeFile);
+	const reveal = useWorkbenchStore((s) => s.reveal);
 	const containerRef = useRef<HTMLDivElement>(null);
 
 	const focusedEntry = tree.rows.find((r) => r.kind === 'entry' && r.entry.path === focused);
@@ -68,6 +69,25 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 			setFocused(activeFile);
 		}
 	}
+
+	// An explicit "Reveal in Explorer View" (e.g. from a tab): same, and the tree takes focus.
+	const [seenReveal, setSeenReveal] = useState<number | null>(null);
+	if (reveal && reveal.nonce !== seenReveal) {
+		setSeenReveal(reveal.nonce);
+		tree.expand(ancestorsOf(reveal.path));
+		setFocused(reveal.path);
+	}
+
+	useEffect(() => {
+		// Still loading: the tree isn't mounted yet, so wait for it before taking focus.
+		const container = containerRef.current;
+		if (!reveal || !container) return;
+		container.focus();
+		container
+			.querySelector(`[data-path="${CSS.escape(reveal.path)}"]`)
+			?.scrollIntoView({ block: 'nearest' });
+		useWorkbenchStore.getState().clearReveal();
+	}, [reveal, tree.isRootLoading]);
 
 	useEffect(() => {
 		if (!focused) return;
