@@ -5,6 +5,7 @@ import type { TerminalPresetId } from '@shared/ipc/channels/terminal';
 import { call } from '../../lib/ipc';
 import { rlog } from '../../lib/log';
 import { useLayoutStore } from '../../stores/layout-store';
+import { toast } from '../../stores/toast-store';
 
 export interface TermTab {
 	/** Also the main-process session id. */
@@ -140,13 +141,22 @@ export async function runInTerminal(options: {
 	const existing = store.tabs.find((t) => t.role === options.role);
 	if (existing) {
 		store.setActive(existing.id);
-		const alive = await call('terminal:write', {
-			sessionId: existing.id,
-			data: `${options.command}\r`,
-		}).catch((error: unknown) => {
+		let alive: boolean;
+		try {
+			// An exited shell or REPL is restarted in main, so the command still runs.
+			alive = await call('terminal:write', {
+				sessionId: existing.id,
+				data: `${options.command}\r`,
+				restart: true,
+			});
+		} catch (error) {
 			rlog.warn('terminal', 'reusing terminal failed', error);
-			return false;
-		});
+			toast.error(
+				`Could not run in ${existing.title}`,
+				error instanceof Error ? error.message : undefined,
+			);
+			return;
+		}
 		// Not started yet (a restored tab never shown): it starts with the command when it mounts.
 		if (!alive) store.setInitial(existing.id, options.command);
 		return;

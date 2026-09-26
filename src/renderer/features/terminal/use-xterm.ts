@@ -120,7 +120,13 @@ export function useXterm(
 		});
 
 		const unsubscribeData = window.anvil.on('terminal:data', (m) => {
-			if (m.sessionId === sessionId) term.write(m.data);
+			if (m.sessionId !== sessionId) return;
+			// Output after an exit means main restarted the session (a Run or task command).
+			if (exited) {
+				exited = false;
+				setStatus('running');
+			}
+			term.write(m.data);
 		});
 		const unsubscribeExit = window.anvil.on('terminal:exit', (m) => {
 			if (m.sessionId !== sessionId) return;

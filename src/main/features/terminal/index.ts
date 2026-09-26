@@ -76,10 +76,11 @@ export const terminalFeature: MainFeature = {
 				};
 			},
 		);
-		ctx.ipc.handle('terminal:write', ({ sessionId, data }) => {
-			if (!live.has(sessionId)) return false;
-			live.write(sessionId, data);
-			return true;
+		ctx.ipc.handle('terminal:write', async ({ sessionId, data, restart }) => {
+			const s = live.get(sessionId);
+			// Run / REPL / task commands restart a shell that has exited instead of vanishing.
+			if (restart && s && !s.pty) await startSession(sessionId, s.preset, s.cols, s.rows);
+			return live.write(sessionId, data);
 		});
 		ctx.ipc.handle('terminal:resize', ({ sessionId, cols, rows }) =>
 			live.resize(sessionId, cols, rows),

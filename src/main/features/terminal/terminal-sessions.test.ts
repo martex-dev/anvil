@@ -86,6 +86,16 @@ describe('TerminalSessions', () => {
 		expect(sessions.get('s1')?.pty).toBeNull();
 	});
 
+	it('reports writes to an exited session as not delivered and remembers its size', () => {
+		sessions.start('s1', 'powershell', spec, 'C:/p', 80, 24);
+		expect(sessions.write('s1', 'a')).toBe(true);
+		sessions.resize('s1', 120, 40);
+		ptys[0]?.exitWith(0);
+		expect(sessions.write('s1', 'python a.py\r')).toBe(false);
+		expect(sessions.write('nope', 'x')).toBe(false);
+		expect(sessions.get('s1')).toMatchObject({ cols: 120, rows: 40 });
+	});
+
 	it('restarting reuses the session (and its backlog)', () => {
 		sessions.start('s1', 'powershell', spec, 'C:/p', 80, 24);
 		ptys[0]?.emit('first');

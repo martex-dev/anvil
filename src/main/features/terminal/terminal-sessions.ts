@@ -22,6 +22,9 @@ interface Session {
 	preset: TerminalPresetId;
 	title: string;
 	cwd: string;
+	/** Last known size, so an exited session can be restarted without the renderer. */
+	cols: number;
+	rows: number;
 	pty: PtyLike | null;
 	backlog: string;
 	pending: string;
@@ -67,12 +70,16 @@ export class TerminalSessions {
 			preset,
 			title: spec.title,
 			cwd,
+			cols,
+			rows,
 			pty: null,
 			backlog: '',
 			pending: '',
 			timer: null,
 		};
 		this.sessions.set(id, session);
+		session.cols = cols;
+		session.rows = rows;
 		const pty = this.spawn(spec, { cwd, cols, rows });
 		session.pty = pty;
 		pty.onData((data) => this.push(session, data));
@@ -84,13 +91,21 @@ export class TerminalSessions {
 		});
 	}
 
-	write(id: string, data: string): void {
-		this.sessions.get(id)?.pty?.write(data);
+	/** False when the session doesn't exist or its process has exited (nothing was written). */
+	write(id: string, data: string): boolean {
+		const pty = this.sessions.get(id)?.pty;
+		if (!pty) return false;
+		pty.write(data);
+		return true;
 	}
 
 	resize(id: string, cols: number, rows: number): void {
+		const session = this.sessions.get(id);
+		if (!session) return;
+		session.cols = cols;
+		session.rows = rows;
 		try {
-			this.sessions.get(id)?.pty?.resize(cols, rows);
+			session.pty?.resize(cols, rows);
 		} catch {
 			// Resizing a pty that is exiting throws on Windows (conpty); harmless.
 		}
