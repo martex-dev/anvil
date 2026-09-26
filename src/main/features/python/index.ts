@@ -8,6 +8,7 @@ import type { PythonEnv, PythonPackage, PythonTools } from '@shared/ipc/channels
 
 import { AnvilError, errorMessage } from '../../core/errors';
 import type { MainFeature } from '../../core/features';
+import { psQuote, shQuote } from '../../core/shell-quote';
 import { toAbsolute } from '../../core/workspace/fs-guard';
 import { discoverEnvs, envDirOf, findEnv } from './envs';
 import { activatedEnv, interpreter, setReplSupport } from './interpreter';
@@ -43,12 +44,6 @@ function firstLine(text: string): string | null {
 			.find((l) => l !== '') ?? null
 	);
 }
-
-/** PowerShell single-quoted literal: only ' needs escaping (as ''). */
-export const psQuote = (s: string): string => `'${s.replace(/'/g, "''")}'`;
-
-/** POSIX shell single-quoted literal: close, add an escaped ', reopen. */
-export const shQuote = (s: string): string => `'${s.replace(/'/g, `'\\''`)}'`;
 
 /** `pkg/sub/mod.py` → `pkg.sub.mod`, for `python -m`. */
 export function moduleName(rel: string): string {

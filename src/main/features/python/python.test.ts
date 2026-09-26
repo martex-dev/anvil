@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { candidates, envDirOf, findEnv, parsePyvenvVersion } from './envs';
-import { cellCommand, moduleName, psQuote, REPL_STARTUP, shQuote, stagedCode } from './index';
+import { cellCommand, moduleName, REPL_STARTUP, stagedCode } from './index';
 import { activatedEnv } from './interpreter';
 
 let dir: string;
@@ -62,11 +62,9 @@ describe('python envs', () => {
 });
 
 describe('run helpers', () => {
-	it('builds module names and quotes for PowerShell', () => {
+	it('builds module names', () => {
 		expect(moduleName('src/pkg/train.py')).toBe('src.pkg.train');
 		expect(moduleName('pkg/__main__.py')).toBe('pkg');
-		expect(psQuote("C:\\it's here\\a.py")).toBe("'C:\\it''s here\\a.py'");
-		expect(shQuote("/home/john's project/a.py")).toBe("'/home/john'\\''s project/a.py'");
 	});
 
 	it('runs staged cells through the short REPL helper', () => {

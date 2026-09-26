@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import type { Task } from '@shared/ipc/channels/tools';
 
 import type { MainFeature } from '../../core/features';
+import { shellWord } from '../../core/shell-quote';
 
 function read(root: string, name: string): string | null {
 	try {
@@ -76,13 +77,15 @@ export function detectTasks(root: string): Task[] {
 				? 'pnpm'
 				: existsSync(join(root, 'yarn.lock'))
 					? 'yarn'
-					: existsSync(join(root, 'bun.lockb'))
+					: // bun.lock is the text lockfile (bun 1.2+); bun.lockb the older binary one.
+						existsSync(join(root, 'bun.lock')) || existsSync(join(root, 'bun.lockb'))
 						? 'bun run'
 						: 'npm run';
 			for (const [name, script] of Object.entries(scripts)) {
+				// Typed into a shell: names like `build (prod)` or `@x` must reach the runner intact.
 				add('script', {
 					label: name,
-					command: `${runner} ${name}`,
+					command: `${runner} ${shellWord(name)}`,
 					source: 'npm',
 					detail: script,
 				});

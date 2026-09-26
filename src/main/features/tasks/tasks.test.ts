@@ -44,6 +44,16 @@ describe('detectTasks', () => {
 		);
 	});
 
+	it('uses bun for the text lockfile and quotes unusual script names', () => {
+		writeFileSync(
+			join(dir, 'package.json'),
+			JSON.stringify({ scripts: { 'build:prod': 'x', 'go now': 'y' } }),
+		);
+		writeFileSync(join(dir, 'bun.lock'), '');
+		const commands = detectTasks(dir).map((t) => t.command);
+		expect(commands).toEqual(['bun run build:prod', "bun run 'go now'"]);
+	});
+
 	it('prefixes Python tasks with uv run in uv projects', () => {
 		writeFileSync(
 			join(dir, 'pyproject.toml'),
