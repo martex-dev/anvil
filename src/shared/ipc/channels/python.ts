@@ -66,5 +66,9 @@ export const pythonChannels = defineChannels({
 });
 
 export const pythonEvents = {
-	'python:changed': PythonEnvSchema.nullable(),
+	/** `root`: the folder it was resolved for, so a late event never lands on the next folder. */
+	'python:changed': z.object({
+		root: z.string().nullable(),
+		env: PythonEnvSchema.nullable(),
+	}),
 };

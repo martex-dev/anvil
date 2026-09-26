@@ -39,3 +39,39 @@ describe('pickPythonEnv', () => {
 		expect(rlogError).toHaveBeenCalled();
 	});
 });
+
+describe('applyPythonChanged', () => {
+	const env = {
+		path: 'C:/a/.venv/Scripts/python.exe',
+		label: '.venv',
+		kind: 'venv' as const,
+		version: '3.12.4',
+		local: true,
+	};
+
+	it('stores the interpreter under the folder main resolved it for', async () => {
+		const { QueryClient } = await import('@tanstack/react-query');
+		const { applyPythonChanged, pythonKeys } = await import('./use-python');
+		const client = new QueryClient();
+		client.setQueryData(pythonKeys.selected('C:/b'), null);
+		applyPythonChanged(client, { root: 'C:/a', env });
+		expect(client.getQueryData(pythonKeys.selected('C:/a'))).toEqual(env);
+		expect(client.getQueryData(pythonKeys.selected('C:/b'))).toBeNull();
+	});
+
+	it("refreshes the folder's python queries except the selection itself", async () => {
+		const { QueryClient } = await import('@tanstack/react-query');
+		const { applyPythonChanged, pythonKeys } = await import('./use-python');
+		const client = new QueryClient();
+		client.setQueryData(pythonKeys.packages('C:/a', env.path), []);
+		client.setQueryData(pythonKeys.packages('C:/b', env.path), []);
+		client.setQueryData(['terminal', 'presets'], []);
+		applyPythonChanged(client, { root: 'C:/a', env });
+		const state = (key: readonly unknown[]): boolean | undefined =>
+			client.getQueryState(key)?.isInvalidated;
+		expect(state(pythonKeys.selected('C:/a'))).toBe(false);
+		expect(state(pythonKeys.packages('C:/a', env.path))).toBe(true);
+		expect(state(pythonKeys.packages('C:/b', env.path))).toBe(false);
+		expect(state(['terminal', 'presets'])).toBe(true);
+	});
+});

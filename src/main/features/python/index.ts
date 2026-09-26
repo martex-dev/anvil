@@ -119,8 +119,8 @@ export const pythonFeature: MainFeature = {
 				);
 			return python;
 		};
-		const selected = async (): Promise<PythonEnv | null> => {
-			const python = interpreter.resolve(ctx.workspace.root());
+		const selectedFor = async (root: string | null): Promise<PythonEnv | null> => {
+			const python = interpreter.resolve(root);
 			if (!python) return null;
 			const known = findEnv(await envs(false), python);
 			return (
@@ -146,8 +146,9 @@ export const pythonFeature: MainFeature = {
 		ctx.onDispose(() => localEnvs.stop());
 		const emitSelected = (): void => {
 			localEnvs.sync();
-			void selected()
-				.then((env) => ctx.emit('python:changed', env))
+			const root = ctx.workspace.root();
+			void selectedFor(root)
+				.then((env) => ctx.emit('python:changed', { root, env }))
 				.catch((e: unknown) =>
 					ctx.log.error('python:changed failed', { message: errorMessage(e) }),
 				);
@@ -165,7 +166,7 @@ export const pythonFeature: MainFeature = {
 		});
 
 		ctx.ipc.handle('python:envs', ({ refresh }) => envs(refresh));
-		ctx.ipc.handle('python:selected', selected);
+		ctx.ipc.handle('python:selected', () => selectedFor(ctx.workspace.root()));
 		ctx.ipc.handle('python:select', async (path) => {
 			const root = ctx.workspace.root();
 			if (!root)

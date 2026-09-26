@@ -6,6 +6,7 @@ import { InlineEditHost } from '../features/ai/InlineEditHost';
 import { EditorArea } from '../features/editor/EditorArea';
 import { EditorBridge } from '../features/editor/EditorBridge';
 import { LspController } from '../features/lsp/LspController';
+import { PythonController } from '../features/python/PythonController';
 import { SnapDialog } from '../features/snap/SnapDialog';
 import { cn } from '../lib/cn';
 import { useLayoutStore } from '../stores/layout-store';
@@ -143,6 +144,7 @@ export function AppShell(): JSX.Element {
 
 			<EditorBridge />
 			<LspController />
+			<PythonController />
 			<AiStreamController />
 			<InlineEditHost />
 			<CommandPalette />
