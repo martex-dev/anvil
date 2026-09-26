@@ -3,6 +3,7 @@ import { type JSX, type ReactNode, useEffect, useMemo, useRef, useState } from '
 
 import { useWorkspace } from '../../app/hooks/use-workspace';
 import { cn } from '../../lib/cn';
+import { focusedEditor } from '../../lib/monaco/editors';
 import { EmptyState } from '../../ui/EmptyState';
 import { Input } from '../../ui/Input';
 import { Spinner } from '../../ui/Spinner';
@@ -93,7 +94,7 @@ export function SearchPanel(): JSX.Element {
 		() => ({ query, regex, caseSensitive, wholeWord, include, exclude }),
 		[query, regex, caseSensitive, wholeWord, include, exclude],
 	);
-	const { result, isFetching, error } = useFileSearch(info.root, search);
+	const { result, isFetching, error, refetch } = useFileSearch(info.root, search);
 
 	if (!info.root) {
 		return (
@@ -115,7 +116,19 @@ export function SearchPanel(): JSX.Element {
 						placeholder='Search'
 						value={text}
 						onChange={(e) => setText(e.target.value)}
-						onKeyDown={(e) => e.key === 'Enter' && setQuery(text)}
+						onKeyDown={(e) => {
+							if (e.key === 'Enter') {
+								// The same query is cached for a few seconds; Enter means "search again".
+								if (text === query) refetch();
+								else setQuery(text);
+							} else if (e.key === 'Escape') {
+								e.preventDefault();
+								if (text) {
+									setText('');
+									setQuery('');
+								} else focusedEditor()?.focus();
+							}
+						}}
 						leading={isFetching ? <Spinner size={12} /> : <Search size={12} />}
 						className='flex-1'
 						spellCheck={false}

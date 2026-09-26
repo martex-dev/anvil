@@ -23,7 +23,13 @@ export const useSearchFocus = create<{ tick: number; focus: () => void }>((set) 
 export function useFileSearch(
 	root: string | null,
 	query: SearchQuery,
-): { result: SearchResult | undefined; isFetching: boolean; error: Error | null } {
+): {
+	result: SearchResult | undefined;
+	isFetching: boolean;
+	error: Error | null;
+	/** Runs the same search again (files may have changed since). */
+	refetch: () => void;
+} {
 	const q = useQuery({
 		queryKey: ['search', root, query],
 		queryFn: () => call('search:run', query),
@@ -35,5 +41,11 @@ export function useFileSearch(
 	});
 	// A search replaced by a newer keystroke isn't an error worth showing.
 	const cancelled = q.error instanceof IpcCallError && q.error.code === 'SEARCH_CANCELLED';
-	return { result: q.data, isFetching: q.isFetching, error: cancelled ? null : q.error };
+	return {
+		result: q.data,
+		isFetching: q.isFetching,
+		error: cancelled ? null : q.error,
+		// Failures land in q.error and show in the panel.
+		refetch: () => void q.refetch(),
+	};
 }
