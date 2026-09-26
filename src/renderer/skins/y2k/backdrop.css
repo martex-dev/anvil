@@ -1,0 +1,203 @@
+/*
+ * The Y2K sky: sunset gradient, striped sun, perspective grid, clouds, bubbles and sparkles.
+ * fx='full' animates (transform and opacity only), 'subtle' freezes it, 'off' keeps the bare sky.
+ */
+
+html[data-skin='y2k'] .yk-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 0;
+	pointer-events: none;
+	overflow: hidden;
+	background:
+		radial-gradient(60% 40% at 50% 74%, var(--skin-sun), transparent 70%),
+		linear-gradient(
+			180deg,
+			var(--skin-sky-1) 0%,
+			var(--skin-sky-2) 38%,
+			var(--skin-sky-3) 70%,
+			var(--skin-sky-4) 100%
+		);
+}
+
+html[data-skin='y2k'] .yk-backdrop > * {
+	position: absolute;
+}
+
+/* A striped vaporwave sun sinking behind the grid. */
+html[data-skin='y2k'] .yk-sun {
+	left: 50%;
+	bottom: 26%;
+	width: 44vmin;
+	height: 44vmin;
+	margin-left: -22vmin;
+	border-radius: 50%;
+	background: linear-gradient(180deg, var(--skin-iris-3) 0%, var(--skin-iris-1) 75%);
+	opacity: 0.85;
+	mask-image:
+		linear-gradient(180deg, var(--skin-ink) 0 52%, transparent 52%),
+		repeating-linear-gradient(180deg, var(--skin-ink) 0 12px, transparent 12px 18px);
+}
+
+/* The grid is a floor plane tilted away from us, faded into the haze at the horizon. */
+html[data-skin='y2k'] .yk-horizon {
+	left: 0;
+	right: 0;
+	bottom: 0;
+	height: 30%;
+	perspective: 320px;
+	perspective-origin: 50% 0%;
+	overflow: hidden;
+	mask-image: linear-gradient(0deg, var(--skin-ink) 35%, transparent 100%);
+	background: linear-gradient(
+		180deg,
+		transparent 0%,
+		color-mix(in oklab, var(--skin-sky-4) 70%, transparent) 100%
+	);
+}
+html[data-skin='y2k'] .yk-plane {
+	position: absolute;
+	left: -60%;
+	right: -60%;
+	top: 0;
+	height: 260%;
+	transform-origin: 50% 0;
+	transform: rotateX(68deg);
+	overflow: hidden;
+}
+html[data-skin='y2k'] .yk-grid {
+	position: absolute;
+	inset: -80px 0 0;
+	background-image:
+		linear-gradient(var(--skin-grid) 2px, transparent 2px),
+		linear-gradient(90deg, var(--skin-grid) 2px, transparent 2px);
+	background-size: 80px 80px;
+	background-position: 50% 0;
+}
+
+/* Puffy clouds: one pill and two round puffs, solid so overlaps don't darken. */
+html[data-skin='y2k'] .yk-cloud {
+	left: var(--x);
+	top: var(--y);
+	width: 200px;
+	height: 50px;
+	border-radius: 999px;
+	background: rgb(from var(--skin-cloud) r g b / 1);
+	opacity: 0.75;
+	transform: scale(var(--s));
+	transform-origin: 0 0;
+}
+html[data-skin='y2k'][data-kind='dark'] .yk-cloud {
+	opacity: 0.16;
+}
+html[data-skin='y2k'] .yk-cloud::before,
+html[data-skin='y2k'] .yk-cloud::after {
+	content: '';
+	position: absolute;
+	border-radius: 50%;
+	background: inherit;
+}
+html[data-skin='y2k'] .yk-cloud::before {
+	left: 30px;
+	top: -34px;
+	width: 70px;
+	height: 70px;
+}
+html[data-skin='y2k'] .yk-cloud::after {
+	left: 82px;
+	top: -52px;
+	width: 96px;
+	height: 96px;
+}
+
+/* Soap bubbles: an iridescent rim and a bright specular dot. */
+html[data-skin='y2k'] .yk-bubble {
+	left: var(--x);
+	top: var(--y);
+	width: var(--s);
+	height: var(--s);
+	border-radius: 50%;
+	border: 1px solid var(--skin-gloss-soft);
+	background:
+		radial-gradient(circle at 32% 28%, var(--skin-gloss) 0 9%, transparent 22%),
+		radial-gradient(
+			circle at 50% 50%,
+			transparent 50%,
+			var(--skin-bubble) 72%,
+			color-mix(in oklab, var(--skin-iris-1) 45%, var(--skin-bubble)) 100%
+		);
+}
+
+/* Four-point sparkles; the glow sits on the host so the star's clip doesn't cut it. */
+html[data-skin='y2k'] .yk-sparkle {
+	left: var(--x);
+	top: var(--y);
+	width: var(--s);
+	height: var(--s);
+	filter: drop-shadow(0 0 4px var(--skin-sparkle-glow));
+}
+html[data-skin='y2k'] .yk-sparkle::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: var(--skin-sparkle);
+	clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+}
+
+/* ---- Motion (full effects only) --------------------------------------------------- */
+
+html[data-skin='y2k'][data-fx='full'] .yk-grid {
+	animation: yk-roll 3.2s linear infinite;
+}
+html[data-skin='y2k'][data-fx='full'] .yk-cloud {
+	animation: yk-drift 70s ease-in-out infinite alternate;
+	animation-delay: var(--d);
+}
+html[data-skin='y2k'][data-fx='full'] .yk-bubble {
+	animation: yk-float 9s ease-in-out infinite alternate;
+	animation-delay: var(--d);
+}
+html[data-skin='y2k'][data-fx='full'] .yk-sparkle {
+	animation: yk-twinkle 3.2s ease-in-out infinite;
+	animation-delay: var(--d);
+}
+
+html[data-skin='y2k'][data-fx='off'] .yk-backdrop > * {
+	display: none;
+}
+
+@keyframes yk-roll {
+	from {
+		transform: translateY(0);
+	}
+	to {
+		transform: translateY(80px);
+	}
+}
+@keyframes yk-drift {
+	from {
+		transform: translateX(0) scale(var(--s));
+	}
+	to {
+		transform: translateX(90px) scale(var(--s));
+	}
+}
+@keyframes yk-float {
+	from {
+		transform: translateY(0);
+	}
+	to {
+		transform: translateY(-22px);
+	}
+}
+@keyframes yk-twinkle {
+	0%,
+	100% {
+		opacity: 1;
+		transform: scale(1) rotate(0deg);
+	}
+	50% {
+		opacity: 0.25;
+		transform: scale(0.55) rotate(45deg);
+	}
+}
