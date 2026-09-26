@@ -1,0 +1,248 @@
+/*
+ * Cockpit: title bar and title-bar menus. A slim black header with an inverted wordmark,
+ * small-caps menus and square keys. Pick lists read like a desk function menu.
+ */
+
+html[data-skin='cockpit'] .ck-titlebar {
+	position: relative;
+	z-index: 20;
+	display: flex;
+	flex-shrink: 0;
+	align-items: stretch;
+	height: 26px;
+	border-bottom: 1px solid var(--border);
+	background: var(--skin-tape);
+	color: var(--text-1);
+	font-family: var(--font-display);
+}
+
+/* ---- Shared field voice: LABEL value ----------------------------------------------------- */
+
+html[data-skin='cockpit'] .ck-field-label {
+	color: var(--skin-label);
+	font-family: var(--font-display);
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: var(--ck-caps);
+}
+html[data-skin='cockpit'] .ck-field-value {
+	color: var(--skin-value);
+	font-weight: 500;
+	text-transform: uppercase;
+}
+html[data-skin='cockpit'] .ck-field-dim {
+	color: var(--text-2);
+	text-transform: uppercase;
+}
+html[data-skin='cockpit'] .ck-field-accent {
+	color: var(--accent);
+}
+html[data-skin='cockpit'] .ck-field-up {
+	color: var(--up);
+}
+html[data-skin='cockpit'] .ck-field-down {
+	color: var(--down);
+}
+html[data-skin='cockpit'] .ck-field-warn {
+	color: var(--warn);
+}
+
+/* ---- Wordmark ---------------------------------------------------------------------------- */
+
+html[data-skin='cockpit'] .ck-brand {
+	display: flex;
+	align-items: stretch;
+	margin-right: 6px;
+}
+html[data-skin='cockpit'] .ck-brand-mark {
+	display: flex;
+	align-items: center;
+	padding: 0 8px;
+	background: var(--accent);
+	color: var(--on-accent);
+	font-family: 'Big Shoulders Display', var(--font-display);
+	font-size: 17px;
+	font-weight: 900;
+	letter-spacing: 0.08em;
+}
+html[data-skin='cockpit'] .ck-brand-sub {
+	display: flex;
+	align-items: center;
+	padding: 0 8px;
+	border-right: 1px solid var(--border);
+	color: var(--accent);
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.28em;
+}
+
+/* ---- Menus -------------------------------------------------------------------------------- */
+
+html[data-skin='cockpit'] .ck-menubar {
+	display: flex;
+	align-items: stretch;
+}
+html[data-skin='cockpit'] .ck-menu-trigger {
+	padding: 0 7px;
+	color: var(--text-1);
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: var(--ck-caps);
+	text-transform: uppercase;
+	outline: none;
+}
+html[data-skin='cockpit'] .ck-menu-trigger:hover {
+	background: var(--bg-3);
+	color: var(--text-0);
+}
+html[data-skin='cockpit'] .ck-menu-trigger:focus-visible {
+	box-shadow: inset 0 0 0 1px var(--accent);
+}
+html[data-skin='cockpit'] .ck-menu-trigger[data-state='open'] {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+
+html[data-skin='cockpit'] .ck-menu {
+	padding: 0 0 4px;
+	font-family: var(--font-ui);
+}
+html[data-skin='cockpit'] .ck-menu-head {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	display: flex;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 3px 8px;
+	background: var(--skin-header);
+	color: var(--skin-on-header);
+	font-family: var(--font-display);
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: var(--ck-caps);
+	text-transform: uppercase;
+}
+html[data-skin='cockpit'] .ck-menu-label {
+	margin-top: 4px;
+	padding: 4px 8px 2px;
+	border-top: 1px solid var(--border);
+	color: var(--skin-label);
+	font-family: var(--font-display);
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: var(--ck-caps);
+	text-transform: uppercase;
+}
+html[data-skin='cockpit'] .ck-menu-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	height: 22px;
+	padding: 0 8px;
+	color: var(--text-0);
+	font-size: 12px;
+	cursor: default;
+	outline: none;
+}
+html[data-skin='cockpit'] .ck-menu-item[data-highlighted] {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+html[data-skin='cockpit'] .ck-menu-num {
+	color: var(--text-2);
+	font-size: 10px;
+}
+html[data-skin='cockpit'] .ck-menu-key {
+	color: var(--accent);
+	font-size: 10px;
+	text-transform: uppercase;
+}
+html[data-skin='cockpit'] .ck-menu-item[data-highlighted] :is(.ck-menu-num, .ck-menu-key) {
+	color: var(--on-accent);
+}
+
+/* ---- Workspace readout, pane keys, window keys ---------------------------------------------- */
+
+html[data-skin='cockpit'] .ck-title-book {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-width: 0;
+	font-size: 11px;
+}
+html[data-skin='cockpit'] .ck-title-book .ck-field-value {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-weight: 700;
+	letter-spacing: var(--ck-caps);
+}
+
+html[data-skin='cockpit'] .ck-title-keys {
+	display: flex;
+	align-items: center;
+	gap: 3px;
+	padding: 0 6px;
+}
+html[data-skin='cockpit'] .ck-key {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	height: 18px;
+	padding: 0 5px;
+	border: 1px solid var(--border-strong);
+	color: var(--text-1);
+	font-family: var(--font-display);
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: var(--ck-caps);
+	outline: none;
+}
+html[data-skin='cockpit'] .ck-key:hover {
+	background: var(--bg-3);
+	color: var(--text-0);
+}
+html[data-skin='cockpit'] .ck-key:focus-visible {
+	box-shadow: 0 0 0 1px var(--accent);
+}
+html[data-skin='cockpit'] .ck-key[data-active='true'] {
+	border-color: var(--accent);
+	background: color-mix(in oklab, var(--accent) 16%, transparent);
+	color: var(--accent);
+}
+html[data-skin='cockpit'] .ck-key-go {
+	border-color: var(--skin-go);
+	background: var(--skin-go);
+	color: var(--skin-on-go);
+}
+html[data-skin='cockpit'] .ck-key-go:hover {
+	background: color-mix(in oklab, var(--skin-go) 80%, var(--skin-value));
+	color: var(--skin-on-go);
+}
+
+html[data-skin='cockpit'] .ck-winkeys {
+	display: flex;
+	align-items: stretch;
+}
+html[data-skin='cockpit'] .ck-winkeys [data-part='window-button'] {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	border-left: 1px solid var(--border);
+	color: var(--text-1);
+	outline: none;
+}
+html[data-skin='cockpit'] .ck-winkeys [data-part='window-button']:hover,
+html[data-skin='cockpit'] .ck-winkeys [data-part='window-button']:focus-visible {
+	background: var(--bg-3);
+	color: var(--text-0);
+}
+html[data-skin='cockpit'] .ck-winkeys [data-action='close']:hover,
+html[data-skin='cockpit'] .ck-winkeys [data-action='close']:focus-visible {
+	background: var(--down);
+	color: var(--skin-on-go);
+}
