@@ -24,8 +24,9 @@ export interface RouterLogger {
 }
 
 // Normal outcomes that panels handle (sidecar still starting, a search replaced by a newer one):
-// logging them as warnings every poll buries real problems.
-const EXPECTED_ERRORS = new Set(['SIDECAR_UNAVAILABLE', 'SEARCH_CANCELLED']);
+// logging them as warnings every poll buries real problems. AI_NO_KEY repeats on every
+// autocomplete keystroke until a key is added; the status bar already shows it.
+const EXPECTED_ERRORS = new Set(['SIDECAR_UNAVAILABLE', 'SEARCH_CANCELLED', 'AI_NO_KEY']);
 
 /**
  * Validates every incoming call against the shared contract before any handler runs,

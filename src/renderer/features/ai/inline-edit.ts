@@ -6,7 +6,9 @@ import type { AiContext } from '@shared/ipc/channels/ai';
 import { getLoadedMonaco } from '../../lib/monaco/load';
 import { toast } from '../../stores/toast-store';
 import { activeEditor, fileContext, problemsContext } from './editor-context';
-import { splitFences } from './fences';
+import { bindInlineEditKeys } from './inline-edit-keys';
+import { appliedRange, currentRange, trackRange } from './inline-range';
+import { extractCode, lineCount, withCursor } from './inline-text';
 import { streamOnce } from './requests';
 
 export type InlinePhase = 'prompt' | 'generating' | 'review';
@@ -36,8 +38,12 @@ export const useInlineEdit = create<InlineState>(() => ({
 interface Session {
 	editor: Monaco.editor.IStandaloneCodeEditor;
 	model: Monaco.editor.ITextModel;
-	/** Range being replaced (whole lines), or an empty range for "insert here". */
+	/**
+	 * Range being replaced (whole lines), or an empty range for "insert here". Re-read from
+	 * `tracker` before use, since the file can change while the box is open.
+	 */
 	range: Monaco.IRange;
+	tracker: Monaco.editor.IEditorDecorationsCollection;
 	original: string;
 	zoneId: string | null;
 	widget: Monaco.editor.IOverlayWidget;
@@ -52,17 +58,13 @@ let session: Session | null = null;
 
 const ZONE_HEIGHT = 56;
 
-function teardown(): void {
+/** `editorGone`: the editor was disposed, so only state and the request are cleaned up. */
+function teardown(editorGone = false): void {
 	if (!session) return;
 	const s = session;
 	session = null;
 	s.abort?.abort();
 	for (const d of s.disposables) d.dispose();
-	s.decorations.clear();
-	s.editor.changeViewZones((a) => {
-		if (s.zoneId) a.removeZone(s.zoneId);
-	});
-	s.editor.removeOverlayWidget(s.widget);
 	useInlineEdit.setState({
 		phase: null,
 		host: null,
@@ -71,7 +73,20 @@ function teardown(): void {
 		stats: null,
 		preset: '',
 	});
+	if (editorGone) return;
+	s.decorations.clear();
+	s.tracker.clear();
+	s.editor.changeViewZones((a) => {
+		if (s.zoneId) a.removeZone(s.zoneId);
+	});
+	s.editor.removeOverlayWidget(s.widget);
 	s.editor.focus();
+}
+
+/** Sizes the box to the code area; re-run on layout changes (side bar, split, AI pane). */
+function fitHost(host: HTMLElement, layout: Monaco.editor.EditorLayoutInfo): void {
+	host.style.left = `${layout.contentLeft}px`;
+	host.style.width = `${Math.max(320, Math.min(760, layout.contentWidth - layout.verticalScrollbarWidth - 24))}px`;
 }
 
 /** Opens the Ctrl+I box over the selection (whole lines) or at the cursor. */
@@ -105,13 +120,8 @@ export function startInlineEdit(preset = ''): void {
 		getDomNode: () => host,
 		getPosition: () => null,
 	};
-	const layout = editor.getLayoutInfo();
-	Object.assign(host.style, {
-		position: 'absolute',
-		left: `${layout.contentLeft}px`,
-		width: `${Math.max(320, Math.min(760, layout.contentWidth - layout.verticalScrollbarWidth - 24))}px`,
-		zIndex: '20',
-	});
+	Object.assign(host.style, { position: 'absolute', zIndex: '20' });
+	fitHost(host, editor.getLayoutInfo());
 	editor.addOverlayWidget(widget);
 	let zoneId: string | null = null;
 	editor.changeViewZones((a) => {
@@ -129,10 +139,12 @@ export function startInlineEdit(preset = ''): void {
 			? []
 			: [{ range, options: { isWholeLine: true, className: 'anvil-ai-range' } }],
 	);
+	const monaco = getLoadedMonaco();
 	session = {
 		editor,
 		model,
 		range,
+		tracker: trackRange(monaco, editor, range),
 		original: model.getValueInRange(range),
 		zoneId,
 		widget,
@@ -142,8 +154,20 @@ export function startInlineEdit(preset = ''): void {
 		disposables: [],
 		ownEdit: false,
 	};
+	if (monaco) {
+		const keys = bindInlineEditKeys(monaco, editor, {
+			cancel: cancelInlineEdit,
+			accept: acceptInlineEdit,
+		});
+		const unsubscribe = useInlineEdit.subscribe((st) => keys.setReview(st.phase === 'review'));
+		session.disposables.push({ dispose: unsubscribe }, keys);
+	}
 	session.disposables.push(
 		editor.onDidChangeModel(() => teardown()),
+		editor.onDidLayoutChange((info) => fitHost(host, info)),
+		// Closing the split must stop the request too, or it keeps spending tokens.
+		editor.onDidDispose(() => teardown(true)),
+		model.onWillDispose(() => teardown()),
 		model.onDidChangeContent(() => {
 			// Typing elsewhere while reviewing means "keep it".
 			if (session && !session.ownEdit && useInlineEdit.getState().phase === 'review')
@@ -162,18 +186,24 @@ export function startInlineEdit(preset = ''): void {
 	});
 }
 
-function extractCode(reply: string): string {
-	const code = splitFences(reply).find((s) => s.kind === 'code');
-	return code && code.kind === 'code' ? code.code : reply.trim();
-}
-
-function lineCount(text: string): number {
-	return text ? text.split('\n').length : 0;
+/** Moves the session onto where its code is now; false (error shown) if it was deleted. */
+function refreshRange(s: Session): boolean {
+	const range = currentRange(s.tracker, s.model, s.range);
+	if (!range) {
+		useInlineEdit.setState({
+			phase: 'prompt',
+			error: 'The code to edit was deleted. Press Esc and select it again.',
+		});
+		return false;
+	}
+	s.range = range;
+	s.original = s.model.getValueInRange(range);
+	return true;
 }
 
 export async function submitInlineEdit(instruction: string): Promise<void> {
 	const s = session;
-	if (!s || !instruction.trim()) return;
+	if (!s || !instruction.trim() || !refreshRange(s)) return;
 	const monaco = getLoadedMonaco();
 	const ctx = activeEditor();
 	const insert =
@@ -188,8 +218,7 @@ export async function submitInlineEdit(instruction: string): Promise<void> {
 				lineNumber: s.range.startLineNumber,
 				column: s.range.startColumn,
 			});
-			const text = s.model.getValue();
-			file.text = `${text.slice(0, offset)}<CURSOR/>${text.slice(offset)}`.slice(0, 200_000);
+			file.text = withCursor(s.model.getValue(), offset);
 		}
 		context.push(file);
 		const problems = monaco
@@ -226,6 +255,16 @@ export async function submitInlineEdit(instruction: string): Promise<void> {
 		});
 		if (session !== s) return;
 		let code = extractCode(reply);
+		// A refusal or empty reply would otherwise replace the selection with nothing.
+		if (!code.trim()) {
+			useInlineEdit.setState({
+				phase: 'prompt',
+				error: 'The model returned no code. Try rephrasing the instruction.',
+			});
+			return;
+		}
+		// Edits made while it generated moved the code: replace it where it is now.
+		if (!refreshRange(s)) return;
 		if (!insert && s.original.endsWith('\n') === false && code.endsWith('\n'))
 			code = code.replace(/\n+$/, '');
 		s.ownEdit = true;
@@ -233,15 +272,9 @@ export async function submitInlineEdit(instruction: string): Promise<void> {
 		s.model.pushEditOperations([], [{ range: s.range, text: code }], () => null);
 		s.model.pushStackElement();
 		s.ownEdit = false;
-		const endLine = s.range.startLineNumber + Math.max(0, lineCount(code) - 1);
-		s.applied = {
-			startLineNumber: s.range.startLineNumber,
-			startColumn: insert ? s.range.startColumn : 1,
-			endLineNumber: endLine,
-			endColumn: s.model.getLineMaxColumn(endLine),
-		};
+		s.applied = appliedRange(s.range, code, insert, s.model);
 		s.decorations.set([
-			{ range: s.applied, options: { isWholeLine: true, className: 'anvil-ai-added' } },
+			{ range: s.applied, options: { isWholeLine: !insert, className: 'anvil-ai-added' } },
 		]);
 		useInlineEdit.setState({
 			phase: 'review',
@@ -265,7 +298,10 @@ export function rejectInlineEdit(): void {
 	const s = session;
 	if (s?.applied) {
 		s.ownEdit = true;
+		// Its own undo step, so Ctrl+Z after Reject doesn't bring the rejected code back.
+		s.model.pushStackElement();
 		s.model.pushEditOperations([], [{ range: s.applied, text: s.original }], () => null);
+		s.model.pushStackElement();
 		s.ownEdit = false;
 	}
 	teardown();

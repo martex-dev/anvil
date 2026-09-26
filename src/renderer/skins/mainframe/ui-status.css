@@ -86,6 +86,15 @@ html[data-skin='mainframe'] .mf-titlebar [class*='text-[9px]'] {
 html[data-skin='mainframe'] .mf-busy {
 	animation: mf-blink 0.8s steps(1) infinite;
 }
+/* The AI busy flag stays lit under reduced motion (setting or OS), like the global pulse-dot. */
+html[data-skin='mainframe'][data-reduce-motion='true'] .mf-busy {
+	animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+	html[data-skin='mainframe'] .mf-busy {
+		animation: none;
+	}
+}
 
 /* ---- F-key bar ------------------------------------------------------------------------ */
 

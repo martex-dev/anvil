@@ -12,10 +12,12 @@ export function AiStreamController(): null {
 			? routeDelta(requestId, text)
 			: useChat.getState().onDelta(requestId, text),
 	);
-	useAnvilEvent('ai:done', ({ requestId, inputTokens, outputTokens, cancelled }) =>
+	useAnvilEvent('ai:done', ({ requestId, inputTokens, outputTokens, cancelled, truncated }) =>
 		isOneShot(requestId)
-			? routeDone(requestId, cancelled)
-			: useChat.getState().onDone(requestId, { inputTokens, outputTokens }, cancelled),
+			? routeDone(requestId, cancelled, truncated)
+			: useChat
+					.getState()
+					.onDone(requestId, { inputTokens, outputTokens }, cancelled, truncated),
 	);
 	useAnvilEvent('ai:error', ({ requestId, message }) =>
 		isOneShot(requestId)

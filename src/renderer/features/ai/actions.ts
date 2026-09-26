@@ -10,17 +10,48 @@ import type { Problem } from '../problems/problems-store';
 import { getAiSettings } from './ai-settings';
 import { useChatFocus } from './chat-focus';
 import { useChat } from './chat-store';
-import { activeEditor, fileContext, problemsContext, selectionContext } from './editor-context';
+import {
+	type ActiveEditor,
+	activeEditor,
+	fileContext,
+	problemsContext,
+	selectionContext,
+	truncateForContext,
+} from './editor-context';
 import { startInlineEdit } from './inline-edit';
 import { streamOnce } from './requests';
 
 /** Opens the AI panel and sends a prompt with the given context attached. */
 export async function askChat(prompt: string, context: AiContext[]): Promise<void> {
 	useLayoutStore.getState().toggleAi(true);
-	const chat = useChat.getState();
-	for (const c of context) chat.attach(c);
 	const { chat: model } = await getAiSettings();
+	const chat = useChat.getState();
+	// Check before attaching: chips left behind would go out with the next, unrelated message.
+	if (chat.activeRequest) {
+		toast.info('A reply is still streaming', 'Wait for it or press Stop, then try again.');
+		return;
+	}
+	for (const c of context) chat.attach(c);
 	chat.send(prompt, model);
+}
+
+/** Selects whole lines, so an inline edit rewrites them instead of inserting at the cursor. */
+function selectLines(ed: ActiveEditor, start: number, end: number): void {
+	ed.editor.setSelection({
+		startLineNumber: start,
+		startColumn: 1,
+		endLineNumber: end,
+		endColumn: ed.model.getLineMaxColumn(end),
+	});
+}
+
+/** Selects the innermost function or class under the cursor; false when there is none. */
+function selectSymbolAtCursor(ed: ActiveEditor): boolean {
+	const line = ed.editor.getPosition()?.lineNumber ?? 1;
+	const inner = symbolPath(outlineFor(ed.language, ed.model.getLinesContent()), line).at(-1);
+	if (!inner) return false;
+	selectLines(ed, inner.line, inner.end);
+	return true;
 }
 
 /** File + selection (or the function under the cursor) as context. */
@@ -75,14 +106,34 @@ export async function reviewCode(): Promise<void> {
 		);
 }
 
+const TEST_FRAMEWORKS: Record<string, string> = {
+	python: 'pytest (fixtures and parametrize where useful)',
+	typescript: 'vitest',
+	typescriptreact: 'vitest',
+	javascript: 'vitest',
+	javascriptreact: 'vitest',
+	go: 'Go `testing` package (table-driven)',
+	rust: 'Rust `#[test]` (in a `#[cfg(test)]` module)',
+	java: 'JUnit 5',
+	kotlin: 'JUnit 5',
+	csharp: 'xUnit',
+	cpp: 'GoogleTest',
+	r: 'testthat',
+	julia: 'Julia `Test` stdlib',
+	ruby: 'RSpec',
+};
+
+/** The test framework to ask for, by Monaco language id. */
+export function testFramework(language: string): string {
+	return TEST_FRAMEWORKS[language] ?? `idiomatic ${language}`;
+}
+
 export async function writeTests(): Promise<void> {
 	const c = codeContext(true);
 	const ed = activeEditor();
 	if (!c || !ed) return;
-	const framework =
-		ed.language === 'python' ? 'pytest (fixtures and parametrize where useful)' : 'vitest';
 	await askChat(
-		`Write ${framework} tests for ${c.what}. Cover normal cases, edge cases (empty input, NaN, zero division) and one property that must always hold. Return a complete test file.`,
+		`Write ${testFramework(ed.language)} tests for ${c.what}. Cover normal cases, edge cases (empty input, NaN, zero division) and one property that must always hold. Return a complete test file.`,
 		c.context,
 	);
 }
@@ -100,7 +151,11 @@ export async function checkLookahead(): Promise<void> {
 export async function fixProblemsHere(): Promise<void> {
 	const ed = activeEditor();
 	const monaco = getLoadedMonaco();
-	if (!ed || !monaco) return;
+	// Monaco loads with the first editor, so no Monaco also means no file open.
+	if (!ed || !monaco) {
+		toast.info('Open a file first');
+		return;
+	}
 	const line = ed.editor.getPosition()?.lineNumber ?? 1;
 	const problems = problemsContext(
 		monaco,
@@ -113,6 +168,8 @@ export async function fixProblemsHere(): Promise<void> {
 		toast.info('No problems here', 'Nothing flagged on these lines.');
 		return;
 	}
+	// Rewrite the flagged line; with nothing selected the edit would insert a copy instead.
+	if (!ed.selection) selectLines(ed, line, line);
 	startInlineEdit(
 		'Fix these problems: ' +
 			problems.text
@@ -124,11 +181,20 @@ export async function fixProblemsHere(): Promise<void> {
 
 export async function askAiAboutProblem(p: Problem): Promise<void> {
 	requestOpenFile({ path: p.path, line: p.line, column: p.column });
-	const content = await call('fs:readFile', p.path).catch(() => null);
-	const context: AiContext[] =
-		content && !content.binary && !content.tooLarge
-			? [{ kind: 'file', label: p.path, language: null, text: content.content }]
-			: [];
+	const content = await call('fs:readFile', p.path).catch((error: unknown) => {
+		// Still ask about the problem, but say the model won't see the file.
+		toast.warn(
+			'Sent without the file',
+			`Could not read ${p.path}: ${error instanceof Error ? error.message : String(error)}`,
+		);
+		return null;
+	});
+	const context: AiContext[] = [];
+	if (content && !content.binary && !content.tooLarge) {
+		const { text, truncated } = truncateForContext(content.content);
+		if (truncated) toast.info('Sent part of the file', `${p.path} is too long to send whole.`);
+		context.push({ kind: 'file', label: p.path, language: null, text });
+	}
 	context.push({
 		kind: 'problems',
 		label: `${p.path}:${p.line}`,
@@ -143,19 +209,12 @@ export async function askAiAboutProblem(p: Problem): Promise<void> {
 
 export function addDocstring(): void {
 	const ed = activeEditor();
-	if (!ed) return;
-	if (!ed.selection) {
-		// Select the function under the cursor so the edit covers it whole.
-		const line = ed.editor.getPosition()?.lineNumber ?? 1;
-		const inner = symbolPath(outlineFor(ed.language, ed.model.getLinesContent()), line).at(-1);
-		if (inner)
-			ed.editor.setSelection({
-				startLineNumber: inner.line,
-				startColumn: 1,
-				endLineNumber: inner.end,
-				endColumn: ed.model.getLineMaxColumn(inner.end),
-			});
+	if (!ed) {
+		toast.info('Open a file first');
+		return;
 	}
+	// Select the function under the cursor so the edit covers it whole.
+	if (!ed.selection) selectSymbolAtCursor(ed);
 	startInlineEdit(
 		ed.language === 'python'
 			? 'Add a concise Google-style docstring (Args, Returns, Raises; units for financial quantities). Change nothing else.'
@@ -164,6 +223,19 @@ export function addDocstring(): void {
 }
 
 export function vectorize(): void {
+	const ed = activeEditor();
+	if (!ed) {
+		toast.info('Open a file first');
+		return;
+	}
+	// Rewrite the function under the cursor; with nothing selected the edit would insert a copy.
+	if (!ed.selection && !selectSymbolAtCursor(ed)) {
+		toast.info(
+			'Select the code to vectorize',
+			'Put the cursor inside a function, or select the loop to rewrite.',
+		);
+		return;
+	}
 	startInlineEdit(
 		'Rewrite this to be vectorised (NumPy / pandas / polars) with identical results, including NaN handling. No Python loops over rows.',
 	);

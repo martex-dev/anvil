@@ -1,9 +1,13 @@
 import type * as Monaco from 'monaco-editor';
 
+import type { AiSettings } from '@shared/ipc/channels/ai';
+
 import { getSettings } from '../../app/hooks/use-settings';
 import { call } from '../../lib/ipc';
 import type { MonacoApi } from '../../lib/monaco/setup';
 import { toWorkspacePath } from '../../lib/monaco/workspace-root';
+import { queryClient } from '../../lib/query-client';
+import { AI_SETTINGS_KEY } from './ai-settings';
 import { useGhostStatus } from './ghost-status';
 
 const PREFIX_CHARS = 6_000;
@@ -21,6 +25,26 @@ export function trimOverlap(text: string, after: string): string {
 	const rest = after.split('\n')[0] ?? '';
 	if (rest && text.endsWith(rest)) return text.slice(0, -rest.length);
 	return text;
+}
+
+/**
+ * Identifies a completion request for the one-entry cache: the same spot with the same code
+ * around it, on the same model. Text after the cursor and the model both change the answer.
+ */
+export function ghostCacheKey(parts: {
+	path: string;
+	offset: number;
+	prefix: string;
+	suffix: string;
+	model: string;
+}): string {
+	return [
+		parts.model,
+		parts.path,
+		parts.offset,
+		parts.prefix.slice(-200),
+		parts.suffix.slice(0, 200),
+	].join('\u0000');
 }
 
 const sleep = (ms: number, token: Monaco.CancellationToken): Promise<boolean> =>
@@ -56,7 +80,15 @@ export function registerGhostText(monaco: MonacoApi): Monaco.IDisposable {
 				const full = model.getValue();
 				const prefix = full.slice(Math.max(0, offset - PREFIX_CHARS), offset);
 				const suffix = full.slice(offset, offset + SUFFIX_CHARS);
-				const key = `${path}|${offset}|${prefix.slice(-200)}`;
+				const completion =
+					queryClient.getQueryData<AiSettings>(AI_SETTINGS_KEY)?.completion;
+				const key = ghostCacheKey({
+					path,
+					offset,
+					prefix,
+					suffix,
+					model: completion ? `${completion.provider}|${completion.model}` : '',
+				});
 				const range = new monaco.Range(
 					position.lineNumber,
 					position.column,

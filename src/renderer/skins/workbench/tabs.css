@@ -117,7 +117,7 @@ html[data-skin='workbench'] [data-ai-chat] > header {
 html[data-skin='workbench'] [data-ai-chat] > header > .hud {
 	display: none;
 }
-html[data-skin='workbench'] [data-ai-chat] > .overflow-y-auto {
+html[data-skin='workbench'] [data-ai-chat] [data-part='chat-log'] {
 	margin: 0 0 2px;
 	background: var(--skin-field);
 	color: var(--skin-field-text);
