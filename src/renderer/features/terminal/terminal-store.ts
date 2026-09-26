@@ -7,6 +7,7 @@ import { rlog } from '../../lib/log';
 import { queryClient } from '../../lib/query-client';
 import { useLayoutStore } from '../../stores/layout-store';
 import { toast } from '../../stores/toast-store';
+import { loadTerminals, saveTerminals } from './terminal-persist';
 
 export interface TermTab {
 	/** Also the main-process session id. */
@@ -35,8 +36,6 @@ interface TerminalState {
 	rename: (id: string, title: string) => void;
 }
 
-const KEY = 'anvil.terminals';
-
 export const PRESET_LABEL: Record<TerminalPresetId, string> = {
 	powershell: 'pwsh',
 	cmd: 'cmd',
@@ -48,32 +47,11 @@ export const PRESET_LABEL: Record<TerminalPresetId, string> = {
 	gemini: 'gemini',
 };
 
-function load(): TermTab[] {
-	try {
-		const raw = JSON.parse(localStorage.getItem(KEY) ?? '[]') as unknown;
-		if (!Array.isArray(raw)) return [];
-		return raw
-			.filter(
-				(t): t is TermTab =>
-					typeof t === 'object' && t !== null && typeof (t as TermTab).id === 'string',
-			)
-			.map(({ id, preset, title, role, root }) => ({
-				id,
-				preset,
-				title,
-				...(role ? { role } : {}),
-				...(typeof root === 'string' ? { root } : {}),
-			}));
-	} catch {
-		return [];
-	}
-}
-
-const initial = load();
+const initial = loadTerminals();
 
 export const useTerminalStore = create<TerminalState>((set) => ({
-	tabs: initial,
-	active: initial[0]?.id ?? null,
+	tabs: initial.tabs,
+	active: initial.active,
 	add: (tab) => set((s) => ({ tabs: [...s.tabs, tab], active: tab.id })),
 	close: (id) =>
 		set((s) => {
@@ -106,24 +84,8 @@ export const useTerminalStore = create<TerminalState>((set) => ({
 		set((s) => ({ tabs: s.tabs.map((t) => (t.id === id ? { ...t, title } : t)) })),
 }));
 
-useTerminalStore.subscribe((s) => {
-	try {
-		localStorage.setItem(
-			KEY,
-			JSON.stringify(
-				s.tabs.map(({ id, preset, title, role, root }) => ({
-					id,
-					preset,
-					title,
-					role,
-					root,
-				})),
-			),
-		);
-	} catch {
-		// Terminal tabs just won't be restored.
-	}
-});
+// Tabs and the active one survive a reload (their sessions start again when shown).
+useTerminalStore.subscribe((s) => saveTerminals(s));
 
 const newId = (): string => `anvil-${crypto.randomUUID()}`;
 
