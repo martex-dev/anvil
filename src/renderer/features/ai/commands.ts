@@ -2,11 +2,17 @@ import {
 	BookText,
 	Bot,
 	Bug,
+	Check,
+	FileCode2,
 	FlaskConical,
+	GitCompare,
 	MessageSquarePlus,
 	ScanSearch,
 	Sparkles,
+	Square,
+	TextSelect,
 	Wand2,
+	X,
 	Zap,
 } from 'lucide-react';
 
@@ -26,6 +32,7 @@ import {
 import { pickModel } from './ai-settings';
 import { useChat } from './chat-store';
 import { startInlineEdit } from './inline-edit';
+import { acceptInline, attachToChat, rejectInline, stopGenerating } from './palette-actions';
 
 export const AI_COMMANDS: Command[] = [
 	{
@@ -103,6 +110,49 @@ export const AI_COMMANDS: Command[] = [
 		scope: 'editor',
 		icon: Sparkles,
 		run: fixProblemsHere,
+	},
+	{
+		id: 'ai.stop',
+		title: 'Stop Generating',
+		category: 'AI',
+		keywords: ['cancel', 'abort'],
+		icon: Square,
+		run: stopGenerating,
+	},
+	{
+		id: 'ai.attachFile',
+		title: 'Attach Current File to Chat',
+		category: 'AI',
+		icon: FileCode2,
+		run: () => attachToChat('file'),
+	},
+	{
+		id: 'ai.attachSelection',
+		title: 'Attach Selection to Chat',
+		category: 'AI',
+		icon: TextSelect,
+		run: () => attachToChat('selection'),
+	},
+	{
+		id: 'ai.attachDiff',
+		title: 'Attach Git Diff to Chat',
+		category: 'AI',
+		icon: GitCompare,
+		run: () => attachToChat('diff'),
+	},
+	{
+		id: 'ai.inlineAccept',
+		title: 'Accept Inline Edit',
+		category: 'AI',
+		icon: Check,
+		run: acceptInline,
+	},
+	{
+		id: 'ai.inlineReject',
+		title: 'Reject Inline Edit',
+		category: 'AI',
+		icon: X,
+		run: rejectInline,
 	},
 	{
 		id: 'ai.newChat',
