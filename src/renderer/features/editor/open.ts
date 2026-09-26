@@ -6,7 +6,7 @@ import { codeTabId, type Tab, type TabKind, useTabsStore } from '../../stores/ta
 import { toast } from '../../stores/toast-store';
 import type { OpenFileRequest } from '../../stores/workbench-store';
 import { useEditorStore } from './editor-store';
-import { closeFile, openFile } from './file-ops';
+import { closeFile, isScratch, openFile, openScratch, SCRATCH_PATH } from './file-ops';
 
 const DATA = /\.(csv|tsv|tab|parquet|feather|arrow|ipc|jsonl|ndjson|xlsx)$/i;
 const IMAGE = /\.(png|jpe?g|gif|webp|bmp|ico|svg)$/i;
@@ -30,7 +30,27 @@ export function tabFor(path: string, kind: TabKind, preview = false): Tab {
 export const editorPrefs = (): Parameters<typeof loadMonaco>[0] => getSettings();
 
 /** Opens a file in the right viewer: text in Monaco, tables in the grid, images, notebooks. */
+/** Opens (or focuses) the scratchpad tab. */
+export async function openScratchTab(): Promise<void> {
+	try {
+		const monaco = await loadMonaco(editorPrefs());
+		openScratch(monaco);
+		useTabsStore.getState().open({
+			id: codeTabId(SCRATCH_PATH),
+			kind: 'code',
+			path: SCRATCH_PATH,
+			title: 'Scratchpad',
+		});
+	} catch (error) {
+		toast.error(
+			'The editor failed to load',
+			error instanceof Error ? error.message : undefined,
+		);
+	}
+}
+
 export async function openPath(root: string, request: OpenFileRequest): Promise<void> {
+	if (isScratch(request.path)) return openScratchTab();
 	const kind: TabKind = request.as ?? kindForPath(request.path);
 	const tabs = useTabsStore.getState();
 	let group: number | undefined;

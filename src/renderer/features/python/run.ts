@@ -3,7 +3,7 @@ import { focusedEditor } from '../../lib/monaco/editors';
 import { toWorkspacePath } from '../../lib/monaco/workspace-root';
 import { toast } from '../../stores/toast-store';
 import { useEditorStore } from '../editor/editor-store';
-import { saveFile } from '../editor/file-ops';
+import { isScratch, saveFile } from '../editor/file-ops';
 import { closeTerminal, runInTerminal, useTerminalStore } from '../terminal/terminal-store';
 import { cellAt, cellCode, dedent, findCells } from './cells';
 
@@ -29,6 +29,12 @@ function activePythonPath(): string | null {
 /** Saves and runs the focused Python file (or `python -m` it) in the Run terminal. */
 export async function runPythonFile(module = false): Promise<void> {
 	const path = activePythonPath() ?? useEditorStore.getState().active;
+	if (isScratch(path)) {
+		// The scratchpad isn't a file: run its whole buffer in the REPL instead.
+		const model = focusedEditor()?.getModel();
+		if (model) await sendToRepl(model.getValue());
+		return;
+	}
 	if (!path?.endsWith('.py')) {
 		toast.info('Open a Python file to run it');
 		return;

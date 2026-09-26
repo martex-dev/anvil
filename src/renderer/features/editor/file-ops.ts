@@ -54,6 +54,119 @@ function languageOverride(path: string): string | undefined {
 	return undefined;
 }
 
+/** The scratchpad's buffer id: a code tab that lives in local storage, not on disk. */
+export const SCRATCH_PATH = '__scratch__';
+const SCRATCH_KEY = 'anvil.scratchpad';
+const SCRATCH_DEFAULT = [
+	'# %% Scratchpad: persists between sessions, never touches your project.',
+	'# Ctrl+Enter runs a cell in the REPL · Change language from the palette.',
+	'',
+	'import math',
+	'',
+	'# %%',
+	'print(math.tau)',
+	'',
+].join('\n');
+
+export function isScratch(path: string | null | undefined): boolean {
+	return path === SCRATCH_PATH;
+}
+
+interface ScratchState {
+	text: string;
+	language: string;
+}
+
+function readScratch(): ScratchState | null {
+	try {
+		return JSON.parse(localStorage.getItem(SCRATCH_KEY) ?? 'null') as ScratchState | null;
+	} catch {
+		// Storage blocked or a corrupt value: start from the default text.
+		return null;
+	}
+}
+
+export function openScratch(monaco: MonacoApi): void {
+	const store = useEditorStore.getState();
+	if (store.files.some((f) => f.path === SCRATCH_PATH)) return;
+	const saved = readScratch();
+	const uri = monaco.Uri.parse('inmemory://anvil/scratchpad');
+	const model =
+		monaco.editor.getModel(uri) ??
+		monaco.editor.createModel(saved?.text ?? SCRATCH_DEFAULT, saved?.language ?? 'python', uri);
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const write = (): void => {
+		try {
+			localStorage.setItem(
+				SCRATCH_KEY,
+				JSON.stringify({ text: model.getValue(), language: model.getLanguageId() }),
+			);
+		} catch {
+			// Too big for local storage: the buffer still works for this session.
+		}
+	};
+	const persist = (): void => {
+		clearTimeout(timer);
+		timer = setTimeout(write, 400);
+	};
+	const content = model.onDidChangeContent(persist);
+	const language = model.onDidChangeLanguage(persist);
+	// VS Code's services treat inmemory: models as borrowed: when any feature (hover, peek,
+	// language client) takes a model reference and releases it, the model is destroyed under the
+	// open editor. Holding our own reference until the tab closes keeps the buffer alive.
+	let ref: Monaco.IDisposable | null = null;
+	let closed = false;
+	void import('@codingame/monaco-vscode-api/services')
+		.then(({ getService, ITextModelService }) => getService(ITextModelService))
+		.then((service) => service.createModelReference(uri))
+		.then((r) => {
+			if (closed) r.dispose();
+			else ref = r;
+		})
+		.catch((error: unknown) => rlog.warn('editor', 'scratchpad model reference failed', error));
+	tracked.set(SCRATCH_PATH, {
+		model,
+		savedVersion: model.getAlternativeVersionId(),
+		listener: {
+			dispose() {
+				closed = true;
+				clearTimeout(timer);
+				if (!model.isDisposed()) write();
+				content.dispose();
+				language.dispose();
+				ref?.dispose();
+			},
+		},
+		viewState: null,
+	});
+	store.add({
+		path: SCRATCH_PATH,
+		name: 'Scratchpad',
+		state: 'ready',
+		dirty: false,
+		mtimeMs: 0,
+		changedOnDisk: false,
+	});
+}
+
+/** Whitespace hygiene on save, as one undoable edit. */
+function cleanWhitespace(model: Monaco.editor.ITextModel): void {
+	const { trimTrailingWhitespace, insertFinalNewline } = getSettings();
+	if (!trimTrailingWhitespace && !insertFinalNewline) return;
+	const before = model.getValue();
+	const eol = model.getEOL();
+	let after = before;
+	if (trimTrailingWhitespace) after = after.replace(/[ \t]+(?=\r?\n|$)/g, '');
+	if (insertFinalNewline && after.length > 0 && !after.endsWith('\n')) after += eol;
+	if (after !== before) {
+		model.pushEditOperations(
+			[],
+			[{ range: model.getFullModelRange(), text: after }],
+			() => null,
+		);
+	}
+}
+
 export async function openFile(monaco: MonacoApi, root: string, path: string): Promise<void> {
 	const store = useEditorStore.getState();
 	if (store.files.some((f) => f.path === path)) {
@@ -136,7 +249,10 @@ export async function saveFile(path: string, force = false): Promise<boolean> {
 	const t = tracked.get(path);
 	const file = store.files.find((f) => f.path === path);
 	if (!t || !file) return false;
+	// The scratchpad saves itself to local storage as you type.
+	if (isScratch(path)) return true;
 	if (getSettings().formatOnSave && path.endsWith('.py')) await formatPython(path, t.model);
+	cleanWhitespace(t.model);
 	try {
 		const version = t.model.getAlternativeVersionId();
 		const { mtimeMs } = await call('fs:writeFile', {
@@ -206,7 +322,8 @@ export function closeFile(path: string): void {
 	const t = tracked.get(path);
 	if (t) {
 		t.listener.dispose();
-		t.model.dispose();
+		// Releasing the scratchpad's reference may already have destroyed its model.
+		if (!t.model.isDisposed()) t.model.dispose();
 		tracked.delete(path);
 	}
 	useEditorStore.getState().remove(path);

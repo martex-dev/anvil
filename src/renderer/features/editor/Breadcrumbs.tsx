@@ -7,6 +7,7 @@ import { symbolPath } from '../outline/outline';
 import { useOutline } from '../outline/use-outline';
 import { findCells } from '../python/cells';
 import { useEditorStore } from './editor-store';
+import { isScratch } from './file-ops';
 
 const KIND_TAG: Record<string, string> = {
 	class: 'C',
@@ -37,7 +38,7 @@ export function Breadcrumbs({ tab, focused }: { tab: Tab; focused: boolean }): J
 	}, [focused, cursorLine, tab.path, symbols]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	if (!tab.path) return null;
-	const parts = tab.path.split('/');
+	const parts = isScratch(tab.path) ? ['Scratchpad'] : tab.path.split('/');
 	return (
 		<div className='flex h-6 shrink-0 items-center gap-0.5 overflow-hidden px-3 font-mono text-11 whitespace-nowrap text-fg-2'>
 			{parts.map((part, i) => (
