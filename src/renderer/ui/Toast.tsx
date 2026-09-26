@@ -38,6 +38,9 @@ export function Toaster(): JSX.Element {
 					<div className='min-w-0 flex-1'>
 						<RadixToast.Title className='text-13 font-medium text-fg-0'>
 							{t.title}
+							{t.count > 1 && (
+								<span className='num ml-1.5 text-11 text-fg-2'>×{t.count}</span>
+							)}
 						</RadixToast.Title>
 						{t.description && (
 							<RadixToast.Description className='selectable mt-0.5 text-12 text-fg-1'>
