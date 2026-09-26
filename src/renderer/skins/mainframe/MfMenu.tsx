@@ -1,8 +1,9 @@
 import { DropdownMenu } from 'radix-ui';
 import { type JSX, useState } from 'react';
 
-import { getCommands, runCommand } from '../../app/commands/run';
+import { getCommands } from '../../app/commands/run';
 import type { CommandCategory } from '../../app/commands/types';
+import { useMenuCommand } from '../../app/hooks/use-menu-command';
 import { useRegisterOverlay } from '../../stores/overlay-store';
 
 /**
@@ -18,6 +19,8 @@ export function MfMenu({
 }): JSX.Element {
 	const [open, setOpen] = useState(false);
 	useRegisterOverlay(open);
+	// Commands run once the menu has closed, so focus lands where they put it.
+	const { pick, onCloseAutoFocus } = useMenuCommand();
 	const items = open ? getCommands().filter((c) => categories.includes(c.category)) : [];
 	return (
 		<DropdownMenu.Root open={open} onOpenChange={setOpen}>
@@ -27,6 +30,7 @@ export function MfMenu({
 			</DropdownMenu.Trigger>
 			<DropdownMenu.Portal>
 				<DropdownMenu.Content
+					onCloseAutoFocus={onCloseAutoFocus}
 					align='start'
 					sideOffset={0}
 					className='glass-strong mf-pulldown z-50 max-h-[70vh] min-w-72 overflow-auto'
@@ -47,7 +51,7 @@ export function MfMenu({
 								{group.map((c) => (
 									<DropdownMenu.Item
 										key={c.id}
-										onSelect={() => void runCommand(c)}
+										onSelect={() => pick(c)}
 										className='mf-pulldown-item'
 									>
 										<span className='min-w-0 flex-1 truncate'>{c.title}</span>

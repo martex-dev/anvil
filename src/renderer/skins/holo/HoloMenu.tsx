@@ -1,8 +1,9 @@
 import { DropdownMenu } from 'radix-ui';
 import { type JSX, useState } from 'react';
 
-import { getCommands, runCommand } from '../../app/commands/run';
+import { getCommands } from '../../app/commands/run';
 import type { CommandCategory } from '../../app/commands/types';
+import { useMenuCommand } from '../../app/hooks/use-menu-command';
 import { useRegisterOverlay } from '../../stores/overlay-store';
 import { Kbd } from '../../ui/Kbd';
 
@@ -16,6 +17,8 @@ export interface HoloMenuSpec {
 export function HoloMenu({ label, code, categories }: HoloMenuSpec): JSX.Element {
 	const [open, setOpen] = useState(false);
 	useRegisterOverlay(open);
+	// Commands run once the menu has closed, so focus lands where they put it.
+	const { pick, onCloseAutoFocus } = useMenuCommand();
 	const items = getCommands().filter((c) => categories.includes(c.category));
 	return (
 		<DropdownMenu.Root open={open} onOpenChange={setOpen}>
@@ -24,6 +27,7 @@ export function HoloMenu({ label, code, categories }: HoloMenuSpec): JSX.Element
 			</DropdownMenu.Trigger>
 			<DropdownMenu.Portal>
 				<DropdownMenu.Content
+					onCloseAutoFocus={onCloseAutoFocus}
 					align='start'
 					sideOffset={6}
 					className='glass-strong animate-in z-50 max-h-[70vh] min-w-64 overflow-auto p-1'
@@ -50,7 +54,7 @@ export function HoloMenu({ label, code, categories }: HoloMenuSpec): JSX.Element
 									return (
 										<DropdownMenu.Item
 											key={c.id}
-											onSelect={() => void runCommand(c)}
+											onSelect={() => pick(c)}
 											className='group flex h-7 cursor-default items-center gap-2 px-2 text-12 text-fg-1 outline-none data-[highlighted]:bg-accent-faint data-[highlighted]:text-fg-0'
 										>
 											{Icon ? (
