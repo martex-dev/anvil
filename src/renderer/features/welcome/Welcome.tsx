@@ -9,15 +9,17 @@ import {
 	Table,
 	Wand2,
 	Wrench,
+	X,
 } from 'lucide-react';
 import type { JSX, ReactNode } from 'react';
 
 import { runCommandById, shortcutFor } from '../../app/commands/run';
 import { useWorkspace } from '../../app/hooks/use-workspace';
 import { useUiStore } from '../../stores/ui-store';
+import { IconButton } from '../../ui/IconButton';
 import { Kbd } from '../../ui/Kbd';
 import { PROVIDER_LABEL, useAiSettings } from '../ai/ai-settings';
-import { openRecentFolder } from '../explorer/workspace-actions';
+import { forgetRecentFolder, openRecentFolder } from '../explorer/workspace-actions';
 
 function Action({
 	icon,
@@ -129,11 +131,11 @@ export function Welcome(): JSX.Element {
 					) : (
 						<ul className='flex flex-col'>
 							{info.recent.slice(0, 7).map((path) => (
-								<li key={path}>
+								<li key={path} className='group/recent flex items-center gap-1'>
 									<button
 										type='button'
 										onClick={() => openRecentFolder(path)}
-										className='group flex w-full items-baseline gap-2 rounded-md px-2 py-1.5 text-left outline-none hover:bg-accent-faint focus-visible:bg-accent-faint'
+										className='group flex min-w-0 flex-1 items-baseline gap-2 rounded-md px-2 py-1.5 text-left outline-none hover:bg-accent-faint focus-visible:bg-accent-faint'
 									>
 										<History
 											size={12}
@@ -146,6 +148,13 @@ export function Welcome(): JSX.Element {
 											{path}
 										</span>
 									</button>
+									<IconButton
+										size='sm'
+										label='Remove from recent'
+										icon={<X size={12} />}
+										className='shrink-0 opacity-0 transition-[background-color,color,opacity] group-hover/recent:opacity-100 focus-visible:opacity-100'
+										onClick={() => forgetRecentFolder(path)}
+									/>
 								</li>
 							))}
 						</ul>

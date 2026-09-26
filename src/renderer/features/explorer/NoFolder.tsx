@@ -1,23 +1,13 @@
 import { FolderOpen, History, X } from 'lucide-react';
 import type { JSX } from 'react';
 
-import { call } from '../../lib/ipc';
-import { toast } from '../../stores/toast-store';
 import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
 import { IconButton } from '../../ui/IconButton';
-import { openFolderDialog, openRecentFolder } from './workspace-actions';
+import { forgetRecentFolder, openFolderDialog, openRecentFolder } from './workspace-actions';
 
 export function NoFolder({ recent }: { recent: string[] }): JSX.Element {
 	const open = openRecentFolder;
-	const forget = (path: string): void => {
-		call('workspace:forgetRecent', path).catch((error: unknown) =>
-			toast.error(
-				'Could not remove from recent',
-				error instanceof Error ? error.message : undefined,
-			),
-		);
-	};
 
 	return (
 		<div className='flex h-full flex-col'>
@@ -54,7 +44,7 @@ export function NoFolder({ recent }: { recent: string[] }): JSX.Element {
 									label='Remove from recent'
 									icon={<X size={12} />}
 									className='opacity-0 transition-[background-color,color,opacity] group-hover:opacity-100 focus-visible:opacity-100'
-									onClick={() => forget(path)}
+									onClick={() => forgetRecentFolder(path)}
 								/>
 							</li>
 						))}
