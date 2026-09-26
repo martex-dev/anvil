@@ -85,6 +85,8 @@ export function SnippetsView(): JSX.Element {
 	const clearFilters = (): void => {
 		setQuery('');
 		setCategory(null);
+		// The focused "Clear filters" button unmounts with the empty state; keep the keyboard here.
+		inputRef.current?.focus();
 	};
 
 	return (
