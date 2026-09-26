@@ -1,0 +1,144 @@
+/* Mainframe: vim's status line and Midnight Commander's F-key bar. */
+
+html[data-skin='mainframe'] .mf-statusbar {
+	position: relative;
+	z-index: 10;
+	display: flex;
+	flex-shrink: 0;
+	align-items: stretch;
+	height: var(--mf-row);
+	overflow: hidden;
+	background: color-mix(in oklab, var(--accent) 12%, var(--bg-0));
+	border-top: 1px solid var(--mf-line);
+	color: var(--text-1);
+	font-size: 14px;
+	white-space: nowrap;
+}
+html[data-skin='mainframe'] .mf-seg {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	gap: 6px;
+	padding: 0 8px;
+	outline: none;
+}
+html[data-skin='mainframe'] .mf-seg + .mf-seg:not(.mf-rev) {
+	box-shadow: inset 1px 0 0 var(--mf-line);
+}
+html[data-skin='mainframe'] button.mf-seg:hover,
+html[data-skin='mainframe'] button.mf-seg:focus-visible {
+	background: color-mix(in oklab, var(--accent) 24%, transparent);
+	color: var(--text-0);
+}
+html[data-skin='mainframe'] button.mf-seg.mf-rev:hover {
+	background: var(--accent-2);
+	color: var(--on-accent);
+}
+html[data-skin='mainframe'] .mf-seg-file {
+	flex-shrink: 1;
+	min-width: 0;
+	color: var(--text-0);
+}
+html[data-skin='mainframe'] .mf-mode {
+	padding: 0 10px;
+	font-family: var(--font-display);
+	letter-spacing: 0.08em;
+}
+html[data-skin='mainframe'] .mf-mode [data-mode='INS'],
+html[data-skin='mainframe'] .mf-mode [data-mode='VIS'] {
+	font-weight: 600;
+}
+html[data-skin='mainframe'] .mf-mode:has([data-mode='TRM']) {
+	background: var(--accent-2);
+}
+html[data-skin='mainframe'] .mf-mode:has([data-mode='VIS']) {
+	background: var(--warn);
+}
+html[data-skin='mainframe'] .mf-ruler,
+html[data-skin='mainframe'] .mf-clock {
+	gap: 8px;
+}
+html[data-skin='mainframe'] .mf-clock {
+	background: var(--text-1);
+	color: var(--bg-0);
+}
+html[data-skin='mainframe'] .mf-clock-date {
+	opacity: 0.75;
+}
+/* Shared chips (python env, language servers) flattened into plain segments. */
+html[data-skin='mainframe'] .mf-seg-chip > button,
+html[data-skin='mainframe'] .mf-seg-chip > span {
+	height: 100%;
+	padding: 0;
+	border: 0;
+	background: none;
+	font-family: inherit;
+	font-size: inherit;
+}
+html[data-skin='mainframe'] .mf-seg-chip:empty {
+	display: none;
+}
+html[data-skin='mainframe'] .mf-statusbar [class*='text-[9px]'],
+html[data-skin='mainframe'] .mf-titlebar [class*='text-[9px]'] {
+	font-size: 12px;
+	font-family: inherit;
+}
+html[data-skin='mainframe'] .mf-busy {
+	animation: mf-blink 0.8s steps(1) infinite;
+}
+
+/* ---- F-key bar ------------------------------------------------------------------------ */
+
+html[data-skin='mainframe'] .mf-fkeybar {
+	position: relative;
+	z-index: 10;
+	display: flex;
+	flex-shrink: 0;
+	height: var(--mf-row);
+	background: var(--bg-0);
+	font-size: 14px;
+	white-space: nowrap;
+}
+html[data-skin='mainframe'] .mf-fkey {
+	display: flex;
+	flex: 1 1 0;
+	align-items: stretch;
+	min-width: 0;
+	padding: 0;
+	outline: none;
+	text-align: left;
+}
+html[data-skin='mainframe'] .mf-fkey-n {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	min-width: 2.2ch;
+	padding: 0 3px 0 4px;
+	background: var(--accent);
+	color: var(--on-accent);
+}
+html[data-skin='mainframe'] .mf-fkey-word {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	min-width: 0;
+	overflow: hidden;
+	padding: 0 6px;
+	background: var(--bg-0);
+	color: var(--text-0);
+}
+html[data-skin='mainframe'] .mf-fkey:hover .mf-fkey-word,
+html[data-skin='mainframe'] .mf-fkey:focus-visible .mf-fkey-word {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+html[data-skin='mainframe'] .mf-fkey-armed .mf-fkey-word {
+	background: var(--down);
+	color: var(--bg-0);
+	animation: mf-blink 0.5s steps(1) infinite;
+}
+html[data-skin='mainframe'][data-fx='off'] .mf-fkey-armed .mf-fkey-word,
+html[data-skin='mainframe'][data-fx='off'] .mf-busy,
+html[data-skin='mainframe'][data-fx='off'] .mf-cursor {
+	animation: none;
+}
