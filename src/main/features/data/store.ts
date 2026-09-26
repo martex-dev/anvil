@@ -31,6 +31,14 @@ interface Cached {
 	view: { key: string; idx: number[] } | null;
 }
 
+/** Expected file-system failures get a short message with the workspace path, not Node's. */
+function fsError(error: unknown, rel: string): AnvilError {
+	const code = (error as NodeJS.ErrnoException | null)?.code;
+	return code === 'ENOENT'
+		? new AnvilError('FS_NOT_FOUND', `${rel} no longer exists`, error)
+		: new AnvilError('FS_READ_FAILED', `Could not read ${rel}`, error);
+}
+
 /**
  * Parsed tables, a small LRU keyed by absolute path. Runs in the data worker thread: parsing,
  * filtering and sorting a million rows would otherwise freeze the whole app.
@@ -76,7 +84,9 @@ export class DataStore {
 
 	private async load(spec: LoadSpec): Promise<Cached> {
 		const { abs } = spec;
-		const s = await stat(abs);
+		const s = await stat(abs).catch((error: unknown) => {
+			throw fsError(error, spec.rel);
+		});
 		const hit = this.cache.get(abs);
 		if (hit && hit.mtimeMs === s.mtimeMs) {
 			// LRU: move to the back.
@@ -100,7 +110,9 @@ export class DataStore {
 		const generation = this.generation;
 		let table: Table;
 		if (isTextFormat(format)) {
-			const { text, truncated } = await readHead(abs, size);
+			const { text, truncated } = await readHead(abs, size).catch((error: unknown) => {
+				throw fsError(error, spec.rel);
+			});
 			table = tableFromText(text, format, truncated);
 		} else {
 			if (!spec.python)

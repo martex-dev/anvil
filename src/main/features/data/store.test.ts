@@ -68,4 +68,22 @@ describe('DataStore', () => {
 		await store.page(spec, all);
 		expect(readHead).toHaveBeenCalledTimes(1);
 	});
+
+	it('reports a missing file with its workspace path, not a Node error', async () => {
+		const store = new DataStore();
+		const spec: LoadSpec = {
+			abs: join(dir, 'gone.csv'),
+			rel: 'gone.csv',
+			format: 'csv',
+			python: null,
+		};
+		await expect(store.page(spec, all)).rejects.toMatchObject({
+			code: 'FS_NOT_FOUND',
+			message: 'gone.csv no longer exists',
+		});
+		await expect(store.page({ ...spec, abs: dir, rel: 'dir.csv' }, all)).rejects.toMatchObject({
+			code: 'FS_READ_FAILED',
+			message: 'Could not read dir.csv',
+		});
+	});
 });
