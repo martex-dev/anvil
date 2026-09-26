@@ -189,6 +189,12 @@ describe('snapFileName', () => {
 		expect(snapFileName('.env')).toBe('.env-snap.png');
 		expect(snapFileName('')).toBe('code-snap.png');
 	});
+
+	it('keeps non-ASCII letters and replaces only unsafe characters', () => {
+		expect(snapFileName('données.py')).toBe('données-snap.png');
+		expect(snapFileName('стратегия.py')).toBe('стратегия-snap.png');
+		expect(snapFileName('a<b>:c"d|e?f*g.py')).toBe('a-b-c-d-e-f-g-snap.png');
+	});
 });
 
 describe('ellipsize', () => {

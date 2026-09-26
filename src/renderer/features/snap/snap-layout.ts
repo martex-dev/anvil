@@ -214,7 +214,8 @@ export function gradientLine(
 export function snapFileName(title: string): string {
 	const base = title.split(/[\\/]/).pop() ?? '';
 	const stem = base.replace(/\.[^.]+$/, '') || base;
-	const safe = stem.replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '');
+	// Replace only what Windows forbids (plus whitespace), so 'données' keeps its letters.
+	const safe = stem.replace(/[<>:"/\\|?*\p{Cc}\s]+/gu, '-').replace(/^-+|-+$/g, '');
 	return `${safe || 'code'}-snap.png`;
 }
 
