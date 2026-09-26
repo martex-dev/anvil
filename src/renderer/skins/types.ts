@@ -27,7 +27,10 @@ export interface SkinLayout {
 	gap: number;
 	/** Center the editor text in a column this wide (px), for writer-style skins. */
 	editorColumn?: number;
-	/** Hide chrome until the pointer comes near it. */
+	/**
+	 * The skin fades its chrome until the pointer comes near it. A description for pickers and
+	 * docs: the skin's own CSS does the fading.
+	 */
 	autoHideChrome?: boolean;
 }
 

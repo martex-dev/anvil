@@ -44,6 +44,7 @@ const mainframe: SkinManifest = {
 		statusBar: 'bottom', // 'top' | 'bottom'
 		gap: 0, // px between panes; 0 = tiled
 		// editorColumn: 760,     // center code in a column this wide
+		// autoHideChrome: true,  // a hint for pickers; the skin's CSS does the fading itself
 	},
 };
 export default mainframe;
@@ -85,7 +86,7 @@ Scope every selector with `html[data-skin='<id>']`. Useful levers:
 | Lucide icons  | `svg.lucide { stroke-width: 2.5; stroke-linecap: square }` restyles all content icons                        |
 | Density       | leave spacing to the user's density setting                                                                  |
 | Effects       | `html[data-fx='off']` = no decoration or animation, `'subtle'` = static decoration only                      |
-| Light/dark    | `html[data-kind='light'                                                                                      | 'dark']` if a variant needs different treatment |
+| Light/dark    | `html[data-kind='light']` or `'dark'` if a variant needs different treatment                                 |
 
 ### Style hooks (`data-part`)
 
@@ -103,10 +104,26 @@ Side bar and panel: `sidebar-slot`, `sidebar` (+ `data-view`), `drawer`, `drawer
 (+ `data-active`), `terminal-chip`, `chat`.
 
 Editor: `editor-column`, `editor-group` (+ `data-focused`), `tabbar`, `tab` (+ `data-active`),
-`tab-marker`, `editor-surface`.
+`tab-label`, `tab-error`, `tab-close` (+ `data-dirty`), `tab-marker`, `breadcrumbs`,
+`editor-surface`, `watermark`, `welcome`.
+
+Lists, chat and menus: `tree-row`, `chat-header`, `chat-input`, `menu` (a title menu's popup).
 
 Examples: `[data-part='activity-item']::before { content: 'F' attr(data-index); }` prints F-key
 hints; `[data-part='pane-title']::before { content: '┌─ '; }` box-draws a pane title.
+
+### How skin CSS cascades
+
+- Skin stylesheets are **unlayered** and load after the global styles, so they beat Tailwind
+  utilities (which live in `@layer utilities`) regardless of specificity. That includes
+  `outline-none`: a skin-wide `:focus-visible` rule wins over a component's own focus style, so
+  put such broad resets in `@layer base` if you want components to keep theirs.
+- Files in one skin folder load in alphabetical order. Rules of equal specificity in two of
+  your files resolve by file name; split files deliberately (e.g. `skin.css`, then `ui-*.css`).
+- Cyber Glass's palette is the fallback on `:where(:root)` (zero specificity), so any
+  `[data-theme='x']` block wins. Keep palette selectors plain.
+- A light palette whose accent would vanish as the editor caret (yellow on paper) sets
+  `--skin-editor-accent`; the caret and current line number use `--editor-accent`.
 
 ### Don'ts
 
@@ -131,8 +148,9 @@ Replace whole pieces of chrome. Default export a `SkinChrome`:
 | `Backdrop`       | the background layer behind the panes                                                                    |
 | `Overlay`        | a layer above everything (`pointer-events: none`): scanlines, vignette, grain                            |
 
-Reuse the shared pieces where you can: `app/TitleBar`, `app/ActivityBar`, `app/StatusBar`,
-`app/WindowControls`, `useLayoutStore`, `runCommandById`, `shortcutFor`, `useWorkspace`,
+Reuse the shared pieces where you can: `app/TitleBar`, `app/TitleMenu` (`TITLE_MENUS` and
+one `TitleMenu` per entry, with a `className` for the trigger), `app/ActivityBar`,
+`app/StatusBar`, `app/WindowControls`, `useLayoutStore`, `runCommandById`, `shortcutFor`, `useWorkspace`,
 `SkinIcon`. Replacement chrome must stay keyboard accessible and must drag the window where a
 title bar would (`className='drag'`, with `no-drag` on buttons).
 
