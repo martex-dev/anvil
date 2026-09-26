@@ -125,6 +125,9 @@ html[data-skin='mainframe'] [data-part='terminal-chip'][data-active='true']::aft
 	order: 2;
 	color: var(--accent);
 }
+html[data-skin='mainframe'] [data-part='terminal-chip'] > button {
+	order: 3;
+}
 html[data-skin='mainframe'] [data-part='terminal-chip'] > span:first-child {
 	width: 0.5em;
 	height: 0.5em;
@@ -223,6 +226,14 @@ html[data-skin='mainframe'] [data-part='tab'] > span.bg-down {
 }
 html[data-skin='mainframe'] [data-part='tab'] > span.bg-down::before {
 	content: '!';
+}
+html[data-skin='mainframe']
+	[data-part='editor-group'][data-focused='true']
+	[data-part='tab'][data-active='true']
+	> span.bg-down {
+	padding: 0 2px;
+	background: var(--down);
+	color: var(--bg-0);
 }
 html[data-skin='mainframe'] [data-part='tabbar'] > div:last-child {
 	padding: 0 2px;
