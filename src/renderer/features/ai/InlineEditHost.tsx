@@ -1,4 +1,4 @@
-import { Check, CornerDownLeft, Sparkles, X } from 'lucide-react';
+import { Check, CornerDownLeft, Sparkles, Square, X } from 'lucide-react';
 import { type JSX, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -89,10 +89,17 @@ function Box(): JSX.Element {
 					<input
 						ref={inputRef}
 						value={text}
-						disabled={phase === 'generating'}
+						// readOnly, not disabled: a disabled input drops focus to <body>, and then
+						// Esc (handled by the box) could no longer stop the generation.
+						readOnly={phase === 'generating'}
 						onChange={(e) => setText(e.target.value)}
 						onKeyDown={(e) => {
-							if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+							if (
+								e.key === 'Enter' &&
+								!e.shiftKey &&
+								!e.nativeEvent.isComposing &&
+								phase !== 'generating'
+							) {
 								e.preventDefault();
 								void submitInlineEdit(text);
 							}
@@ -132,9 +139,19 @@ function Box(): JSX.Element {
 							</span>
 						)
 					)}
-					<Kbd keys='Esc' className='opacity-60' />
-					{phase !== 'generating' && (
-						<CornerDownLeft size={12} className='shrink-0 text-fg-2' />
+					{phase === 'generating' ? (
+						<button
+							type='button'
+							onClick={cancelInlineEdit}
+							className='flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-12 text-fg-1 outline-none hover:bg-down-soft hover:text-down focus-visible:shadow-glow'
+						>
+							<Square size={10} className='fill-current' /> Stop <Kbd keys='Esc' />
+						</button>
+					) : (
+						<>
+							<Kbd keys='Esc' className='opacity-60' />
+							<CornerDownLeft size={12} className='shrink-0 text-fg-2' />
+						</>
 					)}
 				</>
 			)}
