@@ -1,12 +1,3 @@
-import {
-	Bot,
-	PanelBottom,
-	PanelLeft,
-	PanelRight,
-	Play,
-	Search,
-	Settings as SettingsIcon,
-} from 'lucide-react';
 import { DropdownMenu } from 'radix-ui';
 import { type JSX, useState } from 'react';
 
@@ -14,6 +5,7 @@ import { WINDOW_CHROME } from '@shared/constants';
 
 import { PythonEnvChip } from '../features/python/PythonEnvChip';
 import { cn } from '../lib/cn';
+import { SkinIcon } from '../skins/SkinIcon';
 import { useLayoutStore } from '../stores/layout-store';
 import { useRegisterOverlay } from '../stores/overlay-store';
 import { useUiStore } from '../stores/ui-store';
@@ -22,6 +14,7 @@ import { Kbd } from '../ui/Kbd';
 import { getCommands, runCommand, runCommandById, shortcutFor } from './commands/run';
 import type { CommandCategory } from './commands/types';
 import { useWorkspace } from './hooks/use-workspace';
+import { WindowControls } from './WindowControls';
 
 const MENUS: Array<{ label: string; categories: CommandCategory[] }> = [
 	{ label: 'File', categories: ['File'] },
@@ -41,6 +34,7 @@ function Menu({ label, categories }: (typeof MENUS)[number]): JSX.Element {
 	return (
 		<DropdownMenu.Root open={open} onOpenChange={setOpen}>
 			<DropdownMenu.Trigger
+				data-part='menu-trigger'
 				className={cn(
 					'no-drag rounded-md px-2 py-1 text-12 text-fg-1 outline-none transition-colors transition-fast',
 					'hover:bg-bg-3/60 hover:text-fg-0 focus-visible:shadow-glow data-[state=open]:bg-accent-faint data-[state=open]:text-fg-0',
@@ -97,7 +91,7 @@ function Menu({ label, categories }: (typeof MENUS)[number]): JSX.Element {
 	);
 }
 
-/** Height must match titleBarOverlay.height in main (window controls are drawn natively). */
+/** Default title bar height; skins may draw a taller or shorter one. */
 export const TITLE_BAR_HEIGHT = WINDOW_CHROME.titleBarHeight;
 
 export function TitleBar(): JSX.Element {
@@ -106,10 +100,11 @@ export function TitleBar(): JSX.Element {
 	const layout = useLayoutStore();
 	return (
 		<header
-			className='drag relative z-20 flex shrink-0 items-center gap-2 pr-[150px] pl-3'
+			data-part='titlebar'
+			className='drag relative z-20 flex shrink-0 items-center gap-2 pl-3'
 			style={{ height: TITLE_BAR_HEIGHT }}
 		>
-			<div className='flex items-center gap-2.5 pr-2'>
+			<div data-part='brand' className='flex items-center gap-2.5 pr-2'>
 				<span aria-hidden className='relative flex size-4 items-center justify-center'>
 					<span className='absolute size-3 rotate-45 accent-gradient shadow-glow' />
 					<span className='absolute size-1.5 rotate-45 bg-bg-0' />
@@ -118,7 +113,7 @@ export function TitleBar(): JSX.Element {
 					ANVIL
 				</span>
 			</div>
-			<nav className='flex items-center' aria-label='Menu'>
+			<nav data-part='menubar' className='flex items-center' aria-label='Menu'>
 				{MENUS.map((m) => (
 					<Menu key={m.label} {...m} />
 				))}
@@ -126,13 +121,14 @@ export function TitleBar(): JSX.Element {
 
 			<button
 				type='button'
+				data-part='command-center'
 				onClick={() => openQuick('')}
 				className={cn(
 					'no-drag group absolute left-1/2 flex h-7 w-[min(520px,36vw)] -translate-x-1/2 items-center gap-2 rounded-lg border border-glass-edge bg-bg-2/50 px-3 text-12 text-fg-2 backdrop-blur-md',
 					'transition-[border-color,box-shadow,color] transition-fast hover:border-accent/40 hover:text-fg-1 hover:shadow-glow-soft focus-visible:shadow-glow focus-visible:outline-none',
 				)}
 			>
-				<Search size={13} className='group-hover:text-accent' />
+				<SkinIcon name='search' size={13} className='group-hover:text-accent' />
 				<span className='truncate'>
 					<span className='text-fg-1'>{info.name ?? 'anvil'}</span>
 					<span className='mx-1.5 opacity-50'>/</span>
@@ -142,13 +138,13 @@ export function TitleBar(): JSX.Element {
 				<Kbd keys={shortcutFor('file.quickOpen') ?? 'Ctrl+P'} />
 			</button>
 
-			<div className='no-drag ml-auto flex items-center gap-1'>
+			<div data-part='title-actions' className='no-drag ml-auto flex items-center gap-1'>
 				<PythonEnvChip compact />
 				<IconButton
 					size='sm'
 					label='Run Python file'
 					shortcut={shortcutFor('python.runFile')}
-					icon={<Play size={13} className='fill-current text-up' />}
+					icon={<SkinIcon name='play' size={13} className='fill-current text-up' />}
 					onClick={() => runCommandById('python.runFile')}
 				/>
 				<span className='mx-1 h-4 w-px bg-glass-edge' />
@@ -157,7 +153,7 @@ export function TitleBar(): JSX.Element {
 					label='Toggle side bar'
 					shortcut={shortcutFor('view.toggleSide')}
 					active={layout.sideOpen}
-					icon={<PanelLeft size={14} />}
+					icon={<SkinIcon name='sidebar' size={14} />}
 					onClick={layout.toggleSide}
 				/>
 				<IconButton
@@ -165,7 +161,7 @@ export function TitleBar(): JSX.Element {
 					label='Toggle panel'
 					shortcut={shortcutFor('view.togglePanel')}
 					active={layout.panelOpen}
-					icon={<PanelBottom size={14} />}
+					icon={<SkinIcon name='panel' size={14} />}
 					onClick={() => layout.togglePanel()}
 				/>
 				<IconButton
@@ -173,17 +169,18 @@ export function TitleBar(): JSX.Element {
 					label='Toggle AI'
 					shortcut={shortcutFor('view.toggleAi')}
 					active={layout.aiOpen}
-					icon={layout.aiOpen ? <PanelRight size={14} /> : <Bot size={14} />}
+					icon={<SkinIcon name='ai' size={14} />}
 					onClick={() => layout.toggleAi()}
 				/>
 				<IconButton
 					size='sm'
 					label='Settings'
 					shortcut={shortcutFor('anvil.settings')}
-					icon={<SettingsIcon size={14} />}
+					icon={<SkinIcon name='settings' size={14} />}
 					onClick={() => runCommandById('anvil.settings')}
 				/>
 			</div>
+			<WindowControls />
 		</header>
 	);
 }
