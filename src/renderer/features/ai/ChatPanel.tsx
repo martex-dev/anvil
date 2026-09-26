@@ -24,40 +24,13 @@ import { Button } from '../../ui/Button';
 import { ErrorState } from '../../ui/ErrorState';
 import { FileBadge } from '../../ui/FileBadge';
 import { IconButton } from '../../ui/IconButton';
-import { checkLookahead, explainCode, reviewCode, writeTests } from './actions';
-import { pickModel, PROVIDER_LABEL, useAiSettings } from './ai-settings';
+import { PROVIDER_LABEL, useAiSettings } from './ai-settings';
 import { attachCurrent, attachDiff, attachPath } from './chat-attach';
 import { useChatFocus } from './chat-focus';
+import { chatTrigger, SLASH_COMMANDS, STARTERS } from './chat-shortcuts';
 import { useChat } from './chat-store';
 import { MessageView } from './MessageView';
 import { useStickToBottom } from './use-stick-to-bottom';
-
-const SLASH: Array<{ cmd: string; hint: string; run: () => void }> = [
-	{ cmd: '/explain', hint: 'explain the selection or function', run: () => void explainCode() },
-	{ cmd: '/review', hint: 'find bugs and edge cases', run: () => void reviewCode() },
-	{ cmd: '/tests', hint: 'write pytest / vitest tests', run: () => void writeTests() },
-	{
-		cmd: '/lookahead',
-		hint: 'audit for look-ahead bias and leakage',
-		run: () => void checkLookahead(),
-	},
-	{ cmd: '/clear', hint: 'new conversation', run: () => useChat.getState().clear() },
-];
-
-const STARTERS: Array<{ label: string; run: () => void }> = [
-	{ label: 'Explain this code', run: () => void explainCode() },
-	{ label: 'Find bugs', run: () => void reviewCode() },
-	{ label: 'Write tests', run: () => void writeTests() },
-	{ label: 'Check for look-ahead bias', run: () => void checkLookahead() },
-];
-
-/** `@partial` or `/partial` being typed at the end of the input. */
-function trigger(text: string): { kind: '@' | '/'; query: string } | null {
-	const at = /(?:^|\s)@([\w./-]*)$/.exec(text);
-	if (at) return { kind: '@', query: at[1] ?? '' };
-	const slash = /^\/(\w*)$/.exec(text);
-	return slash ? { kind: '/', query: slash[1] ?? '' } : null;
-}
 
 export function ChatPanel(): JSX.Element {
 	const { settings, keys, error: loadError, retry } = useAiSettings();
@@ -76,7 +49,7 @@ export function ChatPanel(): JSX.Element {
 	} = useStickToBottom(messages);
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const focusTick = useChatFocus((s) => s.tick);
-	const tr = trigger(text);
+	const tr = chatTrigger(text);
 	const files = useQuery({
 		queryKey: ['search', 'files', info.root],
 		queryFn: () => call('search:files'),
@@ -87,7 +60,7 @@ export function ChatPanel(): JSX.Element {
 		if (!tr) return [];
 		const q = tr.query.toLowerCase();
 		if (tr.kind === '/')
-			return SLASH.filter((s) => s.cmd.slice(1).startsWith(q)).map((s) => ({
+			return SLASH_COMMANDS.filter((s) => s.cmd.slice(1).startsWith(q)).map((s) => ({
 				id: s.cmd,
 				label: s.cmd,
 				hint: s.hint,
@@ -124,7 +97,8 @@ export function ChatPanel(): JSX.Element {
 		if (!s || !tr) return;
 		if (tr.kind === '/') {
 			setText('');
-			SLASH.find((x) => x.cmd === s.id)?.run();
+			const command = SLASH_COMMANDS.find((x) => x.cmd === s.id);
+			if (command) runCommandById(command.commandId);
 			return;
 		}
 		setText(text.replace(/@[\w./-]*$/, ''));
@@ -144,7 +118,7 @@ export function ChatPanel(): JSX.Element {
 				<span className='hud text-fg-1'>Assistant</span>
 				<button
 					type='button'
-					onClick={() => void pickModel('chat')}
+					onClick={() => runCommandById('ai.chatModel')}
 					title='Change the chat model'
 					className='ml-1 flex h-6 min-w-0 items-center gap-1 rounded-md border border-glass-edge bg-bg-2/40 px-2 font-mono text-11 text-fg-1 outline-none hover:border-accent/40 hover:text-fg-0 focus-visible:shadow-glow'
 				>
@@ -192,7 +166,7 @@ export function ChatPanel(): JSX.Element {
 									<button
 										key={s.label}
 										type='button'
-										onClick={s.run}
+										onClick={() => runCommandById(s.commandId)}
 										className='rounded-full border border-glass-edge bg-bg-2/40 px-2.5 py-1 text-11 text-fg-1 hover:border-accent/40 hover:text-fg-0'
 									>
 										{s.label}
