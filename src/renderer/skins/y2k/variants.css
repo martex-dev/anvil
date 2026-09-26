@@ -1,0 +1,136 @@
+/*
+ * Signature touches per palette, so each variant is more than a hue swap: Aqua's pinstripes,
+ * Liquid Chrome's holographic rims and iridescent jelly, Tangerine Lime's translucent iMac
+ * ribs and Vapor Midnight's neon halo.
+ */
+
+/* ---- Aqua: horizontal pinstripes on the sky and every header strip -------------------- */
+
+html[data-skin='y2k'][data-theme='yk-aqua'] .yk-backdrop::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: repeating-linear-gradient(180deg, var(--skin-pinstripe) 0 1px, transparent 1px 4px);
+	opacity: 0.55;
+}
+html[data-skin='y2k'][data-fx='off'][data-theme='yk-aqua'] .yk-backdrop::after {
+	display: none;
+}
+html[data-skin='y2k'][data-theme='yk-aqua'] :is([data-part='pane-header'], [data-part='tabbar']),
+html[data-skin='y2k'][data-theme='yk-aqua'] [data-ai-chat] > header {
+	background-image:
+		var(--yk-band),
+		repeating-linear-gradient(180deg, var(--skin-pinstripe) 0 1px, transparent 1px 3px),
+		linear-gradient(180deg, var(--bg-1) 0%, var(--skin-header) 100%);
+	background-size:
+		calc(100% - 28px) 44%,
+		100% 100%,
+		100% 100%;
+	background-position:
+		50% 2px,
+		0 0,
+		0 0;
+}
+
+/* ---- Liquid Chrome: holographic rims, metal headers, jelly that shifts hue ------------- */
+
+html[data-skin='y2k'][data-theme='yk-chrome'] {
+	--yk-jelly:
+		radial-gradient(
+			90% 60% at 50% 105%,
+			color-mix(in oklab, var(--skin-iris-2) 70%, var(--skin-gloss)) 0%,
+			transparent 70%
+		),
+		linear-gradient(
+			115deg,
+			color-mix(in oklab, var(--skin-iris-1) 60%, var(--accent)) 0%,
+			var(--accent) 38%,
+			color-mix(in oklab, var(--accent-2) 80%, var(--accent)) 78%,
+			color-mix(in oklab, var(--skin-iris-3) 50%, var(--accent-2)) 100%
+		);
+}
+html[data-skin='y2k'][data-theme='yk-chrome'] .glass:not([data-part='activity']),
+html[data-skin='y2k'][data-theme='yk-chrome'] .glass-strong {
+	border-color: transparent;
+	background:
+		linear-gradient(var(--glass), var(--glass)) padding-box,
+		linear-gradient(
+				125deg,
+				var(--skin-iris-1),
+				var(--skin-iris-2) 35%,
+				var(--skin-chrome-3) 55%,
+				var(--skin-iris-3) 80%,
+				var(--skin-iris-1)
+			)
+			border-box;
+}
+html[data-skin='y2k'][data-theme='yk-chrome'] :is([data-part='pane-header'], [data-part='tabbar']),
+html[data-skin='y2k'][data-theme='yk-chrome'] [data-ai-chat] > header {
+	background-image: var(--yk-band), var(--yk-metal);
+	border-color: color-mix(in oklab, var(--skin-chrome-3) 60%, transparent);
+}
+html[data-skin='y2k'][data-theme='yk-chrome'] .yk-backdrop::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background:
+		radial-gradient(
+			40% 50% at 12% 20%,
+			color-mix(in oklab, var(--skin-iris-1) 45%, transparent),
+			transparent 70%
+		),
+		radial-gradient(
+			40% 50% at 88% 30%,
+			color-mix(in oklab, var(--skin-iris-2) 50%, transparent),
+			transparent 70%
+		),
+		radial-gradient(
+			50% 40% at 60% 90%,
+			color-mix(in oklab, var(--skin-iris-3) 45%, transparent),
+			transparent 70%
+		);
+}
+
+/* ---- Tangerine Lime: the translucent ribbed plastic of a candy iMac -------------------- */
+
+html[data-skin='y2k'][data-theme='yk-lime'] .glass[data-part='activity'],
+html[data-skin='y2k'][data-theme='yk-lime'] [data-part='statusbar'] {
+	background-image:
+		repeating-linear-gradient(90deg, var(--skin-pinstripe) 0 2px, transparent 2px 6px),
+		linear-gradient(
+			90deg,
+			color-mix(in oklab, var(--accent-2) 30%, transparent),
+			color-mix(in oklab, var(--accent-2) 12%, transparent)
+		);
+	background-size: auto;
+	background-position: 0 0;
+}
+html[data-skin='y2k'][data-theme='yk-lime'] [data-part='statusbar'] {
+	background-image:
+		var(--yk-band),
+		repeating-linear-gradient(90deg, var(--skin-pinstripe) 0 2px, transparent 2px 6px),
+		linear-gradient(180deg, var(--bg-1), color-mix(in oklab, var(--accent-2) 22%, var(--bg-1)));
+	background-size:
+		calc(100% - 28px) 46%,
+		100% 100%,
+		100% 100%;
+	background-position:
+		50% 2px,
+		0 0,
+		0 0;
+}
+
+/* ---- Vapor Midnight: pane rims glow like neon tubes ------------------------------------ */
+
+html[data-skin='y2k'][data-theme='yk-midnight'] .glass:not([data-part='activity'], :focus-within) {
+	box-shadow:
+		inset 0 1px 0 var(--skin-gloss),
+		inset 0 0 0 2px color-mix(in oklab, var(--skin-gloss) 25%, transparent),
+		0 0 0 1px color-mix(in oklab, var(--accent) 30%, transparent),
+		0 0 22px -6px color-mix(in oklab, var(--accent) 55%, transparent),
+		0 16px 30px -14px var(--skin-shadow);
+}
+html[data-skin='y2k'][data-theme='yk-midnight'] .yk-wordmark {
+	filter: drop-shadow(0 0 6px color-mix(in oklab, var(--accent) 70%, transparent))
+		drop-shadow(0 0 14px color-mix(in oklab, var(--accent-2) 45%, transparent));
+}
