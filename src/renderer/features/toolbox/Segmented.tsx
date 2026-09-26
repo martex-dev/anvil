@@ -36,6 +36,8 @@ export function Segmented<T extends string>({
 						key={opt.value}
 						type='button'
 						aria-pressed={active}
+						// Segments truncate in a narrow sidebar; the tooltip keeps them distinguishable.
+						title={opt.label}
 						onClick={() => onChange(opt.value)}
 						className={cn(
 							'min-w-0 flex-1 truncate rounded-sm px-2 text-12',
