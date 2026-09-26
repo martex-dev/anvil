@@ -1,0 +1,267 @@
+/*
+ * Mainframe palettes: phosphors and paper. Panes are opaque (no glass), so every --glass* is
+ * the tube or paper color itself. --skin-* are the CRT extras: phosphor glow, scanline shade,
+ * tube vignette, and for the paper the greenbar band and tractor-feed holes.
+ */
+
+/* P1 Green: the classic green phosphor on a near-black tube */
+[data-theme='mf-green'] {
+	color-scheme: dark;
+
+	--bg-0: #010501;
+	--bg-1: #030b05;
+	--bg-2: #07170b;
+	--bg-3: #0d2513;
+	--border: #1a5a2a;
+	--border-strong: #2e9a4b;
+
+	--glass: #030b05;
+	--glass-strong: #030b05;
+	--glass-edge: #1a5a2a;
+	--glass-highlight: rgb(0 0 0 / 0);
+	--editor-bg: #030b05;
+	--scrim: rgb(0 3 1 / 0.72);
+
+	--text-0: #8dffa4;
+	--text-1: #52d46d;
+	--text-2: #33914c;
+
+	--up: #7dff5a;
+	--down: #ff6a4d;
+	--warn: #e6ff4d;
+	--info: #5cffe0;
+
+	--theme-accent: #3dff6e;
+	--theme-accent-2: #c4ff4d;
+	--on-accent: #021006;
+
+	--syn-comment: #3f9a57;
+	--syn-keyword: #d8ffe0;
+	--syn-control: #f0ff9a;
+	--syn-string: #7ed98f;
+	--syn-number: #c8ff6a;
+	--syn-function: #5cffa8;
+	--syn-type: #8ff5e0;
+	--syn-variable: #8dffa4;
+	--syn-parameter: #6cc983;
+	--syn-property: #74e090;
+	--syn-decorator: #ffcf5c;
+	--syn-builtin: #4de8ff;
+	--syn-operator: #52b86a;
+	--syn-regexp: #ffe066;
+
+	--skin-glow: rgb(61 255 110 / 0.5);
+	--skin-scan: rgb(0 0 0 / 0.3);
+	--skin-vignette: rgb(0 0 0 / 0.6);
+	--skin-haze: rgb(61 255 110 / 0.035);
+}
+
+/* P3 Amber: long-persistence amber, the office terminal of 1983 */
+[data-theme='mf-amber'] {
+	color-scheme: dark;
+
+	--bg-0: #050300;
+	--bg-1: #0c0701;
+	--bg-2: #1a1003;
+	--bg-3: #281a06;
+	--border: #5c3a0c;
+	--border-strong: #a86c14;
+
+	--glass: #0c0701;
+	--glass-strong: #0c0701;
+	--glass-edge: #5c3a0c;
+	--glass-highlight: rgb(0 0 0 / 0);
+	--editor-bg: #0c0701;
+	--scrim: rgb(4 2 0 / 0.72);
+
+	--text-0: #ffc04d;
+	--text-1: #d9912a;
+	--text-2: #9a661e;
+
+	--up: #c8e65a;
+	--down: #ff5a3d;
+	--warn: #ffe14d;
+	--info: #ffd89a;
+
+	--theme-accent: #ffb000;
+	--theme-accent-2: #ff7a1a;
+	--on-accent: #0c0701;
+
+	--syn-comment: #9a6b28;
+	--syn-keyword: #ffe7b8;
+	--syn-control: #ff8a3d;
+	--syn-string: #d9a04a;
+	--syn-number: #ffe04a;
+	--syn-function: #ffcd70;
+	--syn-type: #ffb38a;
+	--syn-variable: #ffc04d;
+	--syn-parameter: #cc9a55;
+	--syn-property: #e8b060;
+	--syn-decorator: #ff6a4d;
+	--syn-builtin: #fff27a;
+	--syn-operator: #b0802e;
+	--syn-regexp: #ffea80;
+
+	--skin-glow: rgb(255 176 0 / 0.5);
+	--skin-scan: rgb(0 0 0 / 0.32);
+	--skin-vignette: rgb(0 0 0 / 0.6);
+	--skin-haze: rgb(255 176 0 / 0.035);
+}
+
+/* 3270 Fields: IBM's seven field colors on black; green input, blue labels, white heads */
+[data-theme='mf-ibm'] {
+	color-scheme: dark;
+
+	--bg-0: #000000;
+	--bg-1: #01020a;
+	--bg-2: #070c20;
+	--bg-3: #0f1a3c;
+	--border: #2447b0;
+	--border-strong: #5b8cff;
+
+	--glass: #01020a;
+	--glass-strong: #01020a;
+	--glass-edge: #2447b0;
+	--glass-highlight: rgb(0 0 0 / 0);
+	--editor-bg: #01020a;
+	--scrim: rgb(0 0 4 / 0.74);
+
+	--text-0: #4dff4d;
+	--text-1: #6f9dff;
+	--text-2: #4d72d6;
+
+	--up: #4dff4d;
+	--down: #ff4d4d;
+	--warn: #ffff4d;
+	--info: #40ffff;
+
+	--theme-accent: #ffffff;
+	--theme-accent-2: #40ffff;
+	--on-accent: #000000;
+
+	--syn-comment: #5b8cff;
+	--syn-keyword: #ffffff;
+	--syn-control: #ff66cc;
+	--syn-string: #40ffff;
+	--syn-number: #ffff4d;
+	--syn-function: #a8ffa8;
+	--syn-type: #8fb8ff;
+	--syn-variable: #4dff4d;
+	--syn-parameter: #36d636;
+	--syn-property: #5ce6a0;
+	--syn-decorator: #ffa0e0;
+	--syn-builtin: #ff6b6b;
+	--syn-operator: #7a9aea;
+	--syn-regexp: #ffff99;
+
+	--skin-glow: rgb(77 255 77 / 0.42);
+	--skin-scan: rgb(0 0 0 / 0.34);
+	--skin-vignette: rgb(0 0 0 / 0.62);
+	--skin-haze: rgb(91 140 255 / 0.03);
+}
+
+/* VT White: DEC white phosphor behind cool grey glass */
+[data-theme='mf-vt'] {
+	color-scheme: dark;
+
+	--bg-0: #07080a;
+	--bg-1: #0b0d10;
+	--bg-2: #15181d;
+	--bg-3: #1f242b;
+	--border: #3a424e;
+	--border-strong: #737f90;
+
+	--glass: #0b0d10;
+	--glass-strong: #0b0d10;
+	--glass-edge: #3a424e;
+	--glass-highlight: rgb(0 0 0 / 0);
+	--editor-bg: #0b0d10;
+	--scrim: rgb(2 3 4 / 0.72);
+
+	--text-0: #e6edf3;
+	--text-1: #a8b3c0;
+	--text-2: #717d8c;
+
+	--up: #a8f0c0;
+	--down: #ff8f8f;
+	--warn: #f0e0a0;
+	--info: #a8d0ff;
+
+	--theme-accent: #f2f7ff;
+	--theme-accent-2: #a8c8ff;
+	--on-accent: #0b0d10;
+
+	--syn-comment: #717d8c;
+	--syn-keyword: #ffffff;
+	--syn-control: #c8d8ff;
+	--syn-string: #b8e0c8;
+	--syn-number: #f0d8b0;
+	--syn-function: #e0e8ff;
+	--syn-type: #b0d0e8;
+	--syn-variable: #d0d8e0;
+	--syn-parameter: #a8b3c0;
+	--syn-property: #bcc6d2;
+	--syn-decorator: #d8c0f0;
+	--syn-builtin: #f0c0c8;
+	--syn-operator: #8a95a3;
+	--syn-regexp: #f0e8a8;
+
+	--skin-glow: rgb(220 232 255 / 0.4);
+	--skin-scan: rgb(0 0 0 / 0.3);
+	--skin-vignette: rgb(0 0 0 / 0.6);
+	--skin-haze: rgb(200 215 240 / 0.03);
+}
+
+/* Greenbar: tractor-feed line-printer paper, carbon-black and red ribbon ink */
+[data-theme='mf-greenbar'] {
+	color-scheme: light;
+
+	--bg-0: #e4e9dc;
+	--bg-1: #f8f9f2;
+	--bg-2: #e4efdb;
+	--bg-3: #d3e5c8;
+	--border: #9cc2a0;
+	--border-strong: #4f8a5c;
+
+	--glass: #f8f9f2;
+	--glass-strong: #fbfcf7;
+	--glass-edge: #9cc2a0;
+	--glass-highlight: rgb(0 0 0 / 0);
+	--editor-bg: #f8f9f2;
+	--scrim: rgb(30 40 30 / 0.34);
+
+	--text-0: #1c211d;
+	--text-1: #465246;
+	--text-2: #6a786b;
+
+	--up: #1e7a34;
+	--down: #b3261e;
+	--warn: #8a5a00;
+	--info: #1f4f9a;
+
+	--theme-accent: #1d6b35;
+	--theme-accent-2: #b3261e;
+	--on-accent: #ffffff;
+
+	--syn-comment: #6a786b;
+	--syn-keyword: #b3261e;
+	--syn-control: #8f1d16;
+	--syn-string: #1d6b35;
+	--syn-number: #1f4f9a;
+	--syn-function: #26357f;
+	--syn-type: #7a4a12;
+	--syn-variable: #1c211d;
+	--syn-parameter: #4a5a4b;
+	--syn-property: #35533b;
+	--syn-decorator: #a0522d;
+	--syn-builtin: #9c2b5e;
+	--syn-operator: #5c665d;
+	--syn-regexp: #7a5c00;
+
+	--skin-glow: rgb(0 0 0 / 0);
+	--skin-scan: rgb(0 0 0 / 0);
+	--skin-vignette: rgb(60 70 50 / 0.16);
+	--skin-haze: rgb(0 0 0 / 0);
+	--skin-bar: #e4efdb;
+	--skin-hole: #c9d1bd;
+}
