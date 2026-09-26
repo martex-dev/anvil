@@ -46,11 +46,13 @@ export function TitleBar(): JSX.Element {
 			</div>
 			<TitleMenus />
 
+			{/* In the flow, not absolutely centered: on narrower windows it shrinks instead of
+			    drawing over the menus and the chips on the right. */}
 			<button
 				type='button'
 				onClick={() => openQuick('')}
 				className={cn(
-					'no-drag group absolute left-1/2 flex h-7 w-[min(520px,36vw)] -translate-x-1/2 items-center gap-2 rounded-lg border border-glass-edge bg-bg-2/50 px-3 text-12 text-fg-2 glass-blur',
+					'no-drag group mx-auto flex h-7 max-w-[520px] min-w-0 flex-1 items-center gap-2 rounded-lg border border-glass-edge bg-bg-2/50 px-3 text-12 text-fg-2 glass-blur',
 					'transition-[border-color,box-shadow,color] transition-fast hover:border-accent/40 hover:text-fg-1 hover:shadow-glow-soft focus-visible:shadow-glow focus-visible:outline-none',
 				)}
 			>
@@ -58,7 +60,7 @@ export function TitleBar(): JSX.Element {
 				<span className='truncate'>
 					<span className='text-fg-1'>{info.name ?? 'anvil'}</span>
 					<span className='mx-1.5 opacity-50'>/</span>
-					files, commands, symbols, AI
+					files, &gt; commands, @ symbols, : line
 				</span>
 				<span className='flex-1' />
 				<Kbd keys={shortcutFor('file.quickOpen') ?? 'Ctrl+P'} />
