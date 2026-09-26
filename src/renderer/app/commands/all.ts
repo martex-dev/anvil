@@ -3,6 +3,7 @@ import { EDITOR_COMMANDS } from '../../features/editor/commands';
 import { GIT_COMMANDS } from '../../features/git/commands';
 import { PYTHON_COMMANDS } from '../../features/python/commands';
 import { TERMINAL_COMMANDS } from '../../features/terminal/commands';
+import { TOOL_COMMANDS } from '../../features/tools/commands';
 import { CORE_COMMANDS } from './core-commands';
 import { setCommands } from './run';
 import type { Command } from './types';
@@ -15,6 +16,7 @@ export const ALL_COMMANDS: readonly Command[] = [
 	...AI_COMMANDS,
 	...GIT_COMMANDS,
 	...TERMINAL_COMMANDS,
+	...TOOL_COMMANDS,
 ];
 
 setCommands(ALL_COMMANDS);

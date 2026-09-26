@@ -8,14 +8,11 @@ import {
 	Keyboard,
 	LayoutPanelTop,
 	Maximize,
-	Palette,
 	RefreshCw,
 	Settings,
 	Sparkle,
 	SquareTerminal,
 } from 'lucide-react';
-
-import { ACCENTS } from '@shared/settings';
 
 import { VIEW_META } from '../../app/ActivityBar';
 import { closeFolder, openFolderDialog } from '../../features/explorer/workspace-actions';
@@ -225,18 +222,6 @@ export const CORE_COMMANDS: Command[] = [
 		shortcut: 'Ctrl+Alt+/',
 		icon: Keyboard,
 		run: () => useUiStore.getState().setShortcutsOpen(true),
-	},
-	{
-		id: 'anvil.accent',
-		title: 'Cycle Accent Color',
-		category: 'Anvil',
-		icon: Palette,
-		run: async () => {
-			const i = ACCENTS.indexOf(getSettings().accent);
-			const next = ACCENTS[(i + 1) % ACCENTS.length] ?? 'cyan';
-			await updateSettings({ accent: next });
-			toast.info(`Accent: ${next}`);
-		},
 	},
 	{
 		id: 'anvil.glass',
