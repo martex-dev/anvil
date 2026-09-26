@@ -20,6 +20,7 @@ type MouseHandler = (e: Monaco.editor.IEditorMouseEvent) => void;
 function fakeEditor(): { editor: Monaco.editor.IStandaloneCodeEditor; click: MouseHandler } {
 	const lines = ['# %% Load', 'x = 1'];
 	const model = {
+		getVersionId: () => 1,
 		getLanguageId: () => 'python',
 		getLinesContent: () => lines,
 		getLineContent: (n: number) => lines[n - 1] ?? '',
