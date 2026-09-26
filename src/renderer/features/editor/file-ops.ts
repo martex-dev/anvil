@@ -47,7 +47,7 @@ function markDirty(path: string): void {
 }
 
 /** Files VS Code's grammars don't claim but that read fine with a close cousin. */
-function languageOverride(path: string): string | undefined {
+export function languageOverride(path: string): string | undefined {
 	const name = path.split('/').at(-1)?.toLowerCase() ?? '';
 	if (name === '.env' || name.startsWith('.env.') || name.endsWith('.env')) return 'ini';
 	if (name.endsWith('.toml') || name === 'uv.lock' || name === 'poetry.lock') return 'ini';
