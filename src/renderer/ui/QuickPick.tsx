@@ -5,6 +5,7 @@ import { create } from 'zustand';
 
 import { cn } from '../lib/cn';
 import { useRegisterOverlay } from '../stores/overlay-store';
+import { toast } from '../stores/toast-store';
 import { Kbd } from './Kbd';
 import { Spinner } from './Spinner';
 
@@ -23,6 +24,8 @@ interface PickRequest {
 	title: string;
 	placeholder: string;
 	items: PickItem[] | Promise<PickItem[]>;
+	/** Toast title when `items` rejects (the picker then closes). */
+	loadErrorTitle?: string;
 	/** Offer "create <typed text>" (e.g. a new branch) when nothing matches exactly. */
 	allowCustom?: { label: (text: string) => string };
 	/** Called as the highlighted item changes (live previews); `null` when nothing is. */
@@ -69,7 +72,15 @@ export function quickPick(options: Omit<PickRequest, 'resolve'>): Promise<string
 				.then((items) =>
 					useQuickPickStore.setState({ items, active: initialActive(items) }),
 				)
-				.catch(() => useQuickPickStore.setState({ items: [] }));
+				// Say why and close: an empty "Nothing matches." list (still offering "create …")
+				// would hide the failure. Leave a picker that has replaced this one alone.
+				.catch((error: unknown) => {
+					toast.error(
+						options.loadErrorTitle ?? 'Could not load the list',
+						error instanceof Error ? error.message : undefined,
+					);
+					if (useQuickPickStore.getState().request?.resolve === resolve) close(null);
+				});
 		}
 	});
 }

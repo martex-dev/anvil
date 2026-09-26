@@ -39,6 +39,7 @@ async function switchBranch(): Promise<void> {
 	const picked = await quickPick({
 		title: 'branch',
 		placeholder: 'Switch to a branch, or type a new name to create it',
+		loadErrorTitle: 'Could not list branches',
 		items: call('git:branches').then((b) =>
 			b.local.map((name) => ({
 				id: name,
@@ -66,6 +67,7 @@ async function showLog(): Promise<void> {
 	await quickPick({
 		title: 'log',
 		placeholder: 'Recent commits',
+		loadErrorTitle: 'Could not read the log',
 		items: call('git:log', { limit: 200 }).then((commits) =>
 			commits.map((c) => ({
 				id: c.hash,

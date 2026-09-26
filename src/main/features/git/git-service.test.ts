@@ -5,7 +5,7 @@ import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { batchPaths, gitEnv, isMissingPathError } from './git-process';
+import { batchPaths, gitEnv, isMissingPathError, isUnbornHead } from './git-process';
 import { GitService, pullSummary } from './git-service';
 
 // Integration test against the real system git in a throwaway repository.
@@ -210,6 +210,23 @@ describe('GitService', { timeout: 30_000 }, () => {
 		);
 		expect(isMissingPathError(new Error('spawn git ENOENT'))).toBe(false);
 		expect(isMissingPathError(new Error('fatal: bad object HEAD'))).toBe(false);
+	});
+
+	it('lists no commits for an unborn branch but reports other log failures', async () => {
+		const git = new GitService(() => repo);
+		expect(await git.log(10)).toEqual([]);
+		writeFileSync(join(repo, 'a.txt'), 'a\n');
+		await git.stage(['a.txt']);
+		await git.commit('first');
+		expect((await git.log(10)).map((c) => c.message)).toEqual(['first']);
+
+		expect(
+			isUnbornHead(
+				new Error("fatal: your current branch 'main' does not have any commits yet"),
+			),
+		).toBe(true);
+		expect(isUnbornHead(new Error("fatal: bad default revision 'HEAD'"))).toBe(true);
+		expect(isUnbornHead(new Error('fatal: unable to read tree'))).toBe(false);
 	});
 
 	it('summarizes a pull without claiming changes that did not happen', () => {

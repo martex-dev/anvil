@@ -118,3 +118,9 @@ export function isMissingPathError(error: unknown): boolean {
 	const message = error instanceof Error ? error.message : String(error);
 	return MISSING_PATH.test(message);
 }
+
+/** `git log` in a repo without commits (older git says "bad default revision 'HEAD'"). */
+export function isUnbornHead(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : String(error);
+	return /does not have any commits yet|bad default revision 'HEAD'/i.test(message);
+}

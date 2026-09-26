@@ -9,7 +9,7 @@ import { scanUnifiedDiff, type SecretFinding } from '@shared/secret-scan';
 
 import { AnvilError } from '../../core/errors';
 import { toAbsolute } from '../../core/workspace/fs-guard';
-import { batchPaths, git, isMissingPathError, isNotARepo } from './git-process';
+import { batchPaths, git, isMissingPathError, isNotARepo, isUnbornHead } from './git-process';
 import { mapStatus } from './status-map';
 
 const MAX_DIFF_BYTES = 5 * 1024 * 1024;
@@ -217,9 +217,10 @@ export class GitService {
 						r.split('\x1f');
 					return { hash, author, date: Number(date) * 1000, refs, message };
 				});
-		} catch {
-			// A repo without commits has no log.
-			return [];
+		} catch (error) {
+			// A repo without commits has no log; anything else is a real failure to report.
+			if (isUnbornHead(error)) return [];
+			throw error;
 		}
 	}
 
