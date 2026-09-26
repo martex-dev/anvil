@@ -263,6 +263,15 @@
 		background-size: 200% 100%;
 		animation: shimmer 1.6s linear infinite;
 	}
+	/* Fixed duration (not a --dur-* token), so reduced motion must switch it off explicitly. */
+	html[data-reduce-motion='true'] .shimmer {
+		animation: none;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.shimmer {
+			animation: none;
+		}
+	}
 }
 
 @layer utilities {
