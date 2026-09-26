@@ -1,5 +1,3 @@
-import { execFile } from 'node:child_process';
-
 import type { AiContext, AiMessage, AiMode, AiModelRef, AiProvider } from '@shared/ipc/channels/ai';
 
 import { AnvilError } from '../../core/errors';
@@ -17,7 +15,6 @@ export interface StreamSink {
 	error(message: string): void;
 }
 
-const MAX_DIFF = 200_000;
 const COMPLETION_TIMEOUT_MS = 8_000;
 
 /** Readable message from a provider's error body ({error: {message}} in every API here). */
@@ -197,28 +194,4 @@ function unreachable(provider: AiProvider, error: unknown): string {
 	return provider === 'ollama'
 		? `Could not reach Ollama: ${message}. Is \`ollama serve\` running?`
 		: `Could not reach ${provider}: ${message}`;
-}
-
-/** Working-tree (or staged-only) changes against HEAD, capped for the context window. */
-export function gitDiff(
-	root: string,
-	staged: boolean,
-): Promise<{ diff: string; truncated: boolean }> {
-	const env: NodeJS.ProcessEnv = { ...process.env, GIT_TERMINAL_PROMPT: '0' };
-	delete env['GIT_ASKPASS'];
-	delete env['GIT_EDITOR'];
-	const args = staged
-		? ['-C', root, 'diff', '--cached', '--no-color', '--no-ext-diff']
-		: ['-C', root, 'diff', 'HEAD', '--no-color', '--no-ext-diff'];
-	return new Promise((resolve) => {
-		execFile(
-			'git',
-			args,
-			{ env, windowsHide: true, maxBuffer: 20 * 1024 * 1024, timeout: 10_000 },
-			(error, stdout) => {
-				if (error && !stdout) return resolve({ diff: '', truncated: false });
-				resolve({ diff: stdout.slice(0, MAX_DIFF), truncated: stdout.length > MAX_DIFF });
-			},
-		);
-	});
 }

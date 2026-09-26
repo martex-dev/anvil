@@ -49,7 +49,10 @@ async function attachDiff(): Promise<void> {
 	try {
 		const { diff, truncated } = await call('ai:gitDiff', { staged: false });
 		if (!diff.trim()) {
-			toast.info('No changes', 'The working tree matches HEAD.');
+			toast.info(
+				'No changes',
+				'Tracked files match HEAD. New untracked files are not part of git diff.',
+			);
 			return;
 		}
 		useChat.getState().attach({

@@ -2,7 +2,8 @@ import { type AiProvider, type AiSettings, AiSettingsSchema } from '@shared/ipc/
 
 import { AnvilError } from '../../core/errors';
 import type { MainFeature } from '../../core/features';
-import { AiService, gitDiff } from './ai-service';
+import { AiService } from './ai-service';
+import { gitDiff } from './git-diff';
 import { PROVIDER_SECRET } from './providers';
 
 /**
