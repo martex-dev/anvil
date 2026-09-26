@@ -195,6 +195,30 @@ export function DataGrid({
 		}
 	}
 
+	// In a multi-cell range, mark the focus cell (the corner Shift+Arrow moves) as spreadsheets do.
+	let focusMark: JSX.Element | null = null;
+	const focus = selection?.focus;
+	if (
+		range &&
+		focus &&
+		(range.top !== range.bottom || range.left !== range.right) &&
+		focus.row >= win.start &&
+		focus.row < win.end
+	) {
+		focusMark = (
+			<div
+				aria-hidden
+				className='pointer-events-none absolute z-5 border border-accent bg-accent-soft'
+				style={{
+					top: HEADER_HEIGHT + win.top + (focus.row - win.start) * ROW_HEIGHT,
+					height: ROW_HEIGHT,
+					left: gutter + (offsets[focus.col] ?? 0),
+					width: (offsets[focus.col + 1] ?? 0) - (offsets[focus.col] ?? 0),
+				}}
+			/>
+		);
+	}
+
 	return (
 		<AppContextMenu
 			items={gridMenuItems(range, totalRows, columns.length, onCopy, onSelectionChange)}
@@ -237,6 +261,7 @@ export function DataGrid({
 					/>
 					{rows}
 					{overlay}
+					{focusMark}
 				</div>
 			</div>
 		</AppContextMenu>
