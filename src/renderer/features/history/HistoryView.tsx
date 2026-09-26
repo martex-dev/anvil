@@ -11,7 +11,9 @@ import { toast } from '../../stores/toast-store';
 import { Button } from '../../ui/Button';
 import { Dialog } from '../../ui/Dialog';
 import { EmptyState } from '../../ui/EmptyState';
+import { ErrorState } from '../../ui/ErrorState';
 import { IconButton } from '../../ui/IconButton';
+import { Spinner } from '../../ui/Spinner';
 import { useEditorStore } from '../editor/editor-store';
 import { getModel } from '../editor/file-ops';
 
@@ -114,7 +116,17 @@ export function HistoryView(): JSX.Element {
 					/>
 				)}
 			</div>
-			{items.length === 0 ? (
+			{q.isLoading ? (
+				<div className='flex h-24 items-center justify-center'>
+					<Spinner label='Reading snapshots' />
+				</div>
+			) : q.error && !q.data ? (
+				<ErrorState
+					title='Could not read local history'
+					message={q.error.message}
+					onRetry={() => void q.refetch()}
+				/>
+			) : items.length === 0 ? (
 				<p className='px-3 text-12 text-fg-2'>
 					No snapshots yet. One is kept every time you save (up to 50, 30 days).
 				</p>
