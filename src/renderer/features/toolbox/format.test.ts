@@ -52,6 +52,13 @@ describe('formatPlain', () => {
 		expect(formatPlain(1 / 3, 4)).toBe('0.3333');
 	});
 
+	it('keeps significant digits for tiny non-zero values instead of rounding to 0', () => {
+		expect(formatPlain(1.23456789e-9)).toBe('0.00000000123457');
+		expect(formatPlain(-4e-10)).toBe('-0.0000000004');
+		expect(formatPlain(0.001, 2)).toBe('0.001');
+		expect(formatPlain(0)).toBe('0');
+	});
+
 	it('passes non-finite values through', () => {
 		expect(formatPlain(Number.POSITIVE_INFINITY)).toBe('Infinity');
 	});
