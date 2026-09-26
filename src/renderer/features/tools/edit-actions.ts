@@ -16,27 +16,57 @@ export function requireEditor(): Editor | null {
 	return editor;
 }
 
-/**
- * The text each selection acts on. An empty selection means its whole line, which is what you
- * want for "evaluate this line" or "snake_case this name" without selecting first.
- */
-function targets(editor: Editor): Array<{ range: Monaco.IRange; text: string }> {
-	const model = editor.getModel();
-	if (!model) return [];
-	return (editor.getSelections() ?? []).map((sel) => {
-		const range = sel.isEmpty()
-			? {
-					startLineNumber: sel.startLineNumber,
-					startColumn: 1,
-					endLineNumber: sel.startLineNumber,
-					endColumn: model.getLineMaxColumn(sel.startLineNumber),
-				}
-			: sel;
-		return { range, text: model.getValueInRange(range) };
-	});
+type Target = { range: Monaco.IRange; text: string };
+
+/** a is strictly before b (line, then column). */
+function before(aLine: number, aCol: number, bLine: number, bCol: number): boolean {
+	return aLine < bLine || (aLine === bLine && aCol < bCol);
 }
 
-/** Replaces every target with `fn(text)` as one undo step; returns false if `fn` threw. */
+/** Monaco rejects edits whose ranges overlap; touching ranges are fine. */
+function overlaps(a: Monaco.IRange, b: Monaco.IRange): boolean {
+	const same =
+		a.startLineNumber === b.startLineNumber &&
+		a.startColumn === b.startColumn &&
+		a.endLineNumber === b.endLineNumber &&
+		a.endColumn === b.endColumn;
+	return (
+		same ||
+		(before(a.startLineNumber, a.startColumn, b.endLineNumber, b.endColumn) &&
+			before(b.startLineNumber, b.startColumn, a.endLineNumber, a.endColumn))
+	);
+}
+
+/**
+ * The text each selection acts on. An empty selection means its whole line, which is what you
+ * want for "evaluate this line" or "snake_case this name" without selecting first. A line can be
+ * claimed only once (two cursors on it, or a cursor inside another selection), since overlapping
+ * edits would make Monaco reject the whole transform; real selections win over whole lines.
+ */
+function targets(editor: Editor): Target[] {
+	const model = editor.getModel();
+	if (!model) return [];
+	const selections = editor.getSelections() ?? [];
+	const kept: Monaco.IRange[] = selections.filter((sel) => !sel.isEmpty());
+	const out: Target[] = [];
+	for (const sel of selections) {
+		let range: Monaco.IRange = sel;
+		if (sel.isEmpty()) {
+			range = {
+				startLineNumber: sel.startLineNumber,
+				startColumn: 1,
+				endLineNumber: sel.startLineNumber,
+				endColumn: model.getLineMaxColumn(sel.startLineNumber),
+			};
+			if (kept.some((k) => overlaps(k, range))) continue;
+			kept.push(range);
+		}
+		out.push({ range, text: model.getValueInRange(range) });
+	}
+	return out;
+}
+
+/** Replaces every target with `fn(text)` as one undo step; returns false if it failed. */
 export function replaceTargets(
 	editor: Editor,
 	fn: (text: string) => string,
@@ -48,14 +78,14 @@ export function replaceTargets(
 			const next = fn(t.text);
 			if (next !== t.text) edits.push({ range: t.range, text: next, forceMoveMarkers: true });
 		}
+		if (edits.length === 0) return true;
+		editor.pushUndoStop();
+		editor.executeEdits('anvil.transform', edits);
+		editor.pushUndoStop();
 	} catch (error) {
 		toast.warn(errorTitle, error instanceof Error ? error.message : undefined);
 		return false;
 	}
-	if (edits.length === 0) return true;
-	editor.pushUndoStop();
-	editor.executeEdits('anvil.transform', edits);
-	editor.pushUndoStop();
 	editor.focus();
 	return true;
 }
