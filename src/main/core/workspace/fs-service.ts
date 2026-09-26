@@ -5,6 +5,7 @@ import { basename, dirname, extname, join } from 'node:path';
 import type { FileContent, FsEntry, TextEncoding } from '@shared/ipc/channels/fs';
 
 import { AnvilError } from '../errors';
+import { mapFsError } from './fs-errors';
 import { assertRealInside, toAbsolute, toRelative, validateName } from './fs-guard';
 import { decodeText, encodeText } from './text-codec';
 
@@ -116,7 +117,9 @@ export class FsService {
 		if (s.size > MAX_EDITABLE_BYTES) {
 			return { ...base, ...EMPTY_TEXT, tooLarge: true };
 		}
-		const buf = await readFile(abs);
+		const buf = await readFile(abs).catch((error: unknown) => {
+			throw mapFsError(error, rel, 'open');
+		});
 		if (looksBinary(buf)) return { ...base, ...EMPTY_TEXT, binary: true };
 		// The BOM is stripped so the editor doesn't show it, but reported (with the encoding) so
 		// a save writes the same bytes back: Excel CSVs and PowerShell 5 scripts depend on it.
@@ -142,15 +145,22 @@ export class FsService {
 		const root = this.root();
 		const abs = toAbsolute(root, rel);
 		assertRealInside(root, abs);
-		if (expectedMtimeMs !== undefined && existsSync(abs)) {
-			const current = (await stat(abs)).mtimeMs;
-			// 1 ms tolerance: some filesystems round mtimes.
-			if (Math.abs(current - expectedMtimeMs) > 1) {
-				throw new AnvilError('FS_CONFLICT', `${rel} changed on disk since it was opened`);
+		try {
+			if (expectedMtimeMs !== undefined && existsSync(abs)) {
+				const current = (await stat(abs)).mtimeMs;
+				// 1 ms tolerance: some filesystems round mtimes.
+				if (Math.abs(current - expectedMtimeMs) > 1) {
+					throw new AnvilError(
+						'FS_CONFLICT',
+						`${rel} changed on disk since it was opened`,
+					);
+				}
 			}
+			await writeFile(abs, encodeText(content, encoding, bom, rel));
+			return { mtimeMs: (await stat(abs)).mtimeMs };
+		} catch (error) {
+			throw mapFsError(error, rel, 'save');
 		}
-		await writeFile(abs, encodeText(content, encoding, bom, rel));
-		return { mtimeMs: (await stat(abs)).mtimeMs };
 	}
 
 	async create(parentRel: string, name: string, kind: 'file' | 'dir'): Promise<FsEntry> {
@@ -160,9 +170,13 @@ export class FsService {
 		toAbsolute(root, toRelative(root, abs));
 		assertRealInside(root, abs);
 		if (existsSync(abs)) throw new AnvilError('FS_EXISTS', `"${name}" already exists`);
-		if (kind === 'dir') await mkdir(abs);
-		else await writeFile(abs, '', { encoding: 'utf8', flag: 'wx' });
-		return this.entry(root, abs);
+		try {
+			if (kind === 'dir') await mkdir(abs);
+			else await writeFile(abs, '', { encoding: 'utf8', flag: 'wx' });
+			return await this.entry(root, abs);
+		} catch (error) {
+			throw mapFsError(error, toRelative(root, abs), 'create');
+		}
 	}
 
 	async rename(rel: string, newName: string): Promise<FsEntry> {
@@ -176,8 +190,12 @@ export class FsService {
 		if (existsSync(to) && basename(from).toLowerCase() !== newName.toLowerCase()) {
 			throw new AnvilError('FS_EXISTS', `"${newName}" already exists`);
 		}
-		await rename(from, to);
-		return this.entry(root, to);
+		try {
+			await rename(from, to);
+			return await this.entry(root, to);
+		} catch (error) {
+			throw mapFsError(error, rel, 'rename');
+		}
 	}
 
 	async trash(rel: string): Promise<void> {
@@ -196,10 +214,14 @@ export class FsService {
 		const abs = toAbsolute(this.root(), rel);
 		const mime = IMAGE_MIME[extname(abs).toLowerCase()];
 		if (!mime) throw new AnvilError('FS_NOT_IMAGE', `${basename(abs)} is not an image`);
-		const s = await stat(abs);
+		const s = await stat(abs).catch((error: unknown) => {
+			throw mapFsError(error, rel, 'open');
+		});
 		if (s.size > MAX_IMAGE_BYTES)
 			throw new AnvilError('FS_TOO_LARGE', `${basename(abs)} is larger than 25 MB`);
-		const buf = await readFile(abs);
+		const buf = await readFile(abs).catch((error: unknown) => {
+			throw mapFsError(error, rel, 'open');
+		});
 		return { url: `data:${mime};base64,${buf.toString('base64')}`, size: s.size };
 	}
 

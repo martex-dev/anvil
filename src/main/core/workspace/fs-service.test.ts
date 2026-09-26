@@ -65,6 +65,17 @@ describe('FsService', () => {
 		expect((await fs.readFile('README.md')).bom).toBe(false);
 	});
 
+	it('reports fs failures with the relative path and a readable code', async () => {
+		await expect(fs.rename('gone.txt', 'other.txt')).rejects.toMatchObject({
+			code: 'FS_NOT_FOUND',
+			message: 'Cannot rename "gone.txt": it no longer exists',
+		});
+		await expect(fs.writeFile('missing-dir/a.txt', 'x')).rejects.toMatchObject({
+			code: 'FS_NOT_FOUND',
+			message: expect.not.stringContaining(root),
+		});
+	});
+
 	it('keeps the bytes of a non-UTF-8 (Windows-1252) file when saving', async () => {
 		writeFileSync(join(root, 'prices.csv'), Buffer.from([0x63, 0x61, 0x66, 0xe9, 0x0a]));
 		const csv = await fs.readFile('prices.csv');
