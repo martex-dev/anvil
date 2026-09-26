@@ -60,7 +60,17 @@ export function onMonacoLoaded(listener: (monaco: MonacoApi) => void): () => voi
 
 /** Re-applies theme/font settings (accent changed, font size changed…). */
 export async function refreshEditorConfiguration(prefs: EditorPrefs): Promise<void> {
-	if (!loaded) return;
+	if (!loaded) {
+		if (!pending) return;
+		// Mid-boot: the boot uses the prefs captured when it started, so apply these newer ones
+		// once it finishes. A failed boot is reported by loadMonaco's callers; nothing to apply.
+		const booting = pending;
+		const ok = await booting.then(
+			() => true,
+			() => false,
+		);
+		if (!ok) return;
+	}
 	const { applyUserConfiguration } = await import('./setup');
 	await applyUserConfiguration(buildUserConfiguration(prefs));
 }

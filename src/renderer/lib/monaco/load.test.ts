@@ -56,3 +56,41 @@ describe('loadMonaco', () => {
 		expect(setupMonaco).toHaveBeenCalledTimes(2);
 	});
 });
+
+describe('refreshEditorConfiguration', () => {
+	beforeEach(() => {
+		setupMonaco.mockClear();
+		applyUserConfiguration.mockClear();
+	});
+
+	it('does nothing before a load has started', async () => {
+		const { refreshEditorConfiguration } = await freshLoad();
+		await refreshEditorConfiguration(prefs(20));
+		expect(applyUserConfiguration).not.toHaveBeenCalled();
+	});
+
+	it('applies settings changed during the boot once it finishes', async () => {
+		const { loadMonaco, refreshEditorConfiguration } = await freshLoad();
+		let finish: (api: MonacoApi) => void = () => undefined;
+		setupMonaco.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+		const loading = loadMonaco(prefs(13));
+		const refreshing = refreshEditorConfiguration(prefs(20));
+		await Promise.resolve();
+		expect(applyUserConfiguration).not.toHaveBeenCalled();
+		finish({} as MonacoApi);
+		await loading;
+		await refreshing;
+		expect(setupMonaco).toHaveBeenCalledWith('size:13');
+		expect(applyUserConfiguration).toHaveBeenCalledWith('size:20');
+	});
+
+	it('skips the refresh when the boot fails', async () => {
+		const { loadMonaco, refreshEditorConfiguration } = await freshLoad();
+		setupMonaco.mockRejectedValueOnce(new Error('boom'));
+		const loading = loadMonaco(prefs(13));
+		const refreshing = refreshEditorConfiguration(prefs(20));
+		await expect(loading).rejects.toThrow('boom');
+		await refreshing;
+		expect(applyUserConfiguration).not.toHaveBeenCalled();
+	});
+});
