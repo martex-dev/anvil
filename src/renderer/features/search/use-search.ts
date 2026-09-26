@@ -26,6 +26,8 @@ export function useFileSearch(
 ): {
 	result: SearchResult | undefined;
 	isFetching: boolean;
+	/** `result` belongs to the previous query while this one runs. */
+	isPlaceholderData: boolean;
 	error: Error | null;
 	/** Runs the same search again (files may have changed since). */
 	refetch: () => void;
@@ -44,6 +46,7 @@ export function useFileSearch(
 	return {
 		result: q.data,
 		isFetching: q.isFetching,
+		isPlaceholderData: q.isPlaceholderData,
 		error: cancelled ? null : q.error,
 		// Failures land in q.error and show in the panel.
 		refetch: () => void q.refetch(),

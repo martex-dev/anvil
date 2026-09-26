@@ -22,7 +22,13 @@ function Highlighted({ match }: { match: SearchMatch }): JSX.Element {
 	return <>{parts}</>;
 }
 
-export function SearchResults({ files }: { files: SearchFile[] }): JSX.Element {
+export function SearchResults({
+	files,
+	className,
+}: {
+	files: SearchFile[];
+	className?: string;
+}): JSX.Element {
 	const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set());
 	const toggle = (path: string): void => {
 		const next = new Set(collapsed);
@@ -32,7 +38,10 @@ export function SearchResults({ files }: { files: SearchFile[] }): JSX.Element {
 	};
 
 	return (
-		<ul className='min-h-0 flex-1 overflow-y-auto pb-2' aria-label='Search results'>
+		<ul
+			className={cn('min-h-0 flex-1 overflow-y-auto pb-2', className)}
+			aria-label='Search results'
+		>
 			{files.map((file) => {
 				const open = !collapsed.has(file.path);
 				const slash = file.path.lastIndexOf('/');

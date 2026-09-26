@@ -94,7 +94,12 @@ export function SearchPanel(): JSX.Element {
 		() => ({ query, regex, caseSensitive, wholeWord, include, exclude }),
 		[query, regex, caseSensitive, wholeWord, include, exclude],
 	);
-	const { result, isFetching, error, refetch } = useFileSearch(info.root, search);
+	const { result, isFetching, isPlaceholderData, error, refetch } = useFileSearch(
+		info.root,
+		search,
+	);
+	// Dim the previous query's results while the new one runs, so counts aren't misread.
+	const stale = isPlaceholderData && 'opacity-60';
 
 	if (!info.root) {
 		return (
@@ -200,7 +205,13 @@ export function SearchPanel(): JSX.Element {
 				</p>
 			) : result && query ? (
 				<>
-					<p className='num px-3 py-1 text-11 text-fg-2' data-search-summary>
+					<p
+						className={cn(
+							'num px-3 py-1 text-11 text-fg-2 transition-opacity transition-fast',
+							stale,
+						)}
+						data-search-summary
+					>
 						{result.matchCount === 0
 							? 'No results'
 							: `${result.matchCount} result${result.matchCount === 1 ? '' : 's'} in ${result.files.length} file${result.files.length === 1 ? '' : 's'}`}
@@ -209,8 +220,16 @@ export function SearchPanel(): JSX.Element {
 							: result.truncated && ' (stopped at the limit; narrow the search)'}
 						{filtered && ' · filtered by include/exclude'} · {result.durationMs} ms
 					</p>
-					<SearchResults files={result.files} />
+					<SearchResults
+						files={result.files}
+						className={cn('transition-opacity transition-fast', stale)}
+					/>
 				</>
+			) : query.trim() && isFetching ? (
+				<p className='flex items-center gap-2 px-3 py-2 text-12 text-fg-2'>
+					<Spinner size={12} label='Searching' />
+					Searching…
+				</p>
 			) : (
 				<p className='px-3 py-2 text-12 text-fg-2'>
 					Type to search. .gitignore and folders like node_modules are skipped.
