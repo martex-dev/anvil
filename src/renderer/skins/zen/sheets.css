@@ -1,0 +1,58 @@
+/*
+ * Zen Paper sheets: menus, pickers, dialogs, tooltips and toasts are loose cards of the same
+ * paper, lifted off the page by a soft shadow. No blur, no glass.
+ */
+
+html[data-skin='zen'] .glass-strong {
+	background: var(--glass-strong);
+	backdrop-filter: none;
+	border: 0;
+	border-radius: 2px;
+	box-shadow: var(--shadow-float);
+}
+
+/* Veils over the page are plain ink washes: blurring the editor would repaint it constantly. */
+html[data-skin='zen'] .bg-scrim {
+	backdrop-filter: none;
+}
+
+/* Highlighted rows: a faint wash of the seal color and a hairline at the left margin. */
+html[data-skin='zen']
+	.glass-strong
+	:is([data-highlighted], [data-selected='true'], [aria-selected='true']) {
+	box-shadow: inset 1px 0 0 var(--accent);
+}
+
+html[data-skin='zen'] [data-zen='menu'] {
+	padding-block: 10px;
+}
+html[data-skin='zen'] [data-zen='menu-item'] {
+	font-size: 13.5px;
+}
+html[data-skin='zen'] [data-zen='menu-item'][data-highlighted] {
+	background: var(--zn-wash);
+	color: var(--text-0);
+}
+html[data-skin='zen'] .glass-strong .hud {
+	font-size: 10.5px;
+	color: var(--accent);
+}
+
+/* Dialog titles are set in the display face, like a card's heading. */
+html[data-skin='zen'] [role='dialog'] h2 {
+	font-family: var(--font-display);
+	font-style: italic;
+	font-size: 22px;
+	font-weight: 400;
+	line-height: 1.15;
+}
+
+/* Toasts, tooltips and inputs share the paper. */
+html[data-skin='zen'] input,
+html[data-skin='zen'] textarea {
+	font-family: inherit;
+}
+html[data-skin='zen'] input::placeholder,
+html[data-skin='zen'] textarea::placeholder {
+	font-style: italic;
+}
