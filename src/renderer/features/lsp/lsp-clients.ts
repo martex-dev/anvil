@@ -32,13 +32,39 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
 
 const clients = new Map<LspLanguage, Running>();
 const starting = new Map<LspLanguage, Promise<void>>();
-// Bumped on stopAll so a start that was in flight when the folder changed is thrown away.
-let generation = 0;
+// Bumped per language when its server is stopped, so a start still in flight is thrown away
+// instead of registering a client for the old folder or interpreter.
+const generations: Record<LspLanguage, number> = { python: 0, typescript: 0 };
+
+/** Disposes a client, releasing its IPC listeners; failures are logged, never thrown. */
+async function disposeClient(client: MonacoLanguageClient): Promise<void> {
+	try {
+		await client.dispose();
+	} catch (error) {
+		rlog.warn('lsp', 'client dispose failed', error);
+	}
+}
+
+/** Ends a server process in main; failures are logged, never thrown. */
+async function stopSession(session: string): Promise<void> {
+	await call('lsp:stop', { session }).catch((error: unknown) =>
+		rlog.warn('lsp', 'language server stop failed', error),
+	);
+}
+
+/** Lets a running client shut its server down cleanly, then makes sure the process is gone. */
+async function shutdown(client: MonacoLanguageClient, session: string): Promise<void> {
+	await disposeClient(client);
+	await stopSession(session);
+}
 
 async function start(language: LspLanguage): Promise<void> {
-	const gen = generation;
+	const gen = generations[language];
+	const current = (): boolean => gen === generations[language];
 	const status = useLspStatus.getState();
 	status.set(language, 'starting');
+	let session: string | null = null;
+	let client: MonacoLanguageClient | null = null;
 	try {
 		// Loaded on first use: the client library pulls in the vscode API shims (~0.5 MB).
 		const [{ MonacoLanguageClient }, vscode] = await Promise.all([
@@ -46,11 +72,12 @@ async function start(language: LspLanguage): Promise<void> {
 			import('vscode'),
 		]);
 		const info = await call('lsp:start', { language });
-		if (gen !== generation) {
-			await call('lsp:stop', { session: info.session });
+		session = info.session;
+		if (!current()) {
+			await stopSession(info.session);
 			return;
 		}
-		const client = new MonacoLanguageClient({
+		const created: MonacoLanguageClient = new MonacoLanguageClient({
 			name: `Anvil ${LANGUAGE_LABEL[language]}`,
 			clientOptions: {
 				documentSelector: info.languageIds.map((id) => ({ scheme: 'file', language: id })),
@@ -69,6 +96,9 @@ async function start(language: LspLanguage): Promise<void> {
 							useLspStatus
 								.getState()
 								.set(language, 'error', 'The language server stopped');
+							// Release the transport's IPC listeners. Deferred: disposing from inside the
+							// client's own close callback would re-enter it.
+							setTimeout(() => void shutdown(created, info.session), 0);
 						}
 						return { action: CLOSE_DO_NOT_RESTART };
 					},
@@ -76,30 +106,26 @@ async function start(language: LspLanguage): Promise<void> {
 			},
 			messageTransports: ipcTransports(info.session),
 		});
-		try {
-			await withTimeout(
-				client.start(),
-				START_TIMEOUT_MS,
-				`The ${LANGUAGE_LABEL[language]} language server did not respond within ${START_TIMEOUT_MS / 1000} s`,
-			);
-		} catch (error) {
-			// Don't leave a half-started client or a server process behind.
-			void client
-				.dispose()
-				.catch((e: unknown) => rlog.warn('lsp', 'client dispose failed', e));
-			void call('lsp:stop', { session: info.session }).catch((e: unknown) =>
-				rlog.warn('lsp', 'stop after failed start failed', e),
-			);
-			throw error;
-		}
-		if (gen !== generation) {
-			await client.dispose();
+		client = created;
+		await withTimeout(
+			created.start(),
+			START_TIMEOUT_MS,
+			`The ${LANGUAGE_LABEL[language]} language server did not respond within ${START_TIMEOUT_MS / 1000} s`,
+		);
+		if (!current()) {
+			await shutdown(created, info.session);
 			return;
 		}
-		clients.set(language, { client, session: info.session });
+		clients.set(language, { client: created, session: info.session });
 		status.set(language, 'ready', info.notice);
 	} catch (error) {
+		// Don't leave a half-started client, its IPC listeners or a server process behind. Not
+		// awaited, and not in sequence: disposing a client whose start never finished can hang.
+		if (client) void disposeClient(client);
+		if (session) void stopSession(session);
 		rlog.error('lsp', `${language} server failed to start`, error);
+		// A start superseded by a stop or restart no longer owns the status.
+		if (!current()) return;
 		useLspStatus
 			.getState()
 			.set(language, 'error', error instanceof Error ? error.message : String(error));
@@ -111,29 +137,35 @@ export function ensureClient(language: LspLanguage): Promise<void> {
 	if (clients.has(language)) return Promise.resolve();
 	const pending = starting.get(language);
 	if (pending) return pending;
-	const promise = start(language).finally(() => starting.delete(language));
+	const promise = start(language).finally(() => {
+		// A stop may have replaced this entry with a fresh start already.
+		if (starting.get(language) === promise) starting.delete(language);
+	});
 	starting.set(language, promise);
 	return promise;
 }
 
-export async function stopAll(): Promise<void> {
-	generation += 1;
-	const running = [...clients.values()];
-	clients.clear();
-	useLspStatus.getState().reset();
-	await Promise.all(
-		running.map(async ({ client, session }) => {
-			try {
-				await client.dispose();
-			} catch (error) {
-				rlog.warn('lsp', 'client dispose failed', error);
-			}
-			await call('lsp:stop', { session }).catch(() => undefined);
-		}),
-	);
+/** Stops one language's server (running or still starting) and leaves the others alone. */
+async function stopLanguage(language: LspLanguage): Promise<void> {
+	generations[language] += 1;
+	// Forget the in-flight start so the next ensureClient starts afresh instead of joining a start
+	// that will throw itself away.
+	starting.delete(language);
+	const running = clients.get(language);
+	clients.delete(language);
+	useLspStatus.getState().set(language, 'idle');
+	if (running) await shutdown(running.client, running.session);
 }
 
+const LANGUAGES = Object.keys(generations) as LspLanguage[];
+
+/** Stops every server, e.g. when the folder changes. */
+export async function stopAll(): Promise<void> {
+	await Promise.all(LANGUAGES.map(stopLanguage));
+}
+
+/** Restarts only `languages`; the other servers keep running. */
 export async function restart(languages: LspLanguage[]): Promise<void> {
-	await stopAll();
+	await Promise.all(languages.map(stopLanguage));
 	await Promise.all(languages.map(ensureClient));
 }
