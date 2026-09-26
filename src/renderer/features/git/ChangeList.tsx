@@ -5,6 +5,7 @@ import type { GitChange, GitChangeKind } from '@shared/ipc/channels/git';
 
 import { cn } from '../../lib/cn';
 import { IconButton } from '../../ui/IconButton';
+import { capRows } from './change-rows';
 
 const BADGE: Record<GitChangeKind, { letter: string; className: string; label: string }> = {
 	modified: { letter: 'M', className: 'text-warn', label: 'Modified' },
@@ -36,6 +37,7 @@ export function ChangeList({
 	if (changes.length === 0) return null;
 	const actionLabel = staged ? 'Unstage' : 'Stage';
 	const ActionIcon = staged ? Minus : Plus;
+	const { shown, hidden } = capRows(changes);
 
 	return (
 		<section aria-label={title}>
@@ -68,7 +70,7 @@ export function ChangeList({
 			</div>
 			{!collapsed && (
 				<ul>
-					{changes.map((change) => {
+					{shown.map((change) => {
 						const badge = BADGE[change.kind];
 						const name = change.path.split('/').at(-1) ?? change.path;
 						const dir = change.path.slice(0, -name.length - 1);
@@ -116,6 +118,12 @@ export function ChangeList({
 							</li>
 						);
 					})}
+					{hidden > 0 && (
+						<li className='num h-6 truncate pr-1 pl-5 text-11 leading-6 text-fg-2'>
+							{hidden.toLocaleString()} more file{hidden === 1 ? '' : 's'}… (add
+							folders like venv to .gitignore)
+						</li>
+					)}
 				</ul>
 			)}
 		</section>
