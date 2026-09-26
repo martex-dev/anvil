@@ -351,22 +351,27 @@ export function ChatPanel(): JSX.Element {
 						className='selectable w-full resize-none rounded-lg border border-border-strong bg-bg-2/60 py-2 pr-10 pl-2.5 text-13 text-fg-0 outline-none transition-[border-color,box-shadow] transition-fast placeholder:text-fg-2 focus:border-accent/60 focus:shadow-glow-soft'
 					/>
 					<div className='absolute right-1.5 bottom-2'>
-						{activeRequest ? (
-							<IconButton
-								label='Stop'
-								icon={<Square size={13} className='fill-current text-down' />}
-								onClick={stop}
-							/>
-						) : (
-							<IconButton
-								label='Send (Enter)'
-								icon={
+						{/* One button that swaps role, so clicking it never unmounts the focused
+						element; aria-disabled (not disabled) keeps focus when a reply ends. */}
+						<IconButton
+							label={activeRequest ? 'Stop' : 'Send (Enter)'}
+							icon={
+								activeRequest ? (
+									<Square size={13} className='fill-current text-down' />
+								) : (
 									<Send size={14} className={text.trim() ? 'text-accent' : ''} />
-								}
-								disabled={!hasKey || !text.trim()}
-								onClick={submit}
-							/>
-						)}
+								)
+							}
+							aria-disabled={
+								!activeRequest && (!hasKey || !text.trim()) ? true : undefined
+							}
+							className='aria-disabled:pointer-events-none aria-disabled:opacity-40'
+							onClick={() => {
+								if (activeRequest) stop();
+								else submit();
+								inputRef.current?.focus();
+							}}
+						/>
 					</div>
 				</div>
 				<div className='mt-1 flex items-center gap-2 px-0.5 text-10 text-fg-2'>
