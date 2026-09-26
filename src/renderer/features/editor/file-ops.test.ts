@@ -13,7 +13,7 @@ vi.mock('../../lib/ipc', () => ({
 vi.mock('../../lib/log', () => ({ rlog: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 vi.mock('../../app/hooks/use-settings', () => ({ getSettings: () => ({}) }));
 
-const { closeFile, getViewState, openFile, saveViewState } = await import('./file-ops');
+const { closeFile, getViewState, openFile, saveFile, saveViewState } = await import('./file-ops');
 
 /** Just enough of a text model for openFile / closeFile. */
 function fakeModel(text: string): unknown {
@@ -103,20 +103,26 @@ describe('file ops', () => {
 			},
 		} as unknown as MonacoApi;
 		useTabsStore.getState().reset();
-		useTabsStore
-			.getState()
-			.open({
-				id: codeTabId('a.py'),
-				kind: 'code',
-				path: 'a.py',
-				title: 'a.py',
-				preview: true,
-			});
+		useTabsStore.getState().open({
+			id: codeTabId('a.py'),
+			kind: 'code',
+			path: 'a.py',
+			title: 'a.py',
+			preview: true,
+		});
 		call.mockResolvedValue(text);
 		await openFile(editable, 'C:/proj', 'a.py');
 		version = 2;
 		onChange();
 		expect(useEditorStore.getState().files[0]?.dirty).toBe(true);
 		expect(useTabsStore.getState().tabs[codeTabId('a.py')]?.preview).toBe(false);
+	});
+
+	it('does not rewrite a file without changes', async () => {
+		call.mockResolvedValue(text);
+		await openFile(monaco, 'C:/proj', 'a.py');
+		call.mockClear();
+		expect(await saveFile('a.py')).toBe(true);
+		expect(call).not.toHaveBeenCalled();
 	});
 });

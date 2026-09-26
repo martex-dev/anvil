@@ -259,7 +259,7 @@ export async function formatPython(
 	}
 }
 
-/** Saves one file. With `force`, overwrites even if it changed on disk. */
+/** Saves one file if it has unsaved edits. With `force`, writes it even if it changed on disk. */
 export async function saveFile(path: string, force = false): Promise<boolean> {
 	const store = useEditorStore.getState();
 	const t = tracked.get(path);
@@ -267,6 +267,9 @@ export async function saveFile(path: string, force = false): Promise<boolean> {
 	if (!t || !file) return false;
 	// The scratchpad saves itself to local storage as you type.
 	if (isScratch(path)) return true;
+	// Nothing to write: a habitual Ctrl+S must not touch the file (mtime, watcher, git status,
+	// local history) or reformat code nobody edited.
+	if (!file.dirty && !force) return true;
 	if (getSettings().formatOnSave && path.endsWith('.py')) await formatPython(path, t.model);
 	cleanWhitespace(t.model);
 	try {
