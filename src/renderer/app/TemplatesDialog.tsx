@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { FolderPlus } from 'lucide-react';
-import { type JSX, useState } from 'react';
+import { type JSX, useRef, useState } from 'react';
 
+import { openRecentFolder } from '../features/explorer/workspace-actions';
 import { cn } from '../lib/cn';
 import { call } from '../lib/ipc';
-import { openRecentFolder } from '../features/explorer/workspace-actions';
 import { toast } from '../stores/toast-store';
 import { useUiStore } from '../stores/ui-store';
 import { reasonNotToLeaveWorkspace } from '../stores/workbench-store';
@@ -29,11 +29,14 @@ export function TemplatesDialog(): JSX.Element {
 	const [picked, setPicked] = useState<string | null>(null);
 	const [name, setName] = useState('');
 	const [busy, setBusy] = useState(false);
+	// State updates land after a re-render, so a quick second Enter would still see busy=false;
+	// the ref blocks a second create (and a second native folder picker) immediately.
+	const busyRef = useRef(false);
 	const selected = templates.data?.find((t) => t.id === picked) ?? templates.data?.[0];
 	const valid = NAME.test(name);
 
 	const create = async (): Promise<void> => {
-		if (!selected || !valid) return;
+		if (!selected || !valid || busyRef.current) return;
 		// Opening the new project replaces the workspace, so check the unsaved-changes guard
 		// before creating anything rather than dropping dirty tabs afterwards.
 		const reason = reasonNotToLeaveWorkspace();
@@ -41,6 +44,7 @@ export function TemplatesDialog(): JSX.Element {
 			toast.warn("Can't switch folders yet", reason);
 			return;
 		}
+		busyRef.current = true;
 		setBusy(true);
 		try {
 			const { root } = await call('templates:create', { templateId: selected.id, name });
@@ -56,6 +60,7 @@ export function TemplatesDialog(): JSX.Element {
 				error instanceof Error ? error.message : undefined,
 			);
 		} finally {
+			busyRef.current = false;
 			setBusy(false);
 		}
 	};
@@ -138,7 +143,10 @@ export function TemplatesDialog(): JSX.Element {
 							onChange={(e) => setName(e.target.value)}
 							placeholder='e.g. momentum-research'
 							invalid={name.length > 0 && !valid}
-							onKeyDown={(e) => e.key === 'Enter' && void create()}
+							onKeyDown={(e) => {
+								if (e.key === 'Enter' && !e.nativeEvent.isComposing && !e.repeat)
+									void create();
+							}}
 						/>
 						{name.length > 0 && !valid && (
 							<span className='text-11 text-down'>
