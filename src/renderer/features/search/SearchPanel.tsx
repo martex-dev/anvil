@@ -221,6 +221,8 @@ export function SearchPanel(): JSX.Element {
 						{filtered && ' · filtered by include/exclude'} · {result.durationMs} ms
 					</p>
 					<SearchResults
+						// A new query starts with every file expanded.
+						key={query}
 						files={result.files}
 						className={cn('transition-opacity transition-fast', stale)}
 					/>

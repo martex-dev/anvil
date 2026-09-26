@@ -1,9 +1,10 @@
-import { ChevronDown, ChevronRight, FileText } from 'lucide-react';
+import { ChevronDown, FileText } from 'lucide-react';
 import { type JSX, useState } from 'react';
 
 import type { SearchFile, SearchMatch } from '@shared/ipc/channels/search';
 
 import { cn } from '../../lib/cn';
+import { rovingKeyDown } from '../../lib/roving';
 import { requestOpenFile } from '../../stores/workbench-store';
 import { fileMatchCount } from './search-count';
 
@@ -37,11 +38,26 @@ export function SearchResults({
 		else next.add(path);
 		setCollapsed(next);
 	};
+	// Roving tabindex: the results are one Tab stop (the last focused row, else the first file)
+	// and the arrow keys move between visible rows.
+	const [lastFocused, setLastFocused] = useState<string | null>(null);
+	const rowIds = files.flatMap((file) => [
+		`f:${file.path}`,
+		...(collapsed.has(file.path)
+			? []
+			: file.matches.map((m) => `m:${file.path}:${m.line}:${m.column}`)),
+	]);
+	const tabStop = lastFocused && rowIds.includes(lastFocused) ? lastFocused : rowIds[0];
+	const rowProps = (id: string): { tabIndex: number; onFocus: () => void } => ({
+		tabIndex: id === tabStop ? 0 : -1,
+		onFocus: () => setLastFocused(id),
+	});
 
 	return (
 		<ul
 			className={cn('min-h-0 flex-1 overflow-y-auto pb-2', className)}
 			aria-label='Search results'
+			onKeyDown={rovingKeyDown}
 		>
 			{files.map((file) => {
 				const open = !collapsed.has(file.path);
@@ -52,13 +68,17 @@ export function SearchResults({
 							type='button'
 							onClick={() => toggle(file.path)}
 							aria-expanded={open}
+							data-roving
+							{...rowProps(`f:${file.path}`)}
 							className='flex h-6 w-full items-center gap-1 px-2 text-left text-13 hover:bg-bg-2 focus-visible:shadow-glow focus-visible:outline-none'
 						>
-							{open ? (
-								<ChevronDown size={12} className='shrink-0 text-fg-2' />
-							) : (
-								<ChevronRight size={12} className='shrink-0 text-fg-2' />
-							)}
+							<ChevronDown
+								size={12}
+								className={cn(
+									'shrink-0 text-fg-2 transition-transform transition-fast',
+									!open && '-rotate-90',
+								)}
+							/>
 							<FileText size={13} className='shrink-0 text-fg-2' />
 							<span className='truncate text-fg-0'>{file.path.slice(slash + 1)}</span>
 							<span className='truncate text-11 text-fg-2'>
@@ -95,6 +115,8 @@ export function SearchResults({
 											)}
 											title={`${file.path}:${m.line}`}
 											data-search-match={`${file.path}:${m.line}`}
+											data-roving
+											{...rowProps(`m:${file.path}:${m.line}:${m.column}`)}
 										>
 											<span className='num w-8 shrink-0 text-right text-11 text-fg-2'>
 												{m.line}
