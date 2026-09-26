@@ -61,7 +61,11 @@ export function treeKeyHandler(deps: KeyboardDeps): (event: KeyboardEvent) => vo
 			case 'ArrowRight':
 				if (!current || !isFolder(current.entry)) return;
 				if (!current.expanded) deps.toggle(current.entry.path);
-				else move(index + 1);
+				else {
+					// Step into the first child; an empty or still-loading folder keeps focus.
+					const child = entries[index + 1];
+					if (child && parentOf(child.entry.path) === current.entry.path) move(index + 1);
+				}
 				break;
 			case 'ArrowLeft':
 				if (!current) return;

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { FsEntry } from '@shared/ipc/channels/fs';
 
-import { buildRows, type DirState } from './tree-model';
+import { buildRows, type DirState, type TreeRow } from './tree-model';
 import { createTypeAhead, treeKeyHandler } from './use-tree-keyboard';
 
 const e = (path: string, kind: FsEntry['kind'] = 'file'): FsEntry => ({
@@ -24,12 +24,17 @@ const rows = buildRows(
 function press(
 	key: string,
 	focused: string | null,
-	options: { ctrlKey?: boolean; altKey?: boolean; typeAhead?: (char: string) => string } = {},
+	options: {
+		ctrlKey?: boolean;
+		altKey?: boolean;
+		typeAhead?: (char: string) => string;
+		rows?: TreeRow[];
+	} = {},
 ): { setFocused: ReturnType<typeof vi.fn>; preventDefault: ReturnType<typeof vi.fn> } {
 	const setFocused = vi.fn();
 	const preventDefault = vi.fn();
 	const handler = treeKeyHandler({
-		rows,
+		rows: options.rows ?? rows,
 		focused,
 		setFocused,
 		toggle: vi.fn(),
@@ -91,5 +96,30 @@ describe('createTypeAhead', () => {
 		expect(push('b')).toBe('ab');
 		time += 600;
 		expect(push('c')).toBe('c');
+	});
+});
+
+describe('treeKeyHandler: ArrowRight', () => {
+	const tree = (data: DirState | undefined): TreeRow[] =>
+		buildRows(
+			new Map<string, DirState>([
+				['', { entries: [e('data', 'dir'), e('main.py')] }],
+				...(data ? [['data', data] as const] : []),
+			]),
+			new Set(['data']),
+		);
+
+	it('moves into an expanded folder with children', () => {
+		const { setFocused } = press('ArrowRight', 'data', {
+			rows: tree({ entries: [e('data/prices.csv')] }),
+		});
+		expect(setFocused).toHaveBeenCalledWith('data/prices.csv');
+	});
+
+	it('stays on an expanded folder that is empty, loading or failed', () => {
+		for (const data of [{ entries: [] }, undefined, { error: 'Access denied' }]) {
+			const { setFocused } = press('ArrowRight', 'data', { rows: tree(data) });
+			expect(setFocused).not.toHaveBeenCalled();
+		}
 	});
 });
