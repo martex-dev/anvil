@@ -1,3 +1,4 @@
+import { rlog } from '../log';
 import type { MonacoApi } from './setup';
 import { buildUserConfiguration, type EditorPrefs } from './theme';
 
@@ -10,20 +11,34 @@ const loadedListeners = new Set<(monaco: MonacoApi) => void>();
  * startup doesn't pay for it. Safe to call repeatedly.
  */
 export function loadMonaco(prefs: EditorPrefs): Promise<MonacoApi> {
+	if (loaded) return Promise.resolve(loaded);
 	pending ??= import('./setup')
 		.then((m) => m.setupMonaco(buildUserConfiguration(prefs)))
-		.then((api) => {
-			loaded = api;
-			for (const listener of loadedListeners) listener(api);
-			loadedListeners.clear();
-			return api;
-		})
 		.catch((error: unknown) => {
-			// Allow a retry after a failure instead of caching the rejection forever.
+			// Allow a retry after a failed boot instead of caching the rejection forever. Only the
+			// boot itself resets: once VS Code's services are initialized they can't be again.
 			pending = null;
 			throw error;
+		})
+		.then((api) => {
+			loaded = api;
+			notifyLoaded(api);
+			return api;
 		});
 	return pending;
+}
+
+/** One faulty listener must not fail the load (which would leave the editor unrecoverable). */
+function notifyLoaded(api: MonacoApi): void {
+	const listeners = [...loadedListeners];
+	loadedListeners.clear();
+	for (const listener of listeners) {
+		try {
+			listener(api);
+		} catch (error) {
+			rlog.error('editor', 'a Monaco load listener failed', error);
+		}
+	}
 }
 
 export function getLoadedMonaco(): MonacoApi | null {
