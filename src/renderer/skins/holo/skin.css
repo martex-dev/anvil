@@ -45,11 +45,6 @@ html[data-skin='holo'] ::selection {
 	background: color-mix(in oklab, var(--accent) 34%, transparent);
 }
 
-html[data-skin='holo'] :focus-visible {
-	outline: 1px solid var(--accent);
-	outline-offset: 1px;
-}
-
 /* HUD micro-labels speak Orbitron. */
 html[data-skin='holo'] .hud {
 	font-family: var(--font-display);
@@ -178,8 +173,14 @@ html[data-skin='holo'] .glass-strong [aria-selected='true'] {
 	box-shadow: inset 2px 0 0 var(--accent);
 }
 
-html[data-skin='holo'] kbd {
-	font-family: var(--font-code);
+/* Dialog titles read as console headings. */
+html[data-skin='holo'] .glass-strong[role='dialog'] > div:first-child h2 {
+	font-family: var(--font-display);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.24em;
+	text-transform: uppercase;
+	color: var(--accent);
 }
 
 /* ---- Scrollbars: thin luminous rails ---------------------------------------------------- */
