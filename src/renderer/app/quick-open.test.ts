@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { quickOpenFilter, quickOpenMode } from './quick-open';
+import { quickOpenFilter, quickOpenMode, resolvePendingEnter } from './quick-open';
 
 describe('quickOpenFilter', () => {
 	it('matches commands and symbols despite the mode prefix', () => {
@@ -22,5 +22,29 @@ describe('quickOpenMode', () => {
 		expect(quickOpenMode('@')).toBe('symbols');
 		expect(quickOpenMode(':12')).toBe('line');
 		expect(quickOpenMode('main.py')).toBe('files');
+	});
+});
+
+describe('resolvePendingEnter', () => {
+	it('opens the first match for the query Enter was pressed on', () => {
+		expect(resolvePendingEnter('mai', 'mai', false, 'src/main.py')).toEqual({
+			open: 'src/main.py',
+			cancel: false,
+		});
+	});
+
+	it('waits while the list is loading', () => {
+		expect(resolvePendingEnter('mai', 'mai', true, undefined)).toEqual({
+			open: undefined,
+			cancel: false,
+		});
+	});
+
+	it('cancels when the list arrives without a match or the query changes', () => {
+		expect(resolvePendingEnter('zz', 'zz', false, undefined).cancel).toBe(true);
+		expect(resolvePendingEnter('zz', 'main', false, 'src/main.py')).toEqual({
+			open: undefined,
+			cancel: true,
+		});
 	});
 });

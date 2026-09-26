@@ -40,3 +40,21 @@ export function quickOpenMode(value: string): QuickOpenMode {
 export function quickOpenFilter(value: string, search: string, keywords?: string[]): number {
 	return defaultFilter(value, search.replace(/^[>@]\s*/, ''), keywords);
 }
+
+/**
+ * Enter pressed while the file list is still loading is remembered for the query it was pressed
+ * on. Returns the file to open once the list has it, and whether the pending Enter is spent: an
+ * edit (the query changed) or a finished load with no match cancels it, so a later match never
+ * opens a file without a fresh Enter.
+ */
+export function resolvePendingEnter(
+	pendingFor: string | null,
+	query: string,
+	fetching: boolean,
+	firstMatch: string | undefined,
+): { open: string | undefined; cancel: boolean } {
+	if (pendingFor === null) return { open: undefined, cancel: false };
+	if (pendingFor !== query) return { open: undefined, cancel: true };
+	if (firstMatch) return { open: firstMatch, cancel: false };
+	return { open: undefined, cancel: !fetching };
+}

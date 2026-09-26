@@ -16,7 +16,13 @@ import { Kbd } from '../ui/Kbd';
 import { getCommands, runCommand } from './commands/run';
 import { fuzzyFilter } from './fuzzy';
 import { useWorkspace } from './hooks/use-workspace';
-import { quickOpenFilter, quickOpenMode, recentFiles, rememberRecentFile } from './quick-open';
+import {
+	quickOpenFilter,
+	quickOpenMode,
+	recentFiles,
+	rememberRecentFile,
+	resolvePendingEnter,
+} from './quick-open';
 
 function Highlight({
 	text,
@@ -57,12 +63,13 @@ export function QuickOpen(): JSX.Element {
 	const { info } = useWorkspace();
 	const [value, setValue] = useState(initial);
 	const [lastInitial, setLastInitial] = useState<string | null>(null);
-	// Enter pressed before the list arrived opens the best match as soon as it does.
-	const [pendingEnter, setPendingEnter] = useState(false);
+	// Enter pressed before the list arrived opens the best match as soon as it does, but only
+	// for the query it was pressed on: any edit cancels it.
+	const [pendingFor, setPendingFor] = useState<string | null>(null);
 	if (open && lastInitial !== initial) {
 		setLastInitial(initial);
 		setValue(initial);
-		setPendingEnter(false);
+		setPendingFor(null);
 	}
 	if (!open && lastInitial !== null) setLastInitial(null);
 
@@ -99,7 +106,14 @@ export function QuickOpen(): JSX.Element {
 		rememberRecentFile(path);
 		requestOpenFile({ path });
 	};
-	const best = pendingEnter && open ? fileResults[0]?.path : undefined;
+	const pending = resolvePendingEnter(
+		open ? pendingFor : null,
+		value,
+		files.isFetching,
+		fileResults[0]?.path,
+	);
+	if (pending.cancel) setPendingFor(null);
+	const best = pending.open;
 	useEffect(() => {
 		if (!best) return;
 		close();
@@ -147,7 +161,7 @@ export function QuickOpen(): JSX.Element {
 							files.isFetching
 						) {
 							e.preventDefault();
-							setPendingEnter(true);
+							setPendingFor(value);
 							return;
 						}
 						if (mode === 'line' && e.key === 'Enter') {
