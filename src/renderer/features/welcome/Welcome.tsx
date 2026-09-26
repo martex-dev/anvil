@@ -20,6 +20,7 @@ import { IconButton } from '../../ui/IconButton';
 import { Kbd } from '../../ui/Kbd';
 import { PROVIDER_LABEL, useAiSettings } from '../ai/ai-settings';
 import { forgetRecentFolder, openRecentFolder } from '../explorer/workspace-actions';
+import { missingKeyProvider } from './missing-key';
 
 function Action({
 	icon,
@@ -72,7 +73,7 @@ function Feature({
 export function Welcome(): JSX.Element {
 	const { info } = useWorkspace();
 	const { settings, keys } = useAiSettings();
-	const aiReady = settings ? (keys?.[settings.chat.provider] ?? false) : true;
+	const missingKey = missingKeyProvider(settings, keys);
 	return (
 		<div className='mx-auto flex max-w-5xl flex-col gap-10 px-10 py-12'>
 			<header className='flex items-center gap-6'>
@@ -92,7 +93,7 @@ export function Welcome(): JSX.Element {
 				</div>
 			</header>
 
-			{!aiReady && settings && (
+			{missingKey && (
 				<button
 					type='button'
 					onClick={() => useUiStore.getState().openSettings('keys')}
@@ -100,8 +101,8 @@ export function Welcome(): JSX.Element {
 				>
 					<KeyRound size={16} />
 					<span className='flex-1'>
-						Add your {PROVIDER_LABEL[settings.chat.provider]} API key to turn on chat,
-						inline edit and autocomplete.
+						Add your {PROVIDER_LABEL[missingKey]} API key to turn on chat, inline edit
+						and autocomplete.
 					</span>
 					<span className='text-12'>Settings → API Keys</span>
 				</button>
