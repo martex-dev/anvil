@@ -9,6 +9,7 @@ import { FileBadge } from '../../ui/FileBadge';
 import { IconButton } from '../../ui/IconButton';
 import { Input } from '../../ui/Input';
 import { askAiAboutProblem } from '../ai/actions';
+import { problemKeys } from './problems-model';
 import { type Problem, useProblems } from './problems-store';
 
 const ICON = {
@@ -29,6 +30,10 @@ export function ProblemsView(): JSX.Element {
 		}
 		return [...byFile.entries()];
 	}, [items, filter]);
+	const keys = useMemo(
+		() => new Map(groups.map(([path, problems]) => [path, problemKeys(problems)])),
+		[groups],
+	);
 
 	if (items.length === 0) {
 		return (
@@ -46,6 +51,7 @@ export function ProblemsView(): JSX.Element {
 					value={filter}
 					onChange={(e) => setFilter(e.target.value)}
 					placeholder='Filter problems'
+					aria-label='Filter problems'
 					className='h-6 max-w-72 text-12'
 				/>
 			</div>
@@ -71,14 +77,16 @@ export function ProblemsView(): JSX.Element {
 						<div key={path} role='group'>
 							<div className='flex h-6 items-center gap-2 px-3 text-fg-1'>
 								<FileBadge name={path.split('/').at(-1) ?? path} />
-								<span className='truncate'>{path}</span>
+								<span className='truncate' title={path}>
+									{path}
+								</span>
 								<span className='num rounded-full bg-bg-3 px-1.5 text-10'>
 									{problems.length}
 								</span>
 							</div>
 							{problems.map((p, i) => (
 								<div
-									key={`${p.line}:${p.column}:${i}`}
+									key={keys.get(path)?.[i] ?? i}
 									role='treeitem'
 									tabIndex={0}
 									onClick={() =>
