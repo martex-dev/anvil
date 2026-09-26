@@ -1,0 +1,242 @@
+/*
+ * Mainframe: the text lines around the panes. Title bar = a man page header, the views strip =
+ * tmux's window list, status bar = vim's status line, bottom = Midnight Commander's F-keys.
+ */
+
+/* ---- Title bar ----------------------------------------------------------------------- */
+
+html[data-skin='mainframe'] .mf-titlebar {
+	position: relative;
+	z-index: 20;
+	display: flex;
+	flex-shrink: 0;
+	align-items: stretch;
+	height: var(--mf-row);
+	padding-left: 0;
+	background: var(--bg-0);
+	color: var(--text-1);
+	font-size: 14px;
+	white-space: nowrap;
+}
+html[data-skin='mainframe'] .mf-brand {
+	display: flex;
+	align-items: center;
+	padding: 0 10px;
+	background: var(--accent);
+	color: var(--on-accent);
+	font-family: var(--font-display);
+	letter-spacing: 0.06em;
+}
+html[data-skin='mainframe'] .mf-menubar {
+	display: flex;
+	align-items: stretch;
+	padding: 0 4px;
+}
+html[data-skin='mainframe'] .mf-menu-trigger {
+	display: flex;
+	align-items: center;
+	padding: 0 7px;
+	color: var(--text-0);
+	outline: none;
+}
+html[data-skin='mainframe'] .mf-menu-trigger:hover,
+html[data-skin='mainframe'] .mf-menu-trigger:focus-visible,
+html[data-skin='mainframe'] .mf-menu-trigger[data-state='open'] {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+html[data-skin='mainframe'] .mf-mnemonic {
+	text-decoration: underline;
+	text-underline-offset: 2px;
+	color: var(--accent);
+}
+html[data-skin='mainframe']
+	.mf-menu-trigger:is(:hover, :focus-visible, [data-state='open'])
+	.mf-mnemonic {
+	color: inherit;
+}
+/* `── ~/momentum-lab ──`: rules drawn as a 1px line at mid-height, not dashes of text. */
+html[data-skin='mainframe'] .mf-title-rule {
+	align-self: center;
+	flex: 1 1 24px;
+	min-width: 16px;
+	height: 0;
+	border-top: 1px solid var(--mf-line);
+	margin: 0 8px;
+}
+html[data-skin='mainframe'] .mf-title-path {
+	display: flex;
+	align-items: center;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: var(--text-0);
+}
+html[data-skin='mainframe'] .mf-prompt {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	width: min(360px, 26vw);
+	padding: 0 8px;
+	color: var(--text-2);
+	outline: none;
+	border-left: 1px solid var(--mf-line);
+	border-right: 1px solid var(--mf-line);
+}
+html[data-skin='mainframe'] .mf-prompt:hover,
+html[data-skin='mainframe'] .mf-prompt:focus-visible {
+	background: var(--bg-2);
+	color: var(--text-1);
+}
+html[data-skin='mainframe'] .mf-prompt-colon {
+	color: var(--accent);
+}
+html[data-skin='mainframe'] .mf-prompt-text {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+html[data-skin='mainframe'] .mf-prompt-key {
+	margin-left: auto;
+	color: var(--text-2);
+}
+html[data-skin='mainframe'] .mf-cursor {
+	flex-shrink: 0;
+	width: 0.55em;
+	height: 1em;
+	background: var(--accent);
+	animation: mf-blink 1.06s steps(1) infinite;
+}
+html[data-skin='mainframe'] .mf-prompt:not(:hover) .mf-cursor {
+	opacity: 0.75;
+}
+html[data-skin='mainframe'] .mf-title-actions {
+	display: flex;
+	align-items: stretch;
+	gap: 2px;
+	padding: 0 6px;
+}
+html[data-skin='mainframe'] .mf-title-actions > button:not(.mf-toggle) {
+	align-self: center;
+	height: 20px;
+	border: 0;
+	background: none;
+}
+html[data-skin='mainframe'] .mf-toggle {
+	display: flex;
+	align-items: center;
+	padding: 0 5px;
+	color: var(--text-2);
+	outline: none;
+}
+html[data-skin='mainframe'] .mf-toggle::before {
+	content: '[';
+}
+html[data-skin='mainframe'] .mf-toggle::after {
+	content: ']';
+}
+html[data-skin='mainframe'] .mf-toggle:hover {
+	color: var(--text-0);
+}
+html[data-skin='mainframe'] .mf-toggle.mf-rev:hover {
+	color: var(--on-accent);
+}
+html[data-skin='mainframe'] .mf-winbtn {
+	display: flex;
+	align-items: center;
+	padding: 0 7px;
+	color: var(--text-1);
+	outline: none;
+}
+html[data-skin='mainframe'] .mf-winbtn:hover,
+html[data-skin='mainframe'] .mf-winbtn:focus-visible {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+html[data-skin='mainframe'] .mf-winbtn[data-action='close']:hover,
+html[data-skin='mainframe'] .mf-winbtn[data-action='close']:focus-visible {
+	background: var(--down);
+	color: var(--bg-0);
+}
+
+/* ---- Views strip: tmux's window list `[0] 1:files* 2:search 3:git+2` ------------------ */
+
+html[data-skin='mainframe'] [data-part='activity-row'] {
+	padding: 0;
+}
+html[data-skin='mainframe'] nav[data-part='activity'] {
+	height: var(--mf-row);
+	gap: 0;
+	padding: 0;
+	background: color-mix(in oklab, var(--accent) 16%, var(--bg-0));
+	color: var(--text-0);
+	font-size: 14px;
+}
+html[data-skin='mainframe'] nav[data-part='activity']::before {
+	content: '[0]';
+	position: static;
+	inset: auto;
+	display: flex;
+	align-items: center;
+	padding: 0 10px 0 8px;
+	border: 0;
+	color: var(--accent);
+	opacity: 1;
+}
+html[data-skin='mainframe'] [data-part='activity-item'] {
+	height: 100%;
+	gap: 0;
+	padding: 0 7px;
+	color: var(--text-1);
+	text-transform: lowercase;
+}
+html[data-skin='mainframe'] [data-part='activity-item']:hover {
+	background: color-mix(in oklab, var(--accent) 22%, transparent);
+	color: var(--text-0);
+}
+html[data-skin='mainframe'] [data-part='activity-item'][data-index]::before {
+	content: attr(data-index) ':';
+}
+html[data-skin='mainframe']
+	[data-part='activity-item']:not([data-index])
+	[data-part='activity-label']::before {
+	content: '[';
+}
+html[data-skin='mainframe']
+	[data-part='activity-item']:not([data-index])
+	[data-part='activity-label']::after {
+	content: ']';
+}
+html[data-skin='mainframe'] [data-part='activity-item'][data-active='true'] {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+html[data-skin='mainframe'] [data-part='activity-item'][data-index][data-active='true']::after {
+	content: '*';
+}
+html[data-skin='mainframe'] [data-part='activity-item'] .skin-icon {
+	display: none;
+}
+html[data-skin='mainframe'] [data-part='activity-label'] {
+	font-size: inherit;
+}
+html[data-skin='mainframe'] [data-part='activity-badge'] {
+	height: auto;
+	min-width: 0;
+	padding: 0;
+	background: none;
+	color: var(--warn);
+	font-family: inherit;
+	font-size: inherit;
+	font-weight: 400;
+}
+html[data-skin='mainframe'] [data-part='activity-badge']::before {
+	content: '+';
+}
+html[data-skin='mainframe']
+	[data-part='activity-item'][data-active='true']
+	[data-part='activity-badge'] {
+	color: inherit;
+}
+html[data-skin='mainframe'] nav[data-part='activity']:focus-within::before {
+	border: 0;
+}
