@@ -5,7 +5,7 @@ import { type JSX, useState } from 'react';
 
 import { useProblems } from '../features/problems/problems-store';
 import { ProblemsView } from '../features/problems/ProblemsView';
-import { closeTerminal, newTerminal, useTerminalStore } from '../features/terminal/terminal-store';
+import { newTerminal, useTerminalStore } from '../features/terminal/terminal-store';
 import { PRESETS_KEY, TerminalPane } from '../features/terminal/TerminalPane';
 import { cn } from '../lib/cn';
 import { call } from '../lib/ipc';
@@ -14,6 +14,7 @@ import { useRegisterOverlay } from '../stores/overlay-store';
 import { EmptyState } from '../ui/EmptyState';
 import { IconButton } from '../ui/IconButton';
 import { shortcutFor } from './commands/run';
+import { TerminalTabs } from './TerminalTabs';
 
 function PresetMenu(): JSX.Element {
 	const [open, setOpen] = useState(false);
@@ -115,46 +116,7 @@ export function BottomPanel(): JSX.Element {
 					<TabButton tab='terminal' label='Terminal' />
 					<TabButton tab='problems' label='Problems' count={problems} />
 				</div>
-				{tab === 'terminal' && (
-					<div className='ml-2 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto'>
-						{terms.map((t) => (
-							<div
-								key={t.id}
-								className={cn(
-									'group flex h-6 shrink-0 cursor-default items-center gap-1.5 rounded-md border pr-0.5 pl-2 font-mono text-11 transition-colors transition-fast',
-									t.id === activeTerm
-										? 'border-accent/40 bg-accent-faint text-fg-0'
-										: 'border-transparent text-fg-2 hover:bg-bg-3/50 hover:text-fg-1',
-								)}
-								onClick={() => useTerminalStore.getState().setActive(t.id)}
-								onAuxClick={(e) => e.button === 1 && closeTerminal(t.id)}
-							>
-								<span
-									className={cn(
-										'size-1.5 rounded-full',
-										t.role === 'repl'
-											? 'bg-accent-2'
-											: t.role === 'run'
-												? 'bg-up'
-												: 'bg-accent',
-									)}
-								/>
-								{t.title}
-								<button
-									type='button'
-									aria-label={`Kill ${t.title}`}
-									onClick={(e) => {
-										e.stopPropagation();
-										closeTerminal(t.id);
-									}}
-									className='rounded-sm p-0.5 opacity-0 group-hover:opacity-100 hover:bg-bg-3'
-								>
-									<X size={11} />
-								</button>
-							</div>
-						))}
-					</div>
-				)}
+				{tab === 'terminal' && <TerminalTabs />}
 				{tab !== 'terminal' && <span className='flex-1' />}
 				<div className='flex shrink-0 items-center gap-0.5'>
 					{tab === 'terminal' && (
