@@ -45,6 +45,20 @@ export function SnapOptionsPanel({
 		{ key: 'watermark', label: 'Watermark' },
 	];
 
+	// A focused button that becomes disabled drops focus to <body>, so hand it to a live sibling.
+	const smallerRef = useRef<HTMLButtonElement>(null);
+	const largerRef = useRef<HTMLButtonElement>(null);
+	const stepFontSize = (delta: 1 | -1): void => {
+		const next = Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, fontSize + delta));
+		if (next <= FONT_SIZE_MIN) largerRef.current?.focus();
+		else if (next >= FONT_SIZE_MAX) smallerRef.current?.focus();
+		onChange({ fontSize: next });
+	};
+	const resetFontSize = (): void => {
+		largerRef.current?.focus();
+		onChange({ fontSize: null });
+	};
+
 	// Roving focus for the background radio group: one tab stop, arrows move and select.
 	const swatchRefs = useRef(new Map<string, HTMLButtonElement>());
 	const activeIndex = BACKGROUNDS.findIndex((bg) => bg.id === options.background);
@@ -130,36 +144,35 @@ export function SnapOptionsPanel({
 				<h3 className='hud mb-2'>Font size</h3>
 				<div className='flex items-center gap-1'>
 					<IconButton
+						ref={smallerRef}
 						size='sm'
 						label='Smaller text'
 						icon={<Minus size={13} />}
 						disabled={fontSize <= FONT_SIZE_MIN}
-						onClick={() =>
-							onChange({ fontSize: Math.max(FONT_SIZE_MIN, fontSize - 1) })
-						}
+						onClick={() => stepFontSize(-1)}
 					/>
 					<span className='num w-12 text-center text-13 text-fg-0'>
 						{fontSize}
 						<span className='text-fg-2'>px</span>
 					</span>
 					<IconButton
+						ref={largerRef}
 						size='sm'
 						label='Larger text'
 						icon={<Plus size={13} />}
 						disabled={fontSize >= FONT_SIZE_MAX}
-						onClick={() =>
-							onChange({ fontSize: Math.min(FONT_SIZE_MAX, fontSize + 1) })
-						}
+						onClick={() => stepFontSize(1)}
 					/>
-					{options.fontSize !== null && (
-						<IconButton
-							size='sm'
-							label='Match the editor'
-							icon={<RotateCcw size={12} />}
-							onClick={() => onChange({ fontSize: null })}
-							className='ml-auto'
-						/>
-					)}
+					{/* Stays mounted (hidden) so resetting never unmounts the focused button. */}
+					<IconButton
+						size='sm'
+						label='Match the editor'
+						icon={<RotateCcw size={12} />}
+						disabled={options.fontSize === null}
+						aria-hidden={options.fontSize === null || undefined}
+						onClick={resetFontSize}
+						className={cn('ml-auto', options.fontSize === null && 'invisible')}
+					/>
 				</div>
 			</section>
 
