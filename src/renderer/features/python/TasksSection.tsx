@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { Play, RefreshCw } from 'lucide-react';
+import { Play } from 'lucide-react';
 import type { JSX } from 'react';
 
 import { useWorkspace } from '../../app/hooks/use-workspace';
 import { call } from '../../lib/ipc';
-import { IconButton } from '../../ui/IconButton';
 import { Spinner } from '../../ui/Spinner';
 import { runInTerminal } from '../terminal/terminal-store';
+import { RefreshButton } from './RefreshButton';
 import { RunSection } from './RunSection';
 import { SectionError } from './SectionError';
 import { tasksKey } from './task-files';
@@ -23,10 +23,9 @@ export function TasksSection(): JSX.Element {
 		<RunSection
 			title='Tasks'
 			action={
-				<IconButton
-					size='sm'
+				<RefreshButton
 					label='Rescan tasks'
-					icon={<RefreshCw size={12} />}
+					busy={tasks.isFetching}
 					onClick={() => void tasks.refetch()}
 				/>
 			}

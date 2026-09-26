@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { Boxes, FlaskConical, RefreshCw } from 'lucide-react';
+import { Boxes, FlaskConical } from 'lucide-react';
 import { type JSX, useMemo, useState } from 'react';
 
 import { useWorkspace } from '../../app/hooks/use-workspace';
 import { call } from '../../lib/ipc';
-import { IconButton } from '../../ui/IconButton';
 import { Input } from '../../ui/Input';
+import { RefreshButton } from './RefreshButton';
 import { RunSection } from './RunSection';
 import { pythonKeys, useSelectedPython } from './use-python';
 
@@ -64,10 +64,9 @@ export function PackagesSection(): JSX.Element {
 		<RunSection
 			title={`Packages${packages.data ? ` · ${packages.data.length}` : ''}`}
 			action={
-				<IconButton
-					size='sm'
+				<RefreshButton
 					label='Refresh packages'
-					icon={<RefreshCw size={12} />}
+					busy={packages.isFetching}
 					onClick={() => void packages.refetch()}
 				/>
 			}

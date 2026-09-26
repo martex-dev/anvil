@@ -1,16 +1,16 @@
-import { useQuery } from '@tanstack/react-query';
-import { RefreshCw } from 'lucide-react';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import type { JSX } from 'react';
 
 import { useWorkspace } from '../../app/hooks/use-workspace';
 import { cn } from '../../lib/cn';
 import { call } from '../../lib/ipc';
+import { toast } from '../../stores/toast-store';
 import { Button } from '../../ui/Button';
-import { IconButton } from '../../ui/IconButton';
 import { Spinner } from '../../ui/Spinner';
 import { runInTerminal } from '../terminal/terminal-store';
+import { RefreshButton } from './RefreshButton';
 import { RunSection } from './RunSection';
-import { pickPythonEnv, pythonKeys, useSelectedPython } from './use-python';
+import { pickPythonEnv, pythonKeys, rescanPythonEnvs, useSelectedPython } from './use-python';
 
 /** The folder's interpreter, its dev tools, or a way to create a venv. */
 export function InterpreterSection(): JSX.Element {
@@ -22,15 +22,18 @@ export function InterpreterSection(): JSX.Element {
 		enabled: Boolean(env),
 		staleTime: 60_000,
 	});
+	const rescan = useMutation({
+		mutationFn: () => rescanPythonEnvs(info.root),
+		onError: (error) => toast.error('Could not rescan interpreters', error.message),
+	});
 	return (
 		<RunSection
 			title='Interpreter'
 			action={
-				<IconButton
-					size='sm'
+				<RefreshButton
 					label='Rescan interpreters'
-					icon={<RefreshCw size={12} />}
-					onClick={() => void pickPythonEnv()}
+					busy={rescan.isPending}
+					onClick={() => rescan.mutate()}
 				/>
 			}
 		>

@@ -37,6 +37,15 @@ export function useSelectedPython(): { env: PythonEnv | null; isLoading: boolean
 	return { env: q.data ?? null, isLoading: q.isLoading };
 }
 
+/** Rediscovers the interpreters (a venv made outside Anvil, a new install) and re-resolves. */
+export async function rescanPythonEnvs(root: string | null): Promise<void> {
+	await call('python:envs', { refresh: true });
+	await Promise.all([
+		queryClient.invalidateQueries({ queryKey: pythonKeys.selected(root) }),
+		queryClient.invalidateQueries({ queryKey: pythonKeys.envs(root) }),
+	]);
+}
+
 const KIND_LABEL: Record<PythonEnv['kind'], string> = {
 	venv: 'venv',
 	uv: 'uv',
