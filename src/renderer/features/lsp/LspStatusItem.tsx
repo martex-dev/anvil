@@ -30,7 +30,8 @@ export function LspStatusItem(): JSX.Element | null {
 			type='button'
 			onClick={() => void restart(active)}
 			title={`${title}\nClick to restart language servers`}
-			className='flex items-center gap-1.5 rounded-sm px-1 text-fg-1 hover:bg-bg-3 hover:text-fg-0 focus-visible:shadow-glow focus-visible:outline-none'
+			// Same look as the status bar's other clickable items (StatusBar.tsx `Item`).
+			className='flex h-full items-center gap-1.5 rounded-sm px-1.5 whitespace-nowrap outline-none transition-colors transition-fast hover:bg-bg-3/60 hover:text-fg-0 focus-visible:shadow-glow'
 			data-lsp-status={active.map((l) => `${l}:${status[l].state}`).join(',')}
 		>
 			<Braces size={12} />
