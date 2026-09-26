@@ -52,7 +52,8 @@ export function CommitBox({
 		if (message.trim()) setConfirmReplace(true);
 		else generate();
 	};
-	const canCommit = message.trim().length > 0 && stagedCount > 0 && !busy;
+	// Not while the AI is still streaming: that would commit a half-written message.
+	const canCommit = message.trim().length > 0 && stagedCount > 0 && !busy && !writing;
 
 	const submit = (): void => {
 		if (!canCommit) return;
