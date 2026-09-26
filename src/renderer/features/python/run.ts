@@ -6,9 +6,9 @@ import { useEditorStore } from '../editor/editor-store';
 import { isScratch, saveFile } from '../editor/file-ops';
 import {
 	closeTerminal,
+	findRoleTab,
 	runInTerminal,
 	showRoleTerminal,
-	useTerminalStore,
 } from '../terminal/terminal-store';
 import { cellAt, cellCode, cellCodeLine, findCells, needsStaging, replText } from './cells';
 
@@ -118,7 +118,7 @@ export async function runSelection(): Promise<void> {
 
 /** Kills the REPL (and its namespace) and starts a clean one. */
 export async function restartRepl(): Promise<void> {
-	const repl = useTerminalStore.getState().tabs.find((t) => t.role === 'repl');
+	const repl = findRoleTab('repl');
 	if (repl) closeTerminal(repl.id);
 	await sendToRepl('print("REPL ready")');
 }

@@ -4,6 +4,7 @@ import type { TerminalPresetId } from '@shared/ipc/channels/terminal';
 
 import { call } from '../../lib/ipc';
 import { rlog } from '../../lib/log';
+import { queryClient } from '../../lib/query-client';
 import { useLayoutStore } from '../../stores/layout-store';
 import { toast } from '../../stores/toast-store';
 
@@ -14,6 +15,11 @@ export interface TermTab {
 	title: string;
 	/** Reusable role: 'run' (Run File), 'repl' (Python REPL), 'task:<id>'. */
 	role?: string;
+	/**
+	 * The folder a role terminal was opened for. Its shell's cwd and venv were fixed at spawn, so
+	 * after switching folders it must not be reused for that folder's Run / REPL / tasks.
+	 */
+	root?: string;
 	/** Typed once when the session starts; cleared after. */
 	initialCommand?: string;
 }
@@ -51,11 +57,12 @@ function load(): TermTab[] {
 				(t): t is TermTab =>
 					typeof t === 'object' && t !== null && typeof (t as TermTab).id === 'string',
 			)
-			.map(({ id, preset, title, role }) => ({
+			.map(({ id, preset, title, role, root }) => ({
 				id,
 				preset,
 				title,
 				...(role ? { role } : {}),
+				...(typeof root === 'string' ? { root } : {}),
 			}));
 	} catch {
 		return [];
@@ -86,6 +93,7 @@ export const useTerminalStore = create<TerminalState>((set) => ({
 							preset: t.preset,
 							title: t.title,
 							...(t.role ? { role: t.role } : {}),
+							...(t.root !== undefined ? { root: t.root } : {}),
 						}
 					: t,
 			),
@@ -103,7 +111,13 @@ useTerminalStore.subscribe((s) => {
 		localStorage.setItem(
 			KEY,
 			JSON.stringify(
-				s.tabs.map(({ id, preset, title, role }) => ({ id, preset, title, role })),
+				s.tabs.map(({ id, preset, title, role, root }) => ({
+					id,
+					preset,
+					title,
+					role,
+					root,
+				})),
 			),
 		);
 	} catch {
@@ -112,6 +126,17 @@ useTerminalStore.subscribe((s) => {
 });
 
 const newId = (): string => `anvil-${crypto.randomUUID()}`;
+
+/** The open folder ('' when none), which role terminals are keyed by. */
+function currentRoot(): string {
+	return queryClient.getQueryData<{ root: string | null }>(['workspace'])?.root ?? '';
+}
+
+/** The terminal that has `role` for the open folder, if any. */
+export function findRoleTab(role: string): TermTab | undefined {
+	const root = currentRoot();
+	return useTerminalStore.getState().tabs.find((t) => t.role === role && (t.root ?? '') === root);
+}
 
 export function newTerminal(preset: TerminalPresetId, title?: string): void {
 	const n = useTerminalStore.getState().tabs.filter((t) => t.preset === preset).length + 1;
@@ -145,7 +170,7 @@ export async function runInTerminal(options: {
 }): Promise<void> {
 	const store = useTerminalStore.getState();
 	useLayoutStore.getState().showPanel('terminal');
-	const existing = store.tabs.find((t) => t.role === options.role);
+	const existing = findRoleTab(options.role);
 	if (existing) {
 		store.setActive(existing.id);
 		let alive: boolean;
@@ -173,6 +198,7 @@ export async function runInTerminal(options: {
 		preset: options.preset,
 		title: options.title,
 		role: options.role,
+		root: currentRoot(),
 		initialCommand: options.command,
 	});
 }
@@ -191,9 +217,9 @@ export function showRoleTerminal(options: {
 }): void {
 	const store = useTerminalStore.getState();
 	useLayoutStore.getState().showPanel('terminal');
-	const existing = store.tabs.find((t) => t.role === options.role);
+	const existing = findRoleTab(options.role);
 	if (!existing) {
-		store.add({ id: newId(), ...options });
+		store.add({ id: newId(), ...options, root: currentRoot() });
 		return;
 	}
 	store.setActive(existing.id);
@@ -205,5 +231,5 @@ export function showRoleTerminal(options: {
 
 /** Whether a role's terminal has a live session (the REPL namespace survives between runs). */
 export function hasRole(role: string): boolean {
-	return useTerminalStore.getState().tabs.some((t) => t.role === role);
+	return findRoleTab(role) !== undefined;
 }
