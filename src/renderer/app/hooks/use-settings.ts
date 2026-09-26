@@ -10,6 +10,7 @@ import { palettePatch, resolveLook } from '../../skins/look';
 import { useLookStore } from '../../skins/look-store';
 import { skinById } from '../../skins/registry';
 import { toast } from '../../stores/toast-store';
+import { syncWindowChrome } from '../window-chrome';
 
 export const SETTINGS_KEY = ['settings'] as const;
 
@@ -50,6 +51,19 @@ export function useApplySettings(): void {
 	useEffect(() => {
 		applyAppearance(settings);
 	}, [settings]);
+	useEffect(() => {
+		// Coalesced like the editor refresh: the theme picker fires one event per keypress.
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const sync = (): void => {
+			clearTimeout(timer);
+			timer = setTimeout(syncWindowChrome, 60);
+		};
+		window.addEventListener('anvil:appearance', sync);
+		return () => {
+			clearTimeout(timer);
+			window.removeEventListener('anvil:appearance', sync);
+		};
+	}, []);
 }
 
 /** Skin, palette, accent, fonts and effects onto <html>; editors and terminals re-read after. */

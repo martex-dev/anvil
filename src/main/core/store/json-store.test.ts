@@ -1,8 +1,8 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
 import { JsonStore } from './json-store';
@@ -53,8 +53,34 @@ describe('JsonStore', () => {
 		expect(existsSync(`${file}.corrupt`)).toBe(true);
 	});
 
+	it('reports a file that parses but is not an object before moving it aside', () => {
+		writeFileSync(file, '[1, 2]');
+		const issues: string[] = [];
+		new JsonStore(file, (key) => issues.push(key));
+		expect(issues).toEqual(['<file>']);
+		expect(existsSync(`${file}.corrupt`)).toBe(true);
+	});
+
 	it('rejects invalid writes', () => {
 		const store = new JsonStore(file);
 		expect(() => store.set('n', z.number(), 'no' as unknown as number)).toThrow();
+	});
+
+	it('reports a failed background write and retries instead of throwing', () => {
+		vi.useFakeTimers();
+		try {
+			// A directory where the temp file should go makes the write fail.
+			mkdirSync(`${file}.tmp`);
+			const errors: unknown[] = [];
+			const store = new JsonStore(file, undefined, 10, (e) => errors.push(e));
+			store.set('a', z.number(), 1);
+			vi.advanceTimersByTime(10);
+			expect(errors).toHaveLength(1);
+			rmSync(`${file}.tmp`, { recursive: true });
+			vi.advanceTimersByTime(1_000);
+			expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({ a: 1 });
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });

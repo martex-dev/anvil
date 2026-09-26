@@ -10,6 +10,7 @@ const e = (path: string, kind: FsEntry['kind'] = 'file'): FsEntry => ({
 	name: path.split('/').at(-1) ?? path,
 	path,
 	kind,
+	isLink: false,
 	size: 0,
 	mtimeMs: 0,
 });

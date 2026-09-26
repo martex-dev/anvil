@@ -3,6 +3,52 @@
 What changed in each release of Anvil. The release workflow publishes a version's section as
 its GitHub release notes.
 
+## [0.2.7] - 2026-09-26
+
+Core, IPC, settings and language servers: 39 fixes from the full bug sweep of 0.2.0.
+
+### Fixed
+
+- **settings:** Validate stored settings per field
+- **settings:** Report when the log folder cannot be opened
+- **core:** Keep starting features when one data folder fails
+- **core:** Tell the user which module failed to start
+- **lsp:** Actually kill language servers on linux and macos
+- **secrets:** Recover from a corrupt secrets file
+- **core:** Surface failures to open external links
+- **settings:** Retry failed background settings writes
+- **settings:** Log when settings.json is not a json object
+- **update:** Classify offline and not-published errors precisely
+- **settings:** Match the window background to the palette, so light looks start without a dark flash (the skins draw the window buttons themselves)
+- **core:** Show the window and explain when the interface fails
+- **core:** Remember window size, position and maximized state
+- **explorer:** Let symlinked and junctioned folders expand
+- **editor:** Keep a file's utf-8 bom when saving
+- **editor:** Keep windows-1252 files intact when saving
+- **explorer:** Explain locked and failed file operations clearly
+- **explorer:** Stop delete and rename from reaching through outside links
+- **explorer:** Tell the user when file watching fails
+- **explorer:** Keep watching out, dist and build data folders
+- **core:** Forget a recent folder without restarting services
+- **lsp:** Stop a crashed language server from crashing the main process
+- **lsp:** Report language servers that fail to start
+- **lsp:** Only run a folder's own typescript after opting in
+- **core:** Run a single anvil per profile
+- **core:** Explain fatal startup errors in a dialog
+- **core:** Quit within five seconds and always save settings
+- **core:** Keep delivering events when one subscriber throws
+- **lsp:** Start language servers for drive-root and network-share folders
+- **lsp:** Add restart language servers to the command palette
+- **lsp:** Stop the starting pulse when reduce motion is on
+- **lsp:** Match the language server item to the other status bar items
+- **lsp:** Say each language server's state, not only its dot colour
+- **lsp:** Restart only the chosen servers and clean up failed ones
+- **terminal:** Open http links to local notebook and dashboard servers
+- **settings:** Keep other settings when one setting changes
+- **editor:** Stop flagging pkg_, secretary and seed_file names as secrets
+- **git:** Show real paths for non-ascii files in the secret warning
+- **git:** Report the right line after a no-newline marker
+
 ## [0.2.6] - 2026-09-26
 
 Explorer, welcome, snippets and templates: 38 fixes from the full bug sweep of 0.2.0.

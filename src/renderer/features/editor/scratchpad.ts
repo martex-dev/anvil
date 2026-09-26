@@ -89,6 +89,8 @@ export function openScratch(monaco: MonacoApi): void {
 			},
 		},
 		viewStates: new Map(),
+		bom: false,
+		encoding: 'utf8',
 	});
 	store.add({
 		path: SCRATCH_PATH,

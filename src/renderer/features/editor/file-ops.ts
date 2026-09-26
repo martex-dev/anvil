@@ -66,6 +66,8 @@ export async function openFile(monaco: MonacoApi, root: string, path: string): P
 			savedVersion: model.getAlternativeVersionId(),
 			listener: model.onDidChangeContent(() => markDirty(path)),
 			viewStates: new Map(),
+			bom: file.bom,
+			encoding: file.encoding,
 		};
 		tracked.set(path, t);
 		store.update(path, { state: 'ready', mtimeMs: file.mtimeMs });
@@ -122,6 +124,8 @@ async function writeBuffer(path: string, force: boolean): Promise<boolean> {
 		const { mtimeMs } = await call('fs:writeFile', {
 			path,
 			content: t.model.getValue(),
+			bom: t.bom,
+			encoding: t.encoding,
 			...(force ? {} : { expectedMtimeMs: file.mtimeMs }),
 		});
 		t.savedVersion = version;
@@ -165,6 +169,9 @@ function applyDiskVersion(path: string, t: Tracked, file: FileContent, version: 
 	// An edit (not setValue) keeps the reload undoable.
 	if (file.content !== t.model.getValue()) replaceText(t.model, file.content);
 	t.savedVersion = t.model.getAlternativeVersionId();
+	// The next save writes the bytes the way the disk version has them now.
+	t.bom = file.bom;
+	t.encoding = file.encoding;
 	useEditorStore.getState().update(path, { mtimeMs: file.mtimeMs, changedOnDisk: false });
 	markDirty(path);
 }

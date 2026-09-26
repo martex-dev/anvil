@@ -1,9 +1,10 @@
-import { dirname, relative, sep } from 'node:path';
+import { existsSync } from 'node:fs';
+import { dirname, join, relative, sep } from 'node:path';
 
 import { type FSWatcher, watch } from 'chokidar';
 
-/** Heavy or generated folders that would flood the watcher and the tree. */
-export const IGNORED_DIRS = new Set([
+/** Heavy or generated folders that would flood the watcher and the tree, at any depth. */
+const ALWAYS_IGNORED = new Set([
 	'node_modules',
 	'.git',
 	'.venv',
@@ -12,18 +13,53 @@ export const IGNORED_DIRS = new Set([
 	'.pytest_cache',
 	'.ruff_cache',
 	'.mypy_cache',
-	'out',
-	'dist',
-	'build',
 	'.next',
 	'.turbo',
 	'.cache',
 ]);
 
-export function isIgnoredPath(root: string, abs: string): boolean {
+/** Folder names that are build output in JS/Python projects, but often data folders elsewhere. */
+const BUILD_OUTPUT = ['out', 'dist', 'build'];
+
+/** Everything search skips (it has no per-project context, and build output is noise there). */
+export const IGNORED_DIRS: ReadonlySet<string> = new Set([...ALWAYS_IGNORED, ...BUILD_OUTPUT]);
+
+/**
+ * Top-level folders to treat as build output, based on the project files in the root. A research
+ * script writing results to out/ or build/ elsewhere must still be watched.
+ */
+export function buildOutputDirs(root: string): ReadonlySet<string> {
+	const has = (name: string): boolean => existsSync(join(root, name));
+	if (has('package.json') || has('tsconfig.json')) return new Set(BUILD_OUTPUT);
+	if (has('pyproject.toml') || has('setup.py') || has('setup.cfg')) {
+		return new Set(['dist', 'build']);
+	}
+	return new Set();
+}
+
+export function isIgnoredPath(
+	root: string,
+	abs: string,
+	buildDirs: ReadonlySet<string> = new Set(),
+): boolean {
 	const rel = relative(root, abs);
 	if (!rel || rel.startsWith('..')) return false;
-	return rel.split(sep).some((part) => IGNORED_DIRS.has(part));
+	const parts = rel.split(sep);
+	if (buildDirs.has(parts[0] ?? '')) return true;
+	return parts.some((part) => ALWAYS_IGNORED.has(part));
+}
+
+/** A user-facing reason for a watch error. Never includes paths (they can be absolute). */
+export function describeWatchError(error: unknown): string {
+	const code =
+		error instanceof Error && 'code' in error && typeof error.code === 'string'
+			? error.code
+			: '';
+	if (code === 'EPERM' || code === 'EACCES')
+		return 'A folder could not be watched (no permission)';
+	if (code === 'EMFILE' || code === 'ENFILE' || code === 'ENOSPC')
+		return 'The folder has too many files to watch';
+	return code ? `Watching for changes failed (${code})` : 'Watching for changes failed';
 }
 
 export interface WatchBatch {
@@ -51,9 +87,10 @@ export class WorkspaceWatcher {
 	start(root: string): void {
 		void this.stop();
 		const toRel = (abs: string): string => relative(root, abs).split(sep).join('/');
+		const buildDirs = buildOutputDirs(root);
 		this.watcher = watch(root, {
 			ignoreInitial: true,
-			ignored: (path) => isIgnoredPath(root, path),
+			ignored: (path) => isIgnoredPath(root, path, buildDirs),
 			// Polling-free on Windows (ReadDirectoryChangesW); atomic saves from other editors coalesce.
 			atomic: true,
 		});

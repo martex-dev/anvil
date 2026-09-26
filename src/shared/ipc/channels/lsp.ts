@@ -14,6 +14,8 @@ export const LspStartResultSchema = z.object({
 	/** Monaco language ids the server handles. */
 	languageIds: z.array(z.string()),
 	initializationOptions: z.record(z.string(), z.unknown()),
+	/** Shown with the server's status, e.g. which TypeScript version it runs. */
+	notice: z.string().nullable(),
 });
 export type LspStartResult = z.infer<typeof LspStartResultSchema>;
 
@@ -29,6 +31,13 @@ export const lspChannels = defineChannels({
 		output: z.void(),
 	},
 	'lsp:stop': { input: z.object({ session: SessionSchema }), output: z.void() },
+	/** Whether the open folder has its own TypeScript, and whether the user chose to run it. */
+	'lsp:workspaceTs': {
+		input: z.void(),
+		output: z.object({ available: z.boolean(), enabled: z.boolean() }),
+	},
+	/** Per-folder opt-in: the workspace tsserver runs code from the folder's node_modules. */
+	'lsp:setWorkspaceTs': { input: z.object({ enabled: z.boolean() }), output: z.void() },
 });
 
 export const lspEvents = {

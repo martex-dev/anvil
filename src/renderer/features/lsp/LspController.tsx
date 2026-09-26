@@ -4,8 +4,8 @@ import { useWorkspace } from '../../app/hooks/use-workspace';
 import { onMonacoLoaded } from '../../lib/monaco/load';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { ensureClient, restart, stopAll } from './lsp-clients';
-import { useLspStatus } from './lsp-status';
-import { serverFor } from './lsp-status';
+import { serverFor, useLspStatus } from './lsp-status';
+import { isInWorkspace, type UriLike } from './workspace-match';
 
 /**
  * Headless (mounted once by the shell): starts a language server the first time a file of its
@@ -21,16 +21,10 @@ export function LspController(): null {
 
 	useEffect(() => {
 		if (!root) return;
-		const prefix = `${root.replace(/\\/g, '/').toLowerCase()}/`;
 		const disposers: Array<() => void> = [];
 		const offLoaded = onMonacoLoaded((monaco) => {
-			const consider = (model: {
-				uri: { scheme: string; path: string };
-				getLanguageId(): string;
-			}): void => {
-				// Monaco file URIs look like /c:/Users/...; compare without the leading slash.
-				const path = model.uri.path.replace(/^\/([a-zA-Z]:)/, '$1').toLowerCase();
-				if (model.uri.scheme !== 'file' || !path.startsWith(prefix)) return;
+			const consider = (model: { uri: UriLike; getLanguageId(): string }): void => {
+				if (!isInWorkspace(root, model.uri)) return;
 				const language = serverFor(model.getLanguageId());
 				if (language) void ensureClient(language);
 			};

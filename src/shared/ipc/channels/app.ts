@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { isSafeExternalUrl } from '../../external-url';
 import { defineChannels } from '../define';
 
 export const AppMetricsSchema = z.object({
@@ -10,6 +11,16 @@ export const AppMetricsSchema = z.object({
 });
 export type AppMetrics = z.infer<typeof AppMetricsSchema>;
 
+const HexColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Expected #rrggbb');
+
+/** The native window background, taken from the active palette's --bg-0. */
+export const WindowChromeSchema = z.object({ background: HexColorSchema });
+export type WindowChrome = z.infer<typeof WindowChromeSchema>;
+
+/** A main-process module that threw while starting; its panels will not work this session. */
+export const FeatureFailureSchema = z.object({ id: z.string(), message: z.string() });
+export type FeatureFailure = z.infer<typeof FeatureFailureSchema>;
+
 export const appChannels = defineChannels({
 	'app:getVersion': { input: z.void(), output: z.string() },
 	'app:getPlatform': { input: z.void(), output: z.string() },
@@ -17,9 +28,19 @@ export const appChannels = defineChannels({
 	'app:toggleFullScreen': { input: z.void(), output: z.boolean() },
 	'app:toggleDevTools': { input: z.void(), output: z.void() },
 	'app:metrics': { input: z.void(), output: AppMetricsSchema },
+	/** Modules that failed to start, so the shell can say which integration is down and why. */
+	'app:featureErrors': { input: z.void(), output: z.array(FeatureFailureSchema) },
+	/** Recolors the native window background to match the palette (and remembers it for launch). */
+	'app:setChrome': { input: WindowChromeSchema, output: z.void() },
 	/** Opens Anvil's log folder in Explorer. */
 	'app:openLogs': { input: z.void(), output: z.void() },
-	'app:openExternal': { input: z.url({ protocol: /^https$/ }), output: z.void() },
+	/** https anywhere, or http to localhost (notebook and dashboard servers); see external-url.ts. */
+	'app:openExternal': {
+		input: z
+			.url()
+			.refine(isSafeExternalUrl, 'Only https links, or http links to this computer'),
+		output: z.void(),
+	},
 	/** Renderer has no file logger; it forwards warnings/errors to main's electron-log. */
 	'app:log': {
 		input: z.object({

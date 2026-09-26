@@ -18,4 +18,6 @@ export const secretChannels = defineChannels({
 export const secretEvents = {
 	/** A secret was saved or removed (never carries the value). */
 	'secrets:changed': z.object({ key: SecretKeySchema, saved: z.boolean() }),
+	/** The encrypted file was unreadable and has been reset; saved keys must be re-entered. */
+	'secrets:reset': z.object({}),
 };

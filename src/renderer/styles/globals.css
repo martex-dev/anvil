@@ -375,13 +375,14 @@ html[data-reduce-motion='true'] .ambient::before {
 html[data-ambient='false'] .ambient::before {
 	display: none;
 }
-/* The shimmer sweep is a literal-duration loop the --dur-* tokens can't reach, so reduced motion
-   stops it outright; its static tint keeps the busy state visible. */
-html[data-reduce-motion='true'] .shimmer {
+/* Endless decorative loops (busy dots, shimmer) stop under the in-app Reduce motion setting as well
+   as the OS preference; zeroing the --dur-* tokens doesn't reach their fixed durations. The busy
+   state stays visible: the dot stays lit and the shimmer keeps its static tint. */
+html[data-reduce-motion='true'] :is(.pulse-dot, .shimmer, .animate-pulse) {
 	animation: none;
 }
 @media (prefers-reduced-motion: reduce) {
-	.shimmer {
+	:is(.pulse-dot, .shimmer, .animate-pulse) {
 		animation: none;
 	}
 }
@@ -429,16 +430,6 @@ html[data-reduce-motion='true'] .shimmer {
 		opacity: 0.35;
 	}
 }
-/* Same for the busy pulse (AI generating, ghost text status): it stays fully visible. */
-html[data-reduce-motion='true'] .pulse-dot {
-	animation: none;
-}
-@media (prefers-reduced-motion: reduce) {
-	.pulse-dot {
-		animation: none;
-	}
-}
-
 /* ---- Monaco & xterm skinning --------------------------------------------------------- */
 
 /* Ghost-text suggestions: dim and italic so they never read as real code. */

@@ -1,5 +1,7 @@
 import type * as Monaco from 'monaco-editor';
 
+import type { TextEncoding } from '@shared/ipc/channels/fs';
+
 import { minimalEdits } from '../../lib/minimal-edits';
 import type { MonacoApi } from '../../lib/monaco/setup';
 import { codeTabId, useTabsStore } from '../../stores/tabs-store';
@@ -16,6 +18,9 @@ export interface Tracked {
 	 * independent position in each.
 	 */
 	viewStates: Map<number, Monaco.editor.ICodeEditorViewState>;
+	/** The file on disk starts with a UTF-8 BOM / is not UTF-8; saves keep both. */
+	bom: boolean;
+	encoding: TextEncoding;
 }
 
 /** Open buffers by workspace-relative path. */

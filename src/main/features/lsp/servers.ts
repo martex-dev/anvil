@@ -21,10 +21,20 @@ function packageFile(pkg: string, file: string): string {
 	return path.replace(/\.asar([\\/])/, '.asar.unpacked$1');
 }
 
-/** Prefer the project's own TypeScript (its version and plugins), else the one Anvil ships. */
-export function tsserverPath(root: string): string {
+/** The project's own tsserver, if it has one. Running it runs code from the folder. */
+export function workspaceTsserver(root: string): string | null {
 	const local = join(root, 'node_modules', 'typescript', 'lib', 'tsserver.js');
-	return existsSync(local) ? local : packageFile('typescript', 'lib/tsserver.js');
+	return existsSync(local) ? local : null;
+}
+
+/**
+ * The TypeScript Anvil ships, unless the user chose the project's own version (its plugins and
+ * exact version) for this folder. Never automatic: opening a downloaded repository must not run
+ * its node_modules.
+ */
+export function tsserverPath(root: string, useWorkspace = false): string {
+	const local = useWorkspace ? workspaceTsserver(root) : null;
+	return local ?? packageFile('typescript', 'lib/tsserver.js');
 }
 
 export function serverLaunch(
@@ -32,6 +42,7 @@ export function serverLaunch(
 	root: string,
 	python: string | null = null,
 	baseEnv = process.env,
+	useWorkspaceTs = false,
 ): ServerLaunch {
 	if (language === 'python') {
 		// basedpyright finds site-packages by asking `python`; put the chosen interpreter first.
@@ -52,6 +63,6 @@ export function serverLaunch(
 		args: ['--stdio'],
 		env: { ...baseEnv, ELECTRON_RUN_AS_NODE: '1' },
 		languageIds: ['typescript', 'typescriptreact', 'javascript', 'javascriptreact'],
-		initializationOptions: { tsserver: { path: tsserverPath(root) } },
+		initializationOptions: { tsserver: { path: tsserverPath(root, useWorkspaceTs) } },
 	};
 }

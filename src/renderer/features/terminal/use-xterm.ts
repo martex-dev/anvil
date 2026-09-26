@@ -96,9 +96,10 @@ export function useXterm(
 		term.unicode.activeVersion = '11';
 		term.loadAddon(
 			new WebLinksAddon((_event, uri) => {
-				call('app:openExternal', uri).catch((e: unknown) =>
-					rlog.warn('terminal', 'open link failed', e),
-				);
+				call('app:openExternal', uri).catch((e: unknown) => {
+					rlog.warn('terminal', 'open link failed', e);
+					toast.error('Could not open link', uri);
+				});
 			}),
 		);
 		term.open(host);

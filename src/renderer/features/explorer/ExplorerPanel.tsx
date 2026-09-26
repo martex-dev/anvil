@@ -9,7 +9,7 @@ import { IconButton } from '../../ui/IconButton';
 import { Spinner } from '../../ui/Spinner';
 import { FileTree, type FileTreeHandle } from './FileTree';
 import { NoFolder } from './NoFolder';
-import { closeFolder } from './workspace-actions';
+import { closeFolder, refreshExplorer } from './workspace-actions';
 
 export function ExplorerPanel(): JSX.Element {
 	const { info, isLoading, error, refetch } = useWorkspace();
@@ -63,7 +63,7 @@ export function ExplorerPanel(): JSX.Element {
 					label='Refresh'
 					aria-busy={refreshing}
 					icon={refreshing ? <Spinner size={12} /> : <RefreshCw size={13} />}
-					onClick={() => treeRef.current?.refresh()}
+					onClick={refreshExplorer}
 				/>
 				<IconButton
 					size='sm'

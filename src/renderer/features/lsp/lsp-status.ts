@@ -40,3 +40,16 @@ export function serverFor(languageId: string): LspLanguage | null {
 	if (/^(typescript|javascript)(react)?$/.test(languageId)) return 'typescript';
 	return null;
 }
+
+const STATE_LABEL: Record<LspState, string> = {
+	idle: 'stopped',
+	starting: 'starting',
+	ready: 'ready',
+	error: 'failed',
+};
+
+/** One language's state in words, with the failure reason when there is one. */
+export function describeLanguage(language: LspLanguage, status: LanguageStatus): string {
+	const base = `${LANGUAGE_LABEL[language]} language server ${STATE_LABEL[status.state]}`;
+	return status.message ? `${base}: ${status.message}` : base;
+}

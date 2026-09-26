@@ -2,6 +2,7 @@ import { AI_COMMANDS } from '../../features/ai/commands';
 import { EDITOR_COMMANDS } from '../../features/editor/commands';
 import { EXPLORER_COMMANDS } from '../../features/explorer/commands';
 import { GIT_COMMANDS } from '../../features/git/commands';
+import { LSP_COMMANDS } from '../../features/lsp/commands';
 import { PYTHON_COMMANDS } from '../../features/python/commands';
 import { TERMINAL_COMMANDS } from '../../features/terminal/commands';
 import { APPEARANCE_COMMANDS } from '../../features/themes/commands';
@@ -23,6 +24,7 @@ export const ALL_COMMANDS: readonly Command[] = [
 	...TOOL_COMMANDS,
 	...APPEARANCE_COMMANDS,
 	...TOOLBOX_COMMANDS,
+	...LSP_COMMANDS,
 ];
 
 setCommands(ALL_COMMANDS);
