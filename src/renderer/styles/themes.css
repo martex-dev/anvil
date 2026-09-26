@@ -1,0 +1,759 @@
+/*
+ * Anvil color themes: the ONLY file with raw color values.
+ * Each block defines the full palette itself (no inheritance from :root), because the
+ * data-theme attribute is also set on small preview cards inside a differently themed app.
+ * Syntax colors (--syn-*) feed the Monaco theme through a canvas, so they are plain hex.
+ */
+
+/* Cyber Glass (default): neon cyan and violet over deep-space glass ("Anvil Neon" syntax) */
+:root,
+[data-theme='cyber'] {
+	color-scheme: dark;
+
+	--bg-0: #05060a;
+	--bg-1: #0a0d14;
+	--bg-2: #111623;
+	--bg-3: #19202f;
+	--border: #1a2233;
+	--border-strong: #2a3550;
+
+	--glass: rgb(11 15 25 / 0.62);
+	--glass-strong: rgb(9 12 20 / 0.84);
+	--glass-edge: rgb(150 190 255 / 0.1);
+	--glass-highlight: rgb(255 255 255 / 0.05);
+	--editor-bg: rgb(8 11 18 / 0.9);
+	--scrim: rgb(3 4 8 / 0.62);
+
+	--text-0: #e6edf7;
+	--text-1: #9aa8c0;
+	--text-2: #5f6b85;
+
+	--up: #3dffa8;
+	--down: #ff4d6d;
+	--warn: #ffb547;
+	--info: #5cc8ff;
+
+	--theme-accent: #22e5ff;
+	--theme-accent-2: #9d7bff;
+	--on-accent: #05060a;
+
+	--syn-comment: #5f6b85;
+	--syn-keyword: #c792ff;
+	--syn-control: #ff6ad5;
+	--syn-string: #b5f06a;
+	--syn-number: #ffb86b;
+	--syn-function: #5ee4ff;
+	--syn-type: #7cf7d4;
+	--syn-variable: #e6edf7;
+	--syn-parameter: #ffd9b0;
+	--syn-property: #a9c4ff;
+	--syn-decorator: #ff9f6b;
+	--syn-builtin: #ff7a9c;
+	--syn-operator: #8fa3c8;
+	--syn-regexp: #ffe36b;
+}
+
+/* Synthwave '84: purple night sky, hot pink and orange neon, cyan strings */
+[data-theme='synthwave'] {
+	color-scheme: dark;
+
+	--bg-0: #171520;
+	--bg-1: #262335;
+	--bg-2: #2e2a44;
+	--bg-3: #372f55;
+	--border: #342b4f;
+	--border-strong: #4d3f73;
+
+	--glass: rgb(38 35 53 / 0.62);
+	--glass-strong: rgb(27 23 40 / 0.88);
+	--glass-edge: rgb(255 126 219 / 0.14);
+	--glass-highlight: rgb(255 255 255 / 0.05);
+	--editor-bg: rgb(38 35 53 / 0.9);
+	--scrim: rgb(12 8 22 / 0.66);
+
+	--text-0: #f4eefb;
+	--text-1: #b6b1d6;
+	--text-2: #7d78a8;
+
+	--up: #72f1b8;
+	--down: #fe4450;
+	--warn: #fede5d;
+	--info: #36f9f6;
+
+	--theme-accent: #ff7edb;
+	--theme-accent-2: #ff8b39;
+	--on-accent: #171520;
+
+	--syn-comment: #848bbd;
+	--syn-keyword: #fede5d;
+	--syn-control: #ff7edb;
+	--syn-string: #36f9f6;
+	--syn-number: #f97e72;
+	--syn-function: #72f1b8;
+	--syn-type: #fe4450;
+	--syn-variable: #f4eee4;
+	--syn-parameter: #ffcfa1;
+	--syn-property: #c9a3ff;
+	--syn-decorator: #ff8b39;
+	--syn-builtin: #ff4fa7;
+	--syn-operator: #b8b3e6;
+	--syn-regexp: #c6f76b;
+}
+
+/* Tokyo Night: midnight indigo, soft blue and purple, city-light pastels */
+[data-theme='tokyo'] {
+	color-scheme: dark;
+
+	--bg-0: #16161e;
+	--bg-1: #1a1b26;
+	--bg-2: #1f2335;
+	--bg-3: #292e42;
+	--border: #262a3d;
+	--border-strong: #3b4261;
+
+	--glass: rgb(26 27 38 / 0.62);
+	--glass-strong: rgb(22 22 30 / 0.88);
+	--glass-edge: rgb(122 162 247 / 0.12);
+	--glass-highlight: rgb(255 255 255 / 0.05);
+	--editor-bg: rgb(26 27 38 / 0.9);
+	--scrim: rgb(8 8 14 / 0.64);
+
+	--text-0: #c0caf5;
+	--text-1: #a9b1d6;
+	--text-2: #565f89;
+
+	--up: #9ece6a;
+	--down: #f7768e;
+	--warn: #e0af68;
+	--info: #7dcfff;
+
+	--theme-accent: #7aa2f7;
+	--theme-accent-2: #bb9af7;
+	--on-accent: #16161e;
+
+	--syn-comment: #636da6;
+	--syn-keyword: #9d7cd8;
+	--syn-control: #bb9af7;
+	--syn-string: #9ece6a;
+	--syn-number: #ff9e64;
+	--syn-function: #7aa2f7;
+	--syn-type: #2ac3de;
+	--syn-variable: #c0caf5;
+	--syn-parameter: #e0af68;
+	--syn-property: #73daca;
+	--syn-decorator: #ff007c;
+	--syn-builtin: #f7768e;
+	--syn-operator: #89ddff;
+	--syn-regexp: #b4f9f8;
+}
+
+/* Dracula: the classic purple-grey with pink, green and cyan */
+[data-theme='dracula'] {
+	color-scheme: dark;
+
+	--bg-0: #191a21;
+	--bg-1: #282a36;
+	--bg-2: #313442;
+	--bg-3: #44475a;
+	--border: #363948;
+	--border-strong: #4d5066;
+
+	--glass: rgb(40 42 54 / 0.62);
+	--glass-strong: rgb(30 31 41 / 0.88);
+	--glass-edge: rgb(189 147 249 / 0.14);
+	--glass-highlight: rgb(255 255 255 / 0.05);
+	--editor-bg: rgb(40 42 54 / 0.9);
+	--scrim: rgb(12 12 18 / 0.64);
+
+	--text-0: #f8f8f2;
+	--text-1: #c3c6d9;
+	--text-2: #6272a4;
+
+	--up: #50fa7b;
+	--down: #ff5555;
+	--warn: #ffb86c;
+	--info: #8be9fd;
+
+	--theme-accent: #bd93f9;
+	--theme-accent-2: #ff79c6;
+	--on-accent: #191a21;
+
+	--syn-comment: #7282b8;
+	--syn-keyword: #ff79c6;
+	--syn-control: #ff5fa2;
+	--syn-string: #f1fa8c;
+	--syn-number: #bd93f9;
+	--syn-function: #50fa7b;
+	--syn-type: #8be9fd;
+	--syn-variable: #f8f8f2;
+	--syn-parameter: #ffb86c;
+	--syn-property: #c8d2ff;
+	--syn-decorator: #9dffb5;
+	--syn-builtin: #ff6e6e;
+	--syn-operator: #a9b0cf;
+	--syn-regexp: #ffd6f0;
+}
+
+/* Catppuccin Mocha: soothing pastels on a warm dark base */
+[data-theme='catppuccin'] {
+	color-scheme: dark;
+
+	--bg-0: #11111b;
+	--bg-1: #1e1e2e;
+	--bg-2: #313244;
+	--bg-3: #45475a;
+	--border: #363850;
+	--border-strong: #585b70;
+
+	--glass: rgb(30 30 46 / 0.62);
+	--glass-strong: rgb(24 24 37 / 0.88);
+	--glass-edge: rgb(203 166 247 / 0.13);
+	--glass-highlight: rgb(255 255 255 / 0.05);
+	--editor-bg: rgb(30 30 46 / 0.9);
+	--scrim: rgb(10 10 16 / 0.64);
+
+	--text-0: #cdd6f4;
+	--text-1: #a6adc8;
+	--text-2: #7f849c;
+
+	--up: #a6e3a1;
+	--down: #f38ba8;
+	--warn: #f9e2af;
+	--info: #74c7ec;
+
+	--theme-accent: #cba6f7;
+	--theme-accent-2: #89b4fa;
+	--on-accent: #11111b;
+
+	--syn-comment: #9399b2;
+	--syn-keyword: #cba6f7;
+	--syn-control: #f5c2e7;
+	--syn-string: #a6e3a1;
+	--syn-number: #fab387;
+	--syn-function: #89b4fa;
+	--syn-type: #f9e2af;
+	--syn-variable: #cdd6f4;
+	--syn-parameter: #f2cdcd;
+	--syn-property: #b4befe;
+	--syn-decorator: #74c7ec;
+	--syn-builtin: #f38ba8;
+	--syn-operator: #bac2de;
+	--syn-regexp: #94e2d5;
+}
+
+/* Nord: arctic slate with frost blues and muted aurora accents */
+[data-theme='nord'] {
+	color-scheme: dark;
+
+	--bg-0: #242933;
+	--bg-1: #2e3440;
+	--bg-2: #3b4252;
+	--bg-3: #434c5e;
+	--border: #3b4252;
+	--border-strong: #4c566a;
+
+	--glass: rgb(46 52 64 / 0.62);
+	--glass-strong: rgb(36 41 51 / 0.88);
+	--glass-edge: rgb(136 192 208 / 0.14);
+	--glass-highlight: rgb(255 255 255 / 0.05);
+	--editor-bg: rgb(46 52 64 / 0.9);
+	--scrim: rgb(15 17 22 / 0.62);
+
+	--text-0: #eceff4;
+	--text-1: #c0c8d6;
+	--text-2: #7b88a1;
+
+	--up: #a3be8c;
+	--down: #bf616a;
+	--warn: #ebcb8b;
+	--info: #81a1c1;
+
+	--theme-accent: #88c0d0;
+	--theme-accent-2: #b48ead;
+	--on-accent: #242933;
+
+	--syn-comment: #7b88a1;
+	--syn-keyword: #81a1c1;
+	--syn-control: #d57780;
+	--syn-string: #a3be8c;
+	--syn-number: #b48ead;
+	--syn-function: #88c0d0;
+	--syn-type: #9fd4be;
+	--syn-variable: #d8dee9;
+	--syn-parameter: #ebcb8b;
+	--syn-property: #aebbd8;
+	--syn-decorator: #d08770;
+	--syn-builtin: #e3a3c9;
+	--syn-operator: #c2b8a3;
+	--syn-regexp: #c9dd9e;
+}
+
+/* Gruvbox Dark: warm retro groove, earthy reds, yellows and aquas */
+[data-theme='gruvbox'] {
+	color-scheme: dark;
+
+	--bg-0: #1d2021;
+	--bg-1: #282828;
+	--bg-2: #32302f;
+	--bg-3: #3c3836;
+	--border: #3c3836;
+	--border-strong: #504945;
+
+	--glass: rgb(40 40 40 / 0.62);
+	--glass-strong: rgb(29 32 33 / 0.88);
+	--glass-edge: rgb(250 189 47 / 0.12);
+	--glass-highlight: rgb(255 255 255 / 0.05);
+	--editor-bg: rgb(40 40 40 / 0.9);
+	--scrim: rgb(12 12 12 / 0.64);
+
+	--text-0: #ebdbb2;
+	--text-1: #bdae93;
+	--text-2: #928374;
+
+	--up: #b8bb26;
+	--down: #fb4934;
+	--warn: #fe8019;
+	--info: #83a598;
+
+	--theme-accent: #fabd2f;
+	--theme-accent-2: #fe8019;
+	--on-accent: #1d2021;
+
+	--syn-comment: #928374;
+	--syn-keyword: #fb4934;
+	--syn-control: #fe8019;
+	--syn-string: #b8bb26;
+	--syn-number: #d3869b;
+	--syn-function: #8ec07c;
+	--syn-type: #fabd2f;
+	--syn-variable: #ebdbb2;
+	--syn-parameter: #d5c4a1;
+	--syn-property: #83a598;
+	--syn-decorator: #d79921;
+	--syn-builtin: #e36d9b;
+	--syn-operator: #a89984;
+	--syn-regexp: #6fae76;
+}
+
+/* Rosé Pine: soho vibes, muted pine and foam with rose and gold */
+[data-theme='rosepine'] {
+	color-scheme: dark;
+
+	--bg-0: #191724;
+	--bg-1: #1f1d2e;
+	--bg-2: #26233a;
+	--bg-3: #312e47;
+	--border: #2a273f;
+	--border-strong: #403d52;
+
+	--glass: rgb(31 29 46 / 0.62);
+	--glass-strong: rgb(25 23 36 / 0.88);
+	--glass-edge: rgb(235 188 186 / 0.12);
+	--glass-highlight: rgb(255 255 255 / 0.05);
+	--editor-bg: rgb(31 29 46 / 0.9);
+	--scrim: rgb(10 9 16 / 0.64);
+
+	--text-0: #e0def4;
+	--text-1: #908caa;
+	--text-2: #6e6a86;
+
+	--up: #9ccfd8;
+	--down: #eb6f92;
+	--warn: #f6c177;
+	--info: #3e8fb0;
+
+	--theme-accent: #ebbcba;
+	--theme-accent-2: #c4a7e7;
+	--on-accent: #191724;
+
+	--syn-comment: #6e6a86;
+	--syn-keyword: #3e8fb0;
+	--syn-control: #eb6f92;
+	--syn-string: #f6c177;
+	--syn-number: #ea9a97;
+	--syn-function: #ebbcba;
+	--syn-type: #9ccfd8;
+	--syn-variable: #e0def4;
+	--syn-parameter: #c4a7e7;
+	--syn-property: #7fb4c9;
+	--syn-decorator: #e08f5a;
+	--syn-builtin: #f28fc8;
+	--syn-operator: #908caa;
+	--syn-regexp: #b9e3a4;
+}
+
+/* One Dark Pro: Atom's balanced slate with red, green, blue and purple */
+[data-theme='onedark'] {
+	color-scheme: dark;
+
+	--bg-0: #1b1e23;
+	--bg-1: #282c34;
+	--bg-2: #2f343d;
+	--bg-3: #383e4a;
+	--border: #333842;
+	--border-strong: #4b5263;
+
+	--glass: rgb(40 44 52 / 0.62);
+	--glass-strong: rgb(33 37 43 / 0.88);
+	--glass-edge: rgb(97 175 239 / 0.13);
+	--glass-highlight: rgb(255 255 255 / 0.05);
+	--editor-bg: rgb(40 44 52 / 0.9);
+	--scrim: rgb(12 14 18 / 0.64);
+
+	--text-0: #dcdfe4;
+	--text-1: #abb2bf;
+	--text-2: #7f848e;
+
+	--up: #98c379;
+	--down: #e06c75;
+	--warn: #e5c07b;
+	--info: #61afef;
+
+	--theme-accent: #61afef;
+	--theme-accent-2: #c678dd;
+	--on-accent: #1b1e23;
+
+	--syn-comment: #7f848e;
+	--syn-keyword: #c678dd;
+	--syn-control: #ec6fe0;
+	--syn-string: #98c379;
+	--syn-number: #d19a66;
+	--syn-function: #61afef;
+	--syn-type: #e5c07b;
+	--syn-variable: #e06c75;
+	--syn-parameter: #f2b8bd;
+	--syn-property: #c8ccd4;
+	--syn-decorator: #56b6c2;
+	--syn-builtin: #ff9e57;
+	--syn-operator: #8f98a8;
+	--syn-regexp: #b6e38f;
+}
+
+/* Monokai Pro: charcoal filter with its signature pink, yellow, green and blue */
+[data-theme='monokai'] {
+	color-scheme: dark;
+
+	--bg-0: #19181a;
+	--bg-1: #2d2a2e;
+	--bg-2: #363337;
+	--bg-3: #403e41;
+	--border: #3a373b;
+	--border-strong: #5b595c;
+
+	--glass: rgb(45 42 46 / 0.62);
+	--glass-strong: rgb(34 31 34 / 0.88);
+	--glass-edge: rgb(255 216 102 / 0.12);
+	--glass-highlight: rgb(255 255 255 / 0.05);
+	--editor-bg: rgb(45 42 46 / 0.9);
+	--scrim: rgb(12 11 12 / 0.64);
+
+	--text-0: #fcfcfa;
+	--text-1: #c1c0c0;
+	--text-2: #8b888f;
+
+	--up: #a9dc76;
+	--down: #ff6188;
+	--warn: #fc9867;
+	--info: #78dce8;
+
+	--theme-accent: #ffd866;
+	--theme-accent-2: #ff6188;
+	--on-accent: #19181a;
+
+	--syn-comment: #8b888f;
+	--syn-keyword: #ff6188;
+	--syn-control: #ff8fb1;
+	--syn-string: #ffd866;
+	--syn-number: #ab9df2;
+	--syn-function: #a9dc76;
+	--syn-type: #78dce8;
+	--syn-variable: #fcfcfa;
+	--syn-parameter: #fc9867;
+	--syn-property: #c1c0c0;
+	--syn-decorator: #e7f294;
+	--syn-builtin: #d6caff;
+	--syn-operator: #a6a4a8;
+	--syn-regexp: #b4f0e4;
+}
+
+/* Solarized Dark: Ethan Schoonover's precise blue-green base with balanced accents */
+[data-theme='solarized'] {
+	color-scheme: dark;
+
+	--bg-0: #00212b;
+	--bg-1: #002b36;
+	--bg-2: #073642;
+	--bg-3: #0d4250;
+	--border: #0a3a47;
+	--border-strong: #1c5160;
+
+	--glass: rgb(0 43 54 / 0.62);
+	--glass-strong: rgb(0 33 43 / 0.88);
+	--glass-edge: rgb(42 161 152 / 0.16);
+	--glass-highlight: rgb(255 255 255 / 0.05);
+	--editor-bg: rgb(0 43 54 / 0.9);
+	--scrim: rgb(0 14 18 / 0.66);
+
+	--text-0: #c9d1cc;
+	--text-1: #93a1a1;
+	--text-2: #657b83;
+
+	--up: #859900;
+	--down: #dc322f;
+	--warn: #b58900;
+	--info: #268bd2;
+
+	--theme-accent: #2aa198;
+	--theme-accent-2: #268bd2;
+	--on-accent: #00212b;
+
+	--syn-comment: #6c848b;
+	--syn-keyword: #859900;
+	--syn-control: #e2632f;
+	--syn-string: #2aa198;
+	--syn-number: #d33682;
+	--syn-function: #268bd2;
+	--syn-type: #b58900;
+	--syn-variable: #93a1a1;
+	--syn-parameter: #8f93e0;
+	--syn-property: #6fb1e0;
+	--syn-decorator: #e07fb2;
+	--syn-builtin: #ef5a57;
+	--syn-operator: #a8a07a;
+	--syn-regexp: #d8bd4a;
+}
+
+/* Phosphor: a green-phosphor CRT, every shade of glowing green on near-black */
+[data-theme='matrix'] {
+	color-scheme: dark;
+
+	--bg-0: #020703;
+	--bg-1: #050d07;
+	--bg-2: #0a170d;
+	--bg-3: #102315;
+	--border: #0f2414;
+	--border-strong: #1b3c22;
+
+	--glass: rgb(5 14 8 / 0.62);
+	--glass-strong: rgb(3 10 5 / 0.88);
+	--glass-edge: rgb(60 255 120 / 0.12);
+	--glass-highlight: rgb(255 255 255 / 0.04);
+	--editor-bg: rgb(4 11 6 / 0.9);
+	--scrim: rgb(0 4 1 / 0.7);
+
+	--text-0: #c6f7d0;
+	--text-1: #6fcf88;
+	--text-2: #3f7f50;
+
+	--up: #39ff6a;
+	--down: #ff5a4d;
+	--warn: #d8ff4a;
+	--info: #5cffc8;
+
+	--theme-accent: #2bff66;
+	--theme-accent-2: #b6ff3a;
+	--on-accent: #021005;
+
+	--syn-comment: #3f8a55;
+	--syn-keyword: #4dff88;
+	--syn-control: #b6ff3a;
+	--syn-string: #9fd96a;
+	--syn-number: #e2ff9a;
+	--syn-function: #8cffd0;
+	--syn-type: #2fd8a0;
+	--syn-variable: #c6f7d0;
+	--syn-parameter: #a3c9a8;
+	--syn-property: #6fbf82;
+	--syn-decorator: #54e6e0;
+	--syn-builtin: #00ff41;
+	--syn-operator: #5e9e6c;
+	--syn-regexp: #d0e86a;
+}
+
+/* Terminal Amber: a Bloomberg-style amber monochrome on black */
+[data-theme='amber'] {
+	color-scheme: dark;
+
+	--bg-0: #030201;
+	--bg-1: #0b0805;
+	--bg-2: #15100a;
+	--bg-3: #20180f;
+	--border: #221a10;
+	--border-strong: #3a2c18;
+
+	--glass: rgb(12 9 5 / 0.62);
+	--glass-strong: rgb(8 6 3 / 0.88);
+	--glass-edge: rgb(255 163 26 / 0.13);
+	--glass-highlight: rgb(255 255 255 / 0.04);
+	--editor-bg: rgb(9 7 4 / 0.9);
+	--scrim: rgb(3 2 0 / 0.7);
+
+	--text-0: #ffdfae;
+	--text-1: #d69a4a;
+	--text-2: #8a6a3d;
+
+	--up: #4cdb6a;
+	--down: #ff4d3d;
+	--warn: #ffd000;
+	--info: #6cc4ff;
+
+	--theme-accent: #ffa31a;
+	--theme-accent-2: #ff6a00;
+	--on-accent: #0b0805;
+
+	--syn-comment: #8a6a3d;
+	--syn-keyword: #ff9e2c;
+	--syn-control: #ff6b1f;
+	--syn-string: #f5d68a;
+	--syn-number: #ffcc33;
+	--syn-function: #ffbd70;
+	--syn-type: #e0a040;
+	--syn-variable: #ffe6c2;
+	--syn-parameter: #d9b48a;
+	--syn-property: #c9a36d;
+	--syn-decorator: #ff8c66;
+	--syn-builtin: #ff4f2e;
+	--syn-operator: #a8814f;
+	--syn-regexp: #fff07a;
+}
+
+/* Abyss: deep ocean navy lit by bioluminescent teal and electric blue */
+[data-theme='abyss'] {
+	color-scheme: dark;
+
+	--bg-0: #020814;
+	--bg-1: #06111f;
+	--bg-2: #0b1a2e;
+	--bg-3: #11243d;
+	--border: #0f2138;
+	--border-strong: #1b3556;
+
+	--glass: rgb(6 17 31 / 0.62);
+	--glass-strong: rgb(3 10 21 / 0.88);
+	--glass-edge: rgb(25 240 216 / 0.12);
+	--glass-highlight: rgb(255 255 255 / 0.05);
+	--editor-bg: rgb(5 14 26 / 0.9);
+	--scrim: rgb(1 4 10 / 0.66);
+
+	--text-0: #dcecff;
+	--text-1: #8fb0d4;
+	--text-2: #4f6d92;
+
+	--up: #2ef2b0;
+	--down: #ff5577;
+	--warn: #ffc857;
+	--info: #3d9cff;
+
+	--theme-accent: #19f0d8;
+	--theme-accent-2: #2f7bff;
+	--on-accent: #021018;
+
+	--syn-comment: #54739a;
+	--syn-keyword: #5aa7ff;
+	--syn-control: #c38bff;
+	--syn-string: #6ef0b4;
+	--syn-number: #ffb86b;
+	--syn-function: #3ee4ff;
+	--syn-type: #19d6c0;
+	--syn-variable: #dcecff;
+	--syn-parameter: #ffd8a8;
+	--syn-property: #9cc4ff;
+	--syn-decorator: #ff8fc0;
+	--syn-builtin: #ff6f9a;
+	--syn-operator: #7a9cc6;
+	--syn-regexp: #ffe36b;
+}
+
+/* Paper Light: clean GitHub-style light with a crisp blue accent and white glass */
+[data-theme='paper'] {
+	color-scheme: light;
+
+	--bg-0: #eef1f5;
+	--bg-1: #ffffff;
+	--bg-2: #f6f8fa;
+	--bg-3: #eaeef2;
+	--border: #d8dee4;
+	--border-strong: #afb8c1;
+
+	--glass: rgb(255 255 255 / 0.7);
+	--glass-strong: rgb(255 255 255 / 0.9);
+	--glass-edge: rgb(31 35 40 / 0.1);
+	--glass-highlight: rgb(255 255 255 / 0.85);
+	--editor-bg: rgb(255 255 255 / 0.92);
+	--scrim: rgb(15 20 30 / 0.36);
+
+	--text-0: #1f2328;
+	--text-1: #59636e;
+	--text-2: #818b98;
+
+	--up: #1a7f37;
+	--down: #cf222e;
+	--warn: #9a6700;
+	--info: #0969da;
+
+	--theme-accent: #0969da;
+	--theme-accent-2: #8250df;
+	--on-accent: #ffffff;
+
+	--syn-comment: #6e7781;
+	--syn-keyword: #cf222e;
+	--syn-control: #a40e26;
+	--syn-string: #0a3069;
+	--syn-number: #0550ae;
+	--syn-function: #8250df;
+	--syn-type: #953800;
+	--syn-variable: #1f2328;
+	--syn-parameter: #c24e00;
+	--syn-property: #1b7c83;
+	--syn-decorator: #bf3989;
+	--syn-builtin: #5a32a3;
+	--syn-operator: #57606a;
+	--syn-regexp: #116329;
+}
+
+/* Catppuccin Latte: the light flavor, pastel ink on soft porcelain */
+[data-theme='latte'] {
+	color-scheme: light;
+
+	--bg-0: #dce0e8;
+	--bg-1: #eff1f5;
+	--bg-2: #e6e9ef;
+	--bg-3: #ccd0da;
+	--border: #ccd0da;
+	--border-strong: #acb0be;
+
+	--glass: rgb(239 241 245 / 0.72);
+	--glass-strong: rgb(239 241 245 / 0.9);
+	--glass-edge: rgb(76 79 105 / 0.12);
+	--glass-highlight: rgb(255 255 255 / 0.7);
+	--editor-bg: rgb(239 241 245 / 0.92);
+	--scrim: rgb(30 30 46 / 0.35);
+
+	--text-0: #4c4f69;
+	--text-1: #5c5f77;
+	--text-2: #8c8fa1;
+
+	--up: #40a02b;
+	--down: #d20f39;
+	--warn: #df8e1d;
+	--info: #1e66f5;
+
+	--theme-accent: #8839ef;
+	--theme-accent-2: #1e66f5;
+	--on-accent: #ffffff;
+
+	--syn-comment: #7c7f93;
+	--syn-keyword: #8839ef;
+	--syn-control: #c43ea0;
+	--syn-string: #3a8f26;
+	--syn-number: #e05a07;
+	--syn-function: #1e66f5;
+	--syn-type: #b8740f;
+	--syn-variable: #4c4f69;
+	--syn-parameter: #e64553;
+	--syn-property: #5f73f0;
+	--syn-decorator: #13827f;
+	--syn-builtin: #d20f39;
+	--syn-operator: #0473b0;
+	--syn-regexp: #b35f4b;
+}
