@@ -18,13 +18,28 @@ import { baseName, dirName } from './viewer-paths';
 
 type Parsed = { ok: true; notebook: Notebook } | { ok: false; message: string };
 
-/** Writes `<name>.py` (or a free variant) next to the notebook and opens it. */
+/** Writes `<name>.py` (`.R`, `.jl` by language, or a free variant) next to the notebook. */
 async function convertToScript(path: string, notebook: Notebook): Promise<string> {
 	const parent = dirName(path);
 	const siblings = await call('fs:list', parent);
-	const name = scriptFileName(baseName(path), new Set(siblings.map((entry) => entry.name)));
+	const name = scriptFileName(
+		baseName(path),
+		new Set(siblings.map((entry) => entry.name)),
+		notebook.language,
+	);
 	const created = await call('fs:create', { parent, name, kind: 'file' });
-	await call('fs:writeFile', { path: created.path, content: notebookToScript(notebook) });
+	try {
+		await call('fs:writeFile', { path: created.path, content: notebookToScript(notebook) });
+	} catch (error) {
+		// Don't leave an empty script behind (it would also push the next try to "_cells").
+		await call('fs:trash', created.path).catch((cleanup: unknown) =>
+			toast.warn(
+				'An empty script was left behind',
+				`${created.path}: ${cleanup instanceof Error ? cleanup.message : String(cleanup)}`,
+			),
+		);
+		throw error;
+	}
 	return created.path;
 }
 

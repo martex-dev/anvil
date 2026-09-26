@@ -188,4 +188,11 @@ describe('scriptFileName', () => {
 			),
 		).toBe('train_cells3.py');
 	});
+
+	it("uses the notebook language's script extension", () => {
+		expect(scriptFileName('fit.ipynb', new Set(), 'r')).toBe('fit.R');
+		expect(scriptFileName('fit.ipynb', new Set(['fit.r']), 'R')).toBe('fit_cells.R');
+		expect(scriptFileName('sim.ipynb', new Set(), 'julia')).toBe('sim.jl');
+		expect(scriptFileName('x.ipynb', new Set(), 'unknown')).toBe('x.py');
+	});
 });
