@@ -358,12 +358,30 @@
 		transparent 3px
 	);
 }
-html[data-ambient='false'] .ambient::before,
+html[data-ambient='false'] .ambient::before {
+	display: none;
+}
+
+/*
+ * Reduce motion (Settings → Reduce motion, or the OS "Show animations" off). The --dur-* tokens
+ * already zero the one-shot transitions; these loops use their own durations, so they stop here
+ * and keep a static frame: the shimmer's highlight parked mid-element, the spinner as a ring.
+ */
+html[data-reduce-motion='true'] :is(.shimmer, .pulse-dot, .animate-spin, .animate-pulse),
 html[data-reduce-motion='true'] .ambient::before {
 	animation: none;
 }
-html[data-ambient='false'] .ambient::before {
-	display: none;
+html[data-reduce-motion='true'] .shimmer {
+	background-position: 50% 0;
+}
+@media (prefers-reduced-motion: reduce) {
+	:is(.shimmer, .pulse-dot, .animate-spin, .animate-pulse),
+	.ambient::before {
+		animation: none;
+	}
+	.shimmer {
+		background-position: 50% 0;
+	}
 }
 
 @keyframes grid-drift {
