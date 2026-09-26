@@ -35,3 +35,23 @@ html[data-skin='cockpit']
 	background: var(--bg-3);
 	color: var(--text-1);
 }
+
+/* Empty tile bodies are graph paper: the chat log and the panel sit on a faint ruled grid. */
+html[data-skin='cockpit']:not([data-fx='off']) [data-part='panel'] > [data-part='pane-body'],
+html[data-skin='cockpit']:not([data-fx='off']) [data-part='chat'] [data-ai-chat] > header + div,
+html[data-skin='cockpit']:not([data-fx='off'])
+	[data-part='chat']
+	[data-ai-chat]
+	> header
+	+ div
+	+ div {
+	background-image:
+		linear-gradient(color-mix(in oklab, var(--border) 45%, transparent) 1px, transparent 1px),
+		linear-gradient(
+			90deg,
+			color-mix(in oklab, var(--border) 45%, transparent) 1px,
+			transparent 1px
+		);
+	background-size: 24px 24px;
+	background-position: -1px -1px;
+}
