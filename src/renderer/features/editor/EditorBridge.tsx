@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 
 import type { WorkspaceInfo } from '@shared/ipc/channels/workspace';
 
-import { useSettings } from '../../app/hooks/use-settings';
+import { getSettings } from '../../app/hooks/use-settings';
 import { useWorkspace, WORKSPACE_KEY } from '../../app/hooks/use-workspace';
 import { rememberRecentFile } from '../../app/QuickOpen';
 import { rlog } from '../../lib/log';
@@ -66,7 +66,6 @@ function loadSession(root: string): Session | null {
 export function EditorBridge(): null {
 	const client = useQueryClient();
 	const { info } = useWorkspace();
-	const { settings } = useSettings();
 	const root = info.root;
 	// Language features read other files through Monaco's file service, scoped to this folder.
 	useEffect(() => setMonacoWorkspaceRoot(root), [root]);
@@ -162,17 +161,26 @@ export function EditorBridge(): null {
 		};
 	}, [root]);
 
-	// Accent and editor settings feed the Monaco theme.
+	// Theme, accent and editor settings feed the Monaco theme. applyAppearance fires
+	// 'anvil:appearance' once the new tokens are live (also for theme previews).
 	useEffect(() => {
-		// Next frame: the shell applies data-accent in its own (later-running) effect, and the
-		// theme reads the resolved CSS colors.
-		const id = requestAnimationFrame(() => {
-			void refreshEditorConfiguration(settings).catch((error: unknown) =>
-				rlog.warn('editor', 'theme refresh failed', error),
-			);
-		});
-		return () => cancelAnimationFrame(id);
-	}, [settings]);
+		// Coalesced: each refresh makes Monaco re-tokenize every open file, and arrowing through
+		// the theme picker fires one per keypress.
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const refresh = (): void => {
+			clearTimeout(timer);
+			timer = setTimeout(() => {
+				void refreshEditorConfiguration(getSettings()).catch((error: unknown) =>
+					rlog.warn('editor', 'theme refresh failed', error),
+				);
+			}, 60);
+		};
+		window.addEventListener('anvil:appearance', refresh);
+		return () => {
+			clearTimeout(timer);
+			window.removeEventListener('anvil:appearance', refresh);
+		};
+	}, []);
 
 	return null;
 }
