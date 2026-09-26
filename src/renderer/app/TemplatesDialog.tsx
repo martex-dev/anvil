@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { FolderPlus } from 'lucide-react';
 import { type JSX, useRef, useState } from 'react';
 
+import { ProjectNameSchema } from '@shared/ipc/channels/tools';
+
 import { openRecentFolder } from '../features/explorer/workspace-actions';
 import { cn } from '../lib/cn';
 import { call } from '../lib/ipc';
@@ -13,8 +15,6 @@ import { Dialog } from '../ui/Dialog';
 import { EmptyState } from '../ui/EmptyState';
 import { ErrorState } from '../ui/ErrorState';
 import { Input } from '../ui/Input';
-
-const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 /** New project from a template: pick one, name it, choose where it goes, and it opens. */
 export function TemplatesDialog(): JSX.Element {
@@ -33,7 +33,9 @@ export function TemplatesDialog(): JSX.Element {
 	// the ref blocks a second create (and a second native folder picker) immediately.
 	const busyRef = useRef(false);
 	const selected = templates.data?.find((t) => t.id === picked) ?? templates.data?.[0];
-	const valid = NAME.test(name);
+	const nameCheck = ProjectNameSchema.safeParse(name);
+	const valid = nameCheck.success;
+	const nameError = nameCheck.error?.issues[0]?.message;
 
 	const create = async (): Promise<void> => {
 		if (!selected || !valid || busyRef.current) return;
@@ -148,10 +150,8 @@ export function TemplatesDialog(): JSX.Element {
 									void create();
 							}}
 						/>
-						{name.length > 0 && !valid && (
-							<span className='text-11 text-down'>
-								Letters, digits, dot, dash and underscore only.
-							</span>
+						{name.length > 0 && nameError && (
+							<span className='text-11 text-down'>{nameError}</span>
 						)}
 					</label>
 					{selected && (
