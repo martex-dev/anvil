@@ -39,6 +39,13 @@ describe('shortcuts', () => {
 		).toBe(true);
 	});
 
+	it('matches letters by physical key on non-Latin layouts', () => {
+		// Bulgarian / Greek layouts report the local letter in `key` for the C key.
+		expect(matchesShortcut(ev('ц', { ctrl: true }, 'KeyC'), 'Ctrl+C')).toBe(true);
+		expect(matchesShortcut(ev('ψ', { ctrl: true }, 'KeyC'), 'Ctrl+C')).toBe(true);
+		expect(matchesShortcut(ev('ц', { ctrl: true, shift: true }, 'KeyC'), 'Ctrl+C')).toBe(false);
+	});
+
 	it('allows bare function keys only', () => {
 		expect(isBindable('F5')).toBe(true);
 		expect(isBindable('Shift+Enter')).toBe(false);

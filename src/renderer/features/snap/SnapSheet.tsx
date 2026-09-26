@@ -4,6 +4,7 @@ import { type JSX, type KeyboardEvent, useCallback, useMemo, useState } from 're
 
 import { useSettings } from '../../app/hooks/use-settings';
 import { getLoadedMonaco } from '../../lib/monaco/load';
+import { matchesShortcut } from '../../lib/shortcuts';
 import { useRegisterOverlay } from '../../stores/overlay-store';
 import { toast } from '../../stores/toast-store';
 import { Button } from '../../ui/Button';
@@ -86,11 +87,8 @@ export function SnapSheet({ request }: SnapSheetProps): JSX.Element {
 	};
 
 	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
-		const isCopy =
-			(event.ctrlKey || event.metaKey) &&
-			!event.shiftKey &&
-			!event.altKey &&
-			event.key.toLowerCase() === 'c';
+		// matchesShortcut falls back to the physical key, so Ctrl+C works on non-Latin layouts.
+		const isCopy = matchesShortcut(event, 'Ctrl+C');
 		if (!isCopy || window.getSelection()?.toString()) return;
 		event.preventDefault();
 		void copy();
