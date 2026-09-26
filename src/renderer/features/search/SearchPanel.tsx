@@ -35,6 +35,7 @@ function Toggle({
 				onClick={onClick}
 				className={cn(
 					'relative flex size-5 items-center justify-center rounded-sm',
+					'transition-[background-color,color] transition-fast',
 					'focus-visible:shadow-glow focus-visible:outline-none',
 					pressed
 						? 'bg-accent-soft text-accent'
