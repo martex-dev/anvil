@@ -65,6 +65,8 @@ export function ChatPanel(): JSX.Element {
 	const { messages, activeRequest, attached, detach, send, stop, clear } = useChat();
 	const [text, setText] = useState('');
 	const [pick, setPick] = useState(0);
+	// Escape hides the popup for the text it was pressed on; typing brings it back.
+	const [dismissedAt, setDismissedAt] = useState<string | null>(null);
 	const {
 		ref: listRef,
 		onScroll: onListScroll,
@@ -95,6 +97,7 @@ export function ChatPanel(): JSX.Element {
 			.slice(0, 8)
 			.map((f) => ({ id: f, label: f.split('/').at(-1) ?? f, hint: f }));
 	}, [tr, files.data]);
+	const popupOpen = suggestions.length > 0 && dismissedAt !== text;
 
 	useEffect(() => {
 		if (focusTick > 0) inputRef.current?.focus();
@@ -275,7 +278,7 @@ export function ChatPanel(): JSX.Element {
 					</div>
 				)}
 				<div className='relative'>
-					{suggestions.length > 0 && (
+					{popupOpen && (
 						<ul
 							role='listbox'
 							className='glass-strong animate-in absolute right-0 bottom-full left-0 z-20 mb-1 max-h-60 overflow-auto p-1'
@@ -314,7 +317,15 @@ export function ChatPanel(): JSX.Element {
 							setPick(0);
 						}}
 						onKeyDown={(e) => {
-							if (suggestions.length > 0) {
+							// Enter confirms an IME composition (CJK input); it must not send.
+							if (e.nativeEvent.isComposing) return;
+							if (popupOpen) {
+								if (e.key === 'Escape') {
+									e.preventDefault();
+									e.stopPropagation();
+									setDismissedAt(text);
+									return;
+								}
 								if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
 									e.preventDefault();
 									setPick(

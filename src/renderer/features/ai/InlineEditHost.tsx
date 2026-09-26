@@ -36,6 +36,8 @@ function Box(): JSX.Element {
 			ref={boxRef}
 			tabIndex={-1}
 			onKeyDown={(e) => {
+				// Escape/Enter during an IME composition (CJK input) belong to the IME.
+				if (e.nativeEvent.isComposing) return;
 				if (e.key === 'Escape') {
 					e.preventDefault();
 					e.stopPropagation();
@@ -90,7 +92,7 @@ function Box(): JSX.Element {
 						disabled={phase === 'generating'}
 						onChange={(e) => setText(e.target.value)}
 						onKeyDown={(e) => {
-							if (e.key === 'Enter' && !e.shiftKey) {
+							if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
 								e.preventDefault();
 								void submitInlineEdit(text);
 							}
