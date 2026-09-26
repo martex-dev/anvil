@@ -108,7 +108,7 @@ export function BottomPanel(): JSX.Element {
 	return (
 		<section
 			aria-label='Panel'
-			className='glass pane-focus flex h-full min-h-0 flex-col overflow-hidden'
+			className='glass pane-focus animate-fade flex h-full min-h-0 flex-col overflow-hidden'
 		>
 			<div className='flex h-9 shrink-0 items-center gap-1 border-b border-glass-edge pr-1.5 pl-1'>
 				<div role='tablist' className='flex h-full items-center'>

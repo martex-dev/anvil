@@ -57,14 +57,15 @@ export function SideBar(): JSX.Element {
 	return (
 		<aside
 			aria-label={VIEW_META[view].label}
-			className='glass pane-focus flex h-full min-w-0 flex-col overflow-hidden'
+			className='glass pane-focus animate-fade flex h-full min-w-0 flex-col overflow-hidden'
 		>
 			<header className='flex h-9 shrink-0 items-center gap-2 border-b border-glass-edge px-3'>
 				<span className='num text-10 text-accent'>{String(index).padStart(2, '0')}</span>
 				<span className='h-3 w-px bg-glass-edge' />
 				<h2 className='hud text-fg-1'>{VIEW_META[view].label}</h2>
 			</header>
-			<div className='min-h-0 flex-1'>
+			{/* Keyed on the view so switching views fades the new one in. */}
+			<div key={view} className='animate-fade min-h-0 flex-1'>
 				<ErrorBoundary name={VIEW_META[view].label} resetKey={view}>
 					<Suspense
 						fallback={

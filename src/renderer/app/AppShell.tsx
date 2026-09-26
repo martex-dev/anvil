@@ -72,7 +72,7 @@ function AiWidth({ children }: { children: ReactNode }): JSX.Element {
 	return (
 		<aside
 			aria-label='AI assistant'
-			className='glass pane-focus min-w-0 shrink-0 overflow-hidden'
+			className='glass pane-focus animate-fade min-w-0 shrink-0 overflow-hidden'
 			style={{ width }}
 		>
 			{children}
