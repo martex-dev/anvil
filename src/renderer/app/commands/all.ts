@@ -1,5 +1,6 @@
 import { AI_COMMANDS } from '../../features/ai/commands';
 import { EDITOR_COMMANDS } from '../../features/editor/commands';
+import { EXPLORER_COMMANDS } from '../../features/explorer/commands';
 import { GIT_COMMANDS } from '../../features/git/commands';
 import { PYTHON_COMMANDS } from '../../features/python/commands';
 import { TERMINAL_COMMANDS } from '../../features/terminal/commands';
@@ -12,6 +13,7 @@ import type { Command } from './types';
 export const ALL_COMMANDS: readonly Command[] = [
 	...CORE_COMMANDS,
 	...EDITOR_COMMANDS,
+	...EXPLORER_COMMANDS,
 	...PYTHON_COMMANDS,
 	...AI_COMMANDS,
 	...GIT_COMMANDS,

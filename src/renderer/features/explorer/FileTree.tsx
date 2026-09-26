@@ -2,15 +2,15 @@ import { type JSX, useEffect, useImperativeHandle, useRef, useState } from 'reac
 
 import type { FsEntry } from '@shared/ipc/channels/fs';
 
-import { call } from '../../lib/ipc';
 import { toast } from '../../stores/toast-store';
 import { requestOpenFile, useWorkbenchStore } from '../../stores/workbench-store';
 import { Button } from '../../ui/Button';
 import { Dialog } from '../../ui/Dialog';
 import { ErrorState } from '../../ui/ErrorState';
 import { Spinner } from '../../ui/Spinner';
-import { compareWithSelected, selectedForCompare, selectForCompare } from '../editor/compare';
-import { ExplorerContextMenu, type MenuItem } from './ExplorerContextMenu';
+import { explorerMenuItems } from './explorer-menu';
+import { type FileTreeHandle, registerExplorerTree } from './explorer-tree-registry';
+import { ExplorerContextMenu } from './ExplorerContextMenu';
 import { useFsActions } from './fs-actions';
 import { InlineNameInput } from './InlineNameInput';
 import { ancestorsOf, joinPath, parentOf, type PendingCreate } from './tree-model';
@@ -18,11 +18,7 @@ import { TreeRowView } from './TreeRowView';
 import { useFileTree } from './use-file-tree';
 import { treeKeyHandler } from './use-tree-keyboard';
 
-export interface FileTreeHandle {
-	startCreate: (kind: 'file' | 'dir') => void;
-	collapseAll: () => void;
-	refresh: () => void;
-}
+export type { FileTreeHandle } from './explorer-tree-registry';
 
 interface FileTreeProps {
 	root: string;
@@ -52,21 +48,36 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 		setPending({ parent, kind });
 	};
 
+	const reveal = (path: string): void => {
+		tree.expand(ancestorsOf(path));
+		setFocused(path);
+	};
+	const focusedPath = focusedEntry?.kind === 'entry' ? focusedEntry.entry.path : null;
+	const withFocused = (action: (path: string) => void) => (): void => {
+		if (focusedPath) action(focusedPath);
+		else toast.info('Select a file or folder in the Explorer first');
+	};
+
 	useImperativeHandle(handleRef, () => ({
 		startCreate: (kind) => startCreate(kind),
 		collapseAll: tree.collapseAll,
 		refresh: tree.refetchAll,
+		revealActive: () => {
+			if (activeFile) reveal(activeFile);
+			else toast.info('No active file to reveal');
+		},
+		renameFocused: withFocused(setRenaming),
+		deleteFocused: withFocused(setConfirmDelete),
 	}));
+	// Palette commands reach the tree through this registration (see explorer/commands.ts).
+	useEffect(() => registerExplorerTree(handleRef), [handleRef]);
 
 	// Follow the editor: reveal and highlight the active file. Adjusting state during render
 	// (instead of in an effect) avoids an extra render pass.
 	const [seenActive, setSeenActive] = useState<string | null>(null);
 	if (activeFile !== seenActive) {
 		setSeenActive(activeFile);
-		if (activeFile) {
-			tree.expand(ancestorsOf(activeFile));
-			setFocused(activeFile);
-		}
+		if (activeFile) reveal(activeFile);
 	}
 
 	useEffect(() => {
@@ -86,45 +97,12 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 		}
 	};
 
-	const menuItems: Array<MenuItem | 'separator'> = [
-		{ label: 'New File', onSelect: () => startCreate('file', menuTarget) },
-		{ label: 'New Folder', onSelect: () => startCreate('dir', menuTarget) },
-		'separator',
-		{
-			label: 'Rename',
-			shortcut: 'F2',
-			disabled: !menuTarget,
-			onSelect: () => menuTarget && setRenaming(menuTarget.path),
-		},
-		{
-			label: 'Delete',
-			shortcut: 'Delete',
-			danger: true,
-			disabled: !menuTarget,
-			onSelect: () => menuTarget && setConfirmDelete(menuTarget.path),
-		},
-		'separator',
-		{
-			label: 'Copy Relative Path',
-			disabled: !menuTarget,
-			onSelect: () => menuTarget && void navigator.clipboard.writeText(menuTarget.path),
-		},
-		{
-			label: 'Reveal in File Explorer',
-			onSelect: () => void call('fs:reveal', menuTarget?.path ?? '').catch(() => undefined),
-		},
-		'separator',
-		{
-			label: 'Select for Compare',
-			disabled: menuTarget?.kind !== 'file',
-			onSelect: () => menuTarget && selectForCompare(menuTarget.path),
-		},
-		{
-			label: 'Compare with Selected',
-			disabled: menuTarget?.kind !== 'file' || !selectedForCompare(),
-			onSelect: () => menuTarget && void compareWithSelected(menuTarget.path),
-		},
-	];
+	const menuItems = explorerMenuItems({
+		target: menuTarget,
+		startCreate,
+		rename: setRenaming,
+		remove: setConfirmDelete,
+	});
 
 	if (tree.isRootLoading) {
 		return (
