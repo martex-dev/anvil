@@ -15,12 +15,13 @@ import { InlineNameInput } from './InlineNameInput';
 import {
 	ancestorsOf,
 	isWithin,
-	joinPath,
 	neighbourAfterRemoval,
 	parentOf,
 	type PendingCreate,
+	siblingNames,
 } from './tree-model';
 import { TreeRowView } from './TreeRowView';
+import { TreeStatusRow } from './TreeStatusRow';
 import { useFileTree } from './use-file-tree';
 import { treeKeyHandler } from './use-tree-keyboard';
 
@@ -187,74 +188,56 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 							return (
 								<InlineNameInput
 									key={`input-${row.parent}`}
+									mode='create'
+									kind={row.create}
 									initial=''
 									depth={row.depth}
+									siblings={siblingNames(tree.rows, row.parent)}
 									onCancel={() => {
 										setPending(null);
 										restoreFocus();
 									}}
-									onSubmit={(name) => {
+									onSubmit={async (name) => {
+										// Stays open until this settles, so a failure keeps the typed name.
+										const created = await actions.create(
+											row.parent,
+											name,
+											row.create,
+										);
 										setPending(null);
 										restoreFocus();
-										void actions
-											.create(row.parent, name, row.create)
-											.then((created) => {
-												if (!created) return;
-												setFocused(created.path);
-												if (created.kind === 'file')
-													requestOpenFile({ path: created.path });
-											});
+										setFocused(created.path);
+										if (created.kind === 'file')
+											requestOpenFile({ path: created.path });
 									}}
 								/>
 							);
 						}
-						if (row.kind === 'loading') {
-							return (
-								<div
-									key={`loading-${row.dir}`}
-									className='flex h-6 items-center'
-									style={{ paddingLeft: 8 + row.depth * 12 + 16 }}
-								>
-									<Spinner size={12} />
-								</div>
-							);
-						}
-						if (row.kind === 'error') {
-							return (
-								<div
-									key={`error-${row.dir}`}
-									className='flex h-6 items-center truncate text-11 text-down'
-									style={{ paddingLeft: 8 + row.depth * 12 + 16 }}
-									title={row.message}
-								>
-									{row.message}
-								</div>
-							);
+						if (row.kind === 'loading' || row.kind === 'error') {
+							return <TreeStatusRow key={`${row.kind}-${row.dir}`} row={row} />;
 						}
 						if (renaming === row.entry.path) {
 							return (
 								<InlineNameInput
 									key={`rename-${row.entry.path}`}
+									mode='rename'
+									kind={row.entry.kind}
 									initial={row.entry.name}
 									depth={row.depth}
+									siblings={siblingNames(
+										tree.rows,
+										parentOf(row.entry.path),
+										row.entry.path,
+									)}
 									onCancel={() => {
 										setRenaming(null);
 										restoreFocus();
 									}}
-									onSubmit={(name) => {
+									onSubmit={async (name) => {
+										const renamed = await actions.rename(row.entry.path, name);
 										setRenaming(null);
 										restoreFocus();
-										void actions
-											.rename(row.entry.path, name)
-											.then((renamed) => {
-												if (renamed)
-													setFocused(
-														joinPath(
-															parentOf(row.entry.path),
-															renamed.name,
-														),
-													);
-											});
+										setFocused(renamed.path);
 									}}
 								/>
 							);

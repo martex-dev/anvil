@@ -1,3 +1,4 @@
+import { fileNameProblem } from '@shared/fs-names';
 import type { FsEntry } from '@shared/ipc/channels/fs';
 
 export type TreeRow =
@@ -76,4 +77,25 @@ export function neighbourAfterRemoval(rows: readonly TreeRow[], path: string): s
 	if (index === -1) return null;
 	const after = paths.slice(index + 1).find((p) => !isWithin(p, path));
 	return after ?? paths[index - 1] ?? null;
+}
+
+/** Names of the visible entries directly inside `dir`, leaving out `except` (a renamed item). */
+export function siblingNames(rows: readonly TreeRow[], dir: string, except?: string): string[] {
+	return rows.flatMap((r) =>
+		r.kind === 'entry' && r.entry.path !== except && parentOf(r.entry.path) === dir
+			? [r.entry.name]
+			: [],
+	);
+}
+
+/**
+ * Why `name` can't be used for a new or renamed item next to `siblings`, or null. Windows
+ * names are case-insensitive, so "Data.csv" clashes with "data.csv".
+ */
+export function newNameProblem(name: string, siblings: readonly string[]): string | null {
+	const lower = name.toLowerCase();
+	return (
+		fileNameProblem(name) ??
+		(siblings.some((s) => s.toLowerCase() === lower) ? `"${name}" already exists` : null)
+	);
 }

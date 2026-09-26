@@ -8,7 +8,9 @@ import {
 	type DirState,
 	joinPath,
 	neighbourAfterRemoval,
+	newNameProblem,
 	parentOf,
+	siblingNames,
 } from './tree-model';
 
 const e = (path: string, kind: FsEntry['kind'] = 'file'): FsEntry => ({
@@ -95,5 +97,38 @@ describe('neighbourAfterRemoval', () => {
 		const single = buildRows(new Map([['', { entries: [e('only.py')] }]]), new Set());
 		expect(neighbourAfterRemoval(single, 'only.py')).toBeNull();
 		expect(neighbourAfterRemoval(rows, 'missing.py')).toBeNull();
+	});
+});
+
+describe('siblingNames', () => {
+	const dirs = new Map<string, DirState>([
+		['', { entries: [e('src', 'dir'), e('README.md')] }],
+		['src', { entries: [e('src/a.py'), e('src/b.py')] }],
+	]);
+	const rows = buildRows(dirs, new Set(['src']));
+
+	it('lists the direct children of a folder', () => {
+		expect(siblingNames(rows, '')).toEqual(['src', 'README.md']);
+		expect(siblingNames(rows, 'src')).toEqual(['a.py', 'b.py']);
+	});
+
+	it('leaves out the item being renamed', () => {
+		expect(siblingNames(rows, 'src', 'src/a.py')).toEqual(['b.py']);
+	});
+});
+
+describe('newNameProblem', () => {
+	it('accepts a free, valid name', () => {
+		expect(newNameProblem('c.py', ['a.py', 'b.py'])).toBeNull();
+	});
+
+	it('flags names Windows does not allow', () => {
+		expect(newNameProblem('a:b.py', [])).toMatch(/characters/);
+		expect(newNameProblem('con.txt', [])).toMatch(/reserved/);
+		expect(newNameProblem('notes.', [])).toMatch(/dot or space/);
+	});
+
+	it('flags an existing sibling, ignoring case', () => {
+		expect(newNameProblem('A.PY', ['a.py'])).toBe('"A.PY" already exists');
 	});
 });
