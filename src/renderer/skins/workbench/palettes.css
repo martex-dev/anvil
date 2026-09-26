@@ -10,7 +10,7 @@
 	color-scheme: light;
 
 	--bg-0: #008080;
-	--bg-1: #c0c0c0;
+	--bg-1: #ffffff;
 	--bg-2: #ffffff;
 	--bg-3: #d4d4d4;
 	--border: #a0a0a0;
@@ -93,8 +93,8 @@
 	color-scheme: dark;
 
 	--bg-0: #101214;
-	--bg-1: #34373c;
-	--bg-2: #0c0d0f;
+	--bg-1: #0c0d0f;
+	--bg-2: #16181b;
 	--bg-3: #464a51;
 	--border: #55595f;
 	--border-strong: #6b7078;
@@ -176,7 +176,7 @@
 	color-scheme: light;
 
 	--bg-0: #6e3a4e;
-	--bg-1: #d8bcc4;
+	--bg-1: #fffafb;
 	--bg-2: #fffafb;
 	--bg-3: #e6d0d6;
 	--border: #b8949e;
@@ -259,7 +259,7 @@
 	color-scheme: light;
 
 	--bg-0: #432846;
-	--bg-1: #bcaebc;
+	--bg-1: #fbf8fb;
 	--bg-2: #fbf8fb;
 	--bg-3: #cdc1cd;
 	--border: #938293;
@@ -342,7 +342,7 @@
 	color-scheme: light;
 
 	--bg-0: #ffff00;
-	--bg-1: #ff0000;
+	--bg-1: #fffbd0;
 	--bg-2: #ffffa8;
 	--bg-3: #ff5a4a;
 	--border: #a00000;

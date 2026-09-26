@@ -1,0 +1,217 @@
+/*
+ * Workbench 95: everything that floats. Menus are raised grey boards, dialogs are windows
+ * with a caption strip, tooltips are the pale-yellow balloons, no scrims or blur.
+ */
+
+html[data-skin='workbench'] .glass-strong {
+	background: var(--skin-face);
+	color: var(--text-0);
+	backdrop-filter: none;
+	border: 0;
+	border-radius: 0;
+	box-shadow: var(--wb-raised);
+}
+html[data-skin='workbench'] .bg-scrim {
+	background: var(--scrim);
+	backdrop-filter: none;
+}
+html[data-skin='workbench'] .animate-in,
+html[data-skin='workbench'] .animate-fade {
+	animation: none;
+}
+/* Menus drop open the way they did on the desktop: a quick unroll from the top. */
+html[data-skin='workbench'][data-fx='full'] :is([role='menu'], [role='listbox']).glass-strong {
+	animation: wb-unroll 110ms steps(4, end);
+}
+@keyframes wb-unroll {
+	from {
+		clip-path: inset(0 0 100% 0);
+	}
+	to {
+		clip-path: inset(0);
+	}
+}
+
+/* ---- Menus --------------------------------------------------------------------------------- */
+
+html[data-skin='workbench'] [role='menu'].glass-strong {
+	padding: 3px;
+}
+html[data-skin='workbench'] [role='menu'] [role='menuitem'] {
+	height: 20px;
+	border-radius: 0;
+	font-size: 13px;
+	color: var(--text-0);
+}
+html[data-skin='workbench'] [role='menu'] [role='separator'] {
+	height: 2px;
+	margin: 3px 1px;
+	background: none;
+	box-shadow:
+		inset 0 1px var(--skin-bevel-shadow),
+		inset 0 -1px var(--skin-bevel-light);
+}
+html[data-skin='workbench'] .wb-menu-item {
+	display: flex;
+	align-items: center;
+	padding-right: 10px;
+	outline: none;
+	cursor: default;
+}
+html[data-skin='workbench'] .wb-menu-icon {
+	display: flex;
+	flex: none;
+	justify-content: center;
+	width: 24px;
+}
+html[data-skin='workbench'] .wb-menu-label {
+	padding: 4px 8px 1px 24px;
+	font-size: 11px;
+	color: var(--text-2);
+}
+html[data-skin='workbench'] .wb-menu-keys {
+	margin-left: 24px;
+}
+/* Shortcuts in menus are plain text ("Ctrl+S"), not keycaps. */
+html[data-skin='workbench'] :is([role='menu'], [cmdk-item]) kbd {
+	min-width: 0;
+	height: auto;
+	padding: 0;
+	background: none;
+	box-shadow: none;
+	color: inherit;
+	font-size: 12px;
+}
+html[data-skin='workbench']
+	:is([role='menu'], [cmdk-item], [data-state$='open'])
+	kbd
+	+ kbd::before {
+	content: '+';
+}
+
+/* ---- Tooltips ------------------------------------------------------------------------------ */
+
+html[data-skin='workbench']
+	.glass-strong:is([data-state='delayed-open'], [data-state='instant-open']) {
+	padding: 1px 5px;
+	background: var(--skin-tip);
+	color: var(--skin-tip-text);
+	box-shadow: 0 0 0 1px var(--skin-bevel-dark);
+	font-size: 12px;
+}
+html[data-skin='workbench']
+	.glass-strong:is([data-state='delayed-open'], [data-state='instant-open'])
+	kbd {
+	background: none;
+	box-shadow: none;
+	color: inherit;
+}
+
+/* ---- Dialogs: a window with a caption strip ----------------------------------------------- */
+
+html[data-skin='workbench'] [role='dialog'].glass-strong {
+	padding: 3px;
+	box-shadow:
+		var(--wb-window),
+		2px 2px 0 color-mix(in oklab, var(--skin-bevel-dark) 35%, transparent);
+}
+html[data-skin='workbench'] [role='dialog'].glass-strong:not([cmdk-dialog]) > div:first-child {
+	position: relative;
+	padding: 0 0 8px;
+	border: 0;
+	background: var(--wb-title) 0 0 / 100% 20px no-repeat;
+}
+html[data-skin='workbench'] [role='dialog'].glass-strong:not([cmdk-dialog]) > div:first-child h2 {
+	padding-left: 5px;
+	color: var(--skin-title-text);
+	font: 700 13px/20px var(--font-display);
+}
+html[data-skin='workbench']
+	[role='dialog'].glass-strong:not([cmdk-dialog])
+	> div:first-child
+	h2
+	+ p {
+	margin: 8px 8px 0;
+	color: var(--text-1);
+}
+html[data-skin='workbench']
+	[role='dialog'].glass-strong:not([cmdk-dialog])
+	> div:first-child
+	> button {
+	position: absolute;
+	top: 2px;
+	right: 2px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 16px;
+	padding: 0;
+	border-radius: 0;
+	background: var(--skin-face);
+	color: var(--text-0);
+	box-shadow: var(--wb-raised);
+}
+html[data-skin='workbench']
+	[role='dialog'].glass-strong:not([cmdk-dialog])
+	> div:first-child
+	> button:active {
+	box-shadow: var(--wb-pressed);
+}
+html[data-skin='workbench'] [role='dialog'].glass-strong > .border-t {
+	border: 0;
+}
+
+/* ---- Command palette, Quick Open, pickers: a Run dialog ----------------------------------- */
+
+html[data-skin='workbench'] [cmdk-dialog]::before {
+	content: attr(aria-label);
+	display: block;
+	height: 20px;
+	padding-left: 5px;
+	background: var(--wb-title);
+	color: var(--skin-title-text);
+	font: 700 13px/20px var(--font-display);
+}
+html[data-skin='workbench'] [cmdk-dialog] [cmdk-root] > div:has([cmdk-input]) {
+	margin: 8px 6px 6px;
+	border: 0;
+	background: var(--skin-field);
+	color: var(--skin-field-text);
+	box-shadow: var(--wb-sunken);
+}
+html[data-skin='workbench'] [cmdk-dialog] [cmdk-input] {
+	height: 30px;
+	font-size: 14px;
+}
+html[data-skin='workbench'] [cmdk-dialog] [cmdk-list] {
+	margin: 0 6px 6px;
+	padding: 2px;
+	background: var(--skin-field);
+	color: var(--skin-field-text);
+	box-shadow: var(--wb-sunken);
+}
+html[data-skin='workbench'] [cmdk-dialog] [cmdk-item] {
+	height: 22px;
+	min-height: 22px;
+	border-radius: 0;
+	font-size: 13px;
+}
+html[data-skin='workbench'] [cmdk-dialog] [cmdk-group-heading] {
+	padding: 6px 4px 2px;
+	font-family: var(--font-display);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0;
+	text-transform: none;
+	color: var(--accent);
+}
+
+/* ---- Toasts: small message boxes ----------------------------------------------------------- */
+
+html[data-skin='workbench'] li.glass-strong,
+html[data-skin='workbench'] [data-radix-toast-viewport] > .glass-strong {
+	box-shadow:
+		var(--wb-window),
+		2px 2px 0 color-mix(in oklab, var(--skin-bevel-dark) 35%, transparent);
+}
