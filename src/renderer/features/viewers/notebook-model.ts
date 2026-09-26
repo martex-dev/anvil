@@ -104,7 +104,9 @@ function parseOutput(raw: unknown): NotebookOutput | null {
 			return {
 				kind: 'stream',
 				name: raw['name'] === 'stderr' ? 'stderr' : 'stdout',
-				text: applyCarriageReturns(stripAnsi(joinSource(raw['text']))),
+				// Carriage returns are resolved after merging (mergeStreams): a progress bar's
+				// frames are often split across chunks, and one chunk alone can't be resolved.
+				text: stripAnsi(joinSource(raw['text'])),
 			};
 		case 'execute_result':
 		case 'display_data':
@@ -125,8 +127,11 @@ function parseOutput(raw: unknown): NotebookOutput | null {
 	}
 }
 
-/** Jupyter splits one print loop into many stream chunks; merge neighbours of the same name. */
-function mergeStreams(outputs: NotebookOutput[]): NotebookOutput[] {
+/**
+ * Jupyter splits one print loop into many stream chunks; merge neighbours of the same name, then
+ * resolve carriage returns over the whole merged text so tqdm bars show only their final frame.
+ */
+function mergeStreams(outputs: readonly NotebookOutput[]): NotebookOutput[] {
 	const merged: NotebookOutput[] = [];
 	for (const output of outputs) {
 		const prev = merged[merged.length - 1];
@@ -136,7 +141,9 @@ function mergeStreams(outputs: NotebookOutput[]): NotebookOutput[] {
 			merged.push(output);
 		}
 	}
-	return merged;
+	return merged.map((output) =>
+		output.kind === 'stream' ? { ...output, text: applyCarriageReturns(output.text) } : output,
+	);
 }
 
 function parseCell(raw: unknown, index: number): NotebookCell | null {
