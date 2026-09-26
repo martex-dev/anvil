@@ -1,7 +1,8 @@
 /*
- * Anvil design tokens. Palettes (surfaces, text, semantic, syntax) live in themes.css, one block
- * per theme; this file holds the accent presets and everything derived from the palette.
- * Together they are the ONLY files allowed to contain raw color values.
+ * Anvil design tokens. Palettes (surfaces, text, semantic, syntax) live in each skin's
+ * palettes.css, one block per palette; this file holds the accent presets and everything
+ * derived from the palette. Skins set shape and type (--r-*, --font-*) in their skin.css.
+ * Palettes, skins and this file are the ONLY places allowed to contain raw color values.
  */
 
 :root {
@@ -25,7 +26,23 @@
 	/* Type */
 	--font-ui: 'Geist Sans', system-ui, sans-serif;
 	--font-code: 'JetBrains Mono', ui-monospace, monospace;
+	/* Headings and HUD labels; skins pick something with character. */
+	--font-display: var(--font-code);
 	--ui-font-size: 13px;
+
+	/* Shape */
+	--r-sm: 4px;
+	--r-md: 6px;
+	--r-lg: 10px;
+	--r-xl: 14px;
+}
+
+/* Density scales every Tailwind spacing utility (padding, gaps, heights). */
+html[data-density='compact'] {
+	--spacing: 0.21rem;
+}
+html[data-density='roomy'] {
+	--spacing: 0.3rem;
 }
 
 /*
