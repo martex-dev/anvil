@@ -1,4 +1,5 @@
 import { AI_COMMANDS } from '../../features/ai/commands';
+import { DATA_COMMANDS } from '../../features/data/commands';
 import { EDITOR_COMMANDS } from '../../features/editor/commands';
 import { GIT_COMMANDS } from '../../features/git/commands';
 import { PYTHON_COMMANDS } from '../../features/python/commands';
@@ -13,6 +14,7 @@ export const ALL_COMMANDS: readonly Command[] = [
 	...CORE_COMMANDS,
 	...EDITOR_COMMANDS,
 	...PYTHON_COMMANDS,
+	...DATA_COMMANDS,
 	...AI_COMMANDS,
 	...GIT_COMMANDS,
 	...TERMINAL_COMMANDS,

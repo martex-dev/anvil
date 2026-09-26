@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { SearchX, Table2 } from 'lucide-react';
-import { type JSX, useEffect, useMemo, useRef, useState } from 'react';
+import { type JSX, type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 
 import { cn } from '../../lib/cn';
 import { call } from '../../lib/ipc';
@@ -12,9 +12,11 @@ import { ErrorState } from '../../ui/ErrorState';
 import { Kbd } from '../../ui/Kbd';
 import { Spinner } from '../../ui/Spinner';
 import { ColumnProfile } from './ColumnProfile';
+import { registerDataViewer } from './data-actions';
 import {
 	fileName,
 	formatCount,
+	isTextFormat,
 	nextSort,
 	PAGE_SIZE,
 	type SortState,
@@ -38,6 +40,7 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 	const [profileOpen, setProfileOpen] = useState(true);
 	const firstRowRef = useRef(0);
 	const profileToggleRef = useRef<HTMLButtonElement>(null);
+	const filterRef = useRef<HTMLInputElement>(null);
 	const [shownPath, setShownPath] = useState(path);
 
 	// A reused preview tab can switch files under us; view state belongs to the old file.
@@ -120,8 +123,44 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 	};
 
 	const openAsText = (): void => {
+		if (data && !isTextFormat(data.format)) {
+			toast.info(`${data.format.toUpperCase()} files are binary and can't be opened as text`);
+			return;
+		}
 		if (!requestOpenFile({ path, as: 'code' }))
 			toast.error('No editor is available to open this file');
+	};
+
+	const focusFilter = (): void => {
+		filterRef.current?.focus();
+		filterRef.current?.select();
+	};
+
+	// Re-registered every render so palette commands always see the current state.
+	useEffect(() =>
+		registerDataViewer(path, {
+			focusFilter,
+			clearFilter: () => setFilterInput(''),
+			copyCsv,
+			reload: () => void reload(),
+			toggleProfile: () => setProfileOpen((open) => !open),
+			openAsText,
+			clearSort: () => {
+				setSort(null);
+				setSelection(null);
+			},
+		}),
+	);
+
+	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+		if (
+			(event.ctrlKey || event.metaKey) &&
+			!event.shiftKey &&
+			event.key.toLowerCase() === 'f'
+		) {
+			event.preventDefault();
+			focusFilter();
+		}
 	};
 
 	let body: JSX.Element;
@@ -197,7 +236,7 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 	const sortedBy = sort ? columns[sort.column]?.name : undefined;
 
 	return (
-		<div className='flex h-full min-h-0 flex-col text-13'>
+		<div className='flex h-full min-h-0 flex-col text-13' onKeyDown={onKeyDown}>
 			<DataToolbar
 				path={path}
 				meta={data}
@@ -211,6 +250,7 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 				profileOpen={profileOpen}
 				onToggleProfile={() => setProfileOpen((open) => !open)}
 				profileToggleRef={profileToggleRef}
+				filterRef={filterRef}
 			/>
 			<div className='flex min-h-0 flex-1'>
 				<div
@@ -257,6 +297,8 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 					+click range
 					<span className='mx-1'>·</span>
 					<Kbd keys='Ctrl+A' /> all
+					<span className='mx-1'>·</span>
+					<Kbd keys='Ctrl+F' /> filter
 				</span>
 			</div>
 		</div>

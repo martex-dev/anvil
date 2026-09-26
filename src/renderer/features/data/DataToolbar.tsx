@@ -17,9 +17,7 @@ import { IconButton } from '../../ui/IconButton';
 import { Input } from '../../ui/Input';
 import { Spinner } from '../../ui/Spinner';
 import { Tooltip } from '../../ui/Tooltip';
-import { fileName, formatCount } from './data-format';
-
-const TEXT_FORMATS = new Set(['csv', 'tsv', 'json', 'jsonl']);
+import { fileName, formatCount, isTextFormat } from './data-format';
 
 interface DataToolbarProps {
 	path: string;
@@ -35,6 +33,8 @@ interface DataToolbarProps {
 	onToggleProfile: () => void;
 	/** The profile toggle; focus returns here when the profile panel closes itself. */
 	profileToggleRef?: RefObject<HTMLButtonElement | null>;
+	/** The filter box, focused by Ctrl+F and the "Filter Table Rows" command. */
+	filterRef?: RefObject<HTMLInputElement | null>;
 }
 
 export function DataToolbar({
@@ -50,6 +50,7 @@ export function DataToolbar({
 	profileOpen,
 	onToggleProfile,
 	profileToggleRef,
+	filterRef,
 }: DataToolbarProps): JSX.Element {
 	const name = fileName(path);
 	return (
@@ -86,9 +87,10 @@ export function DataToolbar({
 			)}
 			<span className='flex-1' />
 			<Input
+				ref={filterRef}
 				className='w-56 shrink'
 				leading={busy ? <Spinner size={12} label='Filtering' /> : <Search size={13} />}
-				placeholder='Filter rows…'
+				placeholder='Filter rows… (Ctrl+F)'
 				aria-label='Filter rows (substring, any column)'
 				value={filter}
 				spellCheck={false}
@@ -109,7 +111,7 @@ export function DataToolbar({
 				/>
 			)}
 			<div className='flex shrink-0 items-center gap-0.5'>
-				{meta && TEXT_FORMATS.has(meta.format) && (
+				{meta && isTextFormat(meta.format) && (
 					<IconButton
 						label='Open as text'
 						icon={<FileText size={15} />}

@@ -1,4 +1,4 @@
-import type { ColumnType, DataColumn } from '@shared/ipc/channels/data';
+import type { ColumnType, DataColumn, DataFormat } from '@shared/ipc/channels/data';
 
 export const PAGE_SIZE = 500;
 export const ROW_HEIGHT = 24;
@@ -23,6 +23,13 @@ const TYPE_TAGS: Record<ColumnType, string> = {
 	string: 'STR',
 	empty: 'NULL',
 };
+
+const TEXT_FORMATS: ReadonlySet<DataFormat> = new Set(['csv', 'tsv', 'json', 'jsonl']);
+
+/** Formats that are readable text, so "Open as text" makes sense. */
+export function isTextFormat(format: DataFormat): boolean {
+	return TEXT_FORMATS.has(format);
+}
 
 export function typeTag(type: ColumnType): string {
 	return TYPE_TAGS[type];
