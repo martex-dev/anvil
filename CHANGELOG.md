@@ -3,6 +3,68 @@
 What changed in each release of Anvil. The release workflow publishes a version's section as
 its GitHub release notes.
 
+## [0.2.4] - 2026-09-26
+
+AI assistant: 53 fixes from the full bug sweep of 0.2.0.
+
+### Fixed
+
+- **ai:** Report missing key and timeout for autocomplete
+- **ai:** Surface git diff failures instead of reporting no changes
+- **ai:** End streams that go silent
+- **ai:** Keep gpt-5 autocomplete from spending its budget on reasoning
+- **ai:** Report truncated and blocked replies
+- **ai:** Make the apply dialog a real modal
+- **ai:** Keep the apply diff editor across mode toggles
+- **ai:** Check the apply target before opening, not in an effect
+- **ai:** Put the apply diff on an opaque surface
+- **ai:** Truncate @-attached and problem files to the context limit
+- **ai:** Only auto-scroll the chat while it is at the bottom
+- **ai:** Add a chat error state and stop the false no-key banner
+- **ai:** Keep the chat draft when a reply is still streaming
+- **ai:** Let Escape close chat suggestions and respect IME composition
+- **ai:** Keep the chat draft when the panel closes
+- **ai:** Run chat starters, slash commands and model picker as commands
+- **ai:** Offer undo after clearing the conversation
+- **ai:** Announce chat replies without replaying stale errors
+- **ai:** Show progress on the diff attach and ignore repeat clicks
+- **ai:** Explain an empty @ mention popup
+- **ai:** Give the mention popup combobox semantics
+- **ai:** Keep focus when send turns into stop
+- **ai:** Let esc and a stop button cancel an inline edit that is generating
+- **ai:** Handle esc and tab for inline edit while the code has focus
+- **ai:** Stop shift+tab from accepting an inline edit
+- **ai:** Return focus to the inline edit input after picking a suggestion
+- **ai:** Report a failed copy from a chat code block
+- **ai:** Explain chat links that cannot open instead of ignoring them
+- **ai:** Wrap long text and truncate context chips in the user bubble
+- **ai:** Stop the shimmer and pulse loading animations under reduced motion
+- **ai:** Offer retry on a failed chat reply
+- **ai:** Mark stopped replies and show when a reply was written
+- **ai:** Leave attachments alone when an AI action runs during a reply
+- **ai:** Select the code before fix-here and vectorize inline edits
+- **ai:** Leave zen mode when an AI action opens the chat
+- **ai:** Ask for the right test framework per language
+- **ai:** Say why fix-here, add docstring and ask-about-problem did less
+- **ai:** Validate a typed model id before saving it
+- **ai:** Always open the sent chat history with a user turn
+- **ai:** Keep earlier attachments in follow-up chat requests
+- **ai:** Cap chat attachments at the request limit
+- **ai:** Make stop, attach and inline accept/reject palette commands
+- **ai:** Leave ctrl+l to the terminal so it clears the screen
+- **ai:** Key cached ghost text on the code after the cursor and the model
+- **ai:** Stop the chat retry clashing with the settings retry
+- **ai:** Apply an inline edit where its code is now
+- **ai:** Keep the text after the cursor when rejecting an inline insert
+- **ai:** End the inline edit when its editor is disposed
+- **ai:** Keep an unfenced reply's indentation and refuse an empty one
+- **ai:** Refit the inline edit box when the editor is resized
+- **ai:** Keep the cursor marker in large files for inline inserts
+- **ai:** Make inline reject and apply their own undo steps
+- **ai:** Skip one-shot requests cancelled before they are sent
+- **skins:** Keep Workbench 95's sunken chat log and Zen Paper's Jump to latest button styled after the chat rework
+- **skins:** Keep the AI busy indicator still under reduced motion in Zen Paper and Mainframe
+
 ## [0.2.3] - 2026-09-26
 
 Toolbox, transforms and snap: 38 fixes from the full bug sweep of 0.2.0.
