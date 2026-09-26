@@ -37,6 +37,8 @@ describe('buildUserConfiguration motion', () => {
 	beforeEach(() => {
 		osReducesMotion = false;
 		vi.stubGlobal('document', { documentElement: { dataset: {} } });
+		// The skin's code font is read from the live --font-code; empty falls back to the setting.
+		vi.stubGlobal('getComputedStyle', () => ({ getPropertyValue: () => '' }));
 		vi.stubGlobal('window', {
 			matchMedia: (query: string) => ({
 				matches: query === '(prefers-reduced-motion: reduce)' && osReducesMotion,
@@ -64,6 +66,8 @@ describe('buildUserConfiguration motion', () => {
 describe('buildUserConfiguration colors', () => {
 	beforeEach(() => {
 		vi.stubGlobal('document', { documentElement: { dataset: {} } });
+		// The skin's code font is read from the live --font-code; empty falls back to the setting.
+		vi.stubGlobal('getComputedStyle', () => ({ getPropertyValue: () => '' }));
 		vi.stubGlobal('window', { matchMedia: () => ({ matches: false }) });
 	});
 	afterEach(() => {
