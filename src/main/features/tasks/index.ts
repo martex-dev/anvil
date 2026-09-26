@@ -59,8 +59,13 @@ export function justRecipes(justfile: string): string[] {
 /** Runnable things a project declares: npm scripts, pyproject scripts/poe tasks, make, just. */
 export function detectTasks(root: string): Task[] {
 	const tasks: Task[] = [];
-	const add = (task: Omit<Task, 'id'>): void => {
-		tasks.push({ ...task, id: `${task.source}:${task.label}` });
+	// The id keys React rows and the task's terminal role, so it must be unique: `kind` tells
+	// apart a poe task and a project script of the same name, and a suffix covers the rest.
+	const add = (kind: string, task: Omit<Task, 'id'>): void => {
+		const base = `${task.source}:${kind}:${task.label}`;
+		let id = base;
+		for (let n = 2; tasks.some((t) => t.id === id); n++) id = `${base}#${n}`;
+		tasks.push({ ...task, id });
 	};
 
 	const pkg = read(root, 'package.json');
@@ -75,7 +80,12 @@ export function detectTasks(root: string): Task[] {
 						? 'bun run'
 						: 'npm run';
 			for (const [name, script] of Object.entries(scripts)) {
-				add({ label: name, command: `${runner} ${name}`, source: 'npm', detail: script });
+				add('script', {
+					label: name,
+					command: `${runner} ${name}`,
+					source: 'npm',
+					detail: script,
+				});
 			}
 		} catch {
 			// A broken package.json just has no tasks.
@@ -87,7 +97,7 @@ export function detectTasks(root: string): Task[] {
 	const prefix = uv ? 'uv run ' : '';
 	if (pyproject) {
 		for (const name of tomlKeys(tomlSection(pyproject, 'project.scripts') ?? '')) {
-			add({
+			add('script', {
 				label: name,
 				command: `${prefix}${name}`,
 				source: uv ? 'uv' : 'python',
@@ -95,7 +105,7 @@ export function detectTasks(root: string): Task[] {
 			});
 		}
 		for (const name of tomlKeys(tomlSection(pyproject, 'tool.poe.tasks') ?? '')) {
-			add({
+			add('poe', {
 				label: name,
 				command: `${prefix}poe ${name}`,
 				source: 'python',
@@ -108,7 +118,7 @@ export function detectTasks(root: string): Task[] {
 		(pyproject?.includes('[tool.pytest') ?? false) ||
 		existsSync(join(root, 'pytest.ini'));
 	if (hasTests && (pyproject || existsSync(join(root, 'requirements.txt')))) {
-		add({
+		add('pytest', {
 			label: 'pytest',
 			command: `${prefix}pytest -q`,
 			source: uv ? 'uv' : 'python',
@@ -116,13 +126,13 @@ export function detectTasks(root: string): Task[] {
 		});
 	}
 	if (pyproject && /\[tool\.ruff/.test(pyproject)) {
-		add({
+		add('ruff', {
 			label: 'ruff check',
 			command: `${prefix}ruff check .`,
 			source: uv ? 'uv' : 'python',
 			detail: 'lint',
 		});
-		add({
+		add('ruff', {
 			label: 'ruff format',
 			command: `${prefix}ruff format .`,
 			source: uv ? 'uv' : 'python',
@@ -130,7 +140,7 @@ export function detectTasks(root: string): Task[] {
 		});
 	}
 	if (uv)
-		add({
+		add('sync', {
 			label: 'uv sync',
 			command: 'uv sync',
 			source: 'uv',
@@ -140,18 +150,18 @@ export function detectTasks(root: string): Task[] {
 	const makefile = read(root, 'Makefile') ?? read(root, 'makefile');
 	if (makefile)
 		for (const t of makeTargets(makefile))
-			add({ label: t, command: `make ${t}`, source: 'make', detail: null });
+			add('make', { label: t, command: `make ${t}`, source: 'make', detail: null });
 
 	const justfile = read(root, 'justfile') ?? read(root, 'Justfile') ?? read(root, '.justfile');
 	if (justfile)
 		for (const r of justRecipes(justfile))
-			add({ label: r, command: `just ${r}`, source: 'just', detail: null });
+			add('just', { label: r, command: `just ${r}`, source: 'just', detail: null });
 
 	// Notebook-style scripts at the top level are common entry points in research repos.
 	try {
 		for (const name of readdirSync(root)) {
 			if (/^(main|train|backtest|run|app)\.py$/.test(name)) {
-				add({
+				add('entry', {
 					label: name,
 					command: uv ? `uv run python ${name}` : `python ${name}`,
 					source: 'python',

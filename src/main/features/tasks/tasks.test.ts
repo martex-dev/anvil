@@ -63,6 +63,17 @@ describe('detectTasks', () => {
 		);
 	});
 
+	it('gives a poe task and a project script with the same name different ids', () => {
+		writeFileSync(
+			join(dir, 'pyproject.toml'),
+			'[project.scripts]\ntrain = "a:b"\n[tool.poe.tasks]\ntrain = "python t.py"\n',
+		);
+		writeFileSync(join(dir, 'train.py'), '');
+		const ids = detectTasks(dir).map((t) => t.id);
+		expect(ids).toHaveLength(3);
+		expect(new Set(ids).size).toBe(ids.length);
+	});
+
 	it('returns nothing for an empty folder', () => {
 		expect(detectTasks(dir)).toEqual([]);
 	});
