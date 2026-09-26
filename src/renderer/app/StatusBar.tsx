@@ -73,10 +73,13 @@ function PerfMeter(): JSX.Element | null {
 		queryFn: () => call('app:metrics'),
 		refetchInterval: 4000,
 	});
+	// Hold the meter's width while the first sample loads, so the items beside it don't jump.
+	if (q.isPending) return <span aria-hidden className='w-24 shrink-0' />;
 	if (!q.data) return null;
 	const { memoryMb, cpuPercent } = q.data;
 	return (
 		<Item
+			className='min-w-24 justify-center'
 			title={`Anvil: ${memoryMb} MB across ${q.data.processes} processes, ${cpuPercent}% CPU`}
 		>
 			<Cpu size={11} />
@@ -101,7 +104,10 @@ function GitItem(): JSX.Element | null {
 				title={`${status.branch ?? 'detached'}${status.tracking ? ` → ${status.tracking}` : ''}\nClick to switch branch`}
 			>
 				<GitBranch size={12} className='text-accent' />
-				<span className='num text-fg-1' data-git-branch={status.branch ?? ''}>
+				<span
+					className='num max-w-48 truncate text-fg-1'
+					data-git-branch={status.branch ?? ''}
+				>
 					{status.branch ?? '(detached)'}
 				</span>
 				{changes > 0 && <span className='num text-warn'>●{changes}</span>}
@@ -205,19 +211,27 @@ function ShieldItem(): JSX.Element {
 }
 
 export function StatusBar(): JSX.Element {
+	// Two groups give way on a narrow window (clipped, not wrapped); the toggles, updates and
+	// clock on the right never shrink, so they stay visible and clickable.
 	return (
-		<footer className='relative z-10 flex h-[26px] shrink-0 items-stretch gap-0.5 border-t border-glass-edge bg-glass-strong px-1.5 text-11 text-fg-2 glass-blur'>
-			<GitItem />
-			<ProblemsItem />
-			<PythonEnvChip />
-			<LspStatusItem />
+		<footer className='relative z-10 flex h-[26px] shrink-0 items-stretch gap-0.5 overflow-x-clip border-t border-glass-edge bg-glass-strong px-1.5 text-11 text-fg-2 glass-blur'>
+			<div className='flex min-w-0 items-stretch gap-0.5 overflow-x-clip'>
+				<GitItem />
+				<ProblemsItem />
+				<PythonEnvChip />
+				<LspStatusItem />
+			</div>
 			<span className='flex-1' />
-			<CursorItems />
-			<AiItem />
-			<ShieldItem />
-			<PerfMeter />
-			<UpdateIndicator />
-			<Clock />
+			<div className='flex min-w-0 items-stretch gap-0.5 overflow-x-clip'>
+				<CursorItems />
+			</div>
+			<div className='flex shrink-0 items-stretch gap-0.5'>
+				<AiItem />
+				<ShieldItem />
+				<PerfMeter />
+				<UpdateIndicator />
+				<Clock />
+			</div>
 		</footer>
 	);
 }
