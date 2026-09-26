@@ -212,7 +212,10 @@ export function buildUserConfiguration(prefs: EditorPrefs): string {
 		'workbench.colorCustomizations': colors,
 		'editor.tokenColorCustomizations': { textMateRules: syntaxRules(c) },
 		'editor.semanticTokenColorCustomizations': { enabled: true, rules: semanticRules(c) },
-		'editor.fontFamily': editorFontFamily(prefs.editorFont),
+		// The resolved stack: the chosen font, or the skin's own when the setting is 'skin'.
+		'editor.fontFamily':
+			getComputedStyle(document.documentElement).getPropertyValue('--font-code').trim() ||
+			editorFontFamily(prefs.editorFont),
 		'editor.fontSize': size,
 		'editor.lineHeight': Math.round(size * prefs.editorLineHeight),
 		'editor.fontLigatures': prefs.editorLigatures,

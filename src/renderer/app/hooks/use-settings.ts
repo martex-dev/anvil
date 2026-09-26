@@ -1,13 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
-import { DEFAULT_SETTINGS, editorFontFamily, type Settings } from '@shared/settings';
+import { DEFAULT_SETTINGS, type Settings } from '@shared/settings';
 
 import { call } from '../../lib/ipc';
 import { queryClient } from '../../lib/query-client';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
+import { palettePatch, resolveLook } from '../../skins/look';
+import { useLookStore } from '../../skins/look-store';
+import { skinById } from '../../skins/registry';
 import { toast } from '../../stores/toast-store';
-import { themeById } from '../../styles/theme-list';
 
 export const SETTINGS_KEY = ['settings'] as const;
 
@@ -50,13 +52,17 @@ export function useApplySettings(): void {
 	}, [settings]);
 }
 
-/** Theme, accent, glass and fonts onto <html>; editors and terminals re-read the tokens after. */
+/** Skin, palette, accent, fonts and effects onto <html>; editors and terminals re-read after. */
 export function applyAppearance(settings: Settings): void {
 	const root = document.documentElement;
-	const theme = themeById(settings.theme);
+	const look = resolveLook(settings);
 	root.style.setProperty('--ui-font-size', `${settings.uiFontSize}px`);
-	root.style.setProperty('--font-code', editorFontFamily(settings.editorFont));
-	root.dataset['theme'] = theme.id;
+	root.style.setProperty('--font-ui', look.uiFont);
+	root.style.setProperty('--font-display', look.displayFont);
+	root.style.setProperty('--font-code', look.codeFont);
+	root.dataset['skin'] = look.skin.id;
+	root.dataset['theme'] = look.palette.id;
+	root.dataset['kind'] = look.palette.kind;
 	root.dataset['accent'] = settings.accent;
 	if (settings.accent === 'custom') {
 		root.style.setProperty('--accent', settings.customAccent);
@@ -73,9 +79,13 @@ export function applyAppearance(settings: Settings): void {
 	root.dataset['glass'] = settings.glass;
 	root.dataset['ambient'] = String(settings.ambient);
 	root.dataset['reduceMotion'] = String(settings.reduceMotion);
+	root.dataset['density'] = settings.density;
+	// Reduced motion always wins over a skin's animations.
+	root.dataset['fx'] = settings.reduceMotion && settings.fx === 'full' ? 'subtle' : settings.fx;
 	root.dataset['neonCursor'] = String(settings.neonCursor);
 	root.dataset['rainbowIndent'] = String(settings.rainbowIndent);
 	root.dataset['tabTint'] = String(settings.tabTint);
+	useLookStore.setState({ look });
 	// Monaco and xterm take concrete colors, so they rebuild once the new tokens are live.
 	requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('anvil:appearance')));
 }
@@ -92,8 +102,14 @@ export function isLightColor(hex: string): boolean {
 	return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.179;
 }
 
-/** Live preview while browsing the theme picker; `null` restores the saved settings. */
-export function previewTheme(themeId: string | null): void {
+/** Live preview while browsing the palette picker; `null` restores the saved settings. */
+export function previewTheme(paletteId: string | null): void {
 	const settings = getSettings();
-	applyAppearance(themeId ? { ...settings, theme: themeId } : settings);
+	applyAppearance(paletteId ? { ...settings, ...palettePatch(settings, paletteId) } : settings);
+}
+
+/** Live preview while browsing the skin picker; `null` restores the saved settings. */
+export function previewSkin(skinId: string | null): void {
+	const settings = getSettings();
+	applyAppearance(skinId ? { ...settings, skin: skinById(skinId).id } : settings);
 }
