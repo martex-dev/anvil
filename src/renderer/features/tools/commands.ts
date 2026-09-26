@@ -8,8 +8,6 @@ import {
 	Fingerprint,
 	Focus,
 	NotebookPen,
-	Palette,
-	SwatchBook,
 	WandSparkles,
 	WrapText,
 } from 'lucide-react';
@@ -25,7 +23,6 @@ import { isScratch } from '../editor/file-ops';
 import { navHistory } from '../editor/nav-history';
 import { openScratchTab } from '../editor/open';
 import { openSnapFromEditor } from '../snap/open';
-import { cycleAccent, nextTheme, pickTheme } from '../themes/theme-picker';
 import { uuid } from '../transform/generate';
 import {
 	evaluateMath,
@@ -51,28 +48,6 @@ function activeFilePath(): string | null {
 }
 
 export const TOOL_COMMANDS: Command[] = [
-	{
-		id: 'anvil.theme',
-		title: 'Color Theme…',
-		category: 'Anvil',
-		shortcut: 'Ctrl+Alt+T',
-		icon: SwatchBook,
-		keywords: ['dark', 'light', 'colors', 'appearance', 'dracula', 'nord', 'tokyo'],
-		run: pickTheme,
-	},
-	{
-		id: 'anvil.nextTheme',
-		title: 'Next Color Theme',
-		category: 'Anvil',
-		run: () => nextTheme(1),
-	},
-	{
-		id: 'anvil.accent',
-		title: 'Cycle Accent Color',
-		category: 'Anvil',
-		icon: Palette,
-		run: cycleAccent,
-	},
 	{
 		id: 'tools.scratchpad',
 		title: 'Open Scratchpad',
