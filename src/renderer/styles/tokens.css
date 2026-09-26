@@ -1,81 +1,20 @@
 /*
- * Anvil design tokens: the ONLY file allowed to contain raw color values.
- * "Cyber glass": near-black space, translucent blurred panels, one neon accent paired with a
- * second hue for gradients. Everything else references these variables.
+ * Anvil design tokens. Palettes (surfaces, text, semantic, syntax) live in themes.css, one block
+ * per theme; this file holds the accent presets and everything derived from the palette.
+ * Together they are the ONLY files allowed to contain raw color values.
  */
 
 :root {
-	/* Surfaces (solid) */
-	--bg-0: #05060a;
-	--bg-1: #0a0d14;
-	--bg-2: #111623;
-	--bg-3: #19202f;
-	--border: #1a2233;
-	--border-strong: #2a3550;
-
-	/* Glass surfaces sit over the ambient background */
-	--glass: rgb(11 15 25 / 0.62);
-	--glass-strong: rgb(9 12 20 / 0.84);
-	--glass-edge: rgb(150 190 255 / 0.1);
-	--glass-highlight: rgb(255 255 255 / 0.05);
-	--glass-blur: 20px;
-	/* The editor sits on a nearly opaque plate: text must stay crisp, and no blur runs under it. */
-	--editor-bg: rgb(8 11 18 / 0.9);
-
-	/* Text */
-	--text-0: #e6edf7;
-	--text-1: #9aa8c0;
-	--text-2: #5f6b85;
-
-	/* Semantic */
-	--up: #3dffa8;
-	--down: #ff4d6d;
-	--warn: #ffb547;
-	--info: #5cc8ff;
-
 	/* Accent presets (Settings → Appearance); each has a partner hue for gradients */
 	--accent-cyan: #22e5ff;
 	--accent-magenta: #ff3dcb;
 	--accent-lime: #b4ff39;
 	--accent-violet: #9d7bff;
 	--accent-amber: #ffc233;
-	--accent: var(--accent-cyan);
-	--accent-2: var(--accent-violet);
+	--on-accent-dark: #05060a;
+	--on-accent-light: #ffffff;
 
-	/* Syntax ("Anvil Neon"), fixed across accents so code reads the same in every theme */
-	--syn-comment: #5f6b85;
-	--syn-keyword: #c792ff;
-	--syn-control: #ff6ad5;
-	--syn-string: #b5f06a;
-	--syn-number: #ffb86b;
-	--syn-function: #5ee4ff;
-	--syn-type: #7cf7d4;
-	--syn-variable: #e6edf7;
-	--syn-parameter: #ffd9b0;
-	--syn-property: #a9c4ff;
-	--syn-decorator: #ff9f6b;
-	--syn-builtin: #ff7a9c;
-	--syn-operator: #8fa3c8;
-	--syn-regexp: #ffe36b;
-
-	/* Text on top of a solid accent fill (every accent is light, so dark text passes AA) */
-	--on-accent: #05060a;
-
-	/* Low-opacity fills derived from semantic colors */
-	--accent-soft: color-mix(in oklab, var(--accent) 14%, transparent);
-	--accent-faint: color-mix(in oklab, var(--accent) 7%, transparent);
-	--up-soft: color-mix(in oklab, var(--up) 16%, transparent);
-	--down-soft: color-mix(in oklab, var(--down) 16%, transparent);
-	--warn-soft: color-mix(in oklab, var(--warn) 16%, transparent);
-	--info-soft: color-mix(in oklab, var(--info) 16%, transparent);
-	--scrim: rgb(3 4 8 / 0.62);
-
-	/* Glow: only for the focused/active element */
-	--glow:
-		0 0 0 1px color-mix(in oklab, var(--accent) 70%, transparent),
-		0 0 18px -4px color-mix(in oklab, var(--accent) 55%, transparent);
-	--glow-soft: 0 0 24px -10px color-mix(in oklab, var(--accent) 70%, transparent);
-	--shadow-panel: inset 0 1px 0 var(--glass-highlight), 0 12px 32px -16px rgb(0 0 0 / 0.75);
+	--glass-blur: 20px;
 
 	/* Motion */
 	--dur-fast: 120ms;
@@ -89,26 +28,66 @@
 	--ui-font-size: 13px;
 }
 
+/*
+ * Derived tokens are declared on every themed scope, not just :root: a custom property that
+ * references another resolves where it is declared, so theme preview cards (a nested
+ * data-theme) would otherwise inherit the app's accent and fills instead of their own.
+ */
+:root,
+[data-theme] {
+	--accent: var(--theme-accent);
+	--accent-2: var(--theme-accent-2);
+
+	--accent-soft: color-mix(in oklab, var(--accent) 14%, transparent);
+	--accent-faint: color-mix(in oklab, var(--accent) 7%, transparent);
+	--up-soft: color-mix(in oklab, var(--up) 16%, transparent);
+	--down-soft: color-mix(in oklab, var(--down) 16%, transparent);
+	--warn-soft: color-mix(in oklab, var(--warn) 16%, transparent);
+	--info-soft: color-mix(in oklab, var(--info) 16%, transparent);
+
+	/* Glow: only for the focused/active element */
+	--glow:
+		0 0 0 1px color-mix(in oklab, var(--accent) 70%, transparent),
+		0 0 18px -4px color-mix(in oklab, var(--accent) 55%, transparent);
+	--glow-soft: 0 0 24px -10px color-mix(in oklab, var(--accent) 70%, transparent);
+	--shadow-panel:
+		inset 0 1px 0 var(--glass-highlight),
+		0 12px 32px -16px color-mix(in oklab, var(--bg-0) 75%, transparent);
+	--shadow-float: 0 24px 64px -20px color-mix(in oklab, var(--bg-0) 80%, transparent);
+	--grain: color-mix(in oklab, var(--text-0) 1.2%, transparent);
+}
+
+/* Accent presets override the theme's own accent; every preset is light, so dark text on it. */
+html[data-accent='cyan'] {
+	--accent: var(--accent-cyan);
+	--accent-2: var(--accent-violet);
+	--on-accent: var(--on-accent-dark);
+}
 html[data-accent='magenta'] {
 	--accent: var(--accent-magenta);
 	--accent-2: var(--accent-violet);
+	--on-accent: var(--on-accent-dark);
 }
 html[data-accent='lime'] {
 	--accent: var(--accent-lime);
 	--accent-2: var(--accent-cyan);
+	--on-accent: var(--on-accent-dark);
 }
 html[data-accent='violet'] {
 	--accent: var(--accent-violet);
 	--accent-2: var(--accent-magenta);
+	--on-accent: var(--on-accent-dark);
 }
 html[data-accent='amber'] {
 	--accent: var(--accent-amber);
 	--accent-2: var(--accent-magenta);
+	--on-accent: var(--on-accent-dark);
 }
 
+/* Glass levels are mixed from the theme's own panel color, so they work for light themes too. */
 html[data-glass='subtle'] {
-	--glass: rgb(10 13 22 / 0.86);
-	--glass-strong: rgb(9 12 20 / 0.94);
+	--glass: color-mix(in oklab, var(--bg-1) 88%, transparent);
+	--glass-strong: color-mix(in oklab, var(--bg-1) 95%, transparent);
 	--glass-blur: 8px;
 }
 html[data-glass='off'] {
