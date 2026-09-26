@@ -66,13 +66,17 @@ export const GridRow = memo(function GridRow({
 		const w = (offsets[c + 1] ?? 0) - (offsets[c] ?? 0);
 		const selected = inSelection && c >= selLeft && c <= selRight;
 		let content: ReactNode;
+		// Cells truncate with an ellipsis; the native tooltip lets long values be read in full.
+		let title: string | undefined;
 		if (cells === 'loading') {
 			content = <span className='shimmer block h-2 w-3/5 rounded-sm bg-bg-3/60' />;
 		} else if (cells === 'error') {
 			// Tinted so failed rows don't read as data; the banner below the grid explains.
 			content = <span className='text-down/70'>—</span>;
 		} else {
-			content = renderCell(cells[c], column);
+			const value = cells[c];
+			content = renderCell(value, column);
+			title = value ?? undefined;
 		}
 		items.push(
 			<div
@@ -84,6 +88,7 @@ export const GridRow = memo(function GridRow({
 				aria-selected={selected}
 				data-row={index}
 				data-col={c}
+				title={title}
 				className={cn(
 					'absolute top-0 flex h-full items-center truncate border-r border-border/40 px-2',
 					isNumericType(column.type) && 'justify-end text-right',
