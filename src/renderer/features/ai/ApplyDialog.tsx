@@ -1,0 +1,183 @@
+import { Check, GitCompare, X } from 'lucide-react';
+import type * as Monaco from 'monaco-editor';
+import { type JSX, useEffect, useMemo, useRef, useState } from 'react';
+import { create } from 'zustand';
+
+import { focusedEditor } from '../../lib/monaco/editors';
+import { getLoadedMonaco } from '../../lib/monaco/load';
+import { toWorkspacePath } from '../../lib/monaco/workspace-root';
+import { useRegisterOverlay } from '../../stores/overlay-store';
+import { toast } from '../../stores/toast-store';
+import { Button } from '../../ui/Button';
+import { applyBlock } from './fences';
+
+export interface Proposal {
+	/** Workspace-relative file the change targets. */
+	path: string;
+	language: string;
+	/** The code block from the reply. */
+	block: string;
+	/** Lines that were selected when Apply was clicked (1-based, inclusive). */
+	selection: { startLine: number; endLine: number } | null;
+}
+
+export const useApply = create<{ proposal: Proposal | null; set: (p: Proposal | null) => void }>(
+	(set) => ({
+		proposal: null,
+		set: (proposal) => set({ proposal }),
+	}),
+);
+
+function findModel(path: string): Monaco.editor.ITextModel | null {
+	const monaco = getLoadedMonaco();
+	return monaco?.editor.getModels().find((m) => toWorkspacePath(m.uri) === path) ?? null;
+}
+
+function Preview({ proposal }: { proposal: Proposal }): JSX.Element {
+	const [mode, setMode] = useState<'selection' | 'file'>(
+		proposal.selection ? 'selection' : 'file',
+	);
+	const hostRef = useRef<HTMLDivElement>(null);
+	const target = findModel(proposal.path);
+	const original = target?.getValue() ?? '';
+	const proposed = useMemo(
+		() =>
+			applyBlock(original, proposal.block, mode === 'selection' ? proposal.selection : null),
+		[original, proposal, mode],
+	);
+
+	useEffect(() => {
+		const monaco = getLoadedMonaco();
+		if (!monaco || !hostRef.current) return;
+		const diff = monaco.editor.createDiffEditor(hostRef.current, {
+			automaticLayout: true,
+			readOnly: true,
+			originalEditable: false,
+			renderSideBySide: true,
+			minimap: { enabled: false },
+			hideUnchangedRegions: { enabled: true },
+		});
+		const left = monaco.editor.createModel(original, proposal.language);
+		const right = monaco.editor.createModel(proposed, proposal.language);
+		diff.setModel({ original: left, modified: right });
+		return () => {
+			diff.dispose();
+			left.dispose();
+			right.dispose();
+		};
+	}, [original, proposed, proposal.language]);
+
+	const accept = (): void => {
+		const model = findModel(proposal.path);
+		if (!model) {
+			toast.error('File is no longer open', proposal.path);
+			return;
+		}
+		// One undoable edit; the editor marks the file unsaved and Ctrl+S writes it.
+		model.pushEditOperations(
+			[],
+			[{ range: model.getFullModelRange(), text: proposed }],
+			() => null,
+		);
+		toast.success(
+			'Applied: review and save',
+			`${proposal.path} (Ctrl+S to save, Ctrl+Z to undo)`,
+		);
+		useApply.getState().set(null);
+		// Straight back to the code, so Ctrl+S / Ctrl+Z act on the change.
+		setTimeout(() => focusedEditor()?.focus(), 0);
+	};
+
+	return (
+		<div className='flex h-full flex-col' data-apply-preview={proposal.path}>
+			<header className='flex flex-wrap items-center gap-2 border-b border-glass-edge px-4 py-2.5'>
+				<GitCompare size={15} className='text-accent' />
+				<span className='min-w-0 flex-1 truncate text-13 text-fg-0'>
+					Proposed change to <code className='text-accent'>{proposal.path}</code>
+				</span>
+				{proposal.selection && (
+					<div
+						role='group'
+						aria-label='Apply to'
+						className='flex overflow-hidden rounded-md border border-border-strong text-11'
+					>
+						{(['selection', 'file'] as const).map((m) => (
+							<button
+								key={m}
+								type='button'
+								aria-pressed={mode === m}
+								onClick={() => setMode(m)}
+								className={
+									mode === m
+										? 'bg-accent-soft px-2 py-1 text-fg-0'
+										: 'px-2 py-1 text-fg-2 hover:text-fg-1'
+								}
+							>
+								{m === 'selection'
+									? `Replace lines ${proposal.selection?.startLine}-${proposal.selection?.endLine}`
+									: 'Replace whole file'}
+							</button>
+						))}
+					</div>
+				)}
+				<Button
+					size='sm'
+					variant='ghost'
+					icon={<X size={12} />}
+					onClick={() => useApply.getState().set(null)}
+				>
+					Discard
+				</Button>
+				<Button
+					size='sm'
+					variant='primary'
+					icon={<Check size={12} />}
+					onClick={accept}
+					autoFocus
+				>
+					Accept
+				</Button>
+			</header>
+			<div
+				ref={hostRef}
+				className='min-h-0 flex-1'
+				style={{ background: 'var(--editor-bg)' }}
+			/>
+		</div>
+	);
+}
+
+/** Full-screen glass sheet with the diff of an AI code block against the file. */
+export function ApplyDialog(): JSX.Element | null {
+	const proposal = useApply((s) => s.proposal);
+	useRegisterOverlay(proposal !== null);
+	useEffect(() => {
+		if (!proposal) return;
+		const onKey = (e: KeyboardEvent): void => {
+			if (e.key === 'Escape') useApply.getState().set(null);
+		};
+		window.addEventListener('keydown', onKey);
+		return () => window.removeEventListener('keydown', onKey);
+	}, [proposal]);
+	const missing = proposal !== null && !findModel(proposal.path);
+	useEffect(() => {
+		if (!missing || !proposal) return;
+		toast.info('Open the file first', `${proposal.path} isn't open in the editor anymore.`);
+		useApply.getState().set(null);
+	}, [missing, proposal]);
+	if (!proposal || missing) return null;
+	return (
+		<div className='animate-fade fixed inset-0 z-40 flex items-center justify-center bg-scrim p-8 backdrop-blur-[2px]'>
+			<div
+				role='dialog'
+				aria-label='Apply AI change'
+				className='glass-strong animate-in h-[80vh] w-[min(1200px,94vw)] overflow-hidden rounded-xl'
+			>
+				<Preview
+					key={`${proposal.path}:${proposal.block.length}:${proposal.block.slice(0, 40)}`}
+					proposal={proposal}
+				/>
+			</div>
+		</div>
+	);
+}
