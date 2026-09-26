@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import {
+	ArrowDown,
 	AtSign,
 	Bot,
 	ChevronDown,
@@ -28,6 +29,7 @@ import { attachCurrent, attachDiff, attachPath } from './chat-attach';
 import { useChatFocus } from './chat-focus';
 import { useChat } from './chat-store';
 import { MessageView } from './MessageView';
+import { useStickToBottom } from './use-stick-to-bottom';
 
 const SLASH: Array<{ cmd: string; hint: string; run: () => void }> = [
 	{ cmd: '/explain', hint: 'explain the selection or function', run: () => void explainCode() },
@@ -62,7 +64,12 @@ export function ChatPanel(): JSX.Element {
 	const { messages, activeRequest, attached, detach, send, stop, clear } = useChat();
 	const [text, setText] = useState('');
 	const [pick, setPick] = useState(0);
-	const listRef = useRef<HTMLDivElement>(null);
+	const {
+		ref: listRef,
+		onScroll: onListScroll,
+		away: scrolledAway,
+		jump: jumpToLatest,
+	} = useStickToBottom(messages);
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const focusTick = useChatFocus((s) => s.tick);
 	const tr = trigger(text);
@@ -91,10 +98,6 @@ export function ChatPanel(): JSX.Element {
 	useEffect(() => {
 		if (focusTick > 0) inputRef.current?.focus();
 	}, [focusTick]);
-	useEffect(() => {
-		const el = listRef.current;
-		if (el) el.scrollTop = el.scrollHeight;
-	}, [messages]);
 
 	if (!settings) return <div className='shimmer h-full' />;
 	const model = settings.chat;
@@ -115,6 +118,7 @@ export function ChatPanel(): JSX.Element {
 		if (!text.trim() || !hasKey) return;
 		send(text, model);
 		setText('');
+		jumpToLatest();
 	};
 
 	return (
@@ -148,37 +152,50 @@ export function ChatPanel(): JSX.Element {
 					</Button>
 				</div>
 			)}
-			<div
-				ref={listRef}
-				className='flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3 py-3'
-				aria-label='Conversation'
-			>
-				{messages.length === 0 ? (
-					<div className='m-auto flex max-w-72 flex-col items-center gap-4 text-center'>
-						<div className='relative flex size-14 items-center justify-center'>
-							<span className='absolute inset-0 rounded-full bg-accent-2/15 blur-xl' />
-							<Bot size={26} className='relative text-accent-2' />
+			<div className='relative flex min-h-0 flex-1 flex-col'>
+				<div
+					ref={listRef}
+					onScroll={onListScroll}
+					className='flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3 py-3'
+					aria-label='Conversation'
+				>
+					{messages.length === 0 ? (
+						<div className='m-auto flex max-w-72 flex-col items-center gap-4 text-center'>
+							<div className='relative flex size-14 items-center justify-center'>
+								<span className='absolute inset-0 rounded-full bg-accent-2/15 blur-xl' />
+								<Bot size={26} className='relative text-accent-2' />
+							</div>
+							<p className='text-12 text-fg-2'>
+								Ask about your code. Type <kbd className='text-accent'>@</kbd> to
+								attach a file, <kbd className='text-accent'>/</kbd> for commands.
+								Select code and press <kbd className='text-accent'>Ctrl+I</kbd> to
+								edit it in place.
+							</p>
+							<div className='flex flex-wrap justify-center gap-1.5'>
+								{STARTERS.map((s) => (
+									<button
+										key={s.label}
+										type='button'
+										onClick={s.run}
+										className='rounded-full border border-glass-edge bg-bg-2/40 px-2.5 py-1 text-11 text-fg-1 hover:border-accent/40 hover:text-fg-0'
+									>
+										{s.label}
+									</button>
+								))}
+							</div>
 						</div>
-						<p className='text-12 text-fg-2'>
-							Ask about your code. Type <kbd className='text-accent'>@</kbd> to attach
-							a file, <kbd className='text-accent'>/</kbd> for commands. Select code
-							and press <kbd className='text-accent'>Ctrl+I</kbd> to edit it in place.
-						</p>
-						<div className='flex flex-wrap justify-center gap-1.5'>
-							{STARTERS.map((s) => (
-								<button
-									key={s.label}
-									type='button'
-									onClick={s.run}
-									className='rounded-full border border-glass-edge bg-bg-2/40 px-2.5 py-1 text-11 text-fg-1 hover:border-accent/40 hover:text-fg-0'
-								>
-									{s.label}
-								</button>
-							))}
-						</div>
-					</div>
-				) : (
-					messages.map((m) => <MessageView key={m.id} message={m} />)
+					) : (
+						messages.map((m) => <MessageView key={m.id} message={m} />)
+					)}
+				</div>
+				{scrolledAway && messages.length > 0 && (
+					<button
+						type='button'
+						onClick={jumpToLatest}
+						className='absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full border border-glass-edge bg-bg-2 px-2.5 py-1 text-11 text-fg-1 shadow-panel outline-none hover:text-fg-0 focus-visible:shadow-glow'
+					>
+						<ArrowDown size={11} /> Jump to latest
+					</button>
 				)}
 			</div>
 			<div className='border-t border-glass-edge p-2'>
