@@ -198,3 +198,23 @@ html[data-skin='holo'] ::-webkit-scrollbar-thumb {
 html[data-skin='holo'] ::-webkit-scrollbar-thumb:hover {
 	background-color: color-mix(in oklab, var(--accent) 60%, transparent);
 }
+
+/* Big plates (dialogs, pickers, menus) carry the pane brackets too. */
+html[data-skin='holo'] .glass-strong:is([role='dialog'], [role='menu'], [role='listbox'])::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	--b: var(--ho-bracket);
+	background:
+		linear-gradient(var(--b), var(--b)) right top / 16px 2px no-repeat,
+		linear-gradient(var(--b), var(--b)) right top / 2px 16px no-repeat,
+		linear-gradient(var(--b), var(--b)) left bottom / 16px 2px no-repeat,
+		linear-gradient(var(--b), var(--b)) left bottom / 2px 16px no-repeat;
+	opacity: 0.8;
+}
+
+/* Pills and dots go angular: nothing on a bridge display is round. */
+html[data-skin='holo'] .rounded-full {
+	border-radius: 1px;
+}
