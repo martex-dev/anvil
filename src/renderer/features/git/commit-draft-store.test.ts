@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { useCommitDrafts } from './commit-draft-store';
 
-beforeEach(() => useCommitDrafts.setState({ drafts: {} }));
+beforeEach(() => useCommitDrafts.setState({ drafts: {}, writingRoot: null }));
 
 describe('commit drafts', () => {
 	it('keeps one draft per workspace root', () => {
@@ -21,5 +21,13 @@ describe('commit drafts', () => {
 		setDraft('C:\\work\\alpha', 'wip');
 		setDraft('C:\\work\\alpha', '');
 		expect(useCommitDrafts.getState().drafts).toEqual({});
+	});
+
+	it('remembers which folder the AI is writing for across remounts', () => {
+		const { setWritingRoot } = useCommitDrafts.getState();
+		setWritingRoot('C:\\work\\alpha');
+		expect(useCommitDrafts.getState().writingRoot).toBe('C:\\work\\alpha');
+		setWritingRoot(null);
+		expect(useCommitDrafts.getState().writingRoot).toBeNull();
 	});
 });

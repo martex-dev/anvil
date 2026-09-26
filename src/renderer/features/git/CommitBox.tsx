@@ -3,6 +3,7 @@ import { type JSX, useState } from 'react';
 
 import { toast } from '../../stores/toast-store';
 import { Button } from '../../ui/Button';
+import { Dialog } from '../../ui/Dialog';
 import { IconButton } from '../../ui/IconButton';
 import { Kbd } from '../../ui/Kbd';
 import { generateCommitMessage } from '../ai/actions';
@@ -27,21 +28,29 @@ export function CommitBox({
 	const message = useCommitDrafts((s) => s.drafts[root] ?? '');
 	const setDraft = useCommitDrafts((s) => s.setDraft);
 	const setMessage = (text: string): void => setDraft(root, text);
-	const [writing, setWriting] = useState(false);
+	const writing = useCommitDrafts((s) => s.writingRoot === root);
+	const setWritingRoot = useCommitDrafts((s) => s.setWritingRoot);
+	const [confirmReplace, setConfirmReplace] = useState(false);
+
 	const generate = (): void => {
-		if (stagedCount === 0) {
-			toast.info('Stage changes first', 'The message is written from what is staged.');
-			return;
-		}
-		setWriting(true);
-		void generateCommitMessage((partial) => setMessage(partial))
+		setWritingRoot(root);
+		void generateCommitMessage((partial) => setDraft(root, partial))
 			.catch((error: unknown) =>
 				toast.error(
 					'Could not write a message',
 					error instanceof Error ? error.message : undefined,
 				),
 			)
-			.finally(() => setWriting(false));
+			.finally(() => setWritingRoot(null));
+	};
+	const requestGenerate = (): void => {
+		if (stagedCount === 0) {
+			toast.info('Stage changes first', 'The message is written from what is staged.');
+			return;
+		}
+		// Never silently throw away a message the user wrote.
+		if (message.trim()) setConfirmReplace(true);
+		else generate();
 	};
 	const canCommit = message.trim().length > 0 && stagedCount > 0 && !busy;
 
@@ -57,6 +66,9 @@ export function CommitBox({
 			<div className='relative'>
 				<textarea
 					value={message}
+					// The stream replaces the text on every chunk; typing now would be erased.
+					readOnly={writing}
+					aria-busy={writing || undefined}
 					onChange={(e) => setMessage(e.target.value)}
 					onKeyDown={(e) => {
 						if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -77,7 +89,7 @@ export function CommitBox({
 					label='Write the message with AI (from staged changes)'
 					icon={<Sparkles size={12} className='text-accent-2' />}
 					disabled={writing}
-					onClick={generate}
+					onClick={requestGenerate}
 					className='absolute top-1 right-1'
 				/>
 			</div>
@@ -93,6 +105,30 @@ export function CommitBox({
 				Commit{stagedCount > 0 ? ` ${stagedCount} file${stagedCount === 1 ? '' : 's'}` : ''}
 				<Kbd keys='Ctrl+Enter' className='ml-1 opacity-70' />
 			</Button>
+			<Dialog
+				open={confirmReplace}
+				onOpenChange={setConfirmReplace}
+				title='Replace your commit message?'
+				description='The AI writes a new message from the staged changes; the one you typed is replaced.'
+				width='sm'
+				footer={
+					<>
+						<Button variant='ghost' onClick={() => setConfirmReplace(false)}>
+							Keep mine
+						</Button>
+						<Button
+							variant='primary'
+							autoFocus
+							onClick={() => {
+								setConfirmReplace(false);
+								generate();
+							}}
+						>
+							Replace
+						</Button>
+					</>
+				}
+			/>
 		</div>
 	);
 }
