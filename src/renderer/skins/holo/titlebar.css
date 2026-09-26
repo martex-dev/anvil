@@ -130,16 +130,16 @@ html[data-skin='holo'] .ho-menu-code {
 
 html[data-skin='holo'] .ho-sector {
 	--h: 12px;
-	position: absolute;
-	left: 50%;
+	position: relative;
 	isolation: isolate;
 	display: flex;
+	flex: 0 1 480px;
 	align-items: center;
 	gap: 10px;
-	width: min(480px, 32vw);
+	min-width: 150px;
 	height: 28px;
+	margin: 0 auto;
 	padding: 0 18px;
-	transform: translateX(-50%);
 	font-size: 12px;
 	color: var(--text-2);
 	background: var(--ho-edge);
@@ -198,8 +198,8 @@ html[data-skin='holo'] .ho-sector-hint {
 html[data-skin='holo'] .ho-title-actions {
 	display: flex;
 	align-items: center;
+	flex-shrink: 0;
 	gap: 2px;
-	margin-left: auto;
 }
 html[data-skin='holo'] .ho-title-actions button {
 	clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);

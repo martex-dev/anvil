@@ -18,7 +18,11 @@ export function ShieldToggle(): JSX.Element {
 			) : (
 				<ShieldOff size={12} className='text-down' />
 			)}
-			<span className={on ? 'ho-cell-tag text-up' : 'ho-cell-tag text-down'}>
+			<span
+				className={
+					on ? 'ho-cell-tag ho-cell-label text-up' : 'ho-cell-tag ho-cell-label text-down'
+				}
+			>
 				{on ? 'SHIELD UP' : 'SHIELD DOWN'}
 			</span>
 		</StatusCell>

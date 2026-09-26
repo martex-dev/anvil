@@ -23,7 +23,7 @@ export function AiToggle(): JSX.Element {
 					ghost.busy && 'pulse-dot',
 				)}
 			/>
-			<span className={cn('ho-cell-tag', on && !ghost.error && 'text-accent')}>
+			<span className={cn('ho-cell-tag ho-cell-label', on && !ghost.error && 'text-accent')}>
 				{on ? (ghost.error ? 'AI FAULT' : 'AI ONLINE') : 'AI OFFLINE'}
 			</span>
 		</StatusCell>

@@ -26,13 +26,13 @@ export function CursorReadout(): JSX.Element | null {
 					</span>
 				)}
 			</StatusCell>
-			<StatusCell title='Indentation · encoding · line endings'>
+			<StatusCell title='Indentation · encoding · line endings' className='ho-cell-format'>
 				<span className='num ho-cell-unit'>
 					{cursor.insertSpaces ? `SPC ${cursor.tabSize}` : `TAB ${cursor.tabSize}`} ·
 					UTF-8 · {cursor.eol}
 				</span>
 			</StatusCell>
-			<StatusCell tag='LANG' title='Language'>
+			<StatusCell tag='LANG' title='Language' className='ho-cell-lang'>
 				<span className='ho-cell-value'>{cursor.language}</span>
 			</StatusCell>
 		</>

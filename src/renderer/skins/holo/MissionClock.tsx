@@ -21,7 +21,7 @@ export function MissionClock(): JSX.Element {
 			className='ho-clock'
 		>
 			<span className='num ho-cell-value ho-met'>{met}</span>
-			<span className='num ho-cell-unit'>
+			<span className='num ho-cell-unit ho-clock-local'>
 				{date.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' })}
 			</span>
 		</StatusCell>

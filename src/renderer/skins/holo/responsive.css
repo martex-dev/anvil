@@ -1,0 +1,55 @@
+/*
+ * Holo HUD on smaller windows: the chrome sheds its decorative codes and verbose labels first,
+ * so nothing overlaps and every control stays on screen.
+ */
+
+html[data-skin='holo'] .ho-status {
+	overflow: hidden;
+}
+html[data-skin='holo'] .ho-status-group:first-child {
+	flex-shrink: 1;
+	overflow: hidden;
+}
+html[data-skin='holo'] .ho-status-group:last-child {
+	flex-shrink: 0;
+}
+html[data-skin='holo'] .ho-brand,
+html[data-skin='holo'] .ho-menubar {
+	flex-shrink: 0;
+}
+
+@media (max-width: 1520px) {
+	html[data-skin='holo'] .ho-navtab-code {
+		display: none;
+	}
+	html[data-skin='holo'] .ho-status .ho-cell-format {
+		display: none;
+	}
+}
+
+@media (max-width: 1340px) {
+	html[data-skin='holo'] .ho-navtab:not([data-active='true']) .ho-navtab-label {
+		display: none;
+	}
+	html[data-skin='holo'] .ho-navtab {
+		padding: 0 calc(var(--h) + 3px);
+	}
+	html[data-skin='holo'] .ho-cell-label,
+	html[data-skin='holo'] .ho-cell-lang .ho-cell-tag,
+	html[data-skin='holo'] .ho-clock-local,
+	html[data-skin='holo'] .ho-sector-hint,
+	html[data-skin='holo'] .ho-sector > :last-child {
+		display: none;
+	}
+	html[data-skin='holo'] .ho-menu-trigger {
+		padding: 0 8px;
+	}
+}
+
+@media (max-width: 1080px) {
+	html[data-skin='holo'] .ho-activity-tag,
+	html[data-skin='holo'] .ho-brand-core,
+	html[data-skin='holo'] .ho-status .ho-meter {
+		display: none;
+	}
+}
