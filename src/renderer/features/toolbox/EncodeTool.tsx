@@ -68,6 +68,9 @@ export function EncodeTool(): JSX.Element {
 					className='min-w-36 flex-1'
 				/>
 			</div>
+			{!direction && input !== '' && (
+				<p className='text-12 text-fg-2'>Choose Encode or Decode to see the output.</p>
+			)}
 			{result && !result.ok && <ToolError message={result.error} />}
 			{result?.ok && (
 				<div className='flex flex-col gap-1'>
