@@ -1,0 +1,146 @@
+/*
+ * Mainframe: pop-ups are text-mode windows. Menus and dialogs get a double-line frame and a
+ * solid offset shadow; the highlighted row is a reverse-video bar; tooltips are single-line boxes.
+ */
+
+html[data-skin='mainframe'] .glass-strong {
+	background: var(--bg-1);
+	backdrop-filter: none;
+	border: 1px solid var(--border-strong);
+	border-radius: 0;
+	box-shadow: var(--mf-shadow);
+	animation: none;
+}
+html[data-skin='mainframe'] .glass-strong:is([role='dialog'], [role='menu'], [cmdk-root]),
+html[data-skin='mainframe'] [role='dialog'] > .glass-strong {
+	border: 3px double var(--border-strong);
+}
+html[data-skin='mainframe'] .bg-scrim {
+	backdrop-filter: none;
+}
+
+/* Rows in menus, pickers and the palette: reverse video under the cursor. */
+html[data-skin='mainframe'] .glass-strong [role='menuitem'],
+html[data-skin='mainframe'] .glass-strong [role='option'],
+html[data-skin='mainframe'] .glass-strong [cmdk-item] {
+	border-radius: 0;
+}
+html[data-skin='mainframe'] .glass-strong [role='menuitem'][data-highlighted],
+html[data-skin='mainframe'] .glass-strong [role='option'][data-highlighted],
+html[data-skin='mainframe'] .glass-strong [role='option'][aria-selected='true'],
+html[data-skin='mainframe'] .glass-strong [cmdk-item][data-selected='true'] {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+html[data-skin='mainframe']
+	.glass-strong
+	:is(
+		[role='menuitem'][data-highlighted],
+		[role='option'][data-highlighted],
+		[role='option'][aria-selected='true'],
+		[cmdk-item][data-selected='true']
+	)
+	:is(svg, span, kbd) {
+	color: inherit;
+}
+html[data-skin='mainframe'] .glass-strong [cmdk-group-heading],
+html[data-skin='mainframe'] .glass-strong .hud {
+	font-family: var(--font-display);
+	font-size: 13px;
+	letter-spacing: 0.1em;
+	color: var(--text-2);
+}
+html[data-skin='mainframe'] .glass-strong [cmdk-group-heading]::before,
+html[data-skin='mainframe'] .mf-pulldown-label::before {
+	content: '── ';
+}
+html[data-skin='mainframe'] .glass-strong [cmdk-input] {
+	font-size: 16px;
+}
+html[data-skin='mainframe'] [role='separator'] {
+	height: 0;
+	background: none;
+	border-top: 1px solid var(--border);
+}
+
+/* Text menu pull-downs. */
+html[data-skin='mainframe'] .mf-pulldown {
+	padding: 2px 0;
+	font-size: 14px;
+}
+html[data-skin='mainframe'] .mf-pulldown-label {
+	display: block;
+	padding: 4px 10px 2px;
+}
+html[data-skin='mainframe'] .mf-pulldown-item {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	height: 22px;
+	padding: 0 10px;
+	color: var(--text-0);
+	outline: none;
+	cursor: default;
+}
+html[data-skin='mainframe'] .mf-pulldown-item[data-highlighted] {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+html[data-skin='mainframe'] .mf-pulldown-key {
+	color: var(--text-2);
+}
+html[data-skin='mainframe'] .mf-pulldown-item[data-highlighted] .mf-pulldown-key {
+	color: inherit;
+}
+html[data-skin='mainframe'] .mf-rule {
+	margin: 2px 0;
+	border-top: 1px solid var(--border);
+}
+
+/* Keys print as `Ctrl+Shift+P`, not keycaps. */
+html[data-skin='mainframe'] kbd {
+	height: auto;
+	min-width: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: none;
+	color: var(--text-2);
+	font-family: var(--font-ui);
+	font-size: 13px;
+}
+html[data-skin='mainframe'] kbd + kbd::before {
+	content: '+';
+}
+html[data-skin='mainframe'] kbd:has(+ kbd) {
+	margin-right: -2px;
+}
+
+/* Tooltips: a one-line box, no shadow. */
+html[data-skin='mainframe'] [data-radix-popper-content-wrapper] > .glass-strong.animate-fade {
+	padding: 1px 6px;
+	border-color: var(--accent);
+	box-shadow: none;
+	font-size: 14px;
+}
+
+/* Dialog titles as window captions. */
+html[data-skin='mainframe'] [role='dialog'] h2 {
+	font-family: var(--font-display);
+	font-size: 18px;
+	font-weight: 400;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--accent);
+}
+
+/* Shared buttons and inputs: boxed cells. */
+html[data-skin='mainframe'] input:not([type='checkbox'], [type='radio'], [type='range']),
+html[data-skin='mainframe'] textarea,
+html[data-skin='mainframe'] select {
+	border-radius: 0;
+	caret-color: var(--accent);
+}
+html[data-skin='mainframe'] ::placeholder {
+	color: var(--text-2);
+}
