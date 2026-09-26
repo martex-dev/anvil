@@ -26,8 +26,9 @@ import { quickPick } from '../../ui/QuickPick';
 import { nextBookmarkLine, toggleBookmarkAt } from './extras/bookmarks';
 import { isBlameEnabled, setBlameEnabled } from './extras/git-lines';
 import { repaintShield } from './extras/shield';
-import { saveAll, saveFile } from './file-ops';
+import { isScratch, saveAll, saveFile } from './file-ops';
 import { closeTab } from './open';
+import { revealInExplorer } from './tab-actions';
 
 function activePath(): string | null {
 	const tab = focusedTab(useTabsStore.getState());
@@ -250,6 +251,17 @@ export const EDITOR_COMMANDS: Command[] = [
 		category: 'View',
 		shortcut: 'Ctrl+0',
 		run: () => void updateSettings({ editorFontSize: 14 }),
+	},
+	{
+		id: 'explorer.revealActive',
+		title: 'Reveal Active File in Explorer View',
+		category: 'File',
+		keywords: ['locate', 'tree', 'sidebar'],
+		run: () => {
+			const path = activePath();
+			if (!path || isScratch(path)) toast.info('Open a file first');
+			else revealInExplorer(path);
+		},
 	},
 	{
 		id: 'file.copyPath',
