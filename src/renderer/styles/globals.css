@@ -423,27 +423,6 @@ html[data-reduce-motion='true'] .shimmer {
 		background-position: 50% 0;
 	}
 }
-/* The shimmer sweep is a literal-duration loop the --dur-* tokens can't reach, so reduced motion
-   stops it outright; its static tint keeps the busy state visible. */
-html[data-reduce-motion='true'] .shimmer {
-	animation: none;
-}
-@media (prefers-reduced-motion: reduce) {
-	.shimmer {
-		animation: none;
-	}
-}
-
-/* Endless decorative loops (busy dots, shimmer) stop under the in-app Reduce motion setting as well
-   as the OS preference; zeroing the --dur-* tokens doesn't reach their fixed durations. */
-html[data-reduce-motion='true'] :is(.pulse-dot, .shimmer, .animate-pulse) {
-	animation: none;
-}
-@media (prefers-reduced-motion: reduce) {
-	:is(.pulse-dot, .shimmer, .animate-pulse) {
-		animation: none;
-	}
-}
 
 @keyframes grid-drift {
 	from {
@@ -513,15 +492,6 @@ html[data-reduce-motion='true'] :is(.pulse-dot, .shimmer, .animate-pulse) {
 	}
 	50% {
 		opacity: 0.35;
-	}
-}
-/* Same for the busy pulse (AI generating, ghost text status): it stays fully visible. */
-html[data-reduce-motion='true'] .pulse-dot {
-	animation: none;
-}
-@media (prefers-reduced-motion: reduce) {
-	.pulse-dot {
-		animation: none;
 	}
 }
 
