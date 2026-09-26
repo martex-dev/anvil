@@ -34,6 +34,14 @@ describe('parseDelimited', () => {
 		expect(parseDelimited('a\n""\n', ',', 5).rows).toEqual([['']]);
 	});
 
+	it('keeps blank lines as missing values in a one-column file only', () => {
+		expect(parseDelimited('\na\n1\n\n2\n\n\n', ',', 10).rows).toEqual([['1'], [null], ['2']]);
+		expect(parseDelimited('a,b\n1,2\n\n3,4\n', ',', 10).rows).toEqual([
+			['1', '2'],
+			['3', '4'],
+		]);
+	});
+
 	it('sniffs European semicolon exports', () => {
 		expect(sniffDelimiter('date;close;volume\n')).toBe(';');
 		expect(sniffDelimiter('a,b\n')).toBe(',');

@@ -9,6 +9,10 @@ export interface Table {
 	engine: string;
 }
 
+function isBlank(record: Cell[] | undefined): boolean {
+	return record?.length === 1 && record[0] === null;
+}
+
 /**
  * RFC 4180 CSV: quoted fields, doubled quotes, newlines inside quotes, CRLF. Stops after
  * `maxRows` data rows. Empty unquoted fields become null (missing).
@@ -32,7 +36,8 @@ export function parseDelimited(
 	};
 	const endRecord = (): boolean => {
 		endField();
-		if (!(record.length === 1 && record[0] === null)) records.push(record);
+		// A blank line is a missing value in a one-column file, and noise anywhere else.
+		if (!isBlank(record) || records[0]?.length === 1) records.push(record);
 		record = [];
 		if (records.length > maxRows) {
 			truncated = true;
@@ -61,6 +66,8 @@ export function parseDelimited(
 		} else field += ch;
 	}
 	if (!truncated && (field !== '' || record.length > 0)) endRecord();
+	// Trailing blank lines are the end of the file, not missing values.
+	while (records.length > 1 && isBlank(records.at(-1))) records.pop();
 	const [head = [], ...rows] = records;
 	const width = Math.max(head.length, ...rows.slice(0, 1000).map((r) => r.length));
 	const header = Array.from({ length: width }, (_, c) => {
