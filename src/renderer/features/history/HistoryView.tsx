@@ -43,6 +43,7 @@ export function HistoryView(): JSX.Element {
 		if (path && files.includes(path)) void q.refetch();
 	});
 	const [restore, setRestore] = useState<string | null>(null);
+	const [confirmClear, setConfirmClear] = useState(false);
 
 	const compare = async (id: string, time: number): Promise<void> => {
 		if (!path) return;
@@ -79,6 +80,21 @@ export function HistoryView(): JSX.Element {
 		toast.success('Snapshot restored', 'Save to keep it, or undo (Ctrl+Z).');
 	};
 
+	const clear = async (): Promise<void> => {
+		if (!path) return;
+		try {
+			await call('history:clear', path);
+			toast.success('History cleared', path);
+		} catch (error) {
+			toast.error(
+				'Could not clear history',
+				error instanceof Error ? error.message : undefined,
+			);
+		} finally {
+			void q.refetch();
+		}
+	};
+
 	if (!settings.localHistory) {
 		return (
 			<EmptyState
@@ -112,7 +128,7 @@ export function HistoryView(): JSX.Element {
 						size='sm'
 						label='Clear history for this file'
 						icon={<Trash2 size={12} />}
-						onClick={() => void call('history:clear', path).then(() => q.refetch())}
+						onClick={() => setConfirmClear(true)}
 					/>
 				)}
 			</div>
@@ -166,6 +182,29 @@ export function HistoryView(): JSX.Element {
 					))}
 				</ol>
 			)}
+			<Dialog
+				open={confirmClear}
+				onOpenChange={setConfirmClear}
+				title={`Delete all ${items.length} snapshot${items.length === 1 ? '' : 's'} of this file?`}
+				description='This permanently removes them from local history. It cannot be undone.'
+				width='sm'
+				footer={
+					<>
+						<Button variant='ghost' autoFocus onClick={() => setConfirmClear(false)}>
+							Cancel
+						</Button>
+						<Button
+							variant='danger'
+							onClick={() => {
+								setConfirmClear(false);
+								void clear();
+							}}
+						>
+							Delete
+						</Button>
+					</>
+				}
+			/>
 			<Dialog
 				open={restore !== null}
 				onOpenChange={(open) => !open && setRestore(null)}
