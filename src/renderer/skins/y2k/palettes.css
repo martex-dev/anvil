@@ -1,0 +1,370 @@
+/*
+ * Y2K Chrome palettes. Besides the required tokens each palette carries its own sky (a sunset
+ * gradient behind the panes), liquid-metal stops for the title bar and wordmark, the white gloss
+ * of jelly buttons and a colored drop shadow, all as --skin-* colors so skin.css stays raw-free.
+ */
+
+/* Bubblegum: hot pink jelly and cyan bubbles over a lavender-to-peach sunset */
+[data-theme='yk-bubblegum'] {
+	color-scheme: light;
+
+	--bg-0: #f3e4ff;
+	--bg-1: #fff8fd;
+	--bg-2: #fcecf8;
+	--bg-3: #f6dcf1;
+	--border: #efcbea;
+	--border-strong: #dca6d6;
+
+	--glass: rgb(255 248 253 / 0.9);
+	--glass-strong: rgb(255 249 254 / 0.97);
+	--glass-edge: rgb(222 120 196 / 0.32);
+	--glass-highlight: rgb(255 255 255 / 0.95);
+	--editor-bg: rgb(255 251 254 / 0.97);
+	--scrim: rgb(96 38 112 / 0.26);
+
+	--text-0: #3a1747;
+	--text-1: #7a4488;
+	--text-2: #a47cb0;
+
+	--up: #17a266;
+	--down: #e3356a;
+	--warn: #e08a0c;
+	--info: #1f8ee0;
+
+	--theme-accent: #ec3fa6;
+	--theme-accent-2: #22b8e8;
+	--on-accent: #ffffff;
+
+	--syn-comment: #a37fb1;
+	--syn-keyword: #d61f93;
+	--syn-control: #a8189a;
+	--syn-string: #0e9082;
+	--syn-number: #e0600f;
+	--syn-function: #2474d8;
+	--syn-type: #8a3fe0;
+	--syn-variable: #3a1747;
+	--syn-parameter: #c23f7f;
+	--syn-property: #1a7fab;
+	--syn-decorator: #e0479a;
+	--syn-builtin: #d42a55;
+	--syn-operator: #8e5b9e;
+	--syn-regexp: #b57a05;
+
+	--skin-sky-1: #c7d8ff;
+	--skin-sky-2: #e6d0ff;
+	--skin-sky-3: #ffcde8;
+	--skin-sky-4: #ffe2c2;
+	--skin-sun: rgb(255 206 140 / 0.75);
+	--skin-cloud: rgb(255 255 255 / 0.78);
+	--skin-bubble: rgb(110 214 255 / 0.4);
+	--skin-sparkle: #ffffff;
+	--skin-sparkle-glow: rgb(255 80 190 / 0.85);
+	--skin-grid: rgb(236 63 166 / 0.45);
+	--skin-chrome-1: #ffffff;
+	--skin-chrome-2: #ebe6f5;
+	--skin-chrome-3: #9e93b8;
+	--skin-chrome-4: #dcd3ee;
+	--skin-pinstripe: rgb(255 255 255 / 0.6);
+	--skin-gloss: rgb(255 255 255 / 0.92);
+	--skin-gloss-soft: rgb(255 255 255 / 0.42);
+	--skin-shadow: rgb(210 60 170 / 0.3);
+	--skin-rim: #f2b9e2;
+	--skin-ink: #4a2358;
+	--skin-iris-1: #ff94d2;
+	--skin-iris-2: #8fe3ff;
+	--skin-iris-3: #fff09a;
+	--skin-header: #ffe0f3;
+	--skin-well: #fbeaf7;
+}
+
+/* Aqua: lickable blue gel on brushed silver pinstripes under a clear morning sky */
+[data-theme='yk-aqua'] {
+	color-scheme: light;
+
+	--bg-0: #dce8f4;
+	--bg-1: #f8fbfe;
+	--bg-2: #ebf2f9;
+	--bg-3: #dbe7f4;
+	--border: #c6d5e5;
+	--border-strong: #98afc8;
+
+	--glass: rgb(248 251 254 / 0.92);
+	--glass-strong: rgb(250 252 255 / 0.97);
+	--glass-edge: rgb(60 120 200 / 0.26);
+	--glass-highlight: rgb(255 255 255 / 0.95);
+	--editor-bg: rgb(251 253 255 / 0.97);
+	--scrim: rgb(20 50 90 / 0.26);
+
+	--text-0: #13263d;
+	--text-1: #45607e;
+	--text-2: #7890aa;
+
+	--up: #1f9d4c;
+	--down: #d93636;
+	--warn: #dd8a06;
+	--info: #1e7ae0;
+
+	--theme-accent: #1a73dc;
+	--theme-accent-2: #3cc3ff;
+	--on-accent: #ffffff;
+
+	--syn-comment: #8698ad;
+	--syn-keyword: #1f62d4;
+	--syn-control: #bb2688;
+	--syn-string: #1b8a4a;
+	--syn-number: #d9560c;
+	--syn-function: #7a3fd6;
+	--syn-type: #0a86a4;
+	--syn-variable: #13263d;
+	--syn-parameter: #b0560a;
+	--syn-property: #2b6cb0;
+	--syn-decorator: #cc3f78;
+	--syn-builtin: #c42f2f;
+	--syn-operator: #5d7390;
+	--syn-regexp: #a2740a;
+
+	--skin-sky-1: #9fd2ff;
+	--skin-sky-2: #cfe8ff;
+	--skin-sky-3: #eef7ff;
+	--skin-sky-4: #d6ecff;
+	--skin-sun: rgb(255 255 255 / 0.85);
+	--skin-cloud: rgb(255 255 255 / 0.85);
+	--skin-bubble: rgb(80 170 255 / 0.32);
+	--skin-sparkle: #ffffff;
+	--skin-sparkle-glow: rgb(40 140 255 / 0.8);
+	--skin-grid: rgb(30 115 220 / 0.32);
+	--skin-chrome-1: #ffffff;
+	--skin-chrome-2: #e7ebf0;
+	--skin-chrome-3: #a3adba;
+	--skin-chrome-4: #d3d9e1;
+	--skin-pinstripe: rgb(255 255 255 / 0.85);
+	--skin-gloss: rgb(255 255 255 / 0.94);
+	--skin-gloss-soft: rgb(255 255 255 / 0.45);
+	--skin-shadow: rgb(30 90 180 / 0.26);
+	--skin-rim: #b9cde3;
+	--skin-ink: #1b2d44;
+	--skin-iris-1: #8ccfff;
+	--skin-iris-2: #d8f1ff;
+	--skin-iris-3: #b9e8ff;
+	--skin-header: #e4effb;
+	--skin-well: #eef4fa;
+}
+
+/* Liquid Chrome: polished silver with an iridescent pink-cyan-gold sheen and violet accent */
+[data-theme='yk-chrome'] {
+	color-scheme: light;
+
+	--bg-0: #dcdee6;
+	--bg-1: #f6f7fa;
+	--bg-2: #eceef3;
+	--bg-3: #dfe2ea;
+	--border: #cdd1dc;
+	--border-strong: #a2a8b8;
+
+	--glass: rgb(246 247 250 / 0.92);
+	--glass-strong: rgb(248 249 252 / 0.97);
+	--glass-edge: rgb(110 100 160 / 0.28);
+	--glass-highlight: rgb(255 255 255 / 0.95);
+	--editor-bg: rgb(250 250 252 / 0.97);
+	--scrim: rgb(30 30 50 / 0.28);
+
+	--text-0: #1d2030;
+	--text-1: #4d5266;
+	--text-2: #80869a;
+
+	--up: #179a63;
+	--down: #d7344a;
+	--warn: #d88a0a;
+	--info: #2a6fdc;
+
+	--theme-accent: #7a4dff;
+	--theme-accent-2: #13b4c0;
+	--on-accent: #ffffff;
+
+	--syn-comment: #878a9e;
+	--syn-keyword: #7a3dff;
+	--syn-control: #c92a95;
+	--syn-string: #0c8984;
+	--syn-number: #d9620e;
+	--syn-function: #2263d8;
+	--syn-type: #a8338a;
+	--syn-variable: #1d2030;
+	--syn-parameter: #975510;
+	--syn-property: #1d77a0;
+	--syn-decorator: #b83bb6;
+	--syn-builtin: #cc3747;
+	--syn-operator: #666b82;
+	--syn-regexp: #9a7500;
+
+	--skin-sky-1: #cfd3de;
+	--skin-sky-2: #eceef4;
+	--skin-sky-3: #efe6fb;
+	--skin-sky-4: #dcf2f4;
+	--skin-sun: rgb(255 238 170 / 0.55);
+	--skin-cloud: rgb(255 255 255 / 0.7);
+	--skin-bubble: rgb(190 150 255 / 0.32);
+	--skin-sparkle: #ffffff;
+	--skin-sparkle-glow: rgb(140 90 255 / 0.8);
+	--skin-grid: rgb(122 77 255 / 0.3);
+	--skin-chrome-1: #ffffff;
+	--skin-chrome-2: #e4e6ec;
+	--skin-chrome-3: #8d93a3;
+	--skin-chrome-4: #cfd3dd;
+	--skin-pinstripe: rgb(255 255 255 / 0.55);
+	--skin-gloss: rgb(255 255 255 / 0.94);
+	--skin-gloss-soft: rgb(255 255 255 / 0.45);
+	--skin-shadow: rgb(80 70 140 / 0.26);
+	--skin-rim: #c3c1d6;
+	--skin-ink: #262a3a;
+	--skin-iris-1: #ffa3e2;
+	--skin-iris-2: #93f0ff;
+	--skin-iris-3: #fff09c;
+	--skin-header: #ebe9f4;
+	--skin-well: #eef0f4;
+}
+
+/* Vapor Midnight: violet night, a sunset glowing under a neon grid, pink and cyan jelly */
+[data-theme='yk-midnight'] {
+	color-scheme: dark;
+
+	--bg-0: #120828;
+	--bg-1: #23143f;
+	--bg-2: #2d1a52;
+	--bg-3: #3b2466;
+	--border: #3f2a6c;
+	--border-strong: #5e4196;
+
+	--glass: rgb(35 20 63 / 0.92);
+	--glass-strong: rgb(30 17 56 / 0.97);
+	--glass-edge: rgb(255 120 220 / 0.3);
+	--glass-highlight: rgb(255 255 255 / 0.18);
+	--editor-bg: rgb(28 16 52 / 0.97);
+	--scrim: rgb(8 3 20 / 0.6);
+
+	--text-0: #fbeaff;
+	--text-1: #c8aee8;
+	--text-2: #8e78b8;
+
+	--up: #4cf2a8;
+	--down: #ff5c8a;
+	--warn: #ffc15c;
+	--info: #5cd6ff;
+
+	--theme-accent: #ff5fd2;
+	--theme-accent-2: #3eeaff;
+	--on-accent: #1a0b30;
+
+	--syn-comment: #8a73b8;
+	--syn-keyword: #ff6fd8;
+	--syn-control: #ff9ae8;
+	--syn-string: #6ff7e0;
+	--syn-number: #ffb86b;
+	--syn-function: #6fd8ff;
+	--syn-type: #c8a2ff;
+	--syn-variable: #fbeaff;
+	--syn-parameter: #ffd3a1;
+	--syn-property: #9fc3ff;
+	--syn-decorator: #ff8fb0;
+	--syn-builtin: #ff6f91;
+	--syn-operator: #b9a3e6;
+	--syn-regexp: #fff06b;
+
+	--skin-sky-1: #0c0522;
+	--skin-sky-2: #25104c;
+	--skin-sky-3: #5c1c78;
+	--skin-sky-4: #ff6fa8;
+	--skin-sun: rgb(255 120 170 / 0.55);
+	--skin-cloud: rgb(255 150 220 / 0.14);
+	--skin-bubble: rgb(62 234 255 / 0.28);
+	--skin-sparkle: #fff4ff;
+	--skin-sparkle-glow: rgb(62 234 255 / 0.9);
+	--skin-grid: rgb(255 95 210 / 0.7);
+	--skin-chrome-1: #8f7cc4;
+	--skin-chrome-2: #4b3985;
+	--skin-chrome-3: #1a0e38;
+	--skin-chrome-4: #3a2a72;
+	--skin-pinstripe: rgb(255 255 255 / 0.05);
+	--skin-gloss: rgb(255 255 255 / 0.4);
+	--skin-gloss-soft: rgb(255 255 255 / 0.12);
+	--skin-shadow: rgb(255 60 200 / 0.3);
+	--skin-rim: #5a3a94;
+	--skin-ink: #0c0520;
+	--skin-iris-1: #ff5fd2;
+	--skin-iris-2: #3eeaff;
+	--skin-iris-3: #ffe66b;
+	--skin-header: #2f1b56;
+	--skin-well: #1b0f36;
+}
+
+/* Tangerine Lime: translucent iMac candy, lime shell and tangerine jelly under a citrus sky */
+[data-theme='yk-lime'] {
+	color-scheme: light;
+
+	--bg-0: #eaf8d2;
+	--bg-1: #fdfff6;
+	--bg-2: #f2f9df;
+	--bg-3: #e3f1c6;
+	--border: #d4e7aa;
+	--border-strong: #a9c86c;
+
+	--glass: rgb(253 255 246 / 0.92);
+	--glass-strong: rgb(253 255 247 / 0.97);
+	--glass-edge: rgb(110 170 30 / 0.3);
+	--glass-highlight: rgb(255 255 255 / 0.95);
+	--editor-bg: rgb(254 255 250 / 0.97);
+	--scrim: rgb(40 60 10 / 0.26);
+
+	--text-0: #213410;
+	--text-1: #4c682d;
+	--text-2: #7e9960;
+
+	--up: #2f9a17;
+	--down: #d93a2c;
+	--warn: #d97d06;
+	--info: #1f7cd0;
+
+	--theme-accent: #ea6a0c;
+	--theme-accent-2: #72c41a;
+	--on-accent: #ffffff;
+
+	--syn-comment: #8a9a74;
+	--syn-keyword: #dd5f08;
+	--syn-control: #bf2c7b;
+	--syn-string: #3a8a12;
+	--syn-number: #8a3fd0;
+	--syn-function: #1d77cc;
+	--syn-type: #0e8a78;
+	--syn-variable: #213410;
+	--syn-parameter: #b06600;
+	--syn-property: #2d77a0;
+	--syn-decorator: #cc4d88;
+	--syn-builtin: #c9392a;
+	--syn-operator: #687d50;
+	--syn-regexp: #9e7a00;
+
+	--skin-sky-1: #d9f7a6;
+	--skin-sky-2: #f3fbd2;
+	--skin-sky-3: #ffe9bf;
+	--skin-sky-4: #ffcf9c;
+	--skin-sun: rgb(255 180 90 / 0.7);
+	--skin-cloud: rgb(255 255 255 / 0.8);
+	--skin-bubble: rgb(140 220 40 / 0.34);
+	--skin-sparkle: #ffffff;
+	--skin-sparkle-glow: rgb(250 130 20 / 0.85);
+	--skin-grid: rgb(234 106 12 / 0.42);
+	--skin-chrome-1: #ffffff;
+	--skin-chrome-2: #eef4e0;
+	--skin-chrome-3: #a0ae86;
+	--skin-chrome-4: #dde7c8;
+	--skin-pinstripe: rgb(255 255 255 / 0.65);
+	--skin-gloss: rgb(255 255 255 / 0.92);
+	--skin-gloss-soft: rgb(255 255 255 / 0.42);
+	--skin-shadow: rgb(120 170 20 / 0.3);
+	--skin-rim: #c6e08e;
+	--skin-ink: #263a12;
+	--skin-iris-1: #ffb366;
+	--skin-iris-2: #c2f26b;
+	--skin-iris-3: #fff38a;
+	--skin-header: #eef8d6;
+	--skin-well: #f3f9e4;
+}
