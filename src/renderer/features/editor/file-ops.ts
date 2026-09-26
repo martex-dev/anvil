@@ -28,6 +28,13 @@ function languageOverride(path: string): string | undefined {
 	return undefined;
 }
 
+/**
+ * The read in flight per path. Closing the tab (or the whole folder) drops it, so a read that
+ * lands afterwards is discarded instead of creating a buffer nobody shows, or filling a
+ * same-named file of the next folder with this one's content.
+ */
+const loads = new Map<string, symbol>();
+
 export async function openFile(monaco: MonacoApi, root: string, path: string): Promise<void> {
 	const store = useEditorStore.getState();
 	const known = store.files.find((f) => f.path === path);
@@ -44,8 +51,11 @@ export async function openFile(monaco: MonacoApi, root: string, path: string): P
 			mtimeMs: 0,
 			changedOnDisk: false,
 		});
+	const load = Symbol(path);
+	loads.set(path, load);
 	try {
 		const file = await call('fs:readFile', path);
+		if (loads.get(path) !== load) return;
 		if (file.binary || file.tooLarge) {
 			store.update(path, {
 				state: file.binary ? 'binary' : 'tooLarge',
@@ -74,10 +84,13 @@ export async function openFile(monaco: MonacoApi, root: string, path: string): P
 		store.update(path, { state: 'ready', mtimeMs: file.mtimeMs });
 	} catch (error) {
 		rlog.warn('editor', `open failed: ${path}`, error);
+		if (loads.get(path) !== load) return;
 		store.update(path, {
 			state: 'error',
 			error: error instanceof Error ? error.message : String(error),
 		});
+	} finally {
+		if (loads.get(path) === load) loads.delete(path);
 	}
 }
 
@@ -154,6 +167,7 @@ export function onExternalChange(paths: readonly string[]): void {
 }
 
 export function closeFile(path: string): void {
+	loads.delete(path);
 	const t = tracked.get(path);
 	if (t) {
 		t.listener.dispose();

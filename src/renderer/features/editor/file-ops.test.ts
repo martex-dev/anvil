@@ -13,7 +13,7 @@ vi.mock('../../lib/ipc', () => ({
 vi.mock('../../lib/log', () => ({ rlog: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 vi.mock('../../app/hooks/use-settings', () => ({ getSettings: () => ({}) }));
 
-const { closeFile, getViewState, openFile, reloadFromDisk, saveFile, saveViewState } =
+const { closeFile, getModel, getViewState, openFile, reloadFromDisk, saveFile, saveViewState } =
 	await import('./file-ops');
 
 /** Just enough of a text model for openFile / closeFile. */
@@ -156,5 +156,44 @@ describe('file ops', () => {
 			],
 			expect.any(Function),
 		);
+	});
+
+	it('drops a read that lands after its tab closed', async () => {
+		const createModel = vi.fn(fakeModel);
+		const counting = {
+			...monaco,
+			editor: { ...monaco.editor, createModel },
+		} as unknown as MonacoApi;
+		let finish = (): void => undefined;
+		call.mockReturnValueOnce(
+			new Promise((resolve) => {
+				finish = () => resolve(text);
+			}),
+		);
+		const opening = openFile(counting, 'C:/proj', 'a.py');
+		closeFile('a.py');
+		finish();
+		await opening;
+		expect(createModel).not.toHaveBeenCalled();
+		expect(useEditorStore.getState().files).toEqual([]);
+	});
+
+	it('does not fill a reopened file with a read from the previous folder', async () => {
+		let finishOld = (): void => undefined;
+		call.mockReturnValueOnce(
+			new Promise((resolve) => {
+				finishOld = () => resolve({ ...text, content: 'old = 1\n', mtimeMs: 5 });
+			}),
+		);
+		const old = openFile(monaco, 'C:/old', 'a.py');
+		// The folder switches: every buffer closes and the new folder opens its own a.py.
+		closeFile('a.py');
+		call.mockResolvedValueOnce({ ...text, content: 'new = 1\n', mtimeMs: 9 });
+		await openFile(monaco, 'C:/new', 'a.py');
+		finishOld();
+		await old;
+		expect(useEditorStore.getState().files).toHaveLength(1);
+		expect(useEditorStore.getState().files[0]).toMatchObject({ state: 'ready', mtimeMs: 9 });
+		expect(getModel('a.py')?.getValue()).toBe('new = 1\n');
 	});
 });
