@@ -149,13 +149,14 @@ export function attachGitLines(
 		editor.onDidChangeCursorPosition(scheduleBlame),
 	];
 	window.addEventListener('anvil:git-lines', refresh);
-	// Fired after every settings change: Toggle Inline Blame, or the switch in Settings.
-	window.addEventListener('anvil:appearance', scheduleBlame);
+	// Fired after every settings change: the overview-ruler colors are resolved from the theme's
+	// tokens at paint time, and inline blame may have been switched on or off.
+	window.addEventListener('anvil:appearance', refresh);
 	refresh();
 	return {
 		dispose() {
 			window.removeEventListener('anvil:git-lines', refresh);
-			window.removeEventListener('anvil:appearance', scheduleBlame);
+			window.removeEventListener('anvil:appearance', refresh);
 			if (gutterTimer) clearTimeout(gutterTimer);
 			if (blameTimer) clearTimeout(blameTimer);
 			for (const s of subs) s.dispose();
