@@ -69,6 +69,8 @@ General-purpose editors treat a backtest like any other script. Anvil is tuned f
 
 Floating panes of frosted glass over a deep-space background with a slow drifting grid, neon hairline edges, and one accent color driving focus, cursor and highlights (cyan, magenta, lime, violet or amber). The syntax theme is custom ("Anvil Neon"). Labels use monospace HUD type, and file types are shown as colored badges.
 
+It's also quick. The installed app reaches an interactive workbench in about **0.4 s**, and the UI process idles at about **110 MB**; the rest is Electron's usual main and GPU processes. Monaco (~10 MB), the viewers and the chat panel load the first time you use them. Measure it yourself with `npx tsx scripts/measure.mts`.
+
 The glass is optional. **Settings → Appearance → Glass: subtle / off** turns the blur down or makes every surface solid, for integrated GPUs and battery. The editor itself never renders over a blur: the code sits on a near-opaque plate, so text stays crisp and scrolling stays cheap.
 
 ![Command palette](docs/screenshots/palette.png)
