@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -29,6 +37,23 @@ describe('FsService', () => {
 			['img.png', 'file', 'img.png'],
 			['README.md', 'file', 'README.md'],
 		]);
+	});
+
+	it('lists linked folders as expandable folders with a link flag', async () => {
+		// Junctions don't need admin rights on Windows, unlike directory symlinks.
+		symlinkSync(join(root, 'src'), join(root, 'linked'), 'junction');
+		symlinkSync(join(root, 'missing'), join(root, 'dangling'), 'junction');
+		const entries = await fs.list('');
+		expect(entries.find((e) => e.name === 'linked')).toMatchObject({
+			kind: 'dir',
+			isLink: true,
+		});
+		expect(entries.find((e) => e.name === 'src')).toMatchObject({ kind: 'dir', isLink: false });
+		expect(entries.find((e) => e.name === 'dangling')).toMatchObject({
+			kind: 'symlink',
+			isLink: true,
+		});
+		expect((await fs.list('linked')).map((e) => e.name)).toEqual(['b.ts']);
 	});
 
 	it('reads text with EOL detection and flags binaries', async () => {

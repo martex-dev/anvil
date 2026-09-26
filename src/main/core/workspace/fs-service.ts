@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, type Stats } from 'node:fs';
 import { lstat, mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, extname, join } from 'node:path';
 
@@ -33,6 +33,12 @@ export function looksBinary(buf: Buffer): boolean {
 	return false;
 }
 
+/** Kind of a (followed) stat; still a link only when the target could not be resolved. */
+function kindOf(s: Stats): FsEntry['kind'] {
+	if (s.isSymbolicLink()) return 'symlink';
+	return s.isDirectory() ? 'dir' : 'file';
+}
+
 function detectEol(text: string): '\n' | '\r\n' {
 	const crlf = text.indexOf('\r\n');
 	const lf = text.indexOf('\n');
@@ -59,13 +65,16 @@ export class FsService {
 			dirents.map(async (d): Promise<FsEntry | null> => {
 				const abs = join(dir, d.name);
 				try {
+					// Links (incl. junctions) are described by their target, so linked data
+					// folders expand like any other; only a dangling link stays 'symlink'.
 					const s = d.isSymbolicLink()
 						? await stat(abs).catch(() => lstat(abs))
 						: await lstat(abs);
 					return {
 						name: d.name,
 						path: toRelative(root, abs),
-						kind: d.isSymbolicLink() ? 'symlink' : s.isDirectory() ? 'dir' : 'file',
+						kind: kindOf(s),
+						isLink: d.isSymbolicLink(),
 						size: s.size,
 						mtimeMs: s.mtimeMs,
 					};
@@ -180,11 +189,13 @@ export class FsService {
 	}
 
 	private async entry(root: string, abs: string): Promise<FsEntry> {
-		const s = await lstat(abs);
+		const link = await lstat(abs);
+		const s = link.isSymbolicLink() ? await stat(abs).catch(() => link) : link;
 		return {
 			name: basename(abs),
 			path: toRelative(root, abs),
-			kind: s.isSymbolicLink() ? 'symlink' : s.isDirectory() ? 'dir' : 'file',
+			kind: kindOf(s),
+			isLink: link.isSymbolicLink(),
 			size: s.size,
 			mtimeMs: s.mtimeMs,
 		};

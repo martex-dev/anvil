@@ -8,7 +8,10 @@ export const RelPathSchema = z.string().max(4096);
 export const FsEntrySchema = z.object({
 	name: z.string(),
 	path: z.string(),
+	/** What the entry resolves to; 'symlink' only for a link whose target is missing. */
 	kind: z.enum(['file', 'dir', 'symlink']),
+	/** Reached through a symlink or junction (shown with a link badge; kind is the target's). */
+	isLink: z.boolean(),
 	size: z.number(),
 	mtimeMs: z.number(),
 });
