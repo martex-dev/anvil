@@ -9,7 +9,6 @@ import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { toast } from '../../stores/toast-store';
 import { quickPick } from '../../ui/QuickPick';
 import { PRESETS_KEY } from '../terminal/TerminalPane';
-import { resetPythonTools } from './run';
 
 export const pythonKeys = {
 	selected: (root: string | null) => ['python', root, 'selected'] as const,
@@ -93,7 +92,6 @@ export async function pickPythonEnv(): Promise<void> {
 	if (!picked) return;
 	try {
 		await call('python:select', picked === '__auto__' ? null : picked);
-		resetPythonTools();
 		toast.success('Interpreter selected', picked === '__auto__' ? 'Automatic' : picked);
 	} catch (error) {
 		toast.error(

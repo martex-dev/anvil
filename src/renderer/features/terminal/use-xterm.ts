@@ -29,6 +29,8 @@ interface Options {
 	initialCommand?: string | undefined;
 	/** Keep keyboard focus where it is (a command sent in the background). */
 	focus?: boolean;
+	/** Main's name for the session once it is open ('IPython' or 'Python REPL' for the REPL). */
+	onOpen?: (info: { title: string }) => void;
 }
 
 /**
@@ -37,7 +39,7 @@ interface Options {
  */
 export function useXterm(
 	hostRef: RefObject<HTMLDivElement | null>,
-	{ sessionId, preset, fontSize, enabled, initialCommand, focus = true }: Options,
+	{ sessionId, preset, fontSize, enabled, initialCommand, focus = true, onOpen }: Options,
 ): { status: TerminalStatus; error: string | null } {
 	const [status, setStatus] = useState<TerminalStatus>('starting');
 	const [error, setError] = useState<string | null>(null);
@@ -179,6 +181,7 @@ export function useXterm(
 				setStatus(res.running ? 'running' : 'exited');
 				exited = !res.running;
 				if (focus) term.focus();
+				onOpen?.({ title: res.title });
 			})
 			.catch((e: unknown) => {
 				rlog.error('terminal', `open failed (${preset})`, e);
@@ -205,7 +208,7 @@ export function useXterm(
 			unsubscribeExit();
 			term.dispose();
 		};
-		// initialCommand/focus only matter for the first open of a session.
+		// initialCommand/focus/onOpen only matter for the first open of a session.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [hostRef, sessionId, preset, fontSize, enabled]);
 

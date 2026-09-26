@@ -6,24 +6,17 @@ import { useEditorStore } from '../editor/editor-store';
 import { isScratch, saveFile } from '../editor/file-ops';
 import {
 	closeTerminal,
-	hasRole,
 	runInTerminal,
 	showRoleTerminal,
 	useTerminalStore,
 } from '../terminal/terminal-store';
 import { cellAt, cellCode, cellCodeLine, findCells, replText } from './cells';
 
-/** Whether the REPL runs IPython (checked once per session; `%run -i` needs it). */
-let ipython: Promise<boolean> | null = null;
-export function resetPythonTools(): void {
-	ipython = null;
-}
-function hasIPython(): Promise<boolean> {
-	ipython ??= call('python:tools')
-		.then((t) => t.ipython)
-		.catch(() => false);
-	return ipython;
-}
+/**
+ * A new REPL tab starts with this title; main picks IPython or plain Python when it launches the
+ * session and the pane renames the tab. Checking here first cost several subprocess spawns.
+ */
+const REPL_TITLE = 'python';
 
 function activePythonPath(): string | null {
 	const editor = focusedEditor();
@@ -72,19 +65,16 @@ export async function sendToRepl(code: string, source?: CodeSource): Promise<voi
 	const { text, skippedLines } = replText(code);
 	if (!text) return;
 	const multiline = text.includes('\n');
-	const ip = await hasIPython();
 	const staged = source ? { ...source, line: source.line + skippedLines } : undefined;
 	const command = multiline
 		? (await call('python:stageCell', { code: text, source: staged })).command
 		: text;
-	await runInTerminal({ role: 'repl', preset: 'repl', title: ip ? 'ipython' : 'repl', command });
+	await runInTerminal({ role: 'repl', preset: 'repl', title: REPL_TITLE, command });
 }
 
 /** Shows the Python REPL (starting one if needed) without typing anything into it. */
-export async function openRepl(): Promise<void> {
-	// The title only matters for a new tab; don't wait on the IPython check to show one.
-	const ip = hasRole('repl') ? false : await hasIPython();
-	showRoleTerminal({ role: 'repl', preset: 'repl', title: ip ? 'ipython' : 'repl' });
+export function openRepl(): void {
+	showRoleTerminal({ role: 'repl', preset: 'repl', title: REPL_TITLE });
 }
 
 /** Runs the `# %%` cell at the cursor (or the whole file if it has no cells). */
@@ -130,6 +120,5 @@ export async function runSelection(): Promise<void> {
 export async function restartRepl(): Promise<void> {
 	const repl = useTerminalStore.getState().tabs.find((t) => t.role === 'repl');
 	if (repl) closeTerminal(repl.id);
-	resetPythonTools();
 	await sendToRepl('print("REPL ready")');
 }

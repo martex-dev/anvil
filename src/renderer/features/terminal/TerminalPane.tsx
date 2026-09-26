@@ -14,6 +14,11 @@ import { useXterm } from './use-xterm';
 
 export const PRESETS_KEY = ['terminal', 'presets'] as const;
 
+function renameTab(id: string, title: string): void {
+	const store = useTerminalStore.getState();
+	if (store.tabs.find((t) => t.id === id)?.title !== title) store.rename(id, title);
+}
+
 /** One terminal session. Stays mounted while hidden so its scrollback and xterm survive. */
 export function TerminalPane({ tab, visible }: { tab: TermTab; visible: boolean }): JSX.Element {
 	const presets = useQuery({ queryKey: PRESETS_KEY, queryFn: () => call('terminal:presets') });
@@ -29,6 +34,8 @@ export function TerminalPane({ tab, visible }: { tab: TermTab; visible: boolean 
 		enabled: info?.available ?? false,
 		initialCommand: initial,
 		focus: visible && !initial,
+		// The REPL is IPython or plain Python depending on the env: take main's name for it.
+		onOpen: tab.preset === 'repl' ? ({ title }) => renameTab(tab.id, title) : undefined,
 	});
 	useEffect(() => {
 		if (initial && status !== 'starting') useTerminalStore.getState().clearInitial(tab.id);
