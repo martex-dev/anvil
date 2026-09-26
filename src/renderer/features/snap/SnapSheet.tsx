@@ -99,7 +99,7 @@ export function SnapSheet({ request }: SnapSheetProps): JSX.Element {
 	return (
 		<RadixDialog.Root open onOpenChange={(open) => !open && closeSnap()}>
 			<RadixDialog.Portal>
-				<RadixDialog.Overlay className='animate-fade fixed inset-0 z-40 bg-scrim backdrop-blur-[2px]' />
+				<RadixDialog.Overlay className='animate-fade fixed inset-0 z-40 bg-scrim scrim-blur' />
 				<RadixDialog.Content
 					onKeyDown={onKeyDown}
 					onOpenAutoFocus={(event) => {

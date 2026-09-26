@@ -289,6 +289,18 @@
 	.pulse-dot {
 		animation: pulse-dot 1.8s ease-in-out infinite;
 	}
+	/* Backdrop blurs that follow Settings → Glass (fixed-radius backdrop-blur-* ignored it). */
+	.glass-blur {
+		backdrop-filter: blur(var(--glass-blur));
+	}
+	/* The faint blur behind modal scrims. */
+	.scrim-blur {
+		backdrop-filter: blur(calc(var(--glass-blur) / 10));
+	}
+	/* Glass off is the fast path: no filter at all, not even a zero-radius one. */
+	html[data-glass='off'] :is(.glass-blur, .scrim-blur) {
+		backdrop-filter: none;
+	}
 }
 
 /* Ambient background: two soft light sources and a perspective grid, behind every pane. */

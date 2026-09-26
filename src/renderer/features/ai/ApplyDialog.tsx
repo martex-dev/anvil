@@ -167,7 +167,7 @@ export function ApplyDialog(): JSX.Element | null {
 	}, [missing, proposal]);
 	if (!proposal || missing) return null;
 	return (
-		<div className='animate-fade fixed inset-0 z-40 flex items-center justify-center bg-scrim p-8 backdrop-blur-[2px]'>
+		<div className='animate-fade fixed inset-0 z-40 flex items-center justify-center bg-scrim p-8 scrim-blur'>
 			<div
 				role='dialog'
 				aria-label='Apply AI change'
