@@ -45,7 +45,7 @@ html[data-skin='holo'] .ho-radar {
 	position: absolute;
 	left: 50%;
 	top: 52%;
-	width: min(120vmin, 1180px);
+	width: min(104vmin, 1040px);
 	aspect-ratio: 1;
 	transform: translate(-50%, -50%);
 }
@@ -93,7 +93,7 @@ html[data-skin='holo'] .ho-ring-label {
 	font-size: 15px;
 	font-weight: 700;
 	letter-spacing: 0.2em;
-	fill: color-mix(in oklab, var(--accent) 55%, transparent);
+	fill: color-mix(in oklab, var(--accent) 32%, transparent);
 }
 html[data-skin='holo'] .ho-sweep {
 	border-radius: 50%;
@@ -141,22 +141,22 @@ html[data-skin='holo'][data-fx='full'] .ho-overlay::before {
 	position: absolute;
 	inset: 0;
 	background: repeating-linear-gradient(0deg, var(--skin-beam) 0 1px, transparent 1px 3px);
-	opacity: 0.3;
+	opacity: 0.22;
 }
 html[data-skin='holo'][data-fx='full'] .ho-scanbeam {
 	position: absolute;
 	top: 0;
 	left: 0;
 	right: 0;
-	height: 160px;
+	height: 110px;
 	background: linear-gradient(
 		180deg,
 		transparent,
 		var(--skin-beam) 75%,
-		color-mix(in oklab, var(--accent) 28%, transparent) 99%,
+		color-mix(in oklab, var(--accent) 18%, transparent) 99%,
 		transparent
 	);
-	transform: translateY(-180px);
+	transform: translateY(-130px);
 	animation: ho-scan 12s linear infinite 2s;
 	will-change: transform;
 }
@@ -179,7 +179,7 @@ html[data-skin='holo'][data-fx='full'] [data-part='chat'].glass {
 }
 @keyframes ho-scan {
 	0% {
-		transform: translateY(-180px);
+		transform: translateY(-130px);
 	}
 	40%,
 	100% {
