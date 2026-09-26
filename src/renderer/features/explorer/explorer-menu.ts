@@ -1,6 +1,7 @@
 import type { FsEntry } from '@shared/ipc/channels/fs';
 
 import { call } from '../../lib/ipc';
+import { toast } from '../../stores/toast-store';
 import { compareWithSelected, selectedForCompare, selectForCompare } from '../editor/compare';
 import type { MenuItem } from './ExplorerContextMenu';
 
@@ -10,6 +11,17 @@ interface MenuDeps {
 	startCreate: (kind: 'file' | 'dir', target: FsEntry | null) => void;
 	rename: (path: string) => void;
 	remove: (path: string) => void;
+}
+
+/** Copies a workspace path (absolute, or relative with OS separators) and confirms it. */
+export async function copyEntryPath(path: string, absolute: boolean): Promise<void> {
+	try {
+		const text = await call('fs:copyPath', { path, absolute });
+		await navigator.clipboard.writeText(text);
+		toast.success('Path copied', text);
+	} catch (error) {
+		toast.error('Could not copy path', error instanceof Error ? error.message : undefined);
+	}
 }
 
 /** The Explorer's right-click menu for one target. */
@@ -38,9 +50,13 @@ export function explorerMenuItems({
 		},
 		'separator',
 		{
+			label: 'Copy Path',
+			onSelect: () => void copyEntryPath(target?.path ?? '', true),
+		},
+		{
 			label: 'Copy Relative Path',
 			disabled: !target,
-			onSelect: () => target && void navigator.clipboard.writeText(target.path),
+			onSelect: () => target && void copyEntryPath(target.path, false),
 		},
 		{
 			label: 'Reveal in File Explorer',
