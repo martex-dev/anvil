@@ -9,14 +9,23 @@ export function attempt<T>(fn: () => T): Outcome<T> {
 	}
 }
 
+const THOUSANDS = /^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$/;
+const DECIMAL = /^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i;
+
 /**
- * Lenient numeric parse for form fields: separators people paste ("10,000", "1_000") are
- * ignored. Returns null for a blank field so callers can tell "not filled in" from "invalid".
+ * Numeric parse for form fields: separators people paste ("10,000", "1_000", "10 000") are
+ * ignored. A comma anywhere else (a decimal comma like "0,5") is NaN rather than silently read
+ * as 5, and so is anything Number() accepts that isn't a plain decimal ("0x10", "Infinity").
+ * Returns null for a blank field so callers can tell "not filled in" from "invalid".
  */
 export function parseNumber(text: string): number | null {
-	const clean = text.trim().replace(/[\s_,]/g, '');
+	let clean = text.trim().replace(/[\s_]/g, '');
 	if (!clean) return null;
-	return Number(clean);
+	if (clean.includes(',')) {
+		if (!THOUSANDS.test(clean)) return NaN;
+		clean = clean.replace(/,/g, '');
+	}
+	return DECIMAL.test(clean) ? Number(clean) : NaN;
 }
 
 /**
