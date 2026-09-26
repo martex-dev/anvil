@@ -10,10 +10,12 @@ import type { TerminalPresetId } from '@shared/ipc/channels/terminal';
 import { call } from '../../lib/ipc';
 import { rlog } from '../../lib/log';
 import { queryClient } from '../../lib/query-client';
+import { toast } from '../../stores/toast-store';
 import { requestOpenFile } from '../../stores/workbench-store';
 import { useClipboardHistory } from '../editor/extras/clipboard';
 import { findFileLinks } from './file-links';
 import { FOCUS_TERMINAL_EVENT, markAttached, unmarkAttached } from './terminal-store';
+import { terminalKeyAction } from './xterm-keys';
 import { buildXtermTheme } from './xterm-theme';
 
 import '@xterm/xterm/css/xterm.css';
@@ -116,16 +118,19 @@ export function useXterm(
 			rlog.warn('terminal', 'WebGL renderer unavailable, using DOM renderer', e);
 		}
 
-		// Ctrl+C copies when text is selected (otherwise it's SIGINT); Ctrl+V pastes natively.
 		term.attachCustomKeyEventHandler((e) => {
-			if (e.type !== 'keydown' || !e.ctrlKey || e.shiftKey || e.altKey) return true;
-			if (e.key === 'c' && term.hasSelection()) {
-				useClipboardHistory.getState().push(term.getSelection(), null);
-				void navigator.clipboard.writeText(term.getSelection());
+			const action = terminalKeyAction(e, term.hasSelection());
+			if (action === 'copy') {
+				const text = term.getSelection();
+				useClipboardHistory.getState().push(text, null);
+				navigator.clipboard.writeText(text).catch((err: unknown) => {
+					rlog.warn('terminal', 'copy failed', err);
+					toast.error('Copy failed', err instanceof Error ? err.message : undefined);
+				});
 				term.clearSelection();
-				return false;
 			}
-			return e.key !== 'v';
+			// false: xterm ignores the key (copied, or the browser pastes natively).
+			return action === 'xterm';
 		});
 
 		const unsubscribeData = window.anvil.on('terminal:data', (m) => {
