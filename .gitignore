@@ -1,0 +1,52 @@
+# Node
+node_modules/
+npm-debug.log*
+.npm/
+*.tsbuildinfo
+
+# Build output
+out/
+dist/
+release/
+coverage/
+
+# Env / secrets (only .env.example is committed)
+.env
+.env.*
+!.env.example
+
+# Electron userData artifacts that may land in the repo during dev/tests
+userData/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+secrets.bin
+
+# Playwright
+test-results/
+playwright-report/
+e2e/.artifacts/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+
+# Logs
+*.log
+logs/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.pytest-tmp/
+shots/

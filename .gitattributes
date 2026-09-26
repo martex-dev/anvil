@@ -1,0 +1,7 @@
+# Keep LF everywhere (Prettier, Ruff and the Windows CI runner must agree on line endings).
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
