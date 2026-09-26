@@ -1,13 +1,23 @@
 name: Release
 
-# Push a tag like v0.2.0 (matching package.json "version") to build the Windows installer and
-# publish it to this repo's Releases, where installed copies of Anvil find it (ADR-010).
+# Builds the Windows installer and publishes it to this repo's Releases, where installed copies of
+# Anvil find it and update themselves (ADR-010). It runs:
+# - on every push to main: if package.json's "version" has no v<version> tag yet, the job tags that
+#   commit and releases it, so merging a "chore(release): X.Y.Z" commit is all a release takes;
+#   otherwise it stops after one step;
+# - on a v* tag pushed by hand, which must match package.json.
+# The tag the job pushes itself uses GITHUB_TOKEN, which doesn't start a second run.
 on:
   push:
+    branches: [main]
     tags: ['v*']
 
 permissions:
   contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   windows:
@@ -21,16 +31,30 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Check the tag matches package.json
+      - name: Work out what to release
+        id: version
         shell: bash
         run: |
           version=$(node -p "require('./package.json').version")
-          [ "v$version" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME != v$version"; exit 1; }
+          tag="v$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            [ "$tag" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME != $tag"; exit 1; }
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          elif git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
+            echo "$tag is already released: nothing to do."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Install
+        if: steps.version.outputs.release == 'true'
         run: npm ci
 
       - name: Test
+        if: steps.version.outputs.release == 'true'
         run: |
           npm run typecheck
           npm test
@@ -39,17 +63,36 @@ jobs:
       # it's missing. Two of them racing made two releases for v0.1.0 and lost files, so the
       # release is created first.
       - name: Create the release
+        if: steps.version.outputs.release == 'true'
         shell: bash
         run: |
-          # The notes are this version's section of CHANGELOG.md, up to the next "## " heading.
-          awk -v v="${GITHUB_REF_NAME#v}" 'index($0, "## [" v "]") == 1 { f = 1; next } /^## / { if (f) exit } f' CHANGELOG.md > notes.md || true
+          released=$(git ls-remote --tags --refs origin 'v*' | sed 's#.*refs/tags/v##' | grep -vx "$VERSION" || true)
+          previous=$(printf '%s\n' "$released" | sort -V | tail -n 1)
+          # The notes are every CHANGELOG.md section newer than the last release, so a release that
+          # bundles several versions lists all of them.
+          awk -v v="$VERSION" -v p="$previous" '
+            index($0, "## [" v "]") == 1 { f = 1 }
+            p != "" && index($0, "## [" p "]") == 1 { exit }
+            f' CHANGELOG.md > notes.md || true
           [ -s notes.md ] || echo "See the README for what's new." > notes.md
-          gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 ||
-            gh release create "$GITHUB_REF_NAME" --verify-tag --title "Anvil ${GITHUB_REF_NAME#v}" --notes-file notes.md
+          # Installed copies update to the release marked Latest: an older version published late
+          # must not take that from a newer one.
+          highest=$(printf '%s\n%s\n' "$released" "$VERSION" | sort -V | tail -n 1)
+          latest=true
+          [ "$highest" = "$VERSION" ] || latest=false
+          if [ "$GITHUB_REF_TYPE" != tag ]; then
+            git tag "$TAG" "$GITHUB_SHA"
+            git push origin "refs/tags/$TAG"
+          fi
+          gh release view "$TAG" > /dev/null 2>&1 ||
+            gh release create "$TAG" --verify-tag --latest="$latest" --title "Anvil $VERSION" --notes-file notes.md
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
 
       - name: Build and publish
+        if: steps.version.outputs.release == 'true'
         run: |
           npm run build
           npx electron-builder --win --publish always
