@@ -59,7 +59,11 @@ export function attachShield(
 		if (!model) return blur.clear();
 		if (!getSettings().secretShield) {
 			blur.clear();
-			monaco.editor.setModelMarkers(model, OWNER, []);
+			// Files in background tabs were flagged too; their problems must go with the shield.
+			for (const m of monaco.editor.getModels()) {
+				if (monaco.editor.getModelMarkers({ owner: OWNER, resource: m.uri }).length > 0)
+					monaco.editor.setModelMarkers(m, OWNER, []);
+			}
 			return;
 		}
 		const path = toWorkspacePath(model.uri) ?? model.uri.path;

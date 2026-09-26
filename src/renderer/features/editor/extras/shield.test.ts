@@ -1,8 +1,12 @@
+import type * as Monaco from 'monaco-editor';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../../app/hooks/use-settings', () => ({ getSettings: () => ({ secretShield: true }) }));
+import type { MonacoApi } from '../../../lib/monaco/setup';
 
-const { envValueRanges } = await import('./shield');
+let secretShield = true;
+vi.mock('../../../app/hooks/use-settings', () => ({ getSettings: () => ({ secretShield }) }));
+
+const { attachShield, envValueRanges } = await import('./shield');
 
 /** The blurred text of each line. */
 const blurred = (lines: string[]): string[] =>
@@ -27,5 +31,40 @@ describe('envValueRanges', () => {
 
 	it('skips comments and empty values', () => {
 		expect(blurred(['# KEY=value', 'EMPTY=', 'export NAME=x'])).toEqual(['x']);
+	});
+});
+
+describe('attachShield', () => {
+	it('clears its problems in every open file when the shield is off', () => {
+		vi.stubGlobal('window', { addEventListener: vi.fn(), removeEventListener: vi.fn() });
+		const shown = { uri: 'file:///c/proj/a.py' };
+		const background = { uri: 'file:///c/proj/b.py' };
+		const clean = { uri: 'file:///c/proj/c.py' };
+		const flagged = new Set([shown.uri, background.uri]);
+		const setModelMarkers = vi.fn(
+			(model: { uri: string }, _owner: string, markers: unknown[]) =>
+				markers.length === 0 && flagged.delete(model.uri),
+		);
+		const monaco = {
+			editor: {
+				getModels: () => [shown, background, clean],
+				getModelMarkers: ({ resource }: { resource: string }) =>
+					flagged.has(resource) ? [{}] : [],
+				setModelMarkers,
+			},
+		} as unknown as MonacoApi;
+		const noop = { dispose: () => undefined };
+		const editor = {
+			createDecorationsCollection: () => ({ set: vi.fn(), clear: vi.fn() }),
+			getModel: () => shown,
+			onDidChangeModel: () => noop,
+			onDidChangeModelContent: () => noop,
+		} as unknown as Monaco.editor.IStandaloneCodeEditor;
+		secretShield = false;
+		attachShield(editor, monaco).dispose();
+		expect(flagged.size).toBe(0);
+		// Files that had nothing flagged aren't touched (no marker-change churn).
+		expect(setModelMarkers).toHaveBeenCalledTimes(2);
+		vi.unstubAllGlobals();
 	});
 });
