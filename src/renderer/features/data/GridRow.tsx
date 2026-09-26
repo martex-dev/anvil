@@ -4,6 +4,7 @@ import type { DataColumn } from '@shared/ipc/channels/data';
 
 import { cn } from '../../lib/cn';
 import { isNegative, isNumericType, isTrueText, ROW_HEIGHT } from './data-format';
+import { cellId } from './grid-selection';
 
 interface GridRowProps {
 	index: number;
@@ -19,6 +20,8 @@ interface GridRowProps {
 	/** Selected column span for this row, or -1/-1 when the row is outside the selection. */
 	selLeft: number;
 	selRight: number;
+	/** Prefix for cell ids so the grid can point aria-activedescendant at the focus cell. */
+	idPrefix: string;
 }
 
 function renderCell(value: string | null | undefined, column: DataColumn): ReactNode {
@@ -52,6 +55,7 @@ export const GridRow = memo(function GridRow({
 	colEnd,
 	selLeft,
 	selRight,
+	idPrefix,
 }: GridRowProps): JSX.Element {
 	const inSelection = selLeft >= 0;
 	const items: JSX.Element[] = [];
@@ -73,6 +77,11 @@ export const GridRow = memo(function GridRow({
 		items.push(
 			<div
 				key={c}
+				id={cellId(idPrefix, index, c)}
+				role='gridcell'
+				// Column 1 is the row-number header, so data columns start at 2.
+				aria-colindex={c + 2}
+				aria-selected={selected}
 				data-row={index}
 				data-col={c}
 				className={cn(
@@ -99,6 +108,8 @@ export const GridRow = memo(function GridRow({
 			{items}
 			<div
 				data-gutter={index}
+				role='rowheader'
+				aria-colindex={1}
 				title='Select row (Shift+click to extend)'
 				className={cn(
 					'num sticky left-0 z-10 cursor-default flex h-full items-center justify-end border-r border-glass-edge bg-bg-1 pr-2 text-11',

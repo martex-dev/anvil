@@ -3,6 +3,7 @@ import {
 	type KeyboardEvent,
 	type RefObject,
 	useEffect,
+	useId,
 	useLayoutEffect,
 	useMemo,
 	useRef,
@@ -23,6 +24,7 @@ import {
 	visibleRowRange,
 } from './data-format';
 import {
+	activeCellId,
 	type CellPos,
 	type CellRange,
 	type CopyOptions,
@@ -68,6 +70,7 @@ export function DataGrid({
 	visibleRowsRef,
 }: DataGridProps): JSX.Element {
 	const scrollRef = useRef<HTMLDivElement>(null);
+	const idPrefix = useId();
 	const [scroll, setScroll] = useState({ top: 0, left: 0 });
 	const [size, setSize] = useState({ width: 0, height: 0 });
 
@@ -176,6 +179,7 @@ export function DataGrid({
 				colEnd={cols.end}
 				selLeft={inRange ? range.left : -1}
 				selRight={inRange ? range.right : -1}
+				idPrefix={idPrefix}
 			/>,
 		);
 	}
@@ -200,9 +204,12 @@ export function DataGrid({
 		}
 	}
 
+	const focus = selection?.focus;
+	// Screen readers announce the focus cell as the arrow keys move it.
+	const activeDescendant = activeCellId(idPrefix, focus, win, cols);
+
 	// In a multi-cell range, mark the focus cell (the corner Shift+Arrow moves) as spreadsheets do.
 	let focusMark: JSX.Element | null = null;
-	const focus = selection?.focus;
 	if (
 		range &&
 		focus &&
@@ -233,8 +240,9 @@ export function DataGrid({
 					ref={scrollRef}
 					role='grid'
 					aria-rowcount={totalRows + 1}
-					aria-colcount={columns.length}
+					aria-colcount={columns.length + 1}
 					aria-multiselectable
+					aria-activedescendant={activeDescendant}
 					aria-label='Data table'
 					tabIndex={0}
 					onScroll={(e) =>

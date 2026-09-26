@@ -93,6 +93,7 @@ export function GridHeader({
 			<div
 				key={c}
 				role='columnheader'
+				aria-colindex={c + 2}
 				aria-sort={sorted ? (sorted.desc ? 'descending' : 'ascending') : 'none'}
 				tabIndex={0}
 				title={`${column.name} · click or Enter to sort`}
@@ -154,6 +155,9 @@ export function GridHeader({
 		>
 			{cells}
 			<div
+				role='columnheader'
+				aria-colindex={1}
+				aria-label='Row number'
 				className='hud sticky left-0 z-10 flex h-full items-center justify-end border-r border-glass-edge bg-bg-2 pr-2'
 				style={{ width: gutter }}
 			>

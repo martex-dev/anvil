@@ -96,6 +96,30 @@ export function moveSelection(
 	return { anchor: focus, focus };
 }
 
+/** DOM id of a data cell; the grid points aria-activedescendant at the focus cell's id. */
+export function cellId(idPrefix: string, row: number, col: number): string {
+	return `${idPrefix}-r${row}-c${col}`;
+}
+
+/**
+ * The focus cell's id while it is rendered, else undefined: rows and columns are virtualized, and
+ * pointing aria-activedescendant at a missing element would announce nothing.
+ */
+export function activeCellId(
+	idPrefix: string,
+	focus: CellPos | undefined,
+	rows: { start: number; end: number },
+	cols: { start: number; end: number },
+): string | undefined {
+	if (!focus) return undefined;
+	const rendered =
+		focus.row >= rows.start &&
+		focus.row < rows.end &&
+		focus.col >= cols.start &&
+		focus.col < cols.end;
+	return rendered ? cellId(idPrefix, focus.row, focus.col) : undefined;
+}
+
 export function rangeContains(range: CellRange, pos: CellPos): boolean {
 	return (
 		pos.row >= range.top &&

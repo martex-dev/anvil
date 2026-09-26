@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	activeCellId,
 	type GridSelection,
 	moveSelection,
 	rangeContains,
@@ -77,5 +78,20 @@ describe('rangeContains', () => {
 		expect(rangeContains(range, { row: 2, col: 3 })).toBe(true);
 		expect(rangeContains(range, { row: 5, col: 3 })).toBe(false);
 		expect(rangeContains(range, { row: 3, col: 0 })).toBe(false);
+	});
+});
+
+describe('activeCellId', () => {
+	const rows = { start: 10, end: 40 };
+	const cols = { start: 0, end: 3 };
+
+	it('names the focus cell while it is rendered', () => {
+		expect(activeCellId('g', { row: 12, col: 2 }, rows, cols)).toBe('g-r12-c2');
+	});
+
+	it('is undefined without a focus or when the cell is virtualized away', () => {
+		expect(activeCellId('g', undefined, rows, cols)).toBeUndefined();
+		expect(activeCellId('g', { row: 40, col: 0 }, rows, cols)).toBeUndefined();
+		expect(activeCellId('g', { row: 12, col: 3 }, rows, cols)).toBeUndefined();
 	});
 });
