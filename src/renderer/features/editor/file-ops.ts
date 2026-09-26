@@ -179,18 +179,22 @@ function cleanWhitespace(model: Monaco.editor.ITextModel): void {
 
 export async function openFile(monaco: MonacoApi, root: string, path: string): Promise<void> {
 	const store = useEditorStore.getState();
-	if (store.files.some((f) => f.path === path)) {
+	const known = store.files.find((f) => f.path === path);
+	// A failed read (file locked by another program) is retried; anything else is already open.
+	if (known && known.state !== 'error') {
 		store.setActive(path);
 		return;
 	}
-	store.add({
-		path,
-		name: path.split('/').at(-1) ?? path,
-		state: 'loading',
-		dirty: false,
-		mtimeMs: 0,
-		changedOnDisk: false,
-	});
+	if (known) store.update(path, { state: 'loading', error: undefined });
+	else
+		store.add({
+			path,
+			name: path.split('/').at(-1) ?? path,
+			state: 'loading',
+			dirty: false,
+			mtimeMs: 0,
+			changedOnDisk: false,
+		});
 	try {
 		const file = await call('fs:readFile', path);
 		if (file.binary || file.tooLarge) {

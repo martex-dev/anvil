@@ -16,6 +16,7 @@ import { Breadcrumbs } from './Breadcrumbs';
 import { CodeEditor } from './CodeEditor';
 import { useEditorStore } from './editor-store';
 import { EditorDialogs } from './EditorDialogs';
+import { FileStatus } from './FileStatus';
 import { openUnloadedFiles } from './open';
 import { TabBar } from './TabBar';
 import { Watermark } from './Watermark';
@@ -127,25 +128,7 @@ function GroupView({
 					<Spinner label='Loading editor' />
 				</div>
 			);
-		else if (file.state === 'error')
-			body = (
-				<ErrorState
-					title={`Couldn't open ${file.name}`}
-					message={file.error ?? 'Unknown error'}
-				/>
-			);
-		else if (file.state === 'binary' || file.state === 'tooLarge')
-			body = (
-				<EmptyState
-					icon={<FileWarning size={22} />}
-					title={file.state === 'binary' ? 'Binary file' : 'File too large'}
-					description={
-						file.state === 'binary'
-							? `${file.name} isn't text, so it isn't shown here.`
-							: `${file.name} is over 5 MB. Open it in another program.`
-					}
-				/>
-			);
+		else if (file.state !== 'ready') body = <FileStatus file={file} />;
 	} else if (tab.kind === 'diff') {
 		if (monacoPending) body = monacoPending;
 		else if (!tab.diff)

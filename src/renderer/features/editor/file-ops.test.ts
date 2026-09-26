@@ -60,4 +60,27 @@ describe('file ops', () => {
 		closeFile('a.py');
 		expect(getViewState('a.py', 0)).toBeNull();
 	});
+
+	it('retries a failed read when the file is opened again', async () => {
+		call.mockRejectedValueOnce(new Error('EBUSY: file is locked'));
+		await openFile(monaco, 'C:/proj', 'a.py');
+		expect(useEditorStore.getState().files[0]).toMatchObject({
+			state: 'error',
+			error: 'EBUSY: file is locked',
+		});
+		call.mockResolvedValueOnce(text);
+		await openFile(monaco, 'C:/proj', 'a.py');
+		expect(useEditorStore.getState().files).toHaveLength(1);
+		expect(useEditorStore.getState().files[0]).toMatchObject({
+			state: 'ready',
+			error: undefined,
+		});
+	});
+
+	it('does not re-read a file that is already open', async () => {
+		call.mockResolvedValue(text);
+		await openFile(monaco, 'C:/proj', 'a.py');
+		await openFile(monaco, 'C:/proj', 'a.py');
+		expect(call).toHaveBeenCalledTimes(1);
+	});
 });
