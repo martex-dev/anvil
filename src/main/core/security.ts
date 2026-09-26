@@ -32,10 +32,13 @@ export function installGlobalSecurity(): void {
 		});
 	});
 
-	// The app UI only needs to write to the clipboard ("Copy path"); no camera, mic, location…
+	// Clipboard only (copy path, code snaps, "compare with clipboard"); no camera, mic, location…
+	// The default session serves nothing but Anvil's own page.
+	const allowed = new Set(['clipboard-sanitized-write', 'clipboard-read']);
 	session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
-		callback(permission === 'clipboard-sanitized-write');
+		callback(allowed.has(permission));
 	});
+	session.defaultSession.setPermissionCheckHandler((_wc, permission) => allowed.has(permission));
 }
 
 /** The main window must always show Anvil; any navigation away is blocked. */

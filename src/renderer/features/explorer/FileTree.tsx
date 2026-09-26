@@ -9,6 +9,7 @@ import { Button } from '../../ui/Button';
 import { Dialog } from '../../ui/Dialog';
 import { ErrorState } from '../../ui/ErrorState';
 import { Spinner } from '../../ui/Spinner';
+import { compareWithSelected, selectedForCompare, selectForCompare } from '../editor/compare';
 import { ExplorerContextMenu, type MenuItem } from './ExplorerContextMenu';
 import { useFsActions } from './fs-actions';
 import { InlineNameInput } from './InlineNameInput';
@@ -81,7 +82,7 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 			return;
 		}
 		if (!requestOpenFile({ path: entry.path })) {
-			toast.warn('No editor available', 'Enable the Editor module in Settings → Modules.');
+			toast.warn('Open a folder first');
 		}
 	};
 
@@ -111,6 +112,17 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 		{
 			label: 'Reveal in File Explorer',
 			onSelect: () => void call('fs:reveal', menuTarget?.path ?? '').catch(() => undefined),
+		},
+		'separator',
+		{
+			label: 'Select for Compare',
+			disabled: menuTarget?.kind !== 'file',
+			onSelect: () => menuTarget && selectForCompare(menuTarget.path),
+		},
+		{
+			label: 'Compare with Selected',
+			disabled: menuTarget?.kind !== 'file' || !selectedForCompare(),
+			onSelect: () => menuTarget && void compareWithSelected(menuTarget.path),
 		},
 	];
 
