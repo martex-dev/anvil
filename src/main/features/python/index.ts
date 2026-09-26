@@ -247,11 +247,14 @@ export const pythonFeature: MainFeature = {
 					)
 				: null;
 			const ruff = envRuff && existsSync(envRuff) ? envRuff : 'ruff';
-			// Run from the file's folder so ruff finds the project's pyproject/ruff.toml.
-			const cwd = root ? dirname(toAbsolute(root, path)) : undefined;
+			// Run from the file's folder so ruff finds the project's pyproject/ruff.toml, and name
+			// the file absolutely: a root-relative name would resolve against that folder and
+			// misapply per-file settings and excludes.
+			const abs = root ? toAbsolute(root, path) : null;
+			const cwd = abs ? dirname(abs) : undefined;
 			return runRuffFormat({
 				ruff,
-				args: ['format', '--stdin-filename', path, '-'],
+				args: ['format', '--stdin-filename', abs ?? path, '-'],
 				cwd,
 				env,
 				content,
