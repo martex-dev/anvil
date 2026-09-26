@@ -95,6 +95,13 @@ export function SnapSheet({ request }: SnapSheetProps): JSX.Element {
 		setTimeout(() => URL.revokeObjectURL(url), 1000);
 	};
 
+	// Mirrors SnapPreview's branches so the footer never contradicts the preview.
+	let footerStatus: string;
+	if (!monacoReady) footerStatus = 'Unavailable';
+	else if (image) footerStatus = `${image.pixelWidth} × ${image.pixelHeight} · PNG`;
+	else if (error) footerStatus = 'Not rendered';
+	else footerStatus = 'Rendering…';
+
 	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
 		// matchesShortcut falls back to the physical key, so Ctrl+C works on non-Latin layouts.
 		const isCopy = matchesShortcut(event, 'Ctrl+C');
@@ -159,11 +166,7 @@ export function SnapSheet({ request }: SnapSheetProps): JSX.Element {
 					</div>
 
 					<footer className='flex items-center gap-3 border-t border-glass-edge px-4 py-2.5'>
-						<span className='hud num'>
-							{image
-								? `${image.pixelWidth} × ${image.pixelHeight} · PNG`
-								: 'Rendering…'}
-						</span>
+						<span className='hud num'>{footerStatus}</span>
 						<span className='flex-1' />
 						<span className='flex items-center gap-1.5 text-11 text-fg-2'>
 							<Kbd keys='Ctrl+C' /> copy
