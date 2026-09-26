@@ -4,6 +4,7 @@ import type { AiContext, AiModelRef } from '@shared/ipc/channels/ai';
 
 import { call } from '../../lib/ipc';
 import { toast } from '../../stores/toast-store';
+import { buildHistory } from './chat-history';
 
 export interface ChatMessage {
 	id: string;
@@ -56,8 +57,6 @@ interface ChatState {
 	onError: (requestId: string, message: string) => void;
 }
 
-// Keep the context window sane: long chats send only the most recent turns.
-const HISTORY = 40;
 const KEY = 'anvil.chat';
 
 /** A reply that will get no more text; one without any says so as its error. */
@@ -101,10 +100,7 @@ export const useChat = create<ChatState>((set, get) => {
 			streaming: true,
 			at: Date.now(),
 		};
-		const history = [...before, user]
-			.filter((m) => !m.error && m.content)
-			.slice(-HISTORY)
-			.map((m) => ({ role: m.role, content: m.content }));
+		const history = buildHistory([...before, user]);
 		set({ messages: [...before, user, reply], activeRequest: requestId });
 		call('ai:send', { requestId, mode: 'chat', model, messages: history, context }).catch(
 			(error: unknown) =>
