@@ -122,3 +122,13 @@ html[data-skin='zen'] [data-part='editor-surface'] .size-28,
 html[data-skin='zen'] [data-part='editor-surface'] .size-10.rotate-45 {
 	display: none;
 }
+
+/* Panel tabs share the tab voice: a hairline under the one in front. */
+html[data-skin='zen'] [data-part='panel-tab'] [data-part='tab-marker'] {
+	bottom: 6px;
+	height: 1px;
+	border-radius: 0;
+}
+html[data-skin='zen'] [data-part='panel-tab'][data-active='true'] {
+	color: var(--text-0);
+}
