@@ -39,6 +39,44 @@ function Stat({
 	);
 }
 
+/**
+ * Same layout as the loaded profile, so stepping through columns with the arrow keys doesn't
+ * collapse and re-expand the panel. Static on purpose: it only shows for a moment.
+ */
+function ProfileSkeleton({ numeric }: { numeric: boolean }): JSX.Element {
+	const labels = ['Count', 'Nulls', 'Unique', 'Min', 'Max', ...(numeric ? ['Mean', 'Std'] : [])];
+	return (
+		<div className='flex flex-col gap-4' aria-busy='true'>
+			<dl className='grid grid-cols-2 gap-1.5'>
+				{labels.map((label) => (
+					<Stat key={label} label={label} value={'\u00a0'} />
+				))}
+			</dl>
+			<section className='flex flex-col gap-2'>
+				<h4 className='hud flex items-center gap-2'>
+					<Spinner size={12} label='Profiling column' />
+					Profiling column
+				</h4>
+				{numeric ? (
+					<div>
+						<div className='h-28 rounded-t-sm border-b border-border bg-bg-2/40' />
+						<div className='mt-1 text-10'>{'\u00a0'}</div>
+					</div>
+				) : (
+					<ul className='flex flex-col gap-1'>
+						{Array.from({ length: 6 }, (_, i) => (
+							<li key={i} className='flex flex-col gap-0.5'>
+								<span className='text-10'>{'\u00a0'}</span>
+								<span className='h-1 rounded-full bg-bg-3' />
+							</li>
+						))}
+					</ul>
+				)}
+			</section>
+		</div>
+	);
+}
+
 function ProfileBody({
 	path,
 	index,
@@ -53,14 +91,7 @@ function ProfileBody({
 		queryFn: () => call('data:stats', { path, column: index }),
 	});
 
-	if (stats.isPending) {
-		return (
-			<div className='flex flex-col items-center gap-2 py-10'>
-				<Spinner />
-				<span className='hud'>Profiling column</span>
-			</div>
-		);
-	}
+	if (stats.isPending) return <ProfileSkeleton numeric={isNumericType(column.type)} />;
 	if (stats.isError) {
 		return (
 			<ErrorState
