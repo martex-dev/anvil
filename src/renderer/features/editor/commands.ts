@@ -128,6 +128,16 @@ export const EDITOR_COMMANDS: Command[] = [
 		},
 	},
 	{
+		id: 'view.keepEditor',
+		title: 'Keep Editor Open',
+		category: 'View',
+		keywords: ['pin', 'preview'],
+		run: () => {
+			const tab = focusedTab(useTabsStore.getState());
+			if (tab) useTabsStore.getState().pin(tab.id);
+		},
+	},
+	{
 		id: 'view.closeGroup',
 		title: 'Close Editor Group',
 		category: 'View',

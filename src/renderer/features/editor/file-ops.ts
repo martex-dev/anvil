@@ -4,6 +4,7 @@ import { getSettings } from '../../app/hooks/use-settings';
 import { call, IpcCallError } from '../../lib/ipc';
 import { rlog } from '../../lib/log';
 import type { MonacoApi } from '../../lib/monaco/setup';
+import { codeTabId, useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
 import { useEditorStore } from './editor-store';
 
@@ -51,9 +52,10 @@ function toUri(monaco: MonacoApi, root: string, path: string): Monaco.Uri {
 function markDirty(path: string): void {
 	const t = tracked.get(path);
 	if (!t) return;
-	useEditorStore
-		.getState()
-		.update(path, { dirty: t.model.getAlternativeVersionId() !== t.savedVersion });
+	const dirty = t.model.getAlternativeVersionId() !== t.savedVersion;
+	useEditorStore.getState().update(path, { dirty });
+	// Edited previews become real tabs, so the next preview can't replace unsaved work.
+	if (dirty) useTabsStore.getState().pin(codeTabId(path));
 }
 
 /** Files VS Code's grammars don't claim but that read fine with a close cousin. */

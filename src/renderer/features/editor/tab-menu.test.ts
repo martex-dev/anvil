@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useLayoutStore } from '../../stores/layout-store';
-import type { Tab } from '../../stores/tabs-store';
+import { type Tab, useTabsStore } from '../../stores/tabs-store';
 import { useToastStore } from '../../stores/toast-store';
 import { useWorkbenchStore } from '../../stores/workbench-store';
 import type { MenuItem } from '../../ui/ContextMenu';
@@ -84,5 +84,14 @@ describe('tab context menu', () => {
 				description: 'Clipboard blocked',
 			}),
 		);
+	});
+
+	it('keeps a preview tab open', () => {
+		const tab = code('src/bot.py', { preview: true });
+		useTabsStore.getState().reset();
+		useTabsStore.getState().open(tab);
+		item(tab, 'Keep Open')?.onSelect();
+		expect(useTabsStore.getState().tabs[tab.id]?.preview).toBe(false);
+		expect(item(code('src/bot.py'), 'Keep Open')).toBeUndefined();
 	});
 });

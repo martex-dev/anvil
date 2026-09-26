@@ -17,6 +17,9 @@ export function tabMenuItems(tab: Tab, group: number): Array<MenuItem | 'separat
 			shortcut: 'Ctrl+\\',
 			onSelect: () => useTabsStore.getState().split(tab.id),
 		},
+		...(tab.preview
+			? [{ label: 'Keep Open', onSelect: () => useTabsStore.getState().pin(tab.id) }]
+			: []),
 	];
 	if (!path) return items;
 	return [

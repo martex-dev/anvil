@@ -2,6 +2,7 @@ import type * as Monaco from 'monaco-editor';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { MonacoApi } from '../../lib/monaco/setup';
+import { codeTabId, useTabsStore } from '../../stores/tabs-store';
 import { useEditorStore } from './editor-store';
 
 const call = vi.fn();
@@ -82,5 +83,40 @@ describe('file ops', () => {
 		await openFile(monaco, 'C:/proj', 'a.py');
 		await openFile(monaco, 'C:/proj', 'a.py');
 		expect(call).toHaveBeenCalledTimes(1);
+	});
+
+	it('turns an edited preview into a regular tab', async () => {
+		let version = 1;
+		let onChange = (): void => undefined;
+		const editable = {
+			...monaco,
+			editor: {
+				...monaco.editor,
+				createModel: (value: string) => ({
+					...(fakeModel(value) as object),
+					getAlternativeVersionId: () => version,
+					onDidChangeContent: (listener: () => void) => {
+						onChange = listener;
+						return { dispose: () => undefined };
+					},
+				}),
+			},
+		} as unknown as MonacoApi;
+		useTabsStore.getState().reset();
+		useTabsStore
+			.getState()
+			.open({
+				id: codeTabId('a.py'),
+				kind: 'code',
+				path: 'a.py',
+				title: 'a.py',
+				preview: true,
+			});
+		call.mockResolvedValue(text);
+		await openFile(editable, 'C:/proj', 'a.py');
+		version = 2;
+		onChange();
+		expect(useEditorStore.getState().files[0]?.dirty).toBe(true);
+		expect(useTabsStore.getState().tabs[codeTabId('a.py')]?.preview).toBe(false);
 	});
 });
