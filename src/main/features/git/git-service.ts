@@ -26,6 +26,12 @@ const NOT_A_REPO: GitStatus = {
 
 const isBinary = (s: string): boolean => s.includes('\0');
 
+export function pullSummary(s: { changes: number; insertions: number; deletions: number }): string {
+	if (s.changes === 0) return 'Already up to date';
+	const files = `${s.changes} file${s.changes === 1 ? '' : 's'}`;
+	return `${files} changed, +${s.insertions} −${s.deletions}`;
+}
+
 /** Git for the open folder, via the system git (simple-git). The repo root may be above it. */
 export class GitService {
 	private repoRootCache: { workspace: string; root: string } | null = null;
@@ -162,8 +168,7 @@ export class GitService {
 	async pull(): Promise<{ summary: string }> {
 		const { g } = await this.requireRepo();
 		const r = await g.pull();
-		const { changes, insertions, deletions } = r.summary;
-		return { summary: `${changes} files changed, +${insertions} −${deletions}` };
+		return { summary: pullSummary(r.summary) };
 	}
 
 	async push(): Promise<{ summary: string }> {

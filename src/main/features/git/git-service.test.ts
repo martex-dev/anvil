@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { batchPaths, gitEnv, isMissingPathError } from './git-process';
-import { GitService } from './git-service';
+import { GitService, pullSummary } from './git-service';
 
 // Integration test against the real system git in a throwaway repository.
 let repo: string;
@@ -195,6 +195,16 @@ describe('GitService', { timeout: 30_000 }, () => {
 		);
 		expect(isMissingPathError(new Error('spawn git ENOENT'))).toBe(false);
 		expect(isMissingPathError(new Error('fatal: bad object HEAD'))).toBe(false);
+	});
+
+	it('summarizes a pull without claiming changes that did not happen', () => {
+		expect(pullSummary({ changes: 0, insertions: 0, deletions: 0 })).toBe('Already up to date');
+		expect(pullSummary({ changes: 1, insertions: 2, deletions: 0 })).toBe(
+			'1 file changed, +2 −0',
+		);
+		expect(pullSummary({ changes: 3, insertions: 5, deletions: 4 })).toBe(
+			'3 files changed, +5 −4',
+		);
 	});
 
 	it('passes git only an allowlisted environment', () => {
