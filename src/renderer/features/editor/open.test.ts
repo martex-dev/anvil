@@ -18,8 +18,14 @@ vi.mock('./file-ops', () => ({
 	closeFile: vi.fn(),
 }));
 
-const { canOpenAsTable, closeAllTabs, openPath, openUnloadedFiles, takeQuietOpen } =
-	await import('./open');
+const {
+	canOpenAsTable,
+	closeAllTabs,
+	openPath,
+	openUnloadedFiles,
+	remembersRecent,
+	takeQuietOpen,
+} = await import('./open');
 const monaco = {} as MonacoApi;
 
 describe('openPath focus', () => {
@@ -115,5 +121,13 @@ describe('openPath after its tab closed', () => {
 		finish();
 		await opening;
 		expect(openFile).not.toHaveBeenCalled();
+	});
+});
+
+describe('remembersRecent', () => {
+	it('keeps explicit opens and skips navigation and the scratchpad', () => {
+		expect(remembersRecent({ path: 'a.py' })).toBe(true);
+		expect(remembersRecent({ path: 'a.py', line: 3, remember: false })).toBe(false);
+		expect(remembersRecent({ path: '__scratch__' })).toBe(false);
 	});
 });

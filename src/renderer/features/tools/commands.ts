@@ -37,7 +37,7 @@ import {
 import { changeLanguage, insertGenerated, runEditorAction } from './editor-actions';
 
 function go(place: { path: string; line: number; column: number } | null): void {
-	if (place) requestOpenFile(place);
+	if (place) requestOpenFile({ ...place, remember: false });
 }
 
 /** The focused tab's file on disk (not the scratchpad or a diff). */

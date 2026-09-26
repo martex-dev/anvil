@@ -56,7 +56,12 @@ const openEditor: OpenEditor = (modelRef, options) => {
 		?.selection;
 	modelRef.dispose();
 	if (path) {
-		requestOpenFile({ path, line: selection?.startLineNumber, column: selection?.startColumn });
+		requestOpenFile({
+			path,
+			line: selection?.startLineNumber,
+			column: selection?.startColumn,
+			remember: false,
+		});
 	}
 	return Promise.resolve(undefined);
 };

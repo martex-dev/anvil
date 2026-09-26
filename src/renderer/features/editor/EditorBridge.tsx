@@ -17,7 +17,7 @@ import { dirtyCount, useEditorStore } from './editor-store';
 import { invalidateGitLines } from './extras/git-lines';
 import { onExternalChange } from './file-ops';
 import { navHistory } from './nav-history';
-import { closeAllTabs, openPath } from './open';
+import { closeAllTabs, openPath, remembersRecent } from './open';
 
 interface SavedTab {
 	kind: Tab['kind'];
@@ -77,7 +77,7 @@ export function EditorBridge(): null {
 		setOpenFileHandler((request) => {
 			const current = client.getQueryData<WorkspaceInfo>(WORKSPACE_KEY)?.root;
 			if (!current) return;
-			rememberRecentFile(request.path);
+			if (remembersRecent(request)) rememberRecentFile(request.path);
 			void openPath(current, request);
 		});
 		const removeGuard = useWorkbenchStore.getState().addLeaveGuard(() => {

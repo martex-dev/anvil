@@ -25,6 +25,11 @@ export function canOpenAsTable(path: string): boolean {
 	return DATA.test(path) || /\.json$/i.test(path);
 }
 
+/** Whether an open belongs in Quick Open's recents: explicit opens of real files only. */
+export function remembersRecent(request: OpenFileRequest): boolean {
+	return request.remember !== false && !isScratch(request.path);
+}
+
 export const baseName = (path: string): string => path.split('/').at(-1) ?? path;
 
 export function tabFor(path: string, kind: TabKind, preview = false): Tab {

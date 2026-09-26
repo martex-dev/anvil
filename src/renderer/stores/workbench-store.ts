@@ -16,6 +16,11 @@ export interface OpenFileRequest {
 	 * in a list keep focus in the list). Session restore passes false.
 	 */
 	focus?: boolean;
+	/**
+	 * List the file in Quick Open's recent files. Defaults to true; navigation (Back / Forward,
+	 * go to definition) passes false so jumps don't reshuffle the list.
+	 */
+	remember?: boolean;
 }
 
 type OpenFileHandler = (request: OpenFileRequest) => void;
