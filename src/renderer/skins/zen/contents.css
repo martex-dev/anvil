@@ -223,7 +223,7 @@ html[data-skin='zen'] [data-part='sidebar'] [data-part='pane-title']::after {
 	mask: var(--zn-fleuron) center / contain no-repeat;
 }
 html[data-skin='zen'] [data-part='sidebar'] > [data-part='pane-body'] {
-	padding-top: 8px;
+	padding: 8px 6px 0 14px;
 }
 html[data-skin='zen'] [data-part='activity'] [data-zen='rule'] [data-zen='fleuron'] {
 	color: var(--text-2);
