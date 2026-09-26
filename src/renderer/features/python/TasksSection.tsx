@@ -8,6 +8,7 @@ import { IconButton } from '../../ui/IconButton';
 import { Spinner } from '../../ui/Spinner';
 import { runInTerminal } from '../terminal/terminal-store';
 import { RunSection } from './RunSection';
+import { SectionError } from './SectionError';
 
 /** package.json / pyproject / pytest / Makefile / justfile tasks, one click to run. */
 export function TasksSection(): JSX.Element {
@@ -31,6 +32,12 @@ export function TasksSection(): JSX.Element {
 		>
 			{tasks.isLoading ? (
 				<Spinner />
+			) : tasks.error ? (
+				<SectionError
+					title='Could not list tasks'
+					message={tasks.error.message}
+					onRetry={() => void tasks.refetch()}
+				/>
 			) : (tasks.data ?? []).length === 0 ? (
 				<p className='text-12 text-fg-2'>
 					No tasks found (package.json scripts, pyproject scripts, pytest, Makefile,
