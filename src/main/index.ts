@@ -13,6 +13,7 @@ import { startFeatures } from './core/features';
 import { attachIpc } from './core/ipc';
 import { createSecretsService, registerSecretsHandlers } from './core/secrets/secrets-handlers';
 import { installGlobalSecurity } from './core/security';
+import { shutdownWithin } from './core/shutdown';
 import { JsonStore } from './core/store/json-store';
 import { registerUpdater } from './core/update/updater';
 import { createMainWindow } from './core/window';
@@ -148,14 +149,12 @@ app.on('before-quit', (event) => {
 	if (shuttingDown) return;
 	shuttingDown = true;
 	event.preventDefault();
-	void (async () => {
-		try {
-			await features?.stopAll();
-			await watcher?.stop();
-			store?.flush();
-		} catch (error) {
-			log.error('[main] error during shutdown', error);
-		}
-		app.quit();
-	})();
+	void shutdownWithin({
+		steps: [() => features?.stopAll(), () => watcher?.stop()],
+		// Settings changed in the last debounce window must reach disk even if cleanup failed.
+		finally: () => store?.flush(),
+		timeoutMs: 5000,
+		logError: (message, error) =>
+			error === undefined ? log.error(message) : log.error(message, error),
+	}).finally(() => app.quit());
 });
