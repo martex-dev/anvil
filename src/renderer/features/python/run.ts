@@ -10,7 +10,7 @@ import {
 	showRoleTerminal,
 	useTerminalStore,
 } from '../terminal/terminal-store';
-import { cellAt, cellCode, cellCodeLine, findCells, replText } from './cells';
+import { cellAt, cellCode, cellCodeLine, findCells, needsStaging, replText } from './cells';
 
 /**
  * A new REPL tab starts with this title; main picks IPython or plain Python when it launches the
@@ -64,9 +64,9 @@ function sourceAt(
 export async function sendToRepl(code: string, source?: CodeSource): Promise<void> {
 	const { text, skippedLines } = replText(code);
 	if (!text) return;
-	const multiline = text.includes('\n');
 	const staged = source ? { ...source, line: source.line + skippedLines } : undefined;
-	const command = multiline
+	// A compound statement typed raw would leave the REPL waiting at `...` for another Enter.
+	const command = needsStaging(text)
 		? (await call('python:stageCell', { code: text, source: staged })).command
 		: text;
 	await runInTerminal({ role: 'repl', preset: 'repl', title: REPL_TITLE, command });

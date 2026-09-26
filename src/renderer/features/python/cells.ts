@@ -77,3 +77,17 @@ export function replText(code: string): { text: string; skippedLines: number } {
 	const skippedLines = lead.split('\n').length - 1;
 	return { text: dedented.trim(), skippedLines };
 }
+
+/** Statements that open a block: typed raw, the REPL waits at `...` for another Enter. */
+const BLOCK_START =
+	/^(?:for|while|if|elif|else|with|def|class|try|except|finally|async|match|case)\b|^@/;
+
+/**
+ * Whether REPL text must be staged and run with `_cell(n)` instead of typed: several lines, or
+ * a one-line compound statement such as `for i in range(3): print(i)`.
+ */
+export function needsStaging(text: string): boolean {
+	if (text.includes('\n')) return true;
+	const line = text.trim();
+	return BLOCK_START.test(line) || line.endsWith(':');
+}

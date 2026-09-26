@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { cellAt, cellCode, cellCodeLine, dedent, findCells, replText } from './cells';
+import { cellAt, cellCode, cellCodeLine, dedent, findCells, needsStaging, replText } from './cells';
 
 const src = [
 	'import polars as pl',
@@ -58,5 +58,24 @@ describe('cells', () => {
 			skippedLines: 2,
 		});
 		expect(replText('x = 1')).toEqual({ text: 'x = 1', skippedLines: 0 });
+	});
+});
+
+describe('needsStaging', () => {
+	it('stages multi-line code and one-line compound statements', () => {
+		expect(needsStaging('a = 1\nb = 2')).toBe(true);
+		expect(needsStaging('for i in range(3): print(i)')).toBe(true);
+		expect(needsStaging('with open(p) as f: data = f.read()')).toBe(true);
+		expect(needsStaging('if x: y()')).toBe(true);
+		expect(needsStaging('async def f(): pass')).toBe(true);
+		expect(needsStaging('@cache')).toBe(true);
+		expect(needsStaging('while True:')).toBe(true);
+	});
+
+	it('types simple statements and expressions as they are', () => {
+		expect(needsStaging('df.describe()')).toBe(false);
+		expect(needsStaging('x = {"a": 1}')).toBe(false);
+		expect(needsStaging('format_x = 3')).toBe(false);
+		expect(needsStaging('iffy = 2')).toBe(false);
 	});
 });
