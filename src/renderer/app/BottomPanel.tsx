@@ -9,8 +9,10 @@ import { newTerminal, useTerminalStore } from '../features/terminal/terminal-sto
 import { PRESETS_KEY, TerminalPane } from '../features/terminal/TerminalPane';
 import { cn } from '../lib/cn';
 import { call } from '../lib/ipc';
+import { handleTabKeys } from '../lib/roving';
 import { type PanelTab, useLayoutStore } from '../stores/layout-store';
 import { useRegisterOverlay } from '../stores/overlay-store';
+import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
 import { IconButton } from '../ui/IconButton';
 import { Spinner } from '../ui/Spinner';
@@ -96,6 +98,14 @@ function PresetMenu(): JSX.Element {
 	);
 }
 
+const PANEL_TABS: readonly PanelTab[] = ['terminal', 'problems'];
+const PANEL_CONTENT_ID = 'bottom-panel-content';
+const tabId = (tab: PanelTab): string => `bottom-panel-tab-${tab}`;
+const selectPanelTab = (index: number): void => {
+	const tab = PANEL_TABS[index];
+	if (tab) useLayoutStore.getState().showPanel(tab);
+};
+
 function TabButton({
 	tab,
 	label,
@@ -106,14 +116,19 @@ function TabButton({
 	count?: number;
 }): JSX.Element {
 	const active = useLayoutStore((s) => s.panelTab === tab);
+	const index = PANEL_TABS.indexOf(tab);
 	return (
 		<button
 			type='button'
 			role='tab'
+			id={tabId(tab)}
 			aria-selected={active}
-			onClick={() => useLayoutStore.getState().showPanel(tab)}
+			aria-controls={PANEL_CONTENT_ID}
+			tabIndex={active ? 0 : -1}
+			onClick={() => selectPanelTab(index)}
+			onKeyDown={(e) => handleTabKeys(e, index, PANEL_TABS.length, selectPanelTab)}
 			className={cn(
-				'hud relative flex h-full items-center gap-1.5 px-2 outline-none transition-colors transition-fast focus-visible:text-fg-0',
+				'hud relative flex h-full items-center gap-1.5 rounded-md px-2 outline-none transition-colors transition-fast focus-visible:text-fg-0 focus-visible:shadow-glow',
 				active ? 'text-fg-0' : 'hover:text-fg-1',
 			)}
 		>
@@ -146,7 +161,7 @@ export function BottomPanel(): JSX.Element {
 			className='glass pane-focus animate-fade flex h-full min-h-0 flex-col overflow-hidden'
 		>
 			<div className='flex h-9 shrink-0 items-center gap-1 border-b border-glass-edge pr-1.5 pl-1'>
-				<div role='tablist' className='flex h-full items-center'>
+				<div role='tablist' aria-label='Panel' className='flex h-full items-center'>
 					<TabButton tab='terminal' label='Terminal' />
 					<TabButton tab='problems' label='Problems' count={problems} />
 				</div>
@@ -180,7 +195,12 @@ export function BottomPanel(): JSX.Element {
 					/>
 				</div>
 			</div>
-			<div className='relative min-h-0 flex-1'>
+			<div
+				id={PANEL_CONTENT_ID}
+				role='tabpanel'
+				aria-labelledby={tabId(tab)}
+				className='relative min-h-0 flex-1'
+			>
 				{tab === 'problems' && <ProblemsView />}
 				{terms.length === 0 && tab === 'terminal' && (
 					<EmptyState
@@ -188,13 +208,9 @@ export function BottomPanel(): JSX.Element {
 						title='No terminals'
 						description='PowerShell, a Python REPL, Claude Code, Codex or Gemini CLI.'
 						action={
-							<button
-								type='button'
-								onClick={() => newTerminal('powershell')}
-								className='rounded-md border border-border-strong px-3 py-1 text-12 text-fg-1 hover:border-accent/40 hover:text-fg-0'
-							>
+							<Button size='sm' onClick={() => newTerminal('powershell')}>
 								New terminal
-							</button>
+							</Button>
 						}
 					/>
 				)}
