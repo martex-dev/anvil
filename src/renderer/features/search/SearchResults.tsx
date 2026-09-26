@@ -68,6 +68,7 @@ export function SearchResults({
 							type='button'
 							onClick={() => toggle(file.path)}
 							aria-expanded={open}
+							title={file.path}
 							data-roving
 							{...rowProps(`f:${file.path}`)}
 							className='flex h-6 w-full items-center gap-1 px-2 text-left text-13 hover:bg-bg-2 focus-visible:shadow-glow focus-visible:outline-none'
@@ -107,6 +108,8 @@ export function SearchResults({
 													path: file.path,
 													line: m.line,
 													column: m.column,
+													// Browsing results reuses one preview tab.
+													preview: true,
 												})
 											}
 											className={cn(
