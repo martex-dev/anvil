@@ -124,7 +124,11 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 					tabIndex={0}
 					className='min-h-full py-1 outline-none focus-visible:shadow-[inset_0_0_0_1px_var(--accent)]'
 					onContextMenu={(e) => {
-						if (e.target === e.currentTarget) setMenuTarget(null);
+						// Entry rows set their own target. Anything else (empty space, a loading or
+						// error row, an inline input) has none, not the previously right-clicked one.
+						const onRow =
+							e.target instanceof Element && e.target.closest('[role="treeitem"]');
+						if (!onRow) setMenuTarget(null);
 					}}
 					onKeyDown={treeKeyHandler({
 						rows: tree.rows,
