@@ -1,0 +1,54 @@
+import { beforeEach, describe, expect, it } from 'vitest';
+
+import { dirtyCount, type OpenFile, useEditorStore } from './editor-store';
+
+const file = (path: string, patch: Partial<OpenFile> = {}): OpenFile => ({
+	path,
+	name: path,
+	state: 'ready',
+	dirty: false,
+	mtimeMs: 0,
+	changedOnDisk: false,
+	...patch,
+});
+
+describe('editor store', () => {
+	beforeEach(() => useEditorStore.getState().reset());
+
+	it('adding a file activates it', () => {
+		const s = useEditorStore.getState();
+		s.add(file('a.ts'));
+		s.add(file('b.ts'));
+		expect(useEditorStore.getState().active).toBe('b.ts');
+	});
+
+	it('closing the active tab activates its right neighbour, else the left one', () => {
+		const s = useEditorStore.getState();
+		s.add(file('a.ts'));
+		s.add(file('b.ts'));
+		s.add(file('c.ts'));
+		s.setActive('b.ts');
+		s.remove('b.ts');
+		expect(useEditorStore.getState().active).toBe('c.ts');
+		s.remove('c.ts');
+		expect(useEditorStore.getState().active).toBe('a.ts');
+		s.remove('a.ts');
+		expect(useEditorStore.getState().active).toBeNull();
+	});
+
+	it('closing an inactive tab keeps the active one', () => {
+		const s = useEditorStore.getState();
+		s.add(file('a.ts'));
+		s.add(file('b.ts'));
+		s.remove('a.ts');
+		expect(useEditorStore.getState().active).toBe('b.ts');
+	});
+
+	it('counts dirty files', () => {
+		const s = useEditorStore.getState();
+		s.add(file('a.ts'));
+		s.add(file('b.ts', { dirty: true }));
+		s.update('a.ts', { dirty: true });
+		expect(dirtyCount()).toBe(2);
+	});
+});
