@@ -24,11 +24,13 @@ export function routeDelta(requestId: string, text: string): void {
 	p.onPartial?.(p.text);
 }
 
-export function routeDone(requestId: string, cancelled: boolean): void {
+export function routeDone(requestId: string, cancelled: boolean, truncated = false): void {
 	const p = pending.get(requestId);
 	if (!p) return;
 	pending.delete(requestId);
 	if (cancelled) p.reject(new Error('Cancelled'));
+	// A half-written edit or commit message is worse than none: never hand it on as complete.
+	else if (truncated) p.reject(new Error('The reply was cut off at the model’s token limit.'));
 	else p.resolve(p.text);
 }
 

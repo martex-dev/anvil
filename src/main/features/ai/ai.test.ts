@@ -121,6 +121,56 @@ describe('providers', () => {
 	});
 });
 
+describe('stop reasons', () => {
+	it('reports truncation from every provider', () => {
+		expect(
+			parseEvent('anthropic', {
+				event: null,
+				data: '{"type":"message_delta","delta":{"stop_reason":"max_tokens"},"usage":{"output_tokens":9}}',
+			}),
+		).toEqual({ outputTokens: 9, truncated: true });
+		expect(
+			parseEvent('openai', {
+				event: null,
+				data: '{"choices":[{"delta":{},"finish_reason":"length"}]}',
+			}),
+		).toEqual({ truncated: true });
+		expect(
+			parseEvent('gemini', {
+				event: null,
+				data: '{"candidates":[{"content":{"parts":[{"text":"x"}]},"finishReason":"MAX_TOKENS"}]}',
+			}),
+		).toEqual({ text: 'x', truncated: true });
+	});
+
+	it('reports blocked replies and prompts', () => {
+		expect(
+			parseEvent('openai', {
+				event: null,
+				data: '{"choices":[{"delta":{},"finish_reason":"content_filter"}]}',
+			}).blocked,
+		).toBe('content filter');
+		expect(
+			parseEvent('gemini', {
+				event: null,
+				data: '{"candidates":[{"finishReason":"PROHIBITED_CONTENT"}]}',
+			}).blocked,
+		).toBe('prohibited content');
+		expect(
+			parseEvent('gemini', {
+				event: null,
+				data: '{"promptFeedback":{"blockReason":"SAFETY"}}',
+			}).blocked,
+		).toBe('prompt: safety');
+		expect(
+			parseEvent('gemini', {
+				event: null,
+				data: '{"candidates":[{"content":{"parts":[{"text":"ok"}]},"finishReason":"STOP"}]}',
+			}),
+		).toEqual({ text: 'ok' });
+	});
+});
+
 describe('completion', () => {
 	const input = { path: 'a.py', language: 'python', prefix: 'def f(x):\n    ', suffix: '\n' };
 

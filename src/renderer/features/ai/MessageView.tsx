@@ -168,6 +168,12 @@ export function MessageView({ message }: { message: ChatMessage }): JSX.Element 
 					<AlertTriangle size={12} className='mt-0.5 shrink-0' /> {message.error}
 				</p>
 			)}
+			{message.truncated && !message.streaming && (
+				<p role='status' className='mt-1 flex items-start gap-1 text-12 text-warn'>
+					<AlertTriangle size={12} className='mt-0.5 shrink-0' /> Reply was cut off at the
+					model’s token limit. Ask it to continue.
+				</p>
+			)}
 			{!message.streaming && !message.error && (
 				<p className={cn('num mt-1 text-10 text-fg-2')}>
 					{message.model?.model}

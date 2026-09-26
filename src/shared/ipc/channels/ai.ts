@@ -97,6 +97,8 @@ export const aiEvents = {
 		inputTokens: z.number().nullable(),
 		outputTokens: z.number().nullable(),
 		cancelled: z.boolean(),
+		/** Cut off at the model's output-token limit. */
+		truncated: z.boolean(),
 	}),
 	'ai:error': z.object({ requestId: RequestIdSchema, message: z.string() }),
 };

@@ -70,3 +70,37 @@ describe('AiService.stream', () => {
 		expect(sink.error).toHaveBeenCalledWith(expect.stringMatching(/No response from openai/));
 	});
 });
+
+describe('AiService.stream endings', () => {
+	/** A provider that sends these SSE data lines, then closes. */
+	function replyWith(...data: string[]): void {
+		const body = data.map((d) => `data: ${d}\n\n`).join('');
+		vi.stubGlobal('fetch', (async () => new Response(body)) as typeof fetch);
+	}
+	async function run(): Promise<{
+		delta: ReturnType<typeof vi.fn>;
+		done: ReturnType<typeof vi.fn>;
+		error: ReturnType<typeof vi.fn>;
+	}> {
+		const sink = { delta: vi.fn(), done: vi.fn(), error: vi.fn() };
+		const ai = new AiService({ getKey: () => 'k', ollamaUrl: () => '' });
+		await ai.stream('r1', 'chat', { provider: 'openai', model: 'gpt-5' }, [], [], sink);
+		return sink;
+	}
+
+	it('marks a reply cut off at the token limit', async () => {
+		replyWith(
+			'{"choices":[{"delta":{"content":"Hi"}}]}',
+			'{"choices":[{"finish_reason":"length"}]}',
+		);
+		const sink = await run();
+		expect(sink.done).toHaveBeenCalledWith(expect.anything(), false, true);
+	});
+
+	it('explains a blocked or empty reply instead of ending silently', async () => {
+		replyWith('{"choices":[{"delta":{},"finish_reason":"content_filter"}]}');
+		expect((await run()).error).toHaveBeenCalledWith(expect.stringMatching(/blocked/));
+		replyWith('[DONE]');
+		expect((await run()).error).toHaveBeenCalledWith('openai returned an empty reply.');
+	});
+});

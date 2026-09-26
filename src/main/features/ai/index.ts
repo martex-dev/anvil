@@ -46,7 +46,8 @@ export const aiFeature: MainFeature = {
 			// Fire and forget: the reply streams back as events, so the IPC call returns at once.
 			void ai.stream(requestId, mode, model, messages, context, {
 				delta: (text) => ctx.emit('ai:delta', { requestId, text }),
-				done: (usage, cancelled) => ctx.emit('ai:done', { requestId, ...usage, cancelled }),
+				done: (usage, cancelled, truncated = false) =>
+					ctx.emit('ai:done', { requestId, ...usage, cancelled, truncated }),
 				error: (message) => {
 					ctx.log.warn('ai request failed', { ...model, mode, message });
 					ctx.emit('ai:error', { requestId, message });

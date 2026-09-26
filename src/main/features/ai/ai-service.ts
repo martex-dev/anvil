@@ -11,6 +11,8 @@ export interface StreamSink {
 	done(
 		usage: { inputTokens: number | null; outputTokens: number | null },
 		cancelled: boolean,
+		/** The reply was cut off at the output-token limit. */
+		truncated?: boolean,
 	): void;
 	error(message: string): void;
 }
@@ -99,6 +101,8 @@ export class AiService {
 		// A provider that stops sending without closing the connection would leave the reply
 		// "streaming" forever: give up after a stretch of silence (reset by every chunk).
 		let stalled = false;
+		let received = false;
+		let truncated = false;
 		let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 		let idle: ReturnType<typeof setTimeout> | undefined;
 		const touch = (): void => {
@@ -137,13 +141,28 @@ export class AiService {
 						await reader.cancel().catch(() => undefined);
 						return;
 					}
-					if (chunk.text) sink.delta(chunk.text);
+					if (chunk.text) {
+						received = true;
+						sink.delta(chunk.text);
+					}
+					if (chunk.blocked) {
+						sink.error(`${provider} blocked this reply (${chunk.blocked}).`);
+						await reader.cancel().catch(() => undefined);
+						return;
+					}
+					if (chunk.truncated) truncated = true;
 					if (chunk.inputTokens !== undefined) inputTokens = chunk.inputTokens;
 					if (chunk.outputTokens !== undefined) outputTokens = chunk.outputTokens;
 				}
 			}
 			if (stalled) sink.error(stallMessage);
-			else sink.done({ inputTokens, outputTokens }, false);
+			else if (!received) {
+				sink.error(
+					truncated
+						? `${provider} hit the token limit before writing anything.`
+						: `${provider} returned an empty reply.`,
+				);
+			} else sink.done({ inputTokens, outputTokens }, false, truncated);
 		} catch (error) {
 			if (stalled) sink.error(stallMessage);
 			else if (controller.signal.aborted) sink.done({ inputTokens, outputTokens }, true);

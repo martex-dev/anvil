@@ -14,6 +14,8 @@ export interface ChatMessage {
 	error?: string;
 	streaming?: boolean;
 	usage?: { inputTokens: number | null; outputTokens: number | null };
+	/** Cut off at the model's output-token limit. */
+	truncated?: boolean;
 	/** Epoch ms, for the timestamp under a reply. */
 	at?: number;
 }
@@ -30,7 +32,12 @@ interface ChatState {
 	stop: () => void;
 	clear: () => void;
 	onDelta: (requestId: string, text: string) => void;
-	onDone: (requestId: string, usage: ChatMessage['usage'], cancelled: boolean) => void;
+	onDone: (
+		requestId: string,
+		usage: ChatMessage['usage'],
+		cancelled: boolean,
+		truncated?: boolean,
+	) => void;
 	onError: (requestId: string, message: string) => void;
 }
 
@@ -116,7 +123,7 @@ export const useChat = create<ChatState>((set, get) => ({
 				m.id === requestId ? { ...m, content: m.content + text } : m,
 			),
 		})),
-	onDone: (requestId, usage, cancelled) =>
+	onDone: (requestId, usage, cancelled, truncated = false) =>
 		set((s) => ({
 			activeRequest: s.activeRequest === requestId ? null : s.activeRequest,
 			messages: s.messages.map((m) =>
@@ -125,6 +132,7 @@ export const useChat = create<ChatState>((set, get) => ({
 							...m,
 							streaming: false,
 							usage,
+							...(truncated ? { truncated } : {}),
 							...(cancelled && !m.content ? { error: 'Stopped' } : {}),
 						}
 					: m,
