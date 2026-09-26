@@ -1,4 +1,4 @@
-import { execFile,type ExecFileException } from 'node:child_process';
+import { execFile, type ExecFileException } from 'node:child_process';
 
 import type { ColumnType } from '@shared/ipc/channels/data';
 
@@ -14,7 +14,8 @@ import json, sys
 path, limit = sys.argv[1], int(sys.argv[2])
 ext = path.rsplit('.', 1)[-1].lower()
 def cell(v):
-    if v is None:
+    # pandas.NA / NaT: NA's truth value raises in the v != v test below.
+    if v is None or type(v).__name__ in ('NAType', 'NaTType'):
         return None
     try:
         if v != v:
