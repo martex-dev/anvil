@@ -1,0 +1,282 @@
+/*
+ * Zen Paper chrome: the running head (title bar), the colophon (status bar) and the fade that
+ * keeps both quiet. Chrome sits at low strength until the pointer or keyboard focus reaches
+ * it, then inks in; an open menu keeps its bar inked.
+ */
+
+html[data-skin='zen'][data-fx='off'],
+html[data-skin='zen'][data-reduce-motion='true'] {
+	--zn-slow: 0ms;
+}
+
+/* ---- Running head ----------------------------------------------------------------------- */
+
+html[data-skin='zen'] [data-part='titlebar'] {
+	font-family: var(--font-ui);
+}
+/* A hairline under the head, fading out toward both margins. */
+html[data-skin='zen'] [data-part='titlebar']::after {
+	content: '';
+	position: absolute;
+	left: 24px;
+	right: 24px;
+	bottom: 0;
+	height: 1px;
+	background: linear-gradient(
+		90deg,
+		transparent,
+		var(--zn-rule) 22%,
+		var(--zn-rule) 78%,
+		transparent
+	);
+	pointer-events: none;
+}
+
+html[data-skin='zen'] [data-part='brand'],
+html[data-skin='zen'] [data-part='menubar'],
+html[data-skin='zen'] [data-part='title-actions'] {
+	opacity: 0.22;
+	transition: opacity var(--zn-slow) var(--zn-ease);
+}
+html[data-skin='zen'] [data-part='window-controls'] {
+	opacity: 0.5;
+	transition: opacity var(--zn-slow) var(--zn-ease);
+}
+html[data-skin='zen'] [data-part='command-center'] {
+	opacity: 0.78;
+	transition: opacity var(--zn-slow) var(--zn-ease);
+}
+html[data-skin='zen']
+	[data-part='titlebar']:is(:hover, :focus-within, :has([data-state='open']))
+	:is(
+		[data-part='brand'],
+		[data-part='menubar'],
+		[data-part='title-actions'],
+		[data-part='window-controls'],
+		[data-part='command-center']
+	) {
+	opacity: 1;
+}
+
+html[data-skin='zen'] [data-part='brand'] {
+	font-family: var(--font-display);
+	font-style: italic;
+	font-size: 18px;
+	line-height: 1;
+	color: var(--text-0);
+}
+html[data-skin='zen'] [data-part='brand']::first-letter {
+	color: var(--accent);
+}
+
+html[data-skin='zen'] [data-part='menu-trigger'] {
+	font-size: 13px;
+	font-variant-caps: all-small-caps;
+	letter-spacing: 0.08em;
+	color: var(--text-1);
+	border-bottom: 1px solid transparent;
+	transition:
+		color var(--dur-fast) var(--ease-out),
+		border-color var(--dur-fast) var(--ease-out);
+}
+html[data-skin='zen'] [data-part='menu-trigger']:hover,
+html[data-skin='zen'] [data-part='menu-trigger']:focus-visible {
+	color: var(--text-0);
+	outline: none;
+	border-bottom-color: var(--zn-rule);
+}
+html[data-skin='zen'] [data-part='menu-trigger'][data-state='open'] {
+	color: var(--accent);
+	border-bottom-color: var(--accent);
+}
+
+/* The document title: project in small caps, a fleuron, the file in italic display type. */
+html[data-skin='zen'] [data-part='command-center'] {
+	color: var(--text-1);
+}
+html[data-skin='zen'] [data-zen='project'] {
+	font-size: 12.5px;
+	font-variant-caps: all-small-caps;
+	letter-spacing: 0.12em;
+	color: var(--text-2);
+}
+html[data-skin='zen'] [data-part='command-center'] [data-zen='fleuron'] {
+	align-self: center;
+	width: 12px;
+	height: 12px;
+}
+html[data-skin='zen'] [data-zen='document'] {
+	font-family: var(--font-display);
+	font-style: italic;
+	font-size: 19px;
+	line-height: 1;
+	color: var(--text-0);
+	text-decoration: underline 1px transparent;
+	text-underline-offset: 5px;
+	transition: text-decoration-color var(--dur-base) var(--ease-out);
+}
+html[data-skin='zen']
+	[data-part='command-center']:is(:hover, :focus-visible)
+	[data-zen='document'] {
+	text-decoration-color: var(--accent);
+}
+html[data-skin='zen'] [data-part='command-center']:focus-visible {
+	outline: none;
+}
+html[data-skin='zen'] [data-zen='edited'] {
+	font-size: 12px;
+	font-style: italic;
+	color: var(--accent);
+}
+
+/* View toggles: bare ink, the active one in the seal color with a dot beneath. */
+html[data-skin='zen'] [data-part='title-actions'] button {
+	position: relative;
+	background: none;
+	color: var(--text-1);
+}
+html[data-skin='zen'] [data-part='title-actions'] button:hover {
+	background: none;
+	color: var(--text-0);
+}
+html[data-skin='zen'] [data-part='title-actions'] button[aria-pressed='true'] {
+	background: none;
+	color: var(--accent);
+}
+html[data-skin='zen'] [data-part='title-actions'] button[aria-pressed='true']::after {
+	content: '';
+	position: absolute;
+	bottom: -3px;
+	left: 50%;
+	width: 3px;
+	height: 3px;
+	border-radius: 50%;
+	background: var(--accent);
+	transform: translateX(-50%);
+}
+html[data-skin='zen'] [data-zen='dot'] {
+	padding: 0 4px;
+	color: var(--text-2);
+}
+
+/* Window buttons: three hairline rings; the glyph appears when you reach for them. */
+html[data-skin='zen'] [data-part='window-button'] {
+	border: 1px solid color-mix(in oklab, var(--text-1) 55%, transparent);
+	color: transparent;
+	transition:
+		color var(--dur-fast) var(--ease-out),
+		background-color var(--dur-fast) var(--ease-out),
+		border-color var(--dur-fast) var(--ease-out);
+}
+html[data-skin='zen'] [data-part='titlebar']:is(:hover, :focus-within) [data-part='window-button'] {
+	color: var(--text-1);
+}
+html[data-skin='zen'] [data-part='window-button']:is(:hover, :focus-visible) {
+	border-color: var(--text-0);
+	color: var(--text-0);
+	outline: none;
+}
+html[data-skin='zen'] [data-part='window-button'][data-action='close']:is(:hover, :focus-visible) {
+	border-color: var(--accent);
+	background: var(--accent);
+	color: var(--on-accent);
+}
+
+/* ---- Colophon --------------------------------------------------------------------------- */
+
+html[data-skin='zen'] [data-part='statusbar'] {
+	font-family: var(--font-ui);
+	font-size: 13px;
+	font-variant-caps: all-small-caps;
+	letter-spacing: 0.07em;
+	color: var(--text-2);
+}
+html[data-skin='zen'] [data-part='statusbar'] > div {
+	opacity: 0.55;
+	transition: opacity var(--zn-slow) var(--zn-ease);
+}
+html[data-skin='zen'] [data-part='statusbar'] > [data-zen='colophon'] {
+	opacity: 0.85;
+}
+html[data-skin='zen'] [data-part='statusbar']:is(:hover, :focus-within) > div {
+	opacity: 1;
+}
+
+/* Phrases are separated by interpuncts, wherever they happen to be present. */
+html[data-skin='zen']
+	[data-zen='colophon']
+	> [data-part='status-item']
+	+ [data-part='status-item']::before,
+html[data-skin='zen'] [data-zen='margin'] > * + *::before {
+	content: '·';
+	display: inline-block;
+	margin: 0 0.6em;
+	color: var(--text-2);
+	font-variant-caps: normal;
+}
+html[data-skin='zen'] [data-zen='ornament'] {
+	display: flex;
+	margin: 0 0.9em;
+	opacity: 0.85;
+}
+html[data-skin='zen'] [data-zen='ornament'] [data-zen='fleuron'] {
+	width: 11px;
+	height: 11px;
+}
+
+html[data-skin='zen'] [data-part='statusbar'] button {
+	height: auto;
+	padding: 0;
+	border-radius: 0;
+	background: none;
+	color: inherit;
+	font: inherit;
+	font-variant-caps: inherit;
+	letter-spacing: inherit;
+	text-decoration: underline 1px transparent;
+	text-underline-offset: 3px;
+	transition:
+		color var(--dur-fast) var(--ease-out),
+		text-decoration-color var(--dur-fast) var(--ease-out);
+}
+html[data-skin='zen'] [data-part='statusbar'] button:is(:hover, :focus-visible) {
+	background: none;
+	color: var(--text-0);
+	text-decoration-color: var(--accent);
+	outline: none;
+}
+/* Shared chips (interpreter, language servers) speak in the same small serif. */
+html[data-skin='zen'] [data-part='statusbar'] :is(.font-mono, .num) {
+	font-family: var(--font-ui);
+	font-size: inherit;
+	font-weight: 400;
+}
+html[data-skin='zen'] [data-part='statusbar'] svg.lucide {
+	width: 11px;
+	height: 11px;
+}
+
+html[data-skin='zen'] [data-part='statusbar'] .zn-doc {
+	font-variant-caps: normal;
+	font-style: italic;
+	letter-spacing: 0;
+	color: var(--text-1);
+}
+html[data-skin='zen'] [data-part='statusbar'] .zn-branch {
+	font-style: italic;
+	font-variant-caps: normal;
+	letter-spacing: 0;
+}
+html[data-skin='zen'] .zn-num {
+	font-variant-numeric: oldstyle-nums proportional-nums;
+	font-variant-caps: normal;
+}
+html[data-skin='zen'] .zn-accent {
+	color: var(--accent);
+}
+html[data-skin='zen'] [data-part='statusbar'] .zn-errors {
+	color: var(--down);
+}
+html[data-skin='zen'][data-fx='full'] [data-part='statusbar'] .zn-busy {
+	animation: pulse-dot 1.8s ease-in-out infinite;
+}
