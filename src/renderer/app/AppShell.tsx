@@ -135,13 +135,13 @@ export function AppShell(): JSX.Element {
 					</>
 				)}
 				<div className='flex min-w-0 flex-1 flex-col'>
-					{!(showPanel && panelMaximized) && (
-						<div className='min-h-0 flex-1'>
-							<ErrorBoundary name='Editor' className='glass'>
-								<EditorArea />
-							</ErrorBoundary>
-						</div>
-					)}
+					{/* Hidden, not unmounted, while the panel is maximized: unmounting would dispose
+					    and rebuild every Monaco editor on each maximize/restore. */}
+					<div className={showPanel && panelMaximized ? 'hidden' : 'min-h-0 flex-1'}>
+						<ErrorBoundary name='Editor' className='glass'>
+							<EditorArea />
+						</ErrorBoundary>
+					</div>
 					{showPanel && (
 						<>
 							{!panelMaximized && (
