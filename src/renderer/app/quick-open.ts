@@ -1,5 +1,8 @@
 import { defaultFilter } from 'cmdk';
 
+import { focusedEditor } from '../lib/monaco/editors';
+import { requestOpenFile } from '../stores/workbench-store';
+
 const RECENT_KEY = 'anvil.recentFiles';
 
 export function rememberRecentFile(path: string): void {
@@ -57,4 +60,21 @@ export function resolvePendingEnter(
 	if (pendingFor !== query) return { open: undefined, cancel: true };
 	if (firstMatch) return { open: firstMatch, cancel: false };
 	return { open: undefined, cancel: !fetching };
+}
+
+/** Opens a file and gives the editor focus (an already-open file doesn't refocus by itself). */
+export function openAndFocus(path: string): void {
+	rememberRecentFile(path);
+	requestOpenFile({ path });
+	focusedEditor()?.focus();
+}
+
+/** Moves the focused editor to `line` or `line:column` (also `line,column`). */
+export function goLine(text: string): void {
+	const editor = focusedEditor();
+	const [line, col] = text.split(/[:,]/).map((n) => Number.parseInt(n, 10));
+	if (!editor || !line || Number.isNaN(line)) return;
+	editor.setPosition({ lineNumber: line, column: col && !Number.isNaN(col) ? col : 1 });
+	editor.revealLineInCenter(line);
+	editor.focus();
 }

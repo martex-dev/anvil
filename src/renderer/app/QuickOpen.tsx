@@ -1,7 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Command } from 'cmdk';
 import { CornerDownLeft, Hash, Search } from 'lucide-react';
-import { type JSX, type ReactNode, useEffect, useMemo, useState } from 'react';
+import { Dialog as RadixDialog } from 'radix-ui';
+import { type JSX, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 
 import { outlineFor } from '../features/outline/outline';
 import { cn } from '../lib/cn';
@@ -10,17 +11,17 @@ import { focusedEditor } from '../lib/monaco/editors';
 import { useAnvilEvent } from '../lib/use-anvil-event';
 import { useRegisterOverlay } from '../stores/overlay-store';
 import { useUiStore } from '../stores/ui-store';
-import { requestOpenFile } from '../stores/workbench-store';
 import { FileBadge } from '../ui/FileBadge';
 import { Kbd } from '../ui/Kbd';
 import { getCommands, runCommand } from './commands/run';
 import { fuzzyFilter } from './fuzzy';
 import { useWorkspace } from './hooks/use-workspace';
 import {
+	goLine,
+	openAndFocus,
 	quickOpenFilter,
 	quickOpenMode,
 	recentFiles,
-	rememberRecentFile,
 	resolvePendingEnter,
 } from './quick-open';
 
@@ -101,11 +102,14 @@ export function QuickOpen(): JSX.Element {
 		return fuzzyFilter(query, all);
 	}, [mode, query, files.data]);
 
-	const openFile = (path: string): void => {
+	// Navigation waits for the dialog to close (see onCloseAutoFocus): run while it is open, the
+	// focus trap keeps focus in the dialog, and Radix then restores it to whatever opened it.
+	const afterClose = useRef<(() => void) | null>(null);
+	const navigate = (nav: () => void): void => {
+		afterClose.current = nav;
 		close();
-		rememberRecentFile(path);
-		requestOpenFile({ path });
 	};
+	const openFile = (path: string): void => navigate(() => openAndFocus(path));
 	const pending = resolvePendingEnter(
 		open ? pendingFor : null,
 		value,
@@ -116,9 +120,8 @@ export function QuickOpen(): JSX.Element {
 	const best = pending.open;
 	useEffect(() => {
 		if (!best) return;
+		afterClose.current = () => openAndFocus(best);
 		close();
-		rememberRecentFile(best);
-		requestOpenFile({ path: best });
 	}, [best, close]);
 
 	const symbols = useMemo(() => {
@@ -127,156 +130,170 @@ export function QuickOpen(): JSX.Element {
 		return model ? outlineFor(model.getLanguageId(), model.getLinesContent()) : [];
 	}, [mode, open]);
 
-	const goLine = (text: string): void => {
-		const editor = focusedEditor();
-		const [line, col] = text.split(/[:,]/).map((n) => Number.parseInt(n, 10));
-		if (!editor || !line || Number.isNaN(line)) return;
-		editor.setPosition({ lineNumber: line, column: col && !Number.isNaN(col) ? col : 1 });
-		editor.revealLineInCenter(line);
-		editor.focus();
-	};
-
 	return (
-		<Command.Dialog
-			open={open}
-			onOpenChange={(o) => !o && close()}
-			label='Quick open'
-			loop
-			shouldFilter={mode === 'commands' || mode === 'symbols'}
-			filter={quickOpenFilter}
-			overlayClassName='fixed inset-0 z-40 bg-scrim'
-			contentClassName='glass-strong animate-in fixed top-[10vh] left-1/2 z-50 w-[min(680px,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-xl'
-		>
-			<div className='flex items-center gap-2 border-b border-glass-edge px-3'>
-				<Search size={15} className='text-accent' />
-				<Command.Input
-					autoFocus
-					value={value}
-					onValueChange={setValue}
-					onKeyDown={(e) => {
-						if (
-							mode === 'files' &&
-							e.key === 'Enter' &&
-							fileResults.length === 0 &&
-							files.isFetching
-						) {
-							e.preventDefault();
-							setPendingFor(value);
-							return;
-						}
-						if (mode === 'line' && e.key === 'Enter') {
-							e.preventDefault();
-							close();
-							goLine(query);
-						}
+		// Radix Dialog + Command rather than Command.Dialog, which can't take onCloseAutoFocus.
+		<RadixDialog.Root open={open} onOpenChange={(o) => !o && close()}>
+			<RadixDialog.Portal>
+				<RadixDialog.Overlay className='fixed inset-0 z-40 bg-scrim' />
+				<RadixDialog.Content
+					aria-describedby={undefined}
+					onCloseAutoFocus={(e) => {
+						// Navigating: skip restoring focus to the opener and navigate now, after the
+						// dialog and its focus trap are gone, so the editor keeps the focus.
+						const nav = afterClose.current;
+						if (!nav) return;
+						afterClose.current = null;
+						e.preventDefault();
+						nav();
 					}}
-					placeholder='Search files · > commands · @ symbols · : line'
-					className='h-12 flex-1 bg-transparent text-14 text-fg-0 outline-none placeholder:text-fg-2 focus-visible:outline-none'
-				/>
-				<span className='hud'>{mode}</span>
-			</div>
-			<Command.List className='max-h-[min(460px,60vh)] overflow-auto p-1'>
-				{mode === 'files' && !info.root && (
-					<div className='px-3 py-6 text-center text-13 text-fg-2'>
-						Open a folder first (Ctrl+O).
-					</div>
-				)}
-				{mode === 'files' && info.root && files.isLoading && (
-					<div className='shimmer mx-2 my-3 h-6 rounded-md' />
-				)}
-				{mode === 'files' &&
-					fileResults.map((m) => {
-						const name = m.path.split('/').at(-1) ?? m.path;
-						const nameStart = m.path.length - name.length;
-						return (
-							<Command.Item
-								key={m.path}
-								value={m.path}
-								onSelect={() => openFile(m.path)}
-								className={itemClass}
-							>
-								<FileBadge name={name} />
-								<span className='truncate text-fg-0'>
-									<Highlight text={name} indices={m.indices} offset={nameStart} />
-								</span>
-								<span className='truncate text-12 text-fg-2'>
-									<Highlight
-										text={m.path.slice(0, nameStart)}
-										indices={m.indices.filter((i) => i < nameStart)}
-										offset={0}
-									/>
-								</span>
-								<CornerDownLeft
-									size={12}
-									className='ml-auto hidden text-fg-2 group-data-[selected=true]:block'
-								/>
-							</Command.Item>
-						);
-					})}
-				{mode === 'commands' && (
-					<Command.Empty className='px-3 py-6 text-center text-13 text-fg-2'>
-						No matching commands.
-					</Command.Empty>
-				)}
-				{mode === 'commands' &&
-					getCommands().map((c) => (
-						<Command.Item
-							key={c.id}
-							value={`${c.category} ${c.title}`}
-							keywords={c.keywords ?? []}
-							onSelect={() => {
-								close();
-								setTimeout(() => void runCommand(c), 0);
-							}}
-							className={itemClass}
-						>
-							<span className='flex-1 truncate'>
-								<span className='text-fg-2'>{c.category}: </span>
-								{c.title}
-							</span>
-							{c.shortcut && <Kbd keys={c.shortcut} />}
-						</Command.Item>
-					))}
-				{mode === 'symbols' && symbols.length > 0 && (
-					<Command.Empty className='px-3 py-6 text-center text-13 text-fg-2'>
-						No matching symbols.
-					</Command.Empty>
-				)}
-				{mode === 'symbols' &&
-					(symbols.length === 0 ? (
-						<div className='px-3 py-6 text-center text-13 text-fg-2'>
-							No symbols in the current file.
-						</div>
-					) : (
-						symbols.map((s) => (
-							<Command.Item
-								key={`${s.line}:${s.name}`}
-								value={`${s.name} ${s.kind}`}
-								onSelect={() => {
-									close();
-									goLine(String(s.line));
+					className='glass-strong animate-in fixed top-[10vh] left-1/2 z-50 w-[min(680px,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-xl outline-none'
+				>
+					<RadixDialog.Title className='sr-only'>Quick open</RadixDialog.Title>
+					<Command
+						label='Quick open'
+						loop
+						shouldFilter={mode === 'commands' || mode === 'symbols'}
+						filter={quickOpenFilter}
+					>
+						<div className='flex items-center gap-2 border-b border-glass-edge px-3'>
+							<Search size={15} className='text-accent' />
+							<Command.Input
+								autoFocus
+								value={value}
+								onValueChange={setValue}
+								onKeyDown={(e) => {
+									if (
+										mode === 'files' &&
+										e.key === 'Enter' &&
+										fileResults.length === 0 &&
+										files.isFetching
+									) {
+										e.preventDefault();
+										setPendingFor(value);
+										return;
+									}
+									if (mode === 'line' && e.key === 'Enter') {
+										e.preventDefault();
+										navigate(() => goLine(query));
+									}
 								}}
-								className={itemClass}
-							>
-								<Hash size={12} className='text-accent-2' />
-								<span
-									style={{ paddingLeft: s.depth * 12 }}
-									className={cn('truncate', s.kind === 'cell' && 'text-accent')}
-								>
-									{s.name}
-								</span>
-								<span className='hud'>{s.kind}</span>
-								<span className='num ml-auto text-11 text-fg-2'>{s.line}</span>
-							</Command.Item>
-						))
-					))}
-				{mode === 'line' && (
-					<div className='px-3 py-4 text-13 text-fg-1'>
-						Go to line <span className='num text-accent'>{query || '…'}</span> — type a
-						line (or line:column) and press Enter.
-					</div>
-				)}
-			</Command.List>
-		</Command.Dialog>
+								placeholder='Search files · > commands · @ symbols · : line'
+								className='h-12 flex-1 bg-transparent text-14 text-fg-0 outline-none placeholder:text-fg-2 focus-visible:outline-none'
+							/>
+							<span className='hud'>{mode}</span>
+						</div>
+						<Command.List className='max-h-[min(460px,60vh)] overflow-auto p-1'>
+							{mode === 'files' && !info.root && (
+								<div className='px-3 py-6 text-center text-13 text-fg-2'>
+									Open a folder first (Ctrl+O).
+								</div>
+							)}
+							{mode === 'files' && info.root && files.isLoading && (
+								<div className='shimmer mx-2 my-3 h-6 rounded-md' />
+							)}
+							{mode === 'files' &&
+								fileResults.map((m) => {
+									const name = m.path.split('/').at(-1) ?? m.path;
+									const nameStart = m.path.length - name.length;
+									return (
+										<Command.Item
+											key={m.path}
+											value={m.path}
+											onSelect={() => openFile(m.path)}
+											className={itemClass}
+										>
+											<FileBadge name={name} />
+											<span className='truncate text-fg-0'>
+												<Highlight
+													text={name}
+													indices={m.indices}
+													offset={nameStart}
+												/>
+											</span>
+											<span className='truncate text-12 text-fg-2'>
+												<Highlight
+													text={m.path.slice(0, nameStart)}
+													indices={m.indices.filter((i) => i < nameStart)}
+													offset={0}
+												/>
+											</span>
+											<CornerDownLeft
+												size={12}
+												className='ml-auto hidden text-fg-2 group-data-[selected=true]:block'
+											/>
+										</Command.Item>
+									);
+								})}
+							{mode === 'commands' && (
+								<Command.Empty className='px-3 py-6 text-center text-13 text-fg-2'>
+									No matching commands.
+								</Command.Empty>
+							)}
+							{mode === 'commands' &&
+								getCommands().map((c) => (
+									<Command.Item
+										key={c.id}
+										value={`${c.category} ${c.title}`}
+										keywords={c.keywords ?? []}
+										onSelect={() => {
+											close();
+											setTimeout(() => void runCommand(c), 0);
+										}}
+										className={itemClass}
+									>
+										<span className='flex-1 truncate'>
+											<span className='text-fg-2'>{c.category}: </span>
+											{c.title}
+										</span>
+										{c.shortcut && <Kbd keys={c.shortcut} />}
+									</Command.Item>
+								))}
+							{mode === 'symbols' && symbols.length > 0 && (
+								<Command.Empty className='px-3 py-6 text-center text-13 text-fg-2'>
+									No matching symbols.
+								</Command.Empty>
+							)}
+							{mode === 'symbols' &&
+								(symbols.length === 0 ? (
+									<div className='px-3 py-6 text-center text-13 text-fg-2'>
+										No symbols in the current file.
+									</div>
+								) : (
+									symbols.map((s) => (
+										<Command.Item
+											key={`${s.line}:${s.name}`}
+											value={`${s.name} ${s.kind}`}
+											onSelect={() => navigate(() => goLine(String(s.line)))}
+											className={itemClass}
+										>
+											<Hash size={12} className='text-accent-2' />
+											<span
+												style={{ paddingLeft: s.depth * 12 }}
+												className={cn(
+													'truncate',
+													s.kind === 'cell' && 'text-accent',
+												)}
+											>
+												{s.name}
+											</span>
+											<span className='hud'>{s.kind}</span>
+											<span className='num ml-auto text-11 text-fg-2'>
+												{s.line}
+											</span>
+										</Command.Item>
+									))
+								))}
+							{mode === 'line' && (
+								<div className='px-3 py-4 text-13 text-fg-1'>
+									Go to line{' '}
+									<span className='num text-accent'>{query || '…'}</span> — type a
+									line (or line:column) and press Enter.
+								</div>
+							)}
+						</Command.List>
+					</Command>
+				</RadixDialog.Content>
+			</RadixDialog.Portal>
+		</RadixDialog.Root>
 	);
 }
