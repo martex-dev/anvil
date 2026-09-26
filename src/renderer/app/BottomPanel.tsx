@@ -206,10 +206,13 @@ export function BottomPanel(): JSX.Element {
 					.filter((t) => seen.has(t.id))
 					.map((t) => {
 						const visible = tab === 'terminal' && t.id === activeTerm;
+						// A plate like the editor's: xterm repaints constantly and must not draw
+						// straight onto the pane's live backdrop blur.
 						return (
 							<div
 								key={t.id}
 								className={cn('absolute inset-0', !visible && 'invisible')}
+								style={{ background: 'var(--editor-bg)' }}
 							>
 								<TerminalPane tab={t} visible={visible} />
 							</div>
