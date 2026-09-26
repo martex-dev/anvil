@@ -19,7 +19,10 @@ export { isScratch, openScratch, SCRATCH_PATH } from './scratchpad';
 
 function toUri(monaco: MonacoApi, root: string, path: string): Monaco.Uri {
 	// Absolute file:// URIs are what language servers (Phase 2) expect.
-	return monaco.Uri.file(`${root.replace(/\\/g, '/')}/${path}`);
+	// Trailing separators go, like setMonacoWorkspaceRoot does: a drive root 'D:\' must give
+	// 'D:/src/a.py', not 'D://src/a.py'.
+	const base = root.replace(/\\/g, '/').replace(/\/+$/, '');
+	return monaco.Uri.file(`${base}/${path}`);
 }
 
 /** Files VS Code's grammars don't claim but that read fine with a close cousin. */

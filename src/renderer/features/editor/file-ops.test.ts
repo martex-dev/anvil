@@ -318,4 +318,12 @@ describe('file ops', () => {
 		});
 		expect(useEditorStore.getState().files[0]?.changedOnDisk).toBe(true);
 	});
+
+	it('builds file URIs for a drive-root folder without a doubled slash', async () => {
+		const file = vi.fn((path: string) => ({ path }));
+		const driveRoot = { ...monaco, Uri: { file } } as unknown as MonacoApi;
+		call.mockResolvedValue(text);
+		await openFile(driveRoot, 'D:\\', 'src/a.py');
+		expect(file).toHaveBeenCalledWith('D:/src/a.py');
+	});
 });
