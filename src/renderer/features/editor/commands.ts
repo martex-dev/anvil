@@ -16,7 +16,6 @@ import {
 
 import type { Command } from '../../app/commands/types';
 import { getSettings, updateSettings } from '../../app/hooks/use-settings';
-import { call } from '../../lib/ipc';
 import { focusedEditor } from '../../lib/monaco/editors';
 import { toWorkspacePath } from '../../lib/monaco/workspace-root';
 import { focusedTab, useTabsStore } from '../../stores/tabs-store';
@@ -28,7 +27,7 @@ import { repaintShield } from './extras/shield';
 import { isScratch, saveAll, saveFile } from './file-ops';
 import { newFile } from './new-file';
 import { closeTab } from './open';
-import { revealInExplorer } from './tab-actions';
+import { copyPath, revealInExplorer } from './tab-actions';
 
 function activePath(): string | null {
 	const tab = focusedTab(useTabsStore.getState());
@@ -257,11 +256,13 @@ export const EDITOR_COMMANDS: Command[] = [
 		category: 'File',
 		run: async () => {
 			const model = focusedEditor()?.getModel();
+			// The scratchpad (an in-memory model) and viewers without a file have no path to copy.
 			const path = model ? toWorkspacePath(model.uri) : activePath();
-			if (!path) return;
-			const text = await call('fs:copyPath', { path, absolute: true });
-			await navigator.clipboard.writeText(text);
-			toast.success('Path copied', text);
+			if (!path || isScratch(path)) {
+				toast.info('Open a file first');
+				return;
+			}
+			await copyPath(path, true);
 		},
 	},
 ];

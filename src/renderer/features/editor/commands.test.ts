@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useToastStore } from '../../stores/toast-store';
 
-const editor = { setPosition: vi.fn(), revealLineInCenter: vi.fn() };
+const model = { uri: {} };
+const editor = { setPosition: vi.fn(), revealLineInCenter: vi.fn(), getModel: () => model };
 let current: typeof editor | null = editor;
 vi.mock('../../lib/monaco/editors', () => ({ focusedEditor: () => current }));
 const nextBookmarkLine = vi.fn((_editor: unknown): number | null => null);
@@ -12,11 +13,20 @@ vi.mock('./extras/bookmarks', () => ({
 }));
 vi.mock('./extras/git-lines', () => ({ isBlameEnabled: vi.fn(), setBlameEnabled: vi.fn() }));
 vi.mock('./extras/shield', () => ({ repaintShield: vi.fn() }));
-vi.mock('./file-ops', () => ({ isScratch: vi.fn(), saveAll: vi.fn(), saveFile: vi.fn() }));
+vi.mock('./file-ops', () => ({
+	isScratch: (path: string | null) => path === '__scratch__',
+	saveAll: vi.fn(),
+	saveFile: vi.fn(),
+}));
 vi.mock('./open', () => ({ closeTab: vi.fn() }));
 vi.mock('./new-file', () => ({ newFile: vi.fn() }));
-vi.mock('../../lib/ipc', () => ({ call: vi.fn() }));
-vi.mock('../../lib/monaco/workspace-root', () => ({ toWorkspacePath: vi.fn() }));
+vi.mock('../../lib/ipc', () => ({
+	call: (_channel: string, input: { path: string }) => Promise.resolve(`C:\\proj\\${input.path}`),
+}));
+let workspacePath: string | null = null;
+vi.mock('../../lib/monaco/workspace-root', () => ({ toWorkspacePath: () => workspacePath }));
+const writeText = vi.fn((_text: string) => Promise.resolve());
+vi.stubGlobal('navigator', { clipboard: { writeText: (text: string) => writeText(text) } });
 vi.mock('../../app/hooks/use-settings', () => ({
 	getSettings: () => ({}),
 	updateSettings: vi.fn(),
@@ -53,6 +63,21 @@ describe('editor commands', () => {
 	it('asks for a file outside an editor', async () => {
 		current = null;
 		await run('edit.nextBookmark');
+		expect(lastToast()?.title).toBe('Open a file first');
+	});
+
+	it('copies the absolute path of the active file', async () => {
+		workspacePath = 'bot.py';
+		await run('file.copyPath');
+		expect(writeText).toHaveBeenCalledWith('C:\\proj\\bot.py');
+		expect(lastToast()?.title).toBe('Path copied');
+	});
+
+	it('has no path to copy on the scratchpad', async () => {
+		workspacePath = null;
+		writeText.mockClear();
+		await run('file.copyPath');
+		expect(writeText).not.toHaveBeenCalled();
 		expect(lastToast()?.title).toBe('Open a file first');
 	});
 });
