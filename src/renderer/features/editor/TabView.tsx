@@ -10,6 +10,7 @@ import { useProblems } from '../problems/problems-store';
 import { useEditorStore } from './editor-store';
 import { isScratch } from './file-ops';
 import { closeTab } from './open';
+import { focusTab, tabKeyTarget } from './tab-keys';
 import { tabMenuItems } from './tab-menu';
 
 /** One editor tab: label, badges, close button, drag and drop and its context menu. */
@@ -46,6 +47,7 @@ export function TabView({
 		<AppContextMenu items={tabMenuItems(tab, group)}>
 			<div
 				role='tab'
+				data-tab-id={tab.id}
 				aria-selected={active}
 				tabIndex={active ? 0 : -1}
 				title={tab.path ?? label}
@@ -85,7 +87,29 @@ export function TabView({
 					if (e.button === 1) closeTab(group, tab.id);
 				}}
 				onKeyDown={(e) => {
-					if (e.key === 'Enter' || e.key === ' ') activate(group, tab.id);
+					// Keys on the nested close button are its own.
+					if (e.target !== e.currentTarget) return;
+					if (e.key === 'Enter' || e.key === ' ') {
+						e.preventDefault();
+						activate(group, tab.id);
+						return;
+					}
+					const ids = useTabsStore.getState().groups.find((g) => g.id === group)?.tabIds;
+					if (e.key === 'Delete') {
+						e.preventDefault();
+						closeTab(group, tab.id);
+						// Keep the keyboard in the strip, on the tab that took this one's place. A dirty
+						// tab stays open behind the save dialog, which keeps focus.
+						const after = useTabsStore.getState().groups.find((g) => g.id === group);
+						const next = after?.tabIds.includes(tab.id) ? null : after?.active;
+						if (next) setTimeout(() => focusTab(group, next), 0);
+						return;
+					}
+					const target = ids ? tabKeyTarget(e.key, ids, tab.id) : null;
+					if (target) {
+						e.preventDefault();
+						focusTab(group, target);
+					}
 				}}
 				className={cn(
 					'group relative flex h-full max-w-60 shrink-0 cursor-default items-center gap-2 pr-1 pl-3 text-12 outline-none',
