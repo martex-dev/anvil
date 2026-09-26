@@ -8,7 +8,7 @@ import {
 	TriangleAlert,
 	X,
 } from 'lucide-react';
-import type { JSX } from 'react';
+import type { JSX, RefObject } from 'react';
 
 import type { DataPage } from '@shared/ipc/channels/data';
 
@@ -17,9 +17,7 @@ import { IconButton } from '../../ui/IconButton';
 import { Input } from '../../ui/Input';
 import { Spinner } from '../../ui/Spinner';
 import { Tooltip } from '../../ui/Tooltip';
-import { fileName, formatCount } from './data-format';
-
-const TEXT_FORMATS = new Set(['csv', 'tsv', 'json', 'jsonl']);
+import { fileName, formatCount, isTextFormat, rowCountLabel } from './data-format';
 
 interface DataToolbarProps {
 	path: string;
@@ -27,12 +25,24 @@ interface DataToolbarProps {
 	busy: boolean;
 	filter: string;
 	onFilterChange: (value: string) => void;
+	/** Clears the filter at once, skipping the typing debounce. */
+	onFilterClear: () => void;
 	onOpenAsText: () => void;
 	onCopyCsv: () => void;
+	/** A copy is still fetching rows. */
+	copying: boolean;
 	copyLabel: string;
 	onReload: () => void;
 	profileOpen: boolean;
 	onToggleProfile: () => void;
+	/** The profile toggle; focus returns here when the profile panel closes itself. */
+	profileToggleRef?: RefObject<HTMLButtonElement | null>;
+	/** The filter box, focused by Ctrl+F and the "Filter Table Rows" command. */
+	filterRef?: RefObject<HTMLInputElement | null>;
+}
+
+function truncatedNote(loadedRows: number): string {
+	return `Only the first ${formatCount(loadedRows)} rows of this very large file were loaded`;
 }
 
 export function DataToolbar({
@@ -41,12 +51,16 @@ export function DataToolbar({
 	busy,
 	filter,
 	onFilterChange,
+	onFilterClear,
 	onOpenAsText,
 	onCopyCsv,
+	copying,
 	copyLabel,
 	onReload,
 	profileOpen,
 	onToggleProfile,
+	profileToggleRef,
+	filterRef,
 }: DataToolbarProps): JSX.Element {
 	const name = fileName(path);
 	return (
@@ -67,13 +81,20 @@ export function DataToolbar({
 			</div>
 			{meta && (
 				<span className='num shrink-0 text-12 text-fg-1'>
-					<span className='text-fg-0'>{formatCount(meta.totalRows)}</span> rows ×{' '}
-					<span className='text-fg-0'>{formatCount(meta.columns.length)}</span> cols
+					<span className='text-fg-0'>
+						{rowCountLabel(meta.totalRows, meta.loadedRows)}
+					</span>{' '}
+					× <span className='text-fg-0'>{formatCount(meta.columns.length)}</span> cols
 				</span>
 			)}
 			{meta?.truncated && (
-				<Tooltip content='Only the first rows of this very large file were loaded'>
-					<span>
+				<Tooltip content={truncatedNote(meta.loadedRows)}>
+					{/* Focusable so keyboard and screen-reader users can reach the explanation. */}
+					<span
+						tabIndex={0}
+						aria-label={`Truncated: ${truncatedNote(meta.loadedRows)}`}
+						className='rounded-md focus-visible:shadow-glow focus-visible:outline-none'
+					>
 						<Badge tone='warn'>
 							<TriangleAlert size={11} />
 							Truncated
@@ -83,9 +104,10 @@ export function DataToolbar({
 			)}
 			<span className='flex-1' />
 			<Input
+				ref={filterRef}
 				className='w-56 shrink'
 				leading={busy ? <Spinner size={12} label='Filtering' /> : <Search size={13} />}
-				placeholder='Filter rows…'
+				placeholder='Filter rows… (Ctrl+F)'
 				aria-label='Filter rows (substring, any column)'
 				value={filter}
 				spellCheck={false}
@@ -93,7 +115,7 @@ export function DataToolbar({
 				onKeyDown={(e) => {
 					if (e.key === 'Escape' && filter) {
 						e.stopPropagation();
-						onFilterChange('');
+						onFilterClear();
 					}
 				}}
 			/>
@@ -102,11 +124,11 @@ export function DataToolbar({
 					size='sm'
 					label='Clear filter'
 					icon={<X size={14} />}
-					onClick={() => onFilterChange('')}
+					onClick={onFilterClear}
 				/>
 			)}
 			<div className='flex shrink-0 items-center gap-0.5'>
-				{meta && TEXT_FORMATS.has(meta.format) && (
+				{meta && isTextFormat(meta.format) && (
 					<IconButton
 						label='Open as text'
 						icon={<FileText size={15} />}
@@ -114,10 +136,17 @@ export function DataToolbar({
 					/>
 				)}
 				<IconButton
-					label={copyLabel}
-					icon={<ClipboardCopy size={15} />}
+					label={copying ? 'Copying…' : copyLabel}
+					icon={
+						copying ? (
+							<Spinner size={12} label='Copying' />
+						) : (
+							<ClipboardCopy size={15} />
+						)
+					}
 					onClick={onCopyCsv}
-					disabled={!meta || meta.totalRows === 0}
+					disabled={copying || !meta || meta.totalRows === 0}
+					aria-busy={copying || undefined}
 				/>
 				<IconButton
 					label='Reload from disk'
@@ -125,6 +154,7 @@ export function DataToolbar({
 					onClick={onReload}
 				/>
 				<IconButton
+					ref={profileToggleRef}
 					label={profileOpen ? 'Hide column profile' : 'Show column profile'}
 					icon={<PanelRight size={15} />}
 					active={profileOpen}

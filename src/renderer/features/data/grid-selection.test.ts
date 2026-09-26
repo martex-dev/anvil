@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { type GridSelection, moveSelection, rangeSize, selectionRange } from './grid-selection';
+import {
+	activeCellId,
+	type GridSelection,
+	moveSelection,
+	rangeContains,
+	rangeSize,
+	rowSelection,
+	selectionRange,
+} from './grid-selection';
 
 const bounds = { rows: 100, cols: 5, pageRows: 10 };
 const at = (row: number, col: number): GridSelection => ({
@@ -29,7 +37,10 @@ describe('moveSelection', () => {
 	});
 
 	it('starts at the first cell when nothing is selected', () => {
-		expect(moveSelection(null, key('ArrowRight'), bounds)).toEqual(at(0, 1));
+		expect(moveSelection(null, key('ArrowRight'), bounds)).toEqual(at(0, 0));
+		expect(moveSelection(null, key('ArrowDown'), bounds)).toEqual(at(0, 0));
+		expect(moveSelection(null, key('End', { shiftKey: true }), bounds)).toEqual(at(0, 0));
+		expect(moveSelection(null, key('a'), bounds)).toBeNull();
 	});
 
 	it('pages, jumps and extends with shift', () => {
@@ -47,5 +58,43 @@ describe('moveSelection', () => {
 	it('ignores other keys and empty tables', () => {
 		expect(moveSelection(at(1, 1), key('a'), bounds)).toBeNull();
 		expect(moveSelection(null, key('ArrowDown'), { rows: 0, cols: 3, pageRows: 5 })).toBeNull();
+	});
+});
+
+describe('rowSelection', () => {
+	it('selects every column of the clicked row', () => {
+		expect(rowSelection(7, 5)).toEqual({
+			anchor: { row: 7, col: 0 },
+			focus: { row: 7, col: 4 },
+		});
+	});
+
+	it('extends from the existing anchor row', () => {
+		const range = selectionRange(rowSelection(3, 5, at(9, 2)));
+		expect(range).toEqual({ top: 3, bottom: 9, left: 0, right: 4 });
+	});
+});
+
+describe('rangeContains', () => {
+	it('includes the edges and nothing outside', () => {
+		const range = { top: 2, bottom: 4, left: 1, right: 3 };
+		expect(rangeContains(range, { row: 2, col: 3 })).toBe(true);
+		expect(rangeContains(range, { row: 5, col: 3 })).toBe(false);
+		expect(rangeContains(range, { row: 3, col: 0 })).toBe(false);
+	});
+});
+
+describe('activeCellId', () => {
+	const rows = { start: 10, end: 40 };
+	const cols = { start: 0, end: 3 };
+
+	it('names the focus cell while it is rendered', () => {
+		expect(activeCellId('g', { row: 12, col: 2 }, rows, cols)).toBe('g-r12-c2');
+	});
+
+	it('is undefined without a focus or when the cell is virtualized away', () => {
+		expect(activeCellId('g', undefined, rows, cols)).toBeUndefined();
+		expect(activeCellId('g', { row: 40, col: 0 }, rows, cols)).toBeUndefined();
+		expect(activeCellId('g', { row: 12, col: 3 }, rows, cols)).toBeUndefined();
 	});
 });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatOf } from './index';
-import { mapDtype } from './python-reader';
+import { formatOf } from './format';
+import { mapDtype, pythonFailure } from './python-reader';
 import {
 	buildTable,
 	columnStats,
@@ -32,6 +32,14 @@ describe('parseDelimited', () => {
 
 	it('keeps a quoted empty string as empty, not missing', () => {
 		expect(parseDelimited('a\n""\n', ',', 5).rows).toEqual([['']]);
+	});
+
+	it('keeps blank lines as missing values in a one-column file only', () => {
+		expect(parseDelimited('\na\n1\n\n2\n\n\n', ',', 10).rows).toEqual([['1'], [null], ['2']]);
+		expect(parseDelimited('a,b\n1,2\n\n3,4\n', ',', 10).rows).toEqual([
+			['1', '2'],
+			['3', '4'],
+		]);
 	});
 
 	it('sniffs European semicolon exports', () => {
@@ -68,6 +76,20 @@ describe('types and views', () => {
 		expect(view(table, '', { column: 1, desc: true })).toEqual([3, 1, 0, 2]);
 	});
 
+	it('sorts inf and nan consistently in a float column', () => {
+		const t = buildTable(
+			['r'],
+			[['1.5'], ['nan'], ['-inf'], [null], ['inf'], ['0'], ['NaN']],
+			false,
+			'built-in',
+		);
+		expect(t.columns[0]?.type).toBe('float');
+		const order = (desc: boolean): unknown[] =>
+			view(t, '', { column: 0, desc }).map((i) => t.rows[i]?.[0]);
+		expect(order(false)).toEqual(['-inf', '0', '1.5', 'inf', 'nan', 'NaN', null]);
+		expect(order(true)).toEqual(['inf', '1.5', '0', '-inf', 'nan', 'NaN', null]);
+	});
+
 	it('computes numeric and categorical stats', () => {
 		const s = columnStats(table, 1);
 		expect(s).toMatchObject({ count: 3, nulls: 1, unique: 3, min: '3000', max: '65010' });
@@ -91,9 +113,31 @@ describe('formats', () => {
 		expect(formatOf('x.ndjson')).toBe('jsonl');
 		expect(formatOf('x.py')).toBeNull();
 		expect(mapDtype('Int64')).toBe('int');
+		expect(mapDtype('UInt8')).toBe('int');
+		expect(mapDtype('uint32')).toBe('int');
+		expect(mapDtype('interval[int64, right]')).toBe('string');
 		expect(mapDtype('float32')).toBe('float');
 		expect(mapDtype("Datetime(time_unit='us', time_zone=None)")).toBe('date');
 		expect(mapDtype('datetime64[ns]')).toBe('date');
 		expect(mapDtype('object')).toBe('string');
+	});
+
+	it('explains Python reader failures even without stderr', () => {
+		const fail = (props: object): Error => Object.assign(new Error('Command failed'), props);
+		expect(pythonFailure(fail({ killed: true, signal: 'SIGTERM' }), '')).toBe(
+			'Reading timed out after 120 s',
+		);
+		expect(
+			pythonFailure(fail({ code: 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER', killed: true }), ''),
+		).toBe('The file is too large to preview');
+		expect(pythonFailure(fail({ code: 'ENOENT' }), '')).toMatch(
+			/^Python interpreter not found/,
+		);
+		expect(pythonFailure(fail({ code: 1 }), '')).toBe(
+			'Python could not read the file: Command failed',
+		);
+		expect(pythonFailure(fail({ code: 1 }), 'Traceback\nOSError: bad file\n')).toBe(
+			'Python could not read the file: OSError: bad file',
+		);
 	});
 });

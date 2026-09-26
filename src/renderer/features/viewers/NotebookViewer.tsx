@@ -14,17 +14,33 @@ import { IconButton } from '../../ui/IconButton';
 import { Spinner } from '../../ui/Spinner';
 import { type Notebook, notebookToScript, parseNotebook, scriptFileName } from './notebook-model';
 import { NotebookCell } from './NotebookCell';
+import { useViewerActions } from './viewer-actions';
 import { baseName, dirName } from './viewer-paths';
 
 type Parsed = { ok: true; notebook: Notebook } | { ok: false; message: string };
 
-/** Writes `<name>.py` (or a free variant) next to the notebook and opens it. */
+/** Writes `<name>.py` (`.R`, `.jl` by language, or a free variant) next to the notebook. */
 async function convertToScript(path: string, notebook: Notebook): Promise<string> {
 	const parent = dirName(path);
 	const siblings = await call('fs:list', parent);
-	const name = scriptFileName(baseName(path), new Set(siblings.map((entry) => entry.name)));
+	const name = scriptFileName(
+		baseName(path),
+		new Set(siblings.map((entry) => entry.name)),
+		notebook.language,
+	);
 	const created = await call('fs:create', { parent, name, kind: 'file' });
-	await call('fs:writeFile', { path: created.path, content: notebookToScript(notebook) });
+	try {
+		await call('fs:writeFile', { path: created.path, content: notebookToScript(notebook) });
+	} catch (error) {
+		// Don't leave an empty script behind (it would also push the next try to "_cells").
+		await call('fs:trash', created.path).catch((cleanup: unknown) =>
+			toast.warn(
+				'An empty script was left behind',
+				`${created.path}: ${cleanup instanceof Error ? cleanup.message : String(cleanup)}`,
+			),
+		);
+		throw error;
+	}
 	return created.path;
 }
 
@@ -73,6 +89,20 @@ export function NotebookViewer({ path }: { path: string }): JSX.Element {
 			toast.success('Converted to # %% script', created);
 		},
 		onError: (error) => toast.error('Could not convert notebook', error.message),
+	});
+
+	const toggleAll = (): void => setCollapsed(allCollapsed ? new Set() : new Set(withOutputs));
+	const convertable = notebook !== null && notebook.cells.length > 0;
+	useViewerActions('notebook', path, {
+		toggleOutputs: () => {
+			if (withOutputs.length > 0) toggleAll();
+			else toast.info('This notebook has no outputs');
+		},
+		convert: () => {
+			if (notebook && convertable) convert.mutate(notebook);
+			else toast.info('This notebook has no cells to convert');
+		},
+		reload: () => void refetch(),
 	});
 
 	let body: JSX.Element;
@@ -128,7 +158,9 @@ export function NotebookViewer({ path }: { path: string }): JSX.Element {
 		<div className='flex h-full min-h-0 flex-col'>
 			<div className='flex h-9 shrink-0 items-center gap-2 border-b border-glass-edge px-3'>
 				<span className='hud'>Notebook</span>
-				<span className='truncate text-12 text-fg-1'>{baseName(path)}</span>
+				<span className='truncate text-12 text-fg-1' title={path}>
+					{baseName(path)}
+				</span>
 				{notebook && (
 					<>
 						<Badge tone='accent'>{notebook.kernel ?? notebook.language}</Badge>
@@ -147,7 +179,7 @@ export function NotebookViewer({ path }: { path: string }): JSX.Element {
 						allCollapsed ? <ChevronsUpDown size={14} /> : <ChevronsDownUp size={14} />
 					}
 					disabled={withOutputs.length === 0}
-					onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(withOutputs))}
+					onClick={toggleAll}
 				/>
 				<IconButton
 					size='sm'
@@ -160,7 +192,7 @@ export function NotebookViewer({ path }: { path: string }): JSX.Element {
 					variant='ghost'
 					icon={<FileCode2 size={13} />}
 					loading={convert.isPending}
-					disabled={!notebook || notebook.cells.length === 0}
+					disabled={!convertable}
 					onClick={() => notebook && convert.mutate(notebook)}
 				>
 					Convert to # %% script
@@ -169,7 +201,7 @@ export function NotebookViewer({ path }: { path: string }): JSX.Element {
 			<div
 				tabIndex={0}
 				aria-label='Notebook cells'
-				className='min-h-0 flex-1 overflow-auto focus-visible:outline-none'
+				className='min-h-0 flex-1 overflow-auto focus-visible:-outline-offset-1'
 			>
 				{body}
 			</div>

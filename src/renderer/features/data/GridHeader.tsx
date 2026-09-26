@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp } from 'lucide-react';
-import { type JSX, type PointerEvent, useRef } from 'react';
+import { type JSX, type KeyboardEvent, type PointerEvent, useRef } from 'react';
 
 import type { DataColumn } from '@shared/ipc/channels/data';
 
@@ -25,6 +25,9 @@ interface GridHeaderProps {
 	onSort: (column: number) => void;
 	onResize: (column: number, width: number) => void;
 }
+
+/** px per Arrow key press on a resize handle. */
+const RESIZE_STEP = 16;
 
 export function GridHeader({
 	columns,
@@ -61,6 +64,25 @@ export function GridHeader({
 		}
 	};
 
+	const sortKey = (event: KeyboardEvent<HTMLDivElement>, column: number): void => {
+		if (event.key !== 'Enter' && event.key !== ' ') return;
+		event.preventDefault();
+		event.stopPropagation();
+		onSort(column);
+	};
+	/** Keyboard resizing: Arrow keys nudge the column, Shift for bigger steps. */
+	const resizeKey = (event: KeyboardEvent<HTMLDivElement>, column: number): void => {
+		const step = event.shiftKey ? RESIZE_STEP * 4 : RESIZE_STEP;
+		const delta = event.key === 'ArrowRight' ? step : event.key === 'ArrowLeft' ? -step : 0;
+		// Enter/Space on the handle must not bubble up and sort the column.
+		if (delta === 0 && event.key !== 'Enter' && event.key !== ' ') return;
+		event.preventDefault();
+		event.stopPropagation();
+		if (delta === 0) return;
+		const current = (offsets[column + 1] ?? 0) - (offsets[column] ?? 0);
+		onResize(column, Math.max(MIN_COLUMN_WIDTH, current + delta));
+	};
+
 	const cells: JSX.Element[] = [];
 	for (let c = colStart; c < colEnd; c++) {
 		const column = columns[c];
@@ -71,11 +93,14 @@ export function GridHeader({
 			<div
 				key={c}
 				role='columnheader'
+				aria-colindex={c + 2}
 				aria-sort={sorted ? (sorted.desc ? 'descending' : 'ascending') : 'none'}
-				title={`${column.name} · click to sort`}
+				tabIndex={0}
+				title={`${column.name} · click or Enter to sort`}
 				onClick={() => onSort(c)}
+				onKeyDown={(e) => sortKey(e, c)}
 				className={cn(
-					'group/h absolute top-0 flex h-full cursor-pointer items-center gap-1.5 border-r border-border/60 px-2',
+					'group/h absolute top-0 flex h-full cursor-pointer items-center gap-1.5 border-r border-border/60 px-2 focus-visible:-outline-offset-1',
 					'transition-fast hover:bg-bg-3/70',
 					isNumericType(column.type) && 'flex-row-reverse',
 					selected && 'bg-accent-faint',
@@ -106,6 +131,10 @@ export function GridHeader({
 					role='separator'
 					aria-orientation='vertical'
 					aria-label={`Resize ${column.name}`}
+					aria-valuenow={Math.round((offsets[c + 1] ?? 0) - (offsets[c] ?? 0))}
+					aria-valuemin={MIN_COLUMN_WIDTH}
+					tabIndex={0}
+					onKeyDown={(e) => resizeKey(e, c)}
 					onPointerDown={(e) => startResize(e, c)}
 					onPointerMove={moveResize}
 					onPointerUp={endResize}
@@ -126,6 +155,9 @@ export function GridHeader({
 		>
 			{cells}
 			<div
+				role='columnheader'
+				aria-colindex={1}
+				aria-label='Row number'
 				className='hud sticky left-0 z-10 flex h-full items-center justify-end border-r border-glass-edge bg-bg-2 pr-2'
 				style={{ width: gutter }}
 			>
