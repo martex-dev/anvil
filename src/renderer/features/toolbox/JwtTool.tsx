@@ -1,5 +1,5 @@
 import { ShieldAlert } from 'lucide-react';
-import { type JSX, useMemo, useState } from 'react';
+import { type JSX, useMemo } from 'react';
 
 import { Badge } from '../../ui/Badge';
 import { CodeBlock } from './CodeBlock';
@@ -8,6 +8,7 @@ import { attempt } from './format';
 import { ResultRow } from './ResultRow';
 import { TextArea } from './TextArea';
 import { formatRelative } from './time';
+import { useToolField } from './toolbox-store';
 import { ToolError } from './ToolError';
 import { decodeJwt, isJwtExpired } from './tools';
 import { useNow } from './use-now';
@@ -18,7 +19,7 @@ function ExpiryBadge({ expired }: { expired: boolean | null }): JSX.Element {
 }
 
 export function JwtTool(): JSX.Element {
-	const [token, setToken] = useState('');
+	const [token, setToken] = useToolField('jwt.token', '');
 	const filled = token.trim() !== '';
 	const result = useMemo(
 		() => (filled ? attempt(() => decodeJwt(token)) : null),

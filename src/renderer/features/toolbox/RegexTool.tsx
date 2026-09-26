@@ -1,9 +1,10 @@
-import { type JSX, useState } from 'react';
+import { type JSX } from 'react';
 
 import { Input } from '../../ui/Input';
 import { CopyValue } from './CopyValue';
 import { Field } from './Field';
 import { TextArea } from './TextArea';
+import { useToolField } from './toolbox-store';
 import { ToolError } from './ToolError';
 import { MAX_REGEX_MATCHES, validateRegexFlags } from './tools';
 import { useRegexTest } from './use-regex-test';
@@ -12,9 +13,9 @@ import { useRegexTest } from './use-regex-test';
 const MAX_SHOWN = 200;
 
 export function RegexTool(): JSX.Element {
-	const [pattern, setPattern] = useState('');
-	const [flags, setFlags] = useState('g');
-	const [text, setText] = useState('');
+	const [pattern, setPattern] = useToolField('regex.pattern', '');
+	const [flags, setFlags] = useToolField('regex.flags', 'g');
+	const [text, setText] = useToolField('regex.text', '');
 	// Bad flags are reported on the Flags field; the pattern is only tested once they're valid.
 	const flagsError = validateRegexFlags(flags);
 	const { outcome, pending } = useRegexTest(flagsError ? '' : pattern, flags, text);

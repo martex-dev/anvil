@@ -1,10 +1,11 @@
-import { type JSX, useMemo, useState } from 'react';
+import { type JSX, useMemo } from 'react';
 
 import { Input } from '../../ui/Input';
 import { Select } from '../../ui/Select';
 import { Field } from './Field';
 import { attempt } from './format';
 import { ResultRow } from './ResultRow';
+import { useToolField } from './toolbox-store';
 import { ToolError } from './ToolError';
 import { convertUnits, type UnitFamily, type UnitId, UNITS } from './tools';
 
@@ -25,8 +26,8 @@ function isUnitId(value: string): value is UnitId {
 }
 
 export function UnitsTool(): JSX.Element {
-	const [value, setValue] = useState('1');
-	const [unit, setUnit] = useState<UnitId>('eth');
+	const [value, setValue] = useToolField('units.value', '1');
+	const [unit, setUnit] = useToolField<UnitId>('units.unit', 'eth');
 	const filled = value.trim() !== '';
 	const family = UNITS.find((u) => u.id === unit)?.family ?? 'rate';
 

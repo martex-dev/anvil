@@ -1,10 +1,11 @@
-import { type JSX, useMemo, useState } from 'react';
+import { type JSX, useMemo } from 'react';
 
 import { Input } from '../../ui/Input';
 import { CodeBlock } from './CodeBlock';
 import { Field } from './Field';
 import { attempt } from './format';
 import { Segmented } from './Segmented';
+import { useToolField } from './toolbox-store';
 import { ToolError } from './ToolError';
 import { convertBytes } from './tools';
 
@@ -17,8 +18,8 @@ const TARGETS = [
 
 /** Raw byte re-encoding, e.g. a Solana address (base58) to its 32 key bytes (hex) and back. */
 export function ByteConverter(): JSX.Element {
-	const [input, setInput] = useState('');
-	const [target, setTarget] = useState<Target>('hex');
+	const [input, setInput] = useToolField('bytes.input', '');
+	const [target, setTarget] = useToolField<Target>('bytes.target', 'hex');
 
 	const result = useMemo(() => {
 		if (input.trim() === '') return null;

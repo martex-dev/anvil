@@ -1,5 +1,5 @@
 import { ArrowUpDown } from 'lucide-react';
-import { type JSX, useMemo, useState } from 'react';
+import { type JSX, useMemo } from 'react';
 
 import { IconButton } from '../../ui/IconButton';
 import { Select } from '../../ui/Select';
@@ -9,6 +9,7 @@ import { Field } from './Field';
 import { attempt } from './format';
 import { Segmented } from './Segmented';
 import { TextArea } from './TextArea';
+import { useToolField } from './toolbox-store';
 import { ToolError } from './ToolError';
 import { decode, encode, type EncodingKind } from './tools';
 
@@ -32,10 +33,10 @@ function isKind(value: string): value is EncodingKind {
 }
 
 export function EncodeTool(): JSX.Element {
-	const [input, setInput] = useState('');
-	const [kind, setKind] = useState<EncodingKind>('base64');
+	const [input, setInput] = useToolField('encode.input', '');
+	const [kind, setKind] = useToolField<EncodingKind>('encode.kind', 'base64');
 	// Output follows the input live once a direction is chosen, so edits need no extra click.
-	const [direction, setDirection] = useState<Direction | null>(null);
+	const [direction, setDirection] = useToolField<Direction | null>('encode.direction', null);
 
 	const result = useMemo(() => {
 		if (!direction || input === '') return null;

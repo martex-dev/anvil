@@ -179,7 +179,8 @@ export function ToolboxView(): JSX.Element {
 				)}
 			</div>
 			<div className='min-h-0 flex-1 overflow-auto'>
-				{/* Tools stay mounted while hidden so inputs survive switching back and forth. */}
+				{/* Tools stay mounted while hidden, and their inputs live in toolbox-store, so they
+				    survive both tab switches and the side bar leaving the toolbox view. */}
 				{TOOLS.map(({ id, Component }) => (
 					<div
 						key={id}
