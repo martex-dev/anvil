@@ -18,6 +18,7 @@ import { ActivityBar } from './ActivityBar';
 import { BottomPanel } from './BottomPanel';
 import { CommandPalette } from './CommandPalette';
 import { useGlobalShortcuts } from './commands/use-global-shortcuts';
+import { useFitPanesToWindow } from './hooks/use-fit-panes';
 import { useFocusRescue } from './hooks/use-focus-rescue';
 import { useFsInvalidation } from './hooks/use-fs-invalidation';
 import { useLayoutPersistence } from './hooks/use-layout-persistence';
@@ -99,6 +100,7 @@ export function AppShell(): JSX.Element {
 	useApplySettings();
 	useFsInvalidation();
 	useFocusRescue();
+	useFitPanesToWindow();
 	useLayoutPersistence();
 	useMonacoExtras();
 
