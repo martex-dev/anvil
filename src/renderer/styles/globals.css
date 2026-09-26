@@ -297,8 +297,9 @@
 	.scrim-blur {
 		backdrop-filter: blur(calc(var(--glass-blur) / 10));
 	}
-	/* Glass off is the fast path: no filter at all, not even a zero-radius one. */
-	html[data-glass='off'] :is(.glass-blur, .scrim-blur) {
+	/* Glass off is the fast path: no filter at all, not even a zero-radius blur or the saturate
+	   that panes add, so Chromium skips the backdrop compositing layer entirely. */
+	html[data-glass='off'] :is(.glass, .glass-strong, .glass-blur, .scrim-blur) {
 		backdrop-filter: none;
 	}
 }
