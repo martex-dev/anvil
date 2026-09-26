@@ -14,7 +14,12 @@ export interface FileLink {
 }
 
 const PY_TRACEBACK = /File "([^"]+)", line (\d+)/g;
-const PATH = String.raw`((?:[A-Za-z]:[\\/]|\.{0,2}[\\/])?(?:[\w.@-]+[\\/])*[\w.@-]+\.[A-Za-z0-9]{1,8})`;
+// Absolute Windows paths may contain spaces (C:\Users\John Smith\...), so they allow anything
+// a file name can hold, stopping at the first extension that the line/column suffix follows.
+const DRIVE_PATH = String.raw`(?<!\w)[A-Za-z]:[\\/][^:*?"<>|\r\n]*?\.[A-Za-z0-9]{1,8}`;
+// Relative paths can't contain spaces, and never start mid-token (inside a longer path).
+const REL_PATH = String.raw`(?<![\w.@\\/:-])(?:\.{0,2}[\\/])?(?:[\w.@-]+[\\/])*[\w.@-]+\.[A-Za-z0-9]{1,8}`;
+const PATH = `(${DRIVE_PATH}|${REL_PATH})`;
 const COLON_STYLE = new RegExp(String.raw`${PATH}:(\d+)(?::(\d+))?`, 'g');
 const PAREN_STYLE = new RegExp(String.raw`${PATH}\((\d+),(\d+)\)`, 'g');
 

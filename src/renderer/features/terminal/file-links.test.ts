@@ -35,6 +35,20 @@ describe('terminal file links', () => {
 		expect(findFileLinks('done in 12:30:05, 3.5s', ROOT)).toEqual([]);
 	});
 
+	it('links absolute paths with spaces as the whole path', () => {
+		const root = 'C:\\Users\\John Smith\\proj';
+		const line = 'C:\\Users\\John Smith\\proj\\my pkg\\a.py:12: UserWarning: x';
+		expect(findFileLinks(line, root)).toEqual([
+			{ start: 0, end: 39, path: 'my pkg/a.py', line: 12, column: 1 },
+		]);
+		// Outside the folder: no link, and no partial relative link to "Smith\\...".
+		expect(findFileLinks('C:\\Users\\John Smith\\other\\a.py:3:', root)).toEqual([]);
+	});
+
+	it('does not start a relative link inside a longer path', () => {
+		expect(findFileLinks('https://example.com/src/a.py:3', ROOT)).toEqual([]);
+	});
+
 	it('normalises relative and absolute paths', () => {
 		expect(toRelative('./a/b.py', ROOT)).toBe('a/b.py');
 		expect(toRelative('..\\x.py', ROOT)).toBeNull();
