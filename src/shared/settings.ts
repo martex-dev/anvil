@@ -82,6 +82,31 @@ export type Settings = z.infer<typeof SettingsSchema>;
 
 export const DEFAULT_SETTINGS: Settings = SettingsSchema.parse({});
 
+type SettingsShape = typeof SettingsSchema.shape;
+
+/**
+ * A partial settings update. Not `SettingsSchema.partial()`: in zod 4 an optional field that
+ * wraps a default still fills the default in, so a one-key patch would come back with every
+ * other key set to its default and overwrite the stored values.
+ */
+export const SettingsPatchSchema = z.object(
+	Object.fromEntries(
+		Object.entries(SettingsSchema.shape).map(([key, field]) => [
+			key,
+			field.unwrap().optional(),
+		]),
+	) as { [K in keyof SettingsShape]: z.ZodOptional<ReturnType<SettingsShape[K]['unwrap']>> },
+);
+export type SettingsPatch = z.infer<typeof SettingsPatchSchema>;
+
+/** Merges a patch over the current settings; keys sent as `undefined` keep their current value. */
+export function applySettingsPatch(current: Settings, patch: SettingsPatch): Settings {
+	const defined = Object.fromEntries(
+		Object.entries(patch).filter(([, value]) => value !== undefined),
+	);
+	return { ...current, ...defined };
+}
+
 /**
  * Reads stored settings field by field: a value that no longer validates (hand edit, a font
  * removed in a later release) falls back to its own default instead of resetting every

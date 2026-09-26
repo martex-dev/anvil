@@ -6,7 +6,7 @@ import log from 'electron-log/main';
 import { z } from 'zod';
 
 import type { FeatureFailure } from '@shared/ipc/channels/app';
-import { parseSettings, type Settings, SettingsSchema } from '@shared/settings';
+import { applySettingsPatch, parseSettings, type Settings, SettingsSchema } from '@shared/settings';
 
 import { AnvilError } from './errors';
 import { emitEvent, router } from './ipc';
@@ -86,7 +86,11 @@ export function registerAppHandlers(
 
 	router.handle('settings:get', () => readSettings(store));
 	router.handle('settings:update', (patch) => {
-		const next = store.set('settings', SettingsSchema, { ...readSettings(store), ...patch });
+		const next = store.set(
+			'settings',
+			SettingsSchema,
+			applySettingsPatch(readSettings(store), patch),
+		);
 		emitEvent('settings:changed', next);
 		return next;
 	});
