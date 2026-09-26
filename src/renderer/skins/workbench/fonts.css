@@ -1,0 +1,37 @@
+/*
+ * Pixelify Sans draws its digits as curls ('2' reads as '8' at UI sizes), which a code editor
+ * full of line numbers and counts can't afford, and true bitmap digits (Tiny5, Silkscreen) smear
+ * at the 11-13px the UI runs at. So digits come from the bundled Geist Sans, a size down to sit
+ * on Pixelify's baseline; the unique family name keeps these faces out of other skins.
+ */
+@font-face {
+	font-family: 'Workbench Digits';
+	font-style: normal;
+	font-display: swap;
+	font-weight: 400;
+	src: url('../../../../node_modules/@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2')
+		format('woff2');
+	unicode-range: U+0030-0039;
+	size-adjust: 94%;
+}
+@font-face {
+	font-family: 'Workbench Digits';
+	font-style: normal;
+	font-display: swap;
+	font-weight: 700;
+	src: url('../../../../node_modules/@fontsource/geist-sans/files/geist-sans-latin-700-normal.woff2')
+		format('woff2');
+	unicode-range: U+0030-0039;
+	size-adjust: 94%;
+}
+
+/* The UI stack: clear digits in front of Pixelify, left alone for any other UI font. */
+html[data-skin='workbench'] {
+	--wb-ui: var(--font-ui);
+}
+html[data-skin='workbench'][data-wb-ui='pixelify'] {
+	--wb-ui: 'Workbench Digits', var(--font-ui);
+}
+html[data-skin='workbench'] body {
+	font-family: var(--wb-ui);
+}

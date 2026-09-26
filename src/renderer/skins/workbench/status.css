@@ -9,7 +9,7 @@ html[data-skin='workbench'] [data-part='statusbar'] {
 	background: transparent;
 	backdrop-filter: none;
 	color: var(--text-1);
-	font-family: var(--font-ui);
+	font-family: var(--wb-ui);
 	font-size: 12px;
 }
 html[data-skin='workbench'] [data-part='statusbar'] > :not(.flex-1) {
@@ -25,7 +25,7 @@ html[data-skin='workbench'] [data-part='statusbar'] > :last-child {
 	display: none;
 }
 html[data-skin='workbench'] [data-part='statusbar'] .num {
-	font-family: var(--font-ui);
+	font-family: var(--wb-ui);
 }
 html[data-skin='workbench'] [data-part='statusbar'] button:hover {
 	background: transparent;

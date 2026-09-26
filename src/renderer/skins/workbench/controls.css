@@ -117,7 +117,7 @@ html[data-skin='workbench'] kbd {
 	background: var(--skin-face);
 	color: var(--text-0);
 	box-shadow: var(--wb-thin-raised);
-	font-family: var(--font-ui);
+	font-family: var(--wb-ui);
 	font-size: 11px;
 }
 

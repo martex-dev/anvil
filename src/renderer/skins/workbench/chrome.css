@@ -162,7 +162,7 @@ html[data-skin='workbench'] .wb-tool-badge {
 	box-shadow: 0 0 0 1px var(--skin-bevel-light);
 	font:
 		400 8px/12px 'Silkscreen',
-		var(--font-ui);
+		var(--wb-ui);
 }
 
 /* The address box: a sunken white field with a drop-down arrow button. */
@@ -277,7 +277,7 @@ html[data-skin='workbench'] .wb-tray-icon:focus-visible {
 }
 html[data-skin='workbench'] .wb-clock {
 	margin-left: 6px;
-	font-family: var(--font-ui);
+	font-family: var(--wb-ui);
 	font-size: 12px;
 	color: var(--text-0);
 	white-space: nowrap;

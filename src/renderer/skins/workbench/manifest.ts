@@ -44,7 +44,7 @@ const workbench: SkinManifest = {
 	],
 	fonts: {
 		ui: ['pixelify', 'geist', 'tiny5'],
-		display: "'Pixelify Sans', 'Geist Sans', system-ui, sans-serif",
+		display: "'Workbench Digits', 'Pixelify Sans', 'Geist Sans', system-ui, sans-serif",
 		code: 'plex',
 	},
 	layout: {

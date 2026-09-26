@@ -24,7 +24,7 @@ html[data-skin='workbench'] [data-part='panel-tab'] {
 	gap: 5px;
 	background: var(--skin-face);
 	color: var(--text-1);
-	font-family: var(--font-ui);
+	font-family: var(--wb-ui);
 	font-size: 12px;
 	box-shadow:
 		inset 1px 1px var(--skin-bevel-light),
@@ -94,7 +94,7 @@ html[data-skin='workbench'] [data-part='terminal-chip'] > span:first-child {
 html[data-skin='workbench'] [data-part='editor-group'] > [data-part='tabbar'] + div {
 	height: 20px;
 	padding-inline: 6px;
-	font-family: var(--font-ui);
+	font-family: var(--wb-ui);
 	font-size: 12px;
 	color: var(--text-1);
 }
