@@ -64,10 +64,14 @@ export class WorkspaceService {
 		return this.changed();
 	}
 
+	/**
+	 * Only the recent list changes, so root listeners (watcher, language servers, Python) are
+	 * not notified; the caller refreshes the renderer's copy.
+	 */
 	forgetRecent(path: string): WorkspaceInfo {
 		const recent = this.info().recent.filter((p) => p !== path);
 		this.settings.set('workspace.recent', RecentSchema, recent);
-		return this.changed();
+		return this.info();
 	}
 
 	onChange(listener: (info: WorkspaceInfo) => void): () => void {

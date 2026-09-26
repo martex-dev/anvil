@@ -69,7 +69,12 @@ export function createWorkspace(
 	});
 	router.handle('workspace:open', (path) => workspace.open(path));
 	router.handle('workspace:close', () => workspace.close());
-	router.handle('workspace:forgetRecent', (path) => workspace.forgetRecent(path));
+	router.handle('workspace:forgetRecent', (path) => {
+		const info = workspace.forgetRecent(path);
+		// Keeps every window's recent list current without restarting root-bound services.
+		emitEvent('workspace:changed', info);
+		return info;
+	});
 
 	router.handle('fs:list', (rel) => fs.list(rel));
 	router.handle('fs:readFile', (rel) => fs.readFile(rel));
