@@ -145,7 +145,14 @@ function About({
 				onChange={(autoUpdate) => update({ autoUpdate })}
 			/>
 			<div className='flex gap-2'>
-				<Button size='sm' onClick={() => void call('app:openExternal', REPO_URL)}>
+				<Button
+					size='sm'
+					onClick={() => {
+						call('app:openExternal', REPO_URL).catch(() =>
+							toast.error('Could not open link', REPO_URL),
+						);
+					}}
+				>
 					Source on GitHub
 				</Button>
 				<Button

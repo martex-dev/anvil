@@ -1,6 +1,8 @@
 import { app, type BrowserWindow, session, shell } from 'electron';
 import log from 'electron-log/main';
 
+import { AnvilError } from './errors';
+
 /** Only plain https links may leave the app, and only into the system browser. */
 export function isSafeExternalUrl(raw: string): boolean {
 	try {
@@ -11,11 +13,17 @@ export function isSafeExternalUrl(raw: string): boolean {
 	}
 }
 
-export function openExternalSafely(raw: string): void {
-	if (isSafeExternalUrl(raw)) {
-		void shell.openExternal(raw);
-	} else {
+/** Opens a safe link in the system browser; throws AnvilError when refused or it fails. */
+export async function openExternalSafely(raw: string): Promise<void> {
+	if (!isSafeExternalUrl(raw)) {
 		log.warn('[security] refused to open non-https external url', { url: raw.slice(0, 200) });
+		throw new AnvilError('URL_REFUSED', 'Only https links can be opened');
+	}
+	try {
+		await shell.openExternal(raw);
+	} catch (error) {
+		// No registered browser, or the launch failed.
+		throw new AnvilError('OPEN_EXTERNAL_FAILED', 'Could not open the link', error);
 	}
 }
 
@@ -23,7 +31,10 @@ export function openExternalSafely(raw: string): void {
 export function installGlobalSecurity(): void {
 	app.on('web-contents-created', (_event, contents) => {
 		contents.setWindowOpenHandler(({ url }) => {
-			openExternalSafely(url);
+			// Fire and forget: the window is denied either way; a failure only needs logging.
+			openExternalSafely(url).catch((error: unknown) =>
+				log.warn('[security] window.open link not opened', { error: String(error) }),
+			);
 			return { action: 'deny' };
 		});
 		contents.on('will-attach-webview', (event) => {

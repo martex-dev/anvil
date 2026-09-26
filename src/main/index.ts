@@ -32,6 +32,8 @@ import { terminalFeature } from './features/terminal';
 // Logs live next to the rest of userData so --user-data-dir (tests) isolates them too.
 log.transports.file.resolvePathFn = () => join(app.getPath('userData'), 'logs', 'main.log');
 log.initialize();
+// A forgotten promise must still leave a trace in the log file.
+process.on('unhandledRejection', (reason) => log.error('[main] unhandled rejection', reason));
 registerAppScheme();
 if (process.platform === 'win32') app.setAppUserModelId(APP_ID);
 
