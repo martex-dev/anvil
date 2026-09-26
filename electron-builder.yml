@@ -1,0 +1,44 @@
+# Windows installer (NSIS). `npm run dist` builds the app and this; CI publishes on `v*` tags.
+# Unsigned by choice (ADR-010): SmartScreen asks once ("More info" → "Run anyway").
+appId: dev.marto.anvil
+productName: Anvil
+copyright: Copyright © 2026 Marto
+
+directories:
+  output: release
+  buildResources: resources/installer
+
+# node-pty ships N-API prebuilds, so nothing needs rebuilding for Electron's ABI. Rebuilding
+# here only fails anyway: node-gyp can't handle the space in this machine's user folder.
+npmRebuild: false
+
+files:
+  - out/**
+  - package.json
+  - '!**/*.map'
+
+# Executables and files other processes read must live outside app.asar.
+asarUnpack:
+  - node_modules/@vscode/ripgrep*/**
+  - node_modules/basedpyright/**
+  - node_modules/typescript-language-server/**
+  - node_modules/typescript/**
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: resources/installer/icon.ico
+
+nsis:
+  oneClick: true
+  perMachine: false
+  # Settings, keys and history (userData) survive uninstall/reinstall.
+  deleteAppDataOnUninstall: false
+  artifactName: Anvil-Setup-${version}.${ext}
+
+publish:
+  provider: github
+  owner: martex-dev
+  repo: anvil
+  releaseType: release
