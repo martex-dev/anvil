@@ -5,7 +5,7 @@ import { CopyValue } from './CopyValue';
 import { Field } from './Field';
 import { TextArea } from './TextArea';
 import { ToolError } from './ToolError';
-import { MAX_REGEX_MATCHES } from './tools';
+import { MAX_REGEX_MATCHES, validateRegexFlags } from './tools';
 import { useRegexTest } from './use-regex-test';
 
 // Rendering thousands of rows would stall typing; the count still reports the full total.
@@ -15,7 +15,9 @@ export function RegexTool(): JSX.Element {
 	const [pattern, setPattern] = useState('');
 	const [flags, setFlags] = useState('g');
 	const [text, setText] = useState('');
-	const { outcome, pending } = useRegexTest(pattern, flags, text);
+	// Bad flags are reported on the Flags field; the pattern is only tested once they're valid.
+	const flagsError = validateRegexFlags(flags);
+	const { outcome, pending } = useRegexTest(flagsError ? '' : pattern, flags, text);
 	const result = outcome?.kind === 'result' ? outcome.result : null;
 	const count = result?.matches.length ?? 0;
 
@@ -40,6 +42,7 @@ export function RegexTool(): JSX.Element {
 						placeholder='gimsuy'
 						value={flags}
 						onChange={(e) => setFlags(e.target.value)}
+						invalid={flagsError !== null}
 						className='num'
 						spellCheck={false}
 					/>
@@ -54,6 +57,7 @@ export function RegexTool(): JSX.Element {
 					onChange={(e) => setText(e.target.value)}
 				/>
 			</Field>
+			{flagsError && <ToolError message={flagsError} />}
 			{outcome?.kind === 'timeout' && (
 				<ToolError message='Pattern took too long (catastrophic backtracking?). Try removing nested quantifiers like (a+)+.' />
 			)}

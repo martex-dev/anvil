@@ -132,6 +132,21 @@ export interface RegexResult {
 
 export const MAX_REGEX_MATCHES = 1000;
 
+const REGEX_FLAGS = 'dgimsuvy';
+
+/**
+ * Checks flags on their own so the view can blame the Flags field rather than the pattern.
+ * Returns an error message, or null when `new RegExp` will accept them.
+ */
+export function validateRegexFlags(flags: string): string | null {
+	for (const [i, flag] of [...flags].entries()) {
+		if (!REGEX_FLAGS.includes(flag)) return `Unknown flag '${flag}'. Use ${REGEX_FLAGS}.`;
+		if (flags.indexOf(flag) !== i) return `Flag '${flag}' is repeated.`;
+	}
+	if (flags.includes('u') && flags.includes('v')) return "Flags 'u' and 'v' can't be combined.";
+	return null;
+}
+
 /**
  * Follows exec() semantics: without the g or y flag only the first match is returned.
  * Unmatched capture groups are reported as ''.

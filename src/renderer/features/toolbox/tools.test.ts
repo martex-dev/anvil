@@ -19,6 +19,7 @@ import {
 	testRegex,
 	type UnitId,
 	UNITS,
+	validateRegexFlags,
 } from './tools';
 
 const T = 1_700_000_000;
@@ -258,6 +259,24 @@ describe('formatJson', () => {
 
 	it('throws on invalid JSON', () => {
 		expect(() => formatJson('{a:1}', 'pretty')).toThrow(/^Invalid JSON/);
+	});
+});
+
+describe('validateRegexFlags', () => {
+	it('accepts every valid flag combination new RegExp accepts', () => {
+		for (const flags of ['', 'g', 'gimsuy', 'dgimsvy']) {
+			expect(validateRegexFlags(flags)).toBeNull();
+			expect(() => new RegExp('a', flags)).not.toThrow();
+		}
+	});
+
+	it('rejects unknown, repeated and conflicting flags', () => {
+		for (const flags of ['gx', 'gg', 'uv']) {
+			expect(validateRegexFlags(flags)).not.toBeNull();
+			expect(() => new RegExp('a', flags)).toThrow();
+		}
+		expect(validateRegexFlags('gx')).toContain("'x'");
+		expect(validateRegexFlags('igi')).toContain("'i'");
 	});
 });
 
