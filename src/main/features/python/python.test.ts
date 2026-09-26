@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { candidates, envDirOf, parsePyvenvVersion } from './envs';
+import { candidates, envDirOf, findEnv, parsePyvenvVersion } from './envs';
 import { cellCommand, moduleName, psQuote, REPL_STARTUP, stagedCode } from './index';
 import { activatedEnv } from './interpreter';
 
@@ -35,6 +35,16 @@ describe('python envs', () => {
 		expect(candidates(dir)[0]).toMatchObject({ path: python, kind: 'venv', local: true });
 		writeFileSync(join(dir, 'uv.lock'), '');
 		expect(candidates(dir)[0]?.kind).toBe('uv');
+	});
+
+	it('only matches discovered interpreters', () => {
+		const python = fakeVenv('.venv');
+		const envs = [
+			{ path: python, label: '.venv', kind: 'venv' as const, version: null, local: true },
+		];
+		expect(findEnv(envs, python)?.label).toBe('.venv');
+		expect(findEnv(envs, join(dir, 'evil.exe'))).toBeUndefined();
+		if (process.platform === 'win32') expect(findEnv(envs, python.toUpperCase())).toBeDefined();
 	});
 
 	it('maps an interpreter back to its environment folder', () => {

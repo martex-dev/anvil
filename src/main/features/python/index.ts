@@ -9,7 +9,7 @@ import type { PythonEnv, PythonPackage, PythonTools } from '@shared/ipc/channels
 import { AnvilError, errorMessage } from '../../core/errors';
 import type { MainFeature } from '../../core/features';
 import { toAbsolute } from '../../core/workspace/fs-guard';
-import { discoverEnvs, envDirOf } from './envs';
+import { discoverEnvs, envDirOf, findEnv } from './envs';
 import { activatedEnv, interpreter, setReplSupport } from './interpreter';
 import { runRuffFormat } from './ruff-format';
 
@@ -106,9 +106,7 @@ export const pythonFeature: MainFeature = {
 		const selected = async (): Promise<PythonEnv | null> => {
 			const python = interpreter.resolve(ctx.workspace.root());
 			if (!python) return null;
-			const known = (await envs(false)).find(
-				(e) => e.path.toLowerCase() === python.toLowerCase(),
-			);
+			const known = findEnv(await envs(false), python);
 			return (
 				known ?? {
 					path: python,
@@ -134,12 +132,18 @@ export const pythonFeature: MainFeature = {
 
 		ctx.ipc.handle('python:envs', ({ refresh }) => envs(refresh));
 		ctx.ipc.handle('python:selected', selected);
-		ctx.ipc.handle('python:select', (path) => {
+		ctx.ipc.handle('python:select', async (path) => {
 			const root = ctx.workspace.root();
 			if (!root)
 				throw new AnvilError('PY_NO_FOLDER', 'Open a folder to pick its interpreter');
-			if (path !== null && !existsSync(path))
-				throw new AnvilError('PY_NOT_FOUND', `Interpreter not found: ${path}`);
+			if (path !== null) {
+				if (!existsSync(path))
+					throw new AnvilError('PY_NOT_FOUND', `Interpreter not found: ${path}`);
+				// Only a discovered interpreter: every REPL, Run and tool call spawns this path.
+				// Rediscover once in case the env was created after the list was cached.
+				if (!findEnv(await envs(false), path) && !findEnv(await envs(true), path))
+					throw new AnvilError('PY_NOT_FOUND', `Not a known Python interpreter: ${path}`);
+			}
 			interpreter.pick(root, path);
 		});
 

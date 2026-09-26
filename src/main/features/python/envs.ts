@@ -167,6 +167,11 @@ async function systemPythons(): Promise<Candidate[]> {
 const sameFile = (a: string, b: string): boolean =>
 	WIN ? a.toLowerCase() === b.toLowerCase() : a === b;
 
+/** The discovered env whose interpreter is `path` (case-insensitive on Windows). */
+export function findEnv(envs: readonly PythonEnv[], path: string): PythonEnv | undefined {
+	return envs.find((e) => sameFile(e.path, path));
+}
+
 export async function discoverEnvs(root: string | null): Promise<PythonEnv[]> {
 	const all = [...candidates(root), ...(await systemPythons())];
 	const unique: Candidate[] = [];
