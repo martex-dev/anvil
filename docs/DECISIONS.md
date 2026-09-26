@@ -78,7 +78,7 @@ Short ADRs: the context, what was decided, and what it costs.
 
 **Context.** The source is public, so the installers can live next to it.
 
-**Decision.** electron-updater reads `martex-dev/anvil` releases. Pushing a `v*` tag builds the NSIS installer on `windows-latest` and publishes it with the workflow's own token. The installer is unsigned; SmartScreen asks once.
+**Decision.** electron-updater reads `martex-dev/anvil` releases. A version bump merged to `main` releases itself: the Release workflow sees that `v<version>` doesn't exist, tags the commit, builds the NSIS installer on `windows-latest` and publishes it with the workflow's own token (pushing a `v*` tag by hand does the same). Only the highest version is marked Latest. Installed copies check after launch, every six hours and after waking from sleep. The installer is unsigned; SmartScreen asks once.
 
 **Consequences.** No second repo, no personal access token. Code signing can be added later without changing the flow.
 
