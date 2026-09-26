@@ -7,6 +7,7 @@ import {
 	formatCount,
 	formatStat,
 	formatStatText,
+	histogramSummary,
 	initialColumnWidth,
 	isTrueText,
 	MAX_SCROLL_PX,
@@ -148,5 +149,24 @@ describe('isTrueText', () => {
 	it('matches true in any case, as the bool type check does', () => {
 		expect(['true', 'True', 'TRUE'].map(isTrueText)).toEqual([true, true, true]);
 		expect(['false', 'False', 'yes'].map(isTrueText)).toEqual([false, false, false]);
+	});
+});
+
+describe('histogramSummary', () => {
+	it('names the range and the tallest bin', () => {
+		const bins = [
+			{ label: '0', count: 3 },
+			{ label: '10', count: 1200 },
+			{ label: '20', count: 1200 },
+		];
+		expect(histogramSummary(bins, '0', '30')).toBe(
+			'Value distribution from 0 to 30; 3 bins, peak 1,200 at 10',
+		);
+	});
+
+	it('says when every bin is empty', () => {
+		expect(histogramSummary([{ label: '0', count: 0 }], '0', '0')).toBe(
+			'Value distribution from 0 to 0; no values',
+		);
 	});
 });

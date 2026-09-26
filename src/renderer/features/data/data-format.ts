@@ -73,6 +73,22 @@ export function formatCount(value: number): string {
 	return countFormat.format(value);
 }
 
+/**
+ * Spoken summary of a numeric histogram. The bars are only visible (and hoverable) to a mouse, so
+ * screen readers get the range and the tallest bin instead of a bare "Value distribution".
+ */
+export function histogramSummary(
+	bins: { label: string; count: number }[],
+	min: string,
+	max: string,
+): string {
+	const range = `Value distribution from ${min} to ${max}`;
+	let peak: { label: string; count: number } | null = null;
+	for (const bin of bins) if (bin.count > (peak?.count ?? 0)) peak = bin;
+	if (!peak) return `${range}; no values`;
+	return `${range}; ${bins.length} bins, peak ${formatCount(peak.count)} at ${peak.label}`;
+}
+
 const statFormat = new Intl.NumberFormat('en-US', { maximumSignificantDigits: 6 });
 
 /** Stats values: grouped and trimmed, scientific when tiny or astronomically large. */
