@@ -1,0 +1,69 @@
+/*
+ * The Anvil mark on the welcome page and in empty editors, recast for Y2K: the diamond becomes
+ * a jelly orb with a sparkle, and the spaced mono "ANVIL" becomes the liquid-chrome wordmark.
+ */
+
+html[data-skin='y2k'] [data-part='editor-surface'] h1.text-gradient {
+	font-family: var(--font-display);
+	font-size: 64px;
+	font-weight: 800;
+	letter-spacing: -0.02em;
+	text-transform: lowercase;
+	padding-top: 8px;
+	background-image: linear-gradient(
+		180deg,
+		var(--skin-chrome-1) 6%,
+		color-mix(in oklab, var(--accent-2) 45%, var(--skin-chrome-1)) 36%,
+		color-mix(in oklab, var(--accent) 55%, var(--skin-ink)) 50%,
+		color-mix(in oklab, var(--accent) 80%, var(--skin-ink)) 56%,
+		var(--accent) 72%,
+		color-mix(in oklab, var(--accent) 35%, var(--skin-chrome-1)) 94%
+	);
+	-webkit-text-stroke: 1.5px color-mix(in oklab, var(--accent) 45%, var(--skin-ink));
+	filter: drop-shadow(0 2px 0 var(--skin-gloss))
+		drop-shadow(0 6px 8px color-mix(in oklab, var(--accent) 45%, transparent));
+}
+html[data-skin='y2k'] [data-part='editor-surface'] h1.text-gradient::first-letter {
+	text-transform: uppercase;
+}
+
+/* The rotated diamond turns into a round jelly orb... */
+html[data-skin='y2k'] [data-part='editor-surface'] span.accent-gradient.rotate-45,
+html[data-skin='y2k'] [data-part='editor-surface'] span.rotate-45.border {
+	rotate: none;
+	transform: none;
+	border-radius: 50%;
+	border: 1px solid color-mix(in oklab, var(--accent) 60%, var(--skin-ink));
+	background-image:
+		linear-gradient(
+			180deg,
+			color-mix(in oklab, var(--skin-gloss) 85%, transparent) 0%,
+			transparent 48%
+		),
+		radial-gradient(
+			circle at 50% 100%,
+			color-mix(in oklab, var(--accent-2) 70%, var(--skin-gloss)) 0%,
+			transparent 62%
+		),
+		var(--yk-jelly);
+	box-shadow:
+		inset 0 -3px 6px color-mix(in oklab, var(--skin-ink) 22%, transparent),
+		0 8px 18px -6px color-mix(in oklab, var(--accent) 60%, transparent);
+}
+html[data-skin='y2k'] [data-part='editor-surface'] span.accent-gradient.rotate-45 {
+	width: 64px;
+	height: 64px;
+}
+html[data-skin='y2k'] [data-part='editor-surface'] span.rotate-45.border > span {
+	display: none;
+}
+
+/* ...and its hole turns into a sparkle. */
+html[data-skin='y2k'] [data-part='editor-surface'] span.size-4.rotate-45 {
+	rotate: none;
+	transform: none;
+	width: 26px;
+	height: 26px;
+	background: var(--skin-sparkle);
+	clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+}
