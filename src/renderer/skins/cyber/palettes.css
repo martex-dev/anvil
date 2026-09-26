@@ -6,7 +6,8 @@
  */
 
 /* Cyber Glass (default): neon cyan and violet over deep-space glass ("Anvil Neon" syntax) */
-:root,
+/* :where() keeps the fallback at zero specificity, so other skins' palettes always win. */
+:where(:root),
 [data-theme='cyber'] {
 	color-scheme: dark;
 

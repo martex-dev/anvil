@@ -130,8 +130,11 @@ describe('theme list', () => {
 		expect([...blocks.keys()].sort()).toEqual(THEMES.map((theme) => theme.id).sort());
 	});
 
-	it('makes the default theme the :root base', () => {
-		expect(css).toMatch(new RegExp(`:root,\\s*\\[data-theme='${DEFAULT_THEME}'\\]\\s*\\{`));
+	it('makes the default theme a zero-specificity :root fallback', () => {
+		// A plain :root block would outrank the palettes of skins whose files load earlier.
+		expect(css).toMatch(
+			new RegExp(`:where\\(:root\\),\\s*\\[data-theme='${DEFAULT_THEME}'\\]\\s*\\{`),
+		);
 	});
 });
 
