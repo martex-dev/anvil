@@ -246,18 +246,29 @@ export function ellipsize(text: string, maxWidth: number, measure: (s: string) =
 	return `${chars.slice(0, lo).join('')}…`;
 }
 
-/** Cuts styled runs at `max` characters, ending the line with an ellipsis run. */
+/**
+ * Cuts styled runs at `max` characters (code points, so emoji never split), ending the line with
+ * an ellipsis that counts toward the limit.
+ */
 export function clipRuns<T extends { text: string }>(runs: readonly T[], max: number): T[] {
+	const lengths = runs.map((run) => Array.from(run.text).length);
+	if (lengths.reduce((a, b) => a + b, 0) <= max) return [...runs];
+	// Decide the cut up front: text before the '…' gets exactly max - 1 characters.
+	const budget = Math.max(0, max - 1);
 	const out: T[] = [];
 	let used = 0;
-	for (const run of runs) {
-		if (used + run.text.length <= max) {
+	for (const [i, run] of runs.entries()) {
+		const length = lengths[i] ?? 0;
+		// The total exceeds max, so some run always overflows the budget and ends the loop.
+		if (used + length <= budget) {
 			out.push(run);
-			used += run.text.length;
+			used += length;
 			continue;
 		}
-		const room = Math.max(0, max - used - 1);
-		out.push({ ...run, text: `${run.text.slice(0, room)}…` });
+		const kept = Array.from(run.text)
+			.slice(0, budget - used)
+			.join('');
+		out.push({ ...run, text: `${kept}…` });
 		break;
 	}
 	return out;

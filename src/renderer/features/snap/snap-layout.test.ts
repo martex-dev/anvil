@@ -249,4 +249,21 @@ describe('clipRuns', () => {
 		]);
 		expect(out.map((r) => r.text).join('')).toHaveLength(6);
 	});
+
+	it('stays within the limit when the cut falls on a run boundary', () => {
+		const out = clipRuns(
+			[
+				{ text: 'abc', c: 1 },
+				{ text: 'def', c: 2 },
+			],
+			3,
+		);
+		expect(out).toEqual([{ text: 'ab…', c: 1 }]);
+	});
+
+	it('counts code points and never splits a surrogate pair', () => {
+		const out = clipRuns([{ text: 'a😀😀😀' }], 3);
+		expect(out).toEqual([{ text: 'a😀…' }]);
+		expect(clipRuns([{ text: '😀😀😀' }], 3)).toEqual([{ text: '😀😀😀' }]);
+	});
 });
