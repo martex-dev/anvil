@@ -7,7 +7,7 @@ import { toMonacoKeybinding } from '../../lib/monaco/keybinding';
 import type { MonacoApi } from '../../lib/monaco/setup';
 import { useTabsStore } from '../../stores/tabs-store';
 import { runCell } from '../python/run';
-import { countWords, useEditorStore } from './editor-store';
+import { countWords, MAX_COUNTED_SELECTION, useEditorStore } from './editor-store';
 import { attachBookmarks } from './extras/bookmarks';
 import { attachCells } from './extras/cells';
 import { attachClipboard } from './extras/clipboard';
@@ -61,7 +61,12 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 			const model = editor.getModel();
 			const pos = editor.getPosition();
 			const sel = editor.getSelection();
-			const selText = model && sel && !sel.isEmpty() ? model.getValueInRange(sel) : '';
+			const hasSelection = model !== null && sel !== null && !sel.isEmpty();
+			// The length is cheap; the text is only copied out when it's small enough to count
+			// words in, so Shift+arrowing through a huge selection stays smooth.
+			const selected = hasSelection ? model.getValueLengthInRange(sel) : 0;
+			const selText =
+				hasSelection && selected <= MAX_COUNTED_SELECTION ? model.getValueInRange(sel) : '';
 			useEditorStore
 				.getState()
 				.setGroupLine(
@@ -77,12 +82,11 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 							column: pos.column,
 							language: model.getLanguageId(),
 							eol: model.getEOL() === '\r\n' ? 'CRLF' : 'LF',
-							selected: selText.length,
+							selected,
 							selectedWords: countWords(selText),
-							selectedLines:
-								sel && !sel.isEmpty()
-									? sel.endLineNumber - sel.startLineNumber + 1
-									: 0,
+							selectedLines: hasSelection
+								? sel.endLineNumber - sel.startLineNumber + 1
+								: 0,
 							lines: model.getLineCount(),
 							tabSize: model.getOptions().tabSize,
 							insertSpaces: model.getOptions().insertSpaces,

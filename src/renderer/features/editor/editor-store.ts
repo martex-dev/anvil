@@ -15,9 +15,12 @@ export interface OpenFile {
 	changedOnDisk: boolean;
 }
 
-/** Words in a selection for the status bar; huge selections (Ctrl+A on a dump) aren't counted. */
+/** Selections longer than this (Ctrl+A on a dump) aren't copied out or word-counted. */
+export const MAX_COUNTED_SELECTION = 500_000;
+
+/** Words in a selection for the status bar; huge selections aren't counted. */
 export function countWords(text: string): number {
-	if (!text || text.length > 500_000) return 0;
+	if (!text || text.length > MAX_COUNTED_SELECTION) return 0;
 	return text.match(/[\p{L}\p{N}_]+/gu)?.length ?? 0;
 }
 
