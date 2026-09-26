@@ -92,6 +92,7 @@ export function TitleBar(): JSX.Element {
 					size='sm'
 					label='Toggle side bar'
 					shortcut={shortcutFor('view.toggleSide')}
+					toggle
 					active={sideOpen && !zen}
 					icon={<PanelLeft size={14} />}
 					onClick={() => useLayoutStore.getState().toggleSide()}
@@ -100,6 +101,7 @@ export function TitleBar(): JSX.Element {
 					size='sm'
 					label='Toggle panel'
 					shortcut={shortcutFor('view.togglePanel')}
+					toggle
 					active={panelOpen && !zen}
 					icon={<PanelBottom size={14} />}
 					onClick={() => useLayoutStore.getState().togglePanel()}
@@ -108,6 +110,7 @@ export function TitleBar(): JSX.Element {
 					size='sm'
 					label='Toggle AI'
 					shortcut={shortcutFor('view.toggleAi')}
+					toggle
 					active={aiOpen && !zen}
 					icon={aiOpen && !zen ? <PanelRight size={14} /> : <Bot size={14} />}
 					onClick={() => useLayoutStore.getState().toggleAi()}
