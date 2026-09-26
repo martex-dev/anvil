@@ -1,4 +1,4 @@
-import { Check, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { Select as RadixSelect } from 'radix-ui';
 import { type JSX, useState } from 'react';
 
@@ -47,7 +47,7 @@ export function Select({
 				aria-label={ariaLabel}
 				className={cn(
 					'inline-flex h-7 min-w-32 items-center justify-between gap-2 rounded-md border border-border-strong bg-bg-2/70 px-2 text-13 text-fg-0',
-					'hover:border-border-strong focus-visible:border-accent focus-visible:shadow-glow focus-visible:outline-none',
+					'transition-[border-color,box-shadow] transition-fast hover:border-accent/40 focus-visible:border-accent focus-visible:shadow-glow focus-visible:outline-none',
 					'disabled:opacity-40 data-[placeholder]:text-fg-2',
 					className,
 				)}
@@ -61,8 +61,12 @@ export function Select({
 				<RadixSelect.Content
 					position='popper'
 					sideOffset={4}
-					className='glass-strong animate-in z-50 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-md p-1'
+					// Capped at the space Radix measures below/above the trigger; the rest scrolls.
+					className='glass-strong animate-in z-50 max-h-[var(--radix-select-content-available-height)] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-md p-1'
 				>
+					<RadixSelect.ScrollUpButton className='flex h-5 cursor-default items-center justify-center text-fg-2'>
+						<ChevronUp size={12} />
+					</RadixSelect.ScrollUpButton>
 					<RadixSelect.Viewport>
 						{options.map((opt) => (
 							<RadixSelect.Item
@@ -92,6 +96,9 @@ export function Select({
 							</RadixSelect.Item>
 						))}
 					</RadixSelect.Viewport>
+					<RadixSelect.ScrollDownButton className='flex h-5 cursor-default items-center justify-center text-fg-2'>
+						<ChevronDown size={12} />
+					</RadixSelect.ScrollDownButton>
 				</RadixSelect.Content>
 			</RadixSelect.Portal>
 		</RadixSelect.Root>
