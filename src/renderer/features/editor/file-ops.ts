@@ -3,60 +3,21 @@ import type * as Monaco from 'monaco-editor';
 import { getSettings } from '../../app/hooks/use-settings';
 import { call, IpcCallError } from '../../lib/ipc';
 import { rlog } from '../../lib/log';
-import { minimalEdits } from '../../lib/minimal-edits';
 import type { MonacoApi } from '../../lib/monaco/setup';
-import { codeTabId, useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
+import { markDirty, replaceText, type Tracked, tracked } from './buffers';
 import { useEditorStore } from './editor-store';
+import { cleanWhitespace, formatPython } from './format';
+import { isScratch } from './scratchpad';
 
-interface Tracked {
-	model: Monaco.editor.ITextModel;
-	/** Alternative version id at last load/save; differs from the current one when dirty. */
-	savedVersion: number;
-	listener: Monaco.IDisposable;
-	/**
-	 * Scroll, cursor and folds per editor group: the same file shown in both groups keeps an
-	 * independent position in each.
-	 */
-	viewStates: Map<number, Monaco.editor.ICodeEditorViewState>;
-}
-
-const tracked = new Map<string, Tracked>();
-
-export function getModel(path: string): Monaco.editor.ITextModel | null {
-	return tracked.get(path)?.model ?? null;
-}
-
-export function saveViewState(
-	path: string,
-	group: number,
-	state: Monaco.editor.ICodeEditorViewState | null,
-): void {
-	const t = tracked.get(path);
-	if (!t) return;
-	if (state) t.viewStates.set(group, state);
-	else t.viewStates.delete(group);
-}
-
-export function getViewState(
-	path: string,
-	group: number,
-): Monaco.editor.ICodeEditorViewState | null {
-	return tracked.get(path)?.viewStates.get(group) ?? null;
-}
+// Callers import the editor's buffer API from here; the pieces live in smaller modules.
+export { getModel, getViewState, saveViewState } from './buffers';
+export { formatPython } from './format';
+export { isScratch, openScratch, SCRATCH_PATH } from './scratchpad';
 
 function toUri(monaco: MonacoApi, root: string, path: string): Monaco.Uri {
 	// Absolute file:// URIs are what language servers (Phase 2) expect.
 	return monaco.Uri.file(`${root.replace(/\\/g, '/')}/${path}`);
-}
-
-function markDirty(path: string): void {
-	const t = tracked.get(path);
-	if (!t) return;
-	const dirty = t.model.getAlternativeVersionId() !== t.savedVersion;
-	useEditorStore.getState().update(path, { dirty });
-	// Edited previews become real tabs, so the next preview can't replace unsaved work.
-	if (dirty) useTabsStore.getState().pin(codeTabId(path));
 }
 
 /** Files VS Code's grammars don't claim but that read fine with a close cousin. */
@@ -65,124 +26,6 @@ function languageOverride(path: string): string | undefined {
 	if (name === '.env' || name.startsWith('.env.') || name.endsWith('.env')) return 'ini';
 	if (name.endsWith('.toml') || name === 'uv.lock' || name === 'poetry.lock') return 'ini';
 	return undefined;
-}
-
-/** The scratchpad's buffer id: a code tab that lives in local storage, not on disk. */
-export const SCRATCH_PATH = '__scratch__';
-const SCRATCH_KEY = 'anvil.scratchpad';
-const SCRATCH_DEFAULT = [
-	'# %% Scratchpad: persists between sessions, never touches your project.',
-	'# Ctrl+Enter runs a cell in the REPL · Change language from the palette.',
-	'',
-	'import math',
-	'',
-	'# %%',
-	'print(math.tau)',
-	'',
-].join('\n');
-
-export function isScratch(path: string | null | undefined): boolean {
-	return path === SCRATCH_PATH;
-}
-
-interface ScratchState {
-	text: string;
-	language: string;
-}
-
-function readScratch(): ScratchState | null {
-	try {
-		return JSON.parse(localStorage.getItem(SCRATCH_KEY) ?? 'null') as ScratchState | null;
-	} catch {
-		// Storage blocked or a corrupt value: start from the default text.
-		return null;
-	}
-}
-
-export function openScratch(monaco: MonacoApi): void {
-	const store = useEditorStore.getState();
-	if (store.files.some((f) => f.path === SCRATCH_PATH)) return;
-	const saved = readScratch();
-	const uri = monaco.Uri.parse('inmemory://anvil/scratchpad');
-	const model =
-		monaco.editor.getModel(uri) ??
-		monaco.editor.createModel(saved?.text ?? SCRATCH_DEFAULT, saved?.language ?? 'python', uri);
-	let timer: ReturnType<typeof setTimeout> | undefined;
-	const write = (): void => {
-		try {
-			localStorage.setItem(
-				SCRATCH_KEY,
-				JSON.stringify({ text: model.getValue(), language: model.getLanguageId() }),
-			);
-		} catch {
-			// Too big for local storage: the buffer still works for this session.
-		}
-	};
-	const persist = (): void => {
-		clearTimeout(timer);
-		timer = setTimeout(write, 400);
-	};
-	const content = model.onDidChangeContent(persist);
-	const language = model.onDidChangeLanguage(persist);
-	// VS Code's services treat inmemory: models as borrowed: when any feature (hover, peek,
-	// language client) takes a model reference and releases it, the model is destroyed under the
-	// open editor. Holding our own reference until the tab closes keeps the buffer alive.
-	let ref: Monaco.IDisposable | null = null;
-	let closed = false;
-	void import('@codingame/monaco-vscode-api/services')
-		.then(({ getService, ITextModelService }) => getService(ITextModelService))
-		.then((service) => service.createModelReference(uri))
-		.then((r) => {
-			if (closed) r.dispose();
-			else ref = r;
-		})
-		.catch((error: unknown) => rlog.warn('editor', 'scratchpad model reference failed', error));
-	tracked.set(SCRATCH_PATH, {
-		model,
-		savedVersion: model.getAlternativeVersionId(),
-		listener: {
-			dispose() {
-				closed = true;
-				clearTimeout(timer);
-				if (!model.isDisposed()) write();
-				content.dispose();
-				language.dispose();
-				ref?.dispose();
-			},
-		},
-		viewStates: new Map(),
-	});
-	store.add({
-		path: SCRATCH_PATH,
-		name: 'Scratchpad',
-		state: 'ready',
-		dirty: false,
-		mtimeMs: 0,
-		changedOnDisk: false,
-	});
-}
-
-/** Whitespace hygiene on save, as one undoable edit. */
-function cleanWhitespace(model: Monaco.editor.ITextModel): void {
-	const { trimTrailingWhitespace, insertFinalNewline } = getSettings();
-	if (!trimTrailingWhitespace && !insertFinalNewline) return;
-	const before = model.getValue();
-	const eol = model.getEOL();
-	let after = before;
-	if (trimTrailingWhitespace) after = after.replace(/[ \t]+(?=\r?\n|$)/g, '');
-	if (insertFinalNewline && after.length > 0 && !after.endsWith('\n')) after += eol;
-	if (after !== before) replaceText(model, after);
-}
-
-/**
- * Turns the buffer into `text` as one undoable edit that touches only the changed lines, so
- * cursors, scroll and folds elsewhere stay put (a whole-buffer replace resets them all).
- */
-function replaceText(model: Monaco.editor.ITextModel, text: string): void {
-	const edits = minimalEdits(model.getLinesContent(), text, model.getEOL()) ?? [
-		{ range: model.getFullModelRange(), text },
-	];
-	if (edits.length > 0) model.pushEditOperations([], edits, () => null);
 }
 
 export async function openFile(monaco: MonacoApi, root: string, path: string): Promise<void> {
@@ -235,25 +78,6 @@ export async function openFile(monaco: MonacoApi, root: string, path: string): P
 			state: 'error',
 			error: error instanceof Error ? error.message : String(error),
 		});
-	}
-}
-
-/**
- * Formats a Python buffer with ruff in place, as one undoable edit. A formatting failure
- * (syntax error, ruff missing) is reported but never blocks the save itself.
- */
-export async function formatPython(
-	path: string,
-	model: Monaco.editor.ITextModel,
-): Promise<boolean> {
-	try {
-		const before = model.getValue();
-		const { content } = await call('python:format', { path, content: before });
-		if (content !== before && model.getValue() === before) replaceText(model, content);
-		return true;
-	} catch (error) {
-		toast.warn('Format skipped', error instanceof Error ? error.message : undefined);
-		return false;
 	}
 }
 
