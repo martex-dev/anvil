@@ -9,12 +9,13 @@ import { Spinner } from '../../ui/Spinner';
 import { runInTerminal } from '../terminal/terminal-store';
 import { RunSection } from './RunSection';
 import { SectionError } from './SectionError';
+import { tasksKey } from './task-files';
 
 /** package.json / pyproject / pytest / Makefile / justfile tasks, one click to run. */
 export function TasksSection(): JSX.Element {
 	const { info } = useWorkspace();
 	const tasks = useQuery({
-		queryKey: ['tasks', info.root],
+		queryKey: tasksKey(info.root),
 		queryFn: () => call('tasks:list'),
 		enabled: Boolean(info.root),
 	});
