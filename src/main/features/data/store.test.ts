@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DataFormat } from '@shared/ipc/channels/data';
 
 import { DataStore, type LoadSpec, type PageQuery } from './store';
+import * as table from './table';
 import type * as textReader from './text-reader';
 import { readHead } from './text-reader';
 
@@ -14,10 +15,15 @@ vi.mock('./text-reader', async (importOriginal) => {
 	const actual = await importOriginal<typeof textReader>();
 	return { ...actual, readHead: vi.fn(actual.readHead) };
 });
+vi.mock('./table', async (importOriginal) => {
+	const actual = await importOriginal<typeof table>();
+	return { ...actual, view: vi.fn(actual.view) };
+});
 
 let dir = '';
 beforeEach(() => {
 	vi.mocked(readHead).mockClear();
+	vi.mocked(table.view).mockClear();
 	dir = mkdtempSync(join(tmpdir(), 'anvil-data-'));
 });
 afterEach(() => {
@@ -85,5 +91,17 @@ describe('DataStore', () => {
 			code: 'FS_READ_FAILED',
 			message: 'Could not read dir.csv',
 		});
+	});
+
+	it('keeps the views of two viewers with different filters', async () => {
+		const store = new DataStore();
+		const spec = file('d.csv', 'a\n1\n2\n3\n');
+		const left = { ...all, filter: '1' };
+		const right = { ...all, sort: { column: 0, desc: true } };
+		for (let i = 0; i < 3; i++) {
+			await store.page(spec, left);
+			await store.page(spec, right);
+		}
+		expect(table.view).toHaveBeenCalledTimes(2);
 	});
 });

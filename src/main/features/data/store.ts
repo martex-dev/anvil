@@ -10,6 +10,7 @@ import { readHead, tableFromText } from './text-reader';
 
 const PYTHON_ROWS = 250_000;
 const CACHE_SIZE = 3;
+const VIEWS_PER_FILE = 4;
 
 /** Everything the store needs to read one file; resolved in the main thread. */
 export interface LoadSpec {
@@ -27,8 +28,26 @@ interface Cached {
 	mtimeMs: number;
 	table: Table;
 	format: DataFormat;
-	/** Last filter/sort result, reused while scrolling. */
-	view: { key: string; idx: number[] } | null;
+	/**
+	 * Recent filter/sort results, reused while scrolling. Several, because two viewers of the
+	 * same file (split editor groups) can use different filters.
+	 */
+	views: Map<string, number[]>;
+}
+
+/** Row indices for a filter/sort, from a small per-file LRU. */
+function viewOf(entry: Cached, query: PageQuery): number[] {
+	const key = JSON.stringify([query.filter, query.sort]);
+	let idx = entry.views.get(key);
+	if (idx) entry.views.delete(key);
+	else idx = view(entry.table, query.filter, query.sort);
+	entry.views.set(key, idx);
+	while (entry.views.size > VIEWS_PER_FILE) {
+		const oldest = entry.views.keys().next();
+		if (oldest.done) break;
+		entry.views.delete(oldest.value);
+	}
+	return idx;
 }
 
 /** Expected file-system failures get a short message with the workspace path, not Node's. */
@@ -52,11 +71,7 @@ export class DataStore {
 
 	async page(spec: LoadSpec, query: PageQuery): Promise<DataPage> {
 		const entry = await this.load(spec);
-		const key = JSON.stringify([query.filter, query.sort]);
-		if (entry.view?.key !== key) {
-			entry.view = { key, idx: view(entry.table, query.filter, query.sort) };
-		}
-		const idx = entry.view.idx;
+		const idx = viewOf(entry, query);
 		return {
 			format: entry.format,
 			columns: entry.table.columns,
@@ -122,7 +137,7 @@ export class DataStore {
 				);
 			table = await readWithPython(spec.python.path, spec.python.env, abs, PYTHON_ROWS);
 		}
-		const entry: Cached = { mtimeMs, table, format, view: null };
+		const entry: Cached = { mtimeMs, table, format, views: new Map() };
 		// A folder switch cleared the cache while this was loading: don't bring it back.
 		if (generation !== this.generation) return entry;
 		this.cache.set(abs, entry);
