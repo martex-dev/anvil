@@ -18,6 +18,7 @@ import { VIEW_META } from '../../app/ActivityBar';
 import { closeFolder, openFolderDialog } from '../../features/explorer/workspace-actions';
 import { useSearchFocus } from '../../features/search/use-search';
 import { call } from '../../lib/ipc';
+import { focusedEditor } from '../../lib/monaco/editors';
 import { SIDE_VIEWS, type SideView, useLayoutStore } from '../../stores/layout-store';
 import { useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
@@ -45,6 +46,27 @@ const viewCommands: Command[] = SIDE_VIEWS.map((view) => ({
 		if (view === 'search') useSearchFocus.getState().focus();
 	},
 }));
+
+/**
+ * Ctrl+1 / Ctrl+2: make the group current and move the keyboard there too, so typing goes into
+ * it even when the shortcut was pressed in the terminal or side bar.
+ */
+function focusGroup(index: number): void {
+	const group = useTabsStore.getState().groups[index];
+	if (!group) return;
+	useTabsStore.getState().focus(group.id);
+	const editor = focusedEditor();
+	if (editor) {
+		editor.focus();
+		return;
+	}
+	// A viewer (data grid, diff, image) or an empty group: land on its active tab instead.
+	document
+		.querySelector<HTMLElement>(
+			`section[aria-label="Editor group ${group.id + 1}"] [role="tab"][aria-selected="true"]`,
+		)
+		?.focus();
+}
 
 export const CORE_COMMANDS: Command[] = [
 	{
@@ -178,20 +200,14 @@ export const CORE_COMMANDS: Command[] = [
 		title: 'Focus First Editor Group',
 		category: 'View',
 		shortcut: 'Ctrl+1',
-		run: () => {
-			const g = useTabsStore.getState().groups[0];
-			if (g) useTabsStore.getState().focus(g.id);
-		},
+		run: () => focusGroup(0),
 	},
 	{
 		id: 'view.focusGroup2',
 		title: 'Focus Second Editor Group',
 		category: 'View',
 		shortcut: 'Ctrl+2',
-		run: () => {
-			const g = useTabsStore.getState().groups[1];
-			if (g) useTabsStore.getState().focus(g.id);
-		},
+		run: () => focusGroup(1),
 	},
 	{
 		id: 'anvil.welcome',
