@@ -157,10 +157,13 @@ describe.each(THEMES.map((theme) => [theme.id, theme] as const))('theme %s', (id
 		expect(block.colorScheme).toBe(theme.kind);
 	});
 
-	it('defines exactly the required variables', () => {
+	it('defines the required variables and only --skin-* extras', () => {
 		const defined = [...block.vars.keys()];
 		expect(REQUIRED.filter((name) => !block.vars.has(name))).toEqual([]);
-		expect(defined.filter((name) => !REQUIRED.includes(name))).toEqual([]);
+		// Skins may add their own named colors, prefixed --skin- (bevels, glows, paper grain).
+		const extra = (name: string): boolean =>
+			!REQUIRED.includes(name) && !name.startsWith('--skin-');
+		expect(defined.filter(extra)).toEqual([]);
 		expect(new Set(defined).size).toBe(defined.length);
 	});
 
