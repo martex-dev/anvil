@@ -129,6 +129,22 @@ describe('GitService', { timeout: 30_000 }, () => {
 		});
 	});
 
+	it('keeps git messages untranslated but preserves the character set', () => {
+		expect(
+			gitEnv({
+				LANG: 'de_DE.UTF-8',
+				LANGUAGE: 'de',
+				LC_ALL: 'de_DE.UTF-8',
+				LC_MESSAGES: 'de_DE.UTF-8',
+			}),
+		).toEqual({
+			LANG: 'de_DE.UTF-8',
+			LC_CTYPE: 'de_DE.UTF-8',
+			LC_MESSAGES: 'C',
+			GIT_TERMINAL_PROMPT: '0',
+		});
+	});
+
 	it('passes git only an allowlisted environment', () => {
 		const env = gitEnv({
 			Path: 'C:/bin',
@@ -149,6 +165,7 @@ describe('GitService', { timeout: 30_000 }, () => {
 			GIT_SSH: 'C:/Program Files/PuTTY/plink.exe',
 			GIT_SSH_COMMAND: 'ssh -i ~/.ssh/work',
 			XDG_CONFIG_HOME: '/home/marto/.config',
+			LC_MESSAGES: 'C',
 			GIT_TERMINAL_PROMPT: '0',
 		});
 	});

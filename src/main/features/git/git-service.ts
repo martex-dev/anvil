@@ -52,7 +52,6 @@ const ENV_ALLOW = new Set(
 		'ProgramW6432',
 		'CommonProgramFiles',
 		'LANG',
-		'LANGUAGE',
 		'SSH_AUTH_SOCK',
 		// The user's SSH client (PuTTY's plink via GIT_SSH, set by TortoiseGit/PuTTY installers).
 		'GIT_SSH',
@@ -82,7 +81,13 @@ export function gitEnv(env: NodeJS.ProcessEnv): Record<string, string> {
 			out[key] = value;
 		}
 	}
-	return { ...out, GIT_TERMINAL_PROMPT: '0' };
+	// Anvil parses git's messages ("not a git repository"), so they must stay in English.
+	// LC_ALL would override LC_MESSAGES; keep its character set as LC_CTYPE so non-ASCII paths
+	// are still encoded the same way.
+	const all = out['LC_ALL'];
+	delete out['LC_ALL'];
+	if (all !== undefined && out['LC_CTYPE'] === undefined) out['LC_CTYPE'] = all;
+	return { ...out, LC_MESSAGES: 'C', GIT_TERMINAL_PROMPT: '0' };
 }
 
 function git(baseDir: string): SimpleGit {
