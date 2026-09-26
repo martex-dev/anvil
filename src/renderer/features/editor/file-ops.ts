@@ -183,10 +183,8 @@ export async function openFile(monaco: MonacoApi, root: string, path: string): P
 	const store = useEditorStore.getState();
 	const known = store.files.find((f) => f.path === path);
 	// A failed read (file locked by another program) is retried; anything else is already open.
-	if (known && known.state !== 'error') {
-		store.setActive(path);
-		return;
-	}
+	// Which file is active is the tabs' call (EditorBridge), not the loader's.
+	if (known && known.state !== 'error') return;
 	if (known) store.update(path, { state: 'loading', error: undefined });
 	else
 		store.add({

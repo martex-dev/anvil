@@ -91,17 +91,18 @@ export const useEditorStore = create<EditorState>((set) => ({
 	closing: null,
 	contentVersion: 0,
 	bumpContent: () => set((s) => ({ contentVersion: s.contentVersion + 1 })),
-	add: (file) => set((s) => ({ files: [...s.files, file], active: file.path })),
+	// `active` follows the tab in front (EditorBridge): a file that loads in the background, or a
+	// session restore, must not steal it from the one on screen.
+	add: (file) => set((s) => ({ files: [...s.files, file] })),
 	update: (path, patch) =>
 		set((s) => ({ files: s.files.map((f) => (f.path === path ? { ...f, ...patch } : f)) })),
 	remove: (path) =>
-		set((s) => {
-			const index = s.files.findIndex((f) => f.path === path);
-			const files = s.files.filter((f) => f.path !== path);
-			// Closing the active tab activates its right neighbour, like VS Code.
-			const next = s.active === path ? (files[index] ?? files[index - 1] ?? null) : null;
-			return { files, active: s.active === path ? (next?.path ?? null) : s.active };
-		}),
+		set((s) => ({
+			files: s.files.filter((f) => f.path !== path),
+			// The tabs store picks the next tab (and EditorBridge mirrors it); never point at a
+			// buffer that no longer exists.
+			active: s.active === path ? null : s.active,
+		})),
 	setActive: (active) => set({ active }),
 	setCursor: (cursor) => set({ cursor }),
 	setGroupLine: (group, line) =>
