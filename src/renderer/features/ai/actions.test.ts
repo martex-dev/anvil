@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useToastStore } from '../../stores/toast-store';
-import { askChat, fixProblemsHere, vectorize } from './actions';
+import { askChat, fixProblemsHere, testFramework, vectorize } from './actions';
 import { useChat } from './chat-store';
 import type * as editorContext from './editor-context';
 import { type ActiveEditor, activeEditor, problemsContext } from './editor-context';
@@ -105,5 +105,19 @@ describe('inline actions without a selection', () => {
 			{ startLineNumber: 4, startColumn: 1, endLineNumber: 4, endColumn: 26 },
 		]);
 		expect(startInlineEdit).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('testFramework', () => {
+	it('asks for the framework that fits the language', () => {
+		expect(testFramework('python')).toContain('pytest');
+		expect(testFramework('typescript')).toBe('vitest');
+		expect(testFramework('go')).toContain('testing');
+		expect(testFramework('rust')).toContain('#[test]');
+		expect(testFramework('java')).toBe('JUnit 5');
+	});
+
+	it('falls back to idiomatic tests instead of vitest', () => {
+		expect(testFramework('sql')).toBe('idiomatic sql');
 	});
 });

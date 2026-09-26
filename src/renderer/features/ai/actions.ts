@@ -106,14 +106,34 @@ export async function reviewCode(): Promise<void> {
 		);
 }
 
+const TEST_FRAMEWORKS: Record<string, string> = {
+	python: 'pytest (fixtures and parametrize where useful)',
+	typescript: 'vitest',
+	typescriptreact: 'vitest',
+	javascript: 'vitest',
+	javascriptreact: 'vitest',
+	go: 'Go `testing` package (table-driven)',
+	rust: 'Rust `#[test]` (in a `#[cfg(test)]` module)',
+	java: 'JUnit 5',
+	kotlin: 'JUnit 5',
+	csharp: 'xUnit',
+	cpp: 'GoogleTest',
+	r: 'testthat',
+	julia: 'Julia `Test` stdlib',
+	ruby: 'RSpec',
+};
+
+/** The test framework to ask for, by Monaco language id. */
+export function testFramework(language: string): string {
+	return TEST_FRAMEWORKS[language] ?? `idiomatic ${language}`;
+}
+
 export async function writeTests(): Promise<void> {
 	const c = codeContext(true);
 	const ed = activeEditor();
 	if (!c || !ed) return;
-	const framework =
-		ed.language === 'python' ? 'pytest (fixtures and parametrize where useful)' : 'vitest';
 	await askChat(
-		`Write ${framework} tests for ${c.what}. Cover normal cases, edge cases (empty input, NaN, zero division) and one property that must always hold. Return a complete test file.`,
+		`Write ${testFramework(ed.language)} tests for ${c.what}. Cover normal cases, edge cases (empty input, NaN, zero division) and one property that must always hold. Return a complete test file.`,
 		c.context,
 	);
 }
