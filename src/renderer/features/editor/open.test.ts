@@ -18,7 +18,8 @@ vi.mock('./file-ops', () => ({
 	closeFile: vi.fn(),
 }));
 
-const { closeAllTabs, openPath, openUnloadedFiles, takeQuietOpen } = await import('./open');
+const { canOpenAsTable, closeAllTabs, openPath, openUnloadedFiles, takeQuietOpen } =
+	await import('./open');
 const monaco = {} as MonacoApi;
 
 describe('openPath focus', () => {
@@ -87,5 +88,14 @@ describe('opening files after Monaco failed to load', () => {
 		// Done once: a second pass has nothing left to load.
 		await openUnloadedFiles(monaco);
 		expect(openFile).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('canOpenAsTable', () => {
+	it('accepts the formats the data grid reads', () => {
+		for (const path of ['a.csv', 'b.TSV', 'c.parquet', 'd.json', 'e.ndjson', 'f.xlsx'])
+			expect(canOpenAsTable(path), path).toBe(true);
+		for (const path of ['a.py', 'b.bin', 'c.json.bak'])
+			expect(canOpenAsTable(path), path).toBe(false);
 	});
 });

@@ -20,6 +20,11 @@ export function kindForPath(path: string): TabKind {
 	return 'code';
 }
 
+/** Files the data grid can read, including ones normally opened as text (plain JSON). */
+export function canOpenAsTable(path: string): boolean {
+	return DATA.test(path) || /\.json$/i.test(path);
+}
+
 export const baseName = (path: string): string => path.split('/').at(-1) ?? path;
 
 export function tabFor(path: string, kind: TabKind, preview = false): Tab {
