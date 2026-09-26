@@ -9,6 +9,7 @@ import { LspController } from '../features/lsp/LspController';
 import { SnapDialog } from '../features/snap/SnapDialog';
 import { cn } from '../lib/cn';
 import { useLayoutStore } from '../stores/layout-store';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { QuickPickHost } from '../ui/QuickPick';
 import { Spinner } from '../ui/Spinner';
 import { Splitter } from '../ui/Splitter';
@@ -81,7 +82,9 @@ export function AppShell(): JSX.Element {
 				<div className='flex min-w-0 flex-1 flex-col'>
 					{!(showPanel && layout.panelMaximized) && (
 						<div className='min-h-0 flex-1'>
-							<EditorArea />
+							<ErrorBoundary name='Editor' className='glass'>
+								<EditorArea />
+							</ErrorBoundary>
 						</div>
 					)}
 					{showPanel && (
@@ -107,7 +110,9 @@ export function AppShell(): JSX.Element {
 										: { height: layout.panelHeight }
 								}
 							>
-								<BottomPanel />
+								<ErrorBoundary name='Panel' className='glass'>
+									<BottomPanel />
+								</ErrorBoundary>
 							</div>
 						</>
 					)}
@@ -126,15 +131,17 @@ export function AppShell(): JSX.Element {
 							className='glass pane-focus min-w-0 shrink-0 overflow-hidden'
 							style={{ width: layout.aiWidth }}
 						>
-							<Suspense
-								fallback={
-									<div className='flex h-full items-center justify-center'>
-										<Spinner />
-									</div>
-								}
-							>
-								<ChatPanel />
-							</Suspense>
+							<ErrorBoundary name='AI assistant'>
+								<Suspense
+									fallback={
+										<div className='flex h-full items-center justify-center'>
+											<Spinner />
+										</div>
+									}
+								>
+									<ChatPanel />
+								</Suspense>
+							</ErrorBoundary>
 						</aside>
 					</>
 				)}

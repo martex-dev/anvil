@@ -4,6 +4,7 @@ import { ExplorerPanel } from '../features/explorer/ExplorerPanel';
 import { GitPanel } from '../features/git/GitPanel';
 import { SearchPanel } from '../features/search/SearchPanel';
 import { SIDE_VIEWS, type SideView, useLayoutStore } from '../stores/layout-store';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { Spinner } from '../ui/Spinner';
 import { VIEW_META } from './ActivityBar';
 
@@ -64,15 +65,17 @@ export function SideBar(): JSX.Element {
 				<h2 className='hud text-fg-1'>{VIEW_META[view].label}</h2>
 			</header>
 			<div className='min-h-0 flex-1'>
-				<Suspense
-					fallback={
-						<div className='flex h-24 items-center justify-center'>
-							<Spinner />
-						</div>
-					}
-				>
-					<View view={view} />
-				</Suspense>
+				<ErrorBoundary name={VIEW_META[view].label} resetKey={view}>
+					<Suspense
+						fallback={
+							<div className='flex h-24 items-center justify-center'>
+								<Spinner />
+							</div>
+						}
+					>
+						<View view={view} />
+					</Suspense>
+				</ErrorBoundary>
 			</div>
 		</aside>
 	);
