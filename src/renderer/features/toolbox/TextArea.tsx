@@ -12,9 +12,10 @@ export const TextArea = forwardRef<
 			rows={rows}
 			spellCheck={false}
 			className={cn(
-				'num w-full resize-y rounded-sm border border-border bg-bg-2 px-2 py-1.5 text-12 text-fg-0',
+				// Matches ui/Input and ui/Select, which sit beside it in the same forms.
+				'num w-full resize-y rounded-md border border-border-strong bg-bg-2/70 px-2 py-1.5 text-13 text-fg-0',
 				'transition-[border-color,box-shadow] transition-fast placeholder:text-fg-2',
-				'hover:border-border-strong focus:border-accent focus:shadow-glow focus:outline-none',
+				'hover:border-accent/40 focus:border-accent focus:shadow-glow focus:outline-none',
 				className,
 			)}
 			{...rest}
