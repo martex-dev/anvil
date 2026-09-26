@@ -5,6 +5,7 @@ import type { FsEntry } from '@shared/ipc/channels/fs';
 import { fsKeys } from '../../app/hooks/use-fs-invalidation';
 import { call } from '../../lib/ipc';
 import { toast } from '../../stores/toast-store';
+import { navHistory } from '../editor/nav-history';
 import { parentOf } from './tree-model';
 
 /**
@@ -35,6 +36,8 @@ export function useFsActions(root: string): {
 		mutationFn: (path: string) => call('fs:trash', path),
 		onSuccess: (_r, path) => {
 			refresh(parentOf(path));
+			// Back / Forward must not lead to a file that's gone.
+			navHistory.forget(path);
 			toast.info('Moved to Recycle Bin', path);
 		},
 		onError: (error) => toast.error('Could not delete', error.message),

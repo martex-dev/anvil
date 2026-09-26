@@ -16,16 +16,21 @@ export class NavHistory {
 	private back: Place[] = [];
 	private forward: Place[] = [];
 	private current: Place | null = null;
-	private navigating = false;
+	/**
+	 * Where Back / Forward is taking us: arriving there isn't a new jump. Any other place clears
+	 * it, so a target that never reports (already there, file failed to open) can't swallow the
+	 * next real jump.
+	 */
+	private target: Place | null = null;
 
 	/** Called on every settled cursor position. */
 	visit(place: Place): void {
 		const cur = this.current;
 		this.current = place;
-		if (this.navigating) {
-			this.navigating = false;
+		const target = this.target;
+		this.target = null;
+		if (target && target.path === place.path && Math.abs(target.line - place.line) < JUMP_LINES)
 			return;
-		}
 		if (!cur) return;
 		const jumped = cur.path !== place.path || Math.abs(cur.line - place.line) >= JUMP_LINES;
 		if (!jumped) return;
@@ -39,7 +44,7 @@ export class NavHistory {
 		const target = this.back.pop();
 		if (!target) return null;
 		if (this.current) this.forward.push(this.current);
-		this.navigating = true;
+		this.target = target;
 		return target;
 	}
 
@@ -47,14 +52,16 @@ export class NavHistory {
 		const target = this.forward.pop();
 		if (!target) return null;
 		if (this.current) this.back.push(this.current);
-		this.navigating = true;
+		this.target = target;
 		return target;
 	}
 
-	/** The file was closed or renamed away: drop its places. */
+	/** The file (or a folder, with everything in it) was deleted or renamed: drop its places. */
 	forget(path: string): void {
-		this.back = this.back.filter((p) => p.path !== path);
-		this.forward = this.forward.filter((p) => p.path !== path);
+		const gone = (p: Place): boolean => p.path === path || p.path.startsWith(`${path}/`);
+		this.back = this.back.filter((p) => !gone(p));
+		this.forward = this.forward.filter((p) => !gone(p));
+		if (this.target && gone(this.target)) this.target = null;
 	}
 
 	/** Another folder was opened: its places mean nothing there. */
@@ -62,7 +69,7 @@ export class NavHistory {
 		this.back = [];
 		this.forward = [];
 		this.current = null;
-		this.navigating = false;
+		this.target = null;
 	}
 
 	get canGoBack(): boolean {
