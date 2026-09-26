@@ -1,7 +1,17 @@
 import { Bot, Sparkles, SquareTerminal, TerminalSquare, Wand2, X } from 'lucide-react';
 
 import type { Command } from '../../app/commands/types';
+import { toast } from '../../stores/toast-store';
 import { closeTerminal, newTerminal, useTerminalStore } from './terminal-store';
+
+/** Command Prompt and Git Bash are Windows shells; main doesn't offer them elsewhere. */
+function newWindowsTerminal(preset: 'cmd' | 'gitbash', label: string): void {
+	if (window.anvil.platform !== 'win32') {
+		toast.info(`${label} is only available on Windows`);
+		return;
+	}
+	newTerminal(preset);
+}
 
 export const TERMINAL_COMMANDS: Command[] = [
 	{
@@ -25,13 +35,13 @@ export const TERMINAL_COMMANDS: Command[] = [
 		id: 'terminal.newCmd',
 		title: 'New Command Prompt',
 		category: 'Terminal',
-		run: () => newTerminal('cmd'),
+		run: () => newWindowsTerminal('cmd', 'Command Prompt'),
 	},
 	{
 		id: 'terminal.newBash',
 		title: 'New Git Bash',
 		category: 'Terminal',
-		run: () => newTerminal('gitbash'),
+		run: () => newWindowsTerminal('gitbash', 'Git Bash'),
 	},
 	{
 		id: 'terminal.claude',

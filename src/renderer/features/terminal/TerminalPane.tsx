@@ -52,6 +52,21 @@ export function TerminalPane({ tab, visible }: { tab: TermTab; visible: boolean 
 		return (
 			<ErrorState message={presets.error.message} onRetry={() => void presets.refetch()} />
 		);
+	if (presets.data && !info) {
+		// cmd / Git Bash off Windows, or a profile from an older version of Anvil.
+		return (
+			<EmptyState
+				icon={<TerminalSquare size={22} />}
+				title="This terminal profile isn't available on this system"
+				description={`"${tab.preset}" can't be started here.`}
+				action={
+					<Button size='sm' onClick={() => closeTerminal(tab.id)}>
+						Close terminal
+					</Button>
+				}
+			/>
+		);
+	}
 	if (info && !info.available) {
 		return (
 			<EmptyState
