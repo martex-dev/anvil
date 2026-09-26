@@ -73,6 +73,24 @@ describe('openPath focus', () => {
 	});
 });
 
+describe('opening to the side', () => {
+	beforeEach(() => {
+		closeAllTabs();
+		useEditorStore.getState().reset();
+	});
+
+	it('leaves the focused group showing what it showed', async () => {
+		await openPath('C:/proj', { path: 'README.md' });
+		await openPath('C:/proj', { path: 'README.md', as: 'markdown', side: true });
+		const [left, right] = useTabsStore.getState().groups;
+		expect(left).toMatchObject({ tabIds: ['code:README.md'], active: 'code:README.md' });
+		expect(right).toMatchObject({
+			tabIds: ['markdown:README.md'],
+			active: 'markdown:README.md',
+		});
+	});
+});
+
 describe('opening files after Monaco failed to load', () => {
 	beforeEach(() => {
 		closeAllTabs();

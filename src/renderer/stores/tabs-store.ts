@@ -46,6 +46,11 @@ interface TabsState {
 	closeOthers: (group: number, keep: string) => string[];
 	/** Opens the tab in the other group (creating it), like "Split Editor Right". */
 	split: (id: string) => void;
+	/**
+	 * Opens a tab in a new second group without touching the focused one ("Open to the Side").
+	 * With two groups already, it opens in the other one.
+	 */
+	openInNewGroup: (tab: Tab) => void;
 	closeGroup: (group: number) => void;
 	move: (group: number, from: number, to: number) => void;
 	pin: (id: string) => void;
@@ -142,6 +147,24 @@ export const useTabsStore = create<TabsState>((set, get) => ({
 				focused: target.id,
 			};
 		}),
+	openInNewGroup: (tab) => {
+		const s = get();
+		const other = s.groups.find((g) => g.id !== s.focused);
+		if (other) {
+			s.open(tab, { group: other.id });
+			return;
+		}
+		const next: Group = {
+			id: Math.max(...s.groups.map((g) => g.id)) + 1,
+			tabIds: [tab.id],
+			active: tab.id,
+		};
+		set({
+			tabs: { ...s.tabs, [tab.id]: s.tabs[tab.id] ?? tab },
+			groups: [...s.groups, next],
+			focused: next.id,
+		});
+	},
 	closeGroup: (group) =>
 		set((s) => {
 			if (s.groups.length === 1) return s;

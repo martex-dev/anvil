@@ -83,9 +83,9 @@ export async function openPath(root: string, request: OpenFileRequest): Promise<
 	if (request.side) {
 		const other = tabs.groups.find((g) => g.id !== tabs.focused);
 		if (!other) {
-			const current = tabFor(request.path, kind);
-			tabs.open(current);
-			tabs.split(current.id);
+			// A new group of its own: the focused group keeps what it shows (the Markdown source
+			// stays next to its preview).
+			tabs.openInNewGroup(tabFor(request.path, kind));
 			group = useTabsStore.getState().focused;
 		} else group = other.id;
 	}
