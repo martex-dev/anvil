@@ -34,7 +34,13 @@ export function OutlineView(): JSX.Element {
 	const { path, symbols } = useOutline();
 	const cursor = useEditorStore((s) => s.cursor?.line ?? 0);
 	const bookmarks = useBookmarks((s) => s.items);
-	const [filter, setFilter] = useState('');
+	// Remembered with the file it was typed for: another file starts unfiltered, instead of
+	// showing "No symbols match." for a query meant for the previous one.
+	const [typed, setTyped] = useState<{ path: string | null; text: string }>({
+		path: null,
+		text: '',
+	});
+	const filter = typed.path === path ? typed.text : '';
 	const shown = useMemo(() => {
 		const f = filter.trim().toLowerCase();
 		return f ? symbols.filter((s) => s.name.toLowerCase().includes(f)) : symbols;
@@ -43,14 +49,17 @@ export function OutlineView(): JSX.Element {
 
 	return (
 		<div className='flex h-full flex-col'>
-			<div className='px-2 py-2'>
-				<Input
-					value={filter}
-					onChange={(e) => setFilter(e.target.value)}
-					placeholder='Filter symbols'
-					className='h-6 text-12'
-				/>
-			</div>
+			{path && (
+				<div className='px-2 py-2'>
+					<Input
+						value={filter}
+						onChange={(e) => setTyped({ path, text: e.target.value })}
+						placeholder='Filter symbols'
+						aria-label='Filter symbols'
+						className='h-6 text-12'
+					/>
+				</div>
+			)}
 			<div className='min-h-0 flex-1 overflow-auto'>
 				{!path ? (
 					<EmptyState
