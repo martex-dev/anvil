@@ -20,7 +20,12 @@ export const pythonKeys = {
 };
 
 /** The interpreter in use for the open folder; follows picks made anywhere. */
-export function useSelectedPython(): { env: PythonEnv | null; isLoading: boolean } {
+export function useSelectedPython(): {
+	env: PythonEnv | null;
+	isLoading: boolean;
+	error: Error | null;
+	refetch: () => void;
+} {
 	const { info } = useWorkspace();
 	const client = useQueryClient();
 	const q = useQuery({
@@ -34,7 +39,12 @@ export function useSelectedPython(): { env: PythonEnv | null; isLoading: boolean
 		// The REPL and env-shell presets are only available while an interpreter resolves.
 		void client.invalidateQueries({ queryKey: PRESETS_KEY });
 	});
-	return { env: q.data ?? null, isLoading: q.isLoading };
+	return {
+		env: q.data ?? null,
+		isLoading: q.isLoading,
+		error: q.error,
+		refetch: () => void q.refetch(),
+	};
 }
 
 /** Rediscovers the interpreters (a venv made outside Anvil, a new install) and re-resolves. */

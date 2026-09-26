@@ -7,7 +7,7 @@ import { pickPythonEnv, useSelectedPython } from './use-python';
 /** "PY 3.12 · .venv" — click to switch interpreters. Title bar (compact) and status bar. */
 export function PythonEnvChip({ compact = false }: { compact?: boolean }): JSX.Element | null {
 	const { info } = useWorkspace();
-	const { env, isLoading } = useSelectedPython();
+	const { env, isLoading, error } = useSelectedPython();
 	if (!info.root) return null;
 	// Neutral until the query settles, so startup and folder switches don't flash an error.
 	const missing = !env && !isLoading;
@@ -21,7 +21,9 @@ export function PythonEnvChip({ compact = false }: { compact?: boolean }): JSX.E
 					? `${env.label}\n${env.path}\nClick to change`
 					: isLoading
 						? 'Finding the Python interpreter…'
-						: 'No Python found. Click to pick an interpreter'
+						: error
+							? `Could not resolve the interpreter: ${error.message}\nClick to pick one`
+							: 'No Python found. Click to pick an interpreter'
 			}
 			className={cn(
 				'flex items-center gap-1.5 whitespace-nowrap outline-none transition-colors transition-fast focus-visible:shadow-glow',

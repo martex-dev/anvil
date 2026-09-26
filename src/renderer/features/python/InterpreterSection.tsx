@@ -1,6 +1,8 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { JSX } from 'react';
 
+import type { PythonTools } from '@shared/ipc/channels/python';
+
 import { useWorkspace } from '../../app/hooks/use-workspace';
 import { cn } from '../../lib/cn';
 import { call } from '../../lib/ipc';
@@ -10,12 +12,23 @@ import { Spinner } from '../../ui/Spinner';
 import { runInTerminal } from '../terminal/terminal-store';
 import { RefreshButton } from './RefreshButton';
 import { RunSection } from './RunSection';
+import { SectionError } from './SectionError';
 import { pickPythonEnv, pythonKeys, rescanPythonEnvs, useSelectedPython } from './use-python';
+
+/** ✓ installed, · missing; … while checking and ? when the check failed (never "missing"). */
+function toolMark(
+	tools: { data?: PythonTools; isLoading: boolean; error: Error | null },
+	tool: keyof PythonTools,
+): string {
+	if (tools.data) return tools.data[tool] ? '✓' : '·';
+	if (tools.error) return '?';
+	return tools.isLoading ? '…' : '·';
+}
 
 /** The folder's interpreter, its dev tools, or a way to create a venv. */
 export function InterpreterSection(): JSX.Element {
 	const { info } = useWorkspace();
-	const { env, isLoading } = useSelectedPython();
+	const { env, isLoading, error, refetch } = useSelectedPython();
 	const tools = useQuery({
 		queryKey: pythonKeys.tools(info.root, env?.path ?? null),
 		queryFn: () => call('python:tools'),
@@ -39,6 +52,12 @@ export function InterpreterSection(): JSX.Element {
 		>
 			{isLoading ? (
 				<Spinner />
+			) : error ? (
+				<SectionError
+					title='Could not resolve the interpreter'
+					message={error.message}
+					onRetry={refetch}
+				/>
 			) : env ? (
 				<button
 					type='button'
@@ -57,7 +76,15 @@ export function InterpreterSection(): JSX.Element {
 					<div className='mt-1 truncate font-mono text-10 text-fg-2' title={env.path}>
 						{env.path}
 					</div>
-					<div className='mt-2 flex flex-wrap gap-1'>
+					<div
+						className='mt-2 flex flex-wrap gap-1'
+						aria-busy={tools.isLoading}
+						title={
+							tools.error
+								? `Could not check tools: ${tools.error.message}`
+								: undefined
+						}
+					>
 						{(['ipython', 'ruff', 'pytest'] as const).map((t) => (
 							<span
 								key={t}
@@ -66,7 +93,7 @@ export function InterpreterSection(): JSX.Element {
 									tools.data?.[t] ? 'bg-up-soft text-up' : 'bg-bg-3 text-fg-2',
 								)}
 							>
-								{tools.data?.[t] ? '✓' : '·'} {t}
+								{toolMark(tools, t)} {t}
 							</span>
 						))}
 					</div>
