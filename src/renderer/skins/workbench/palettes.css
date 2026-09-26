@@ -1,0 +1,421 @@
+/*
+ * Workbench 95 palettes: desktop color schemes of the era. Besides the shared tokens each block
+ * names its bevel shades (light / hi / shadow / dark, the four lines of every 3D edge), the
+ * title bar gradients, the sunken field and selection colors, and the 16-color pixel-art ink
+ * (--skin-px-*) the icons are drawn with.
+ */
+
+/* Classic: silver chrome, navy title bars, a teal desktop. */
+[data-theme='wb-classic'] {
+	color-scheme: light;
+
+	--bg-0: #008080;
+	--bg-1: #c0c0c0;
+	--bg-2: #ffffff;
+	--bg-3: #d4d4d4;
+	--border: #a0a0a0;
+	--border-strong: #808080;
+
+	--glass: #c0c0c0;
+	--glass-strong: #c0c0c0;
+	--glass-edge: #808080;
+	--glass-highlight: #ffffff;
+	--editor-bg: #ffffff;
+	--scrim: rgb(0 0 0 / 0.18);
+
+	--text-0: #000000;
+	--text-1: #303030;
+	--text-2: #545454;
+
+	--up: #006400;
+	--down: #b00000;
+	--warn: #7a5200;
+	--info: #0000b0;
+
+	--theme-accent: #000080;
+	--theme-accent-2: #800080;
+	--on-accent: #ffffff;
+
+	--syn-comment: #007f00;
+	--syn-keyword: #0000ff;
+	--syn-control: #8b008b;
+	--syn-string: #a31515;
+	--syn-number: #098658;
+	--syn-function: #795e26;
+	--syn-type: #267f99;
+	--syn-variable: #001080;
+	--syn-parameter: #5c3d8a;
+	--syn-property: #0451a5;
+	--syn-decorator: #af5f00;
+	--syn-builtin: #0070c1;
+	--syn-operator: #000000;
+	--syn-regexp: #811f3f;
+
+	--skin-desktop: #008080;
+	--skin-face: #c0c0c0;
+	--skin-bevel-light: #ffffff;
+	--skin-bevel-hi: #dfdfdf;
+	--skin-bevel-shadow: #808080;
+	--skin-bevel-dark: #000000;
+	--skin-title-a: #000080;
+	--skin-title-b: #1084d0;
+	--skin-title-text: #ffffff;
+	--skin-title-off-a: #808080;
+	--skin-title-off-b: #b5b5b5;
+	--skin-title-off-text: #ffffff;
+	--skin-field: #ffffff;
+	--skin-field-text: #000000;
+	--skin-select: #000080;
+	--skin-select-text: #ffffff;
+	--skin-tip: #ffffe1;
+	--skin-tip-text: #000000;
+
+	--skin-px-ink: #000000;
+	--skin-px-white: #ffffff;
+	--skin-px-silver: #c0c0c0;
+	--skin-px-grey: #808080;
+	--skin-px-yellow: #ffff00;
+	--skin-px-olive: #808000;
+	--skin-px-red: #ff0000;
+	--skin-px-maroon: #800000;
+	--skin-px-green: #008000;
+	--skin-px-lime: #00ff00;
+	--skin-px-blue: #0000ff;
+	--skin-px-navy: #000080;
+	--skin-px-cyan: #00ffff;
+	--skin-px-teal: #008080;
+	--skin-px-purple: #800080;
+	--skin-px-tan: #d8a868;
+}
+
+/* Storm: high-contrast charcoal, violet title bars, yellow focus. */
+[data-theme='wb-storm'] {
+	color-scheme: dark;
+
+	--bg-0: #101214;
+	--bg-1: #34373c;
+	--bg-2: #0c0d0f;
+	--bg-3: #464a51;
+	--border: #55595f;
+	--border-strong: #6b7078;
+
+	--glass: #34373c;
+	--glass-strong: #34373c;
+	--glass-edge: #1c1e21;
+	--glass-highlight: #6b7078;
+	--editor-bg: #0c0d0f;
+	--scrim: rgb(0 0 0 / 0.4);
+
+	--text-0: #f6f6f6;
+	--text-1: #cfd2d8;
+	--text-2: #a2a8b0;
+
+	--up: #5ef27a;
+	--down: #ff6b6b;
+	--warn: #ffcf3f;
+	--info: #6cc4ff;
+
+	--theme-accent: #ffd21f;
+	--theme-accent-2: #3fd7e0;
+	--on-accent: #000000;
+
+	--syn-comment: #7ca668;
+	--syn-keyword: #569cd6;
+	--syn-control: #d78cf0;
+	--syn-string: #f0a070;
+	--syn-number: #b5e8a0;
+	--syn-function: #ffe680;
+	--syn-type: #4ee0c0;
+	--syn-variable: #9cdcfe;
+	--syn-parameter: #c8b8ff;
+	--syn-property: #8cc8ff;
+	--syn-decorator: #ffb454;
+	--syn-builtin: #ff8fb0;
+	--syn-operator: #e0e0e0;
+	--syn-regexp: #ff7a7a;
+
+	--skin-desktop: #1b2230;
+	--skin-face: #34373c;
+	--skin-bevel-light: #767b84;
+	--skin-bevel-hi: #4c5057;
+	--skin-bevel-shadow: #1c1e21;
+	--skin-bevel-dark: #000000;
+	--skin-title-a: #4b0f7a;
+	--skin-title-b: #a24de0;
+	--skin-title-text: #ffffff;
+	--skin-title-off-a: #232528;
+	--skin-title-off-b: #4a4d53;
+	--skin-title-off-text: #c8cbd0;
+	--skin-field: #0c0d0f;
+	--skin-field-text: #f6f6f6;
+	--skin-select: #7b2fb8;
+	--skin-select-text: #ffffff;
+	--skin-tip: #1c1e21;
+	--skin-tip-text: #ffe680;
+
+	--skin-px-ink: #000000;
+	--skin-px-white: #ffffff;
+	--skin-px-silver: #c0c0c0;
+	--skin-px-grey: #808080;
+	--skin-px-yellow: #ffff00;
+	--skin-px-olive: #a0a000;
+	--skin-px-red: #ff3030;
+	--skin-px-maroon: #a00000;
+	--skin-px-green: #00a000;
+	--skin-px-lime: #00ff00;
+	--skin-px-blue: #3070ff;
+	--skin-px-navy: #1830a0;
+	--skin-px-cyan: #00ffff;
+	--skin-px-teal: #00a0a0;
+	--skin-px-purple: #b040d0;
+	--skin-px-tan: #d8a868;
+}
+
+/* Rose: dusty rose chrome over a deep mauve desktop. */
+[data-theme='wb-rose'] {
+	color-scheme: light;
+
+	--bg-0: #6e3a4e;
+	--bg-1: #d8bcc4;
+	--bg-2: #fffafb;
+	--bg-3: #e6d0d6;
+	--border: #b8949e;
+	--border-strong: #9a7480;
+
+	--glass: #d8bcc4;
+	--glass-strong: #d8bcc4;
+	--glass-edge: #9a7480;
+	--glass-highlight: #fff4f7;
+	--editor-bg: #fffafb;
+	--scrim: rgb(40 10 20 / 0.2);
+
+	--text-0: #1f0a12;
+	--text-1: #45202c;
+	--text-2: #633a47;
+
+	--up: #1d6b2e;
+	--down: #a3122e;
+	--warn: #7d4a00;
+	--info: #2a3f9a;
+
+	--theme-accent: #8a2c50;
+	--theme-accent-2: #4b3a9a;
+	--on-accent: #ffffff;
+
+	--syn-comment: #7a6a70;
+	--syn-keyword: #a3195b;
+	--syn-control: #7a2fa0;
+	--syn-string: #2f7d4a;
+	--syn-number: #b0520e;
+	--syn-function: #3548b0;
+	--syn-type: #0f7a86;
+	--syn-variable: #2a0e18;
+	--syn-parameter: #8a4a2a;
+	--syn-property: #5a3d8a;
+	--syn-decorator: #b0520e;
+	--syn-builtin: #c0306a;
+	--syn-operator: #5a2a3a;
+	--syn-regexp: #a3195b;
+
+	--skin-desktop: #6e3a4e;
+	--skin-face: #d8bcc4;
+	--skin-bevel-light: #fff4f7;
+	--skin-bevel-hi: #ead6dc;
+	--skin-bevel-shadow: #9a7480;
+	--skin-bevel-dark: #3b1d27;
+	--skin-title-a: #7a2848;
+	--skin-title-b: #cf7c9a;
+	--skin-title-text: #ffffff;
+	--skin-title-off-a: #9a7480;
+	--skin-title-off-b: #c6a2ad;
+	--skin-title-off-text: #fff4f7;
+	--skin-field: #fffafb;
+	--skin-field-text: #1f0a12;
+	--skin-select: #8a2c50;
+	--skin-select-text: #ffffff;
+	--skin-tip: #fff0f4;
+	--skin-tip-text: #1f0a12;
+
+	--skin-px-ink: #2a0e18;
+	--skin-px-white: #ffffff;
+	--skin-px-silver: #d8c4ca;
+	--skin-px-grey: #9a7480;
+	--skin-px-yellow: #ffe060;
+	--skin-px-olive: #a07820;
+	--skin-px-red: #e0305a;
+	--skin-px-maroon: #8a1a3a;
+	--skin-px-green: #2a9a4a;
+	--skin-px-lime: #70e090;
+	--skin-px-blue: #4a5ad0;
+	--skin-px-navy: #2a2a80;
+	--skin-px-cyan: #80e0f0;
+	--skin-px-teal: #1a8a8a;
+	--skin-px-purple: #8a3aa0;
+	--skin-px-tan: #d8a078;
+}
+
+/* Plum: heather grey chrome, aubergine title bars, a plum desktop. */
+[data-theme='wb-plum'] {
+	color-scheme: light;
+
+	--bg-0: #432846;
+	--bg-1: #bcaebc;
+	--bg-2: #fbf8fb;
+	--bg-3: #cdc1cd;
+	--border: #938293;
+	--border-strong: #6f5a6f;
+
+	--glass: #bcaebc;
+	--glass-strong: #bcaebc;
+	--glass-edge: #6f5a6f;
+	--glass-highlight: #f2eaf2;
+	--editor-bg: #fbf8fb;
+	--scrim: rgb(30 10 30 / 0.22);
+
+	--text-0: #140814;
+	--text-1: #33203a;
+	--text-2: #4a354e;
+
+	--up: #1c5e2a;
+	--down: #9a1030;
+	--warn: #6e4600;
+	--info: #23308a;
+
+	--theme-accent: #5a2862;
+	--theme-accent-2: #1f6f6a;
+	--on-accent: #ffffff;
+
+	--syn-comment: #6f6a70;
+	--syn-keyword: #7a1f8a;
+	--syn-control: #b0206a;
+	--syn-string: #1f6f4a;
+	--syn-number: #a0480e;
+	--syn-function: #2f45a0;
+	--syn-type: #0f6f70;
+	--syn-variable: #1d0f1d;
+	--syn-parameter: #7a3f5a;
+	--syn-property: #4a3a9a;
+	--syn-decorator: #9a5a00;
+	--syn-builtin: #a0305a;
+	--syn-operator: #4a2a4a;
+	--syn-regexp: #9a1f4a;
+
+	--skin-desktop: #432846;
+	--skin-face: #bcaebc;
+	--skin-bevel-light: #f2eaf2;
+	--skin-bevel-hi: #d6cad6;
+	--skin-bevel-shadow: #6f5a6f;
+	--skin-bevel-dark: #1f111f;
+	--skin-title-a: #3c1a44;
+	--skin-title-b: #9a64a2;
+	--skin-title-text: #ffffff;
+	--skin-title-off-a: #6f5a6f;
+	--skin-title-off-b: #a08ca0;
+	--skin-title-off-text: #f2eaf2;
+	--skin-field: #fbf8fb;
+	--skin-field-text: #140814;
+	--skin-select: #5a2862;
+	--skin-select-text: #ffffff;
+	--skin-tip: #fff8e0;
+	--skin-tip-text: #140814;
+
+	--skin-px-ink: #1f111f;
+	--skin-px-white: #ffffff;
+	--skin-px-silver: #d6cad6;
+	--skin-px-grey: #857085;
+	--skin-px-yellow: #f8d848;
+	--skin-px-olive: #9a7a18;
+	--skin-px-red: #d8304a;
+	--skin-px-maroon: #7a1838;
+	--skin-px-green: #2a8a4a;
+	--skin-px-lime: #78d88a;
+	--skin-px-blue: #5058c8;
+	--skin-px-navy: #30206a;
+	--skin-px-cyan: #88d8e8;
+	--skin-px-teal: #1f7f7a;
+	--skin-px-purple: #8a3a9a;
+	--skin-px-tan: #d0a070;
+}
+
+/* Hot Dog Stand: ketchup red chrome, mustard desktop, black title bars. Loud, still legible. */
+[data-theme='wb-hotdog'] {
+	color-scheme: light;
+
+	--bg-0: #ffff00;
+	--bg-1: #ff0000;
+	--bg-2: #ffffa8;
+	--bg-3: #ff5a4a;
+	--border: #a00000;
+	--border-strong: #800000;
+
+	--glass: #ff0000;
+	--glass-strong: #ff0000;
+	--glass-edge: #800000;
+	--glass-highlight: #ffff80;
+	--editor-bg: #fffbd0;
+	--scrim: rgb(80 0 0 / 0.2);
+
+	--text-0: #000000;
+	--text-1: #200000;
+	--text-2: #3c0000;
+
+	--up: #004d00;
+	--down: #5a0000;
+	--warn: #3c2800;
+	--info: #00007a;
+
+	--theme-accent: #000000;
+	--theme-accent-2: #800000;
+	--on-accent: #ffff00;
+
+	--syn-comment: #6b6b00;
+	--syn-keyword: #c00000;
+	--syn-control: #8a008a;
+	--syn-string: #0a6a0a;
+	--syn-number: #a04800;
+	--syn-function: #0000b0;
+	--syn-type: #006a6a;
+	--syn-variable: #000000;
+	--syn-parameter: #7a2a00;
+	--syn-property: #30308a;
+	--syn-decorator: #a04800;
+	--syn-builtin: #c00060;
+	--syn-operator: #600000;
+	--syn-regexp: #c00000;
+
+	--skin-desktop: #ffff00;
+	--skin-face: #ff0000;
+	--skin-bevel-light: #ffff80;
+	--skin-bevel-hi: #ff8a80;
+	--skin-bevel-shadow: #800000;
+	--skin-bevel-dark: #000000;
+	--skin-title-a: #000000;
+	--skin-title-b: #7a0000;
+	--skin-title-text: #ffff00;
+	--skin-title-off-a: #800000;
+	--skin-title-off-b: #c00000;
+	--skin-title-off-text: #ffffa8;
+	--skin-field: #ffffa8;
+	--skin-field-text: #000000;
+	--skin-select: #000000;
+	--skin-select-text: #ffff00;
+	--skin-tip: #ffff00;
+	--skin-tip-text: #000000;
+
+	--skin-px-ink: #000000;
+	--skin-px-white: #ffffff;
+	--skin-px-silver: #ffd0c0;
+	--skin-px-grey: #a05050;
+	--skin-px-yellow: #ffff00;
+	--skin-px-olive: #a08000;
+	--skin-px-red: #ff0000;
+	--skin-px-maroon: #800000;
+	--skin-px-green: #008000;
+	--skin-px-lime: #00ff00;
+	--skin-px-blue: #0000ff;
+	--skin-px-navy: #000080;
+	--skin-px-cyan: #00ffff;
+	--skin-px-teal: #008080;
+	--skin-px-purple: #800080;
+	--skin-px-tan: #ffc080;
+}
