@@ -8,6 +8,7 @@ import { toast } from '../../stores/toast-store';
 import { activeEditor, fileContext, problemsContext } from './editor-context';
 import { splitFences } from './fences';
 import { bindInlineEditKeys } from './inline-edit-keys';
+import { currentRange, trackRange } from './inline-range';
 import { streamOnce } from './requests';
 
 export type InlinePhase = 'prompt' | 'generating' | 'review';
@@ -37,8 +38,12 @@ export const useInlineEdit = create<InlineState>(() => ({
 interface Session {
 	editor: Monaco.editor.IStandaloneCodeEditor;
 	model: Monaco.editor.ITextModel;
-	/** Range being replaced (whole lines), or an empty range for "insert here". */
+	/**
+	 * Range being replaced (whole lines), or an empty range for "insert here". Re-read from
+	 * `tracker` before use, since the file can change while the box is open.
+	 */
 	range: Monaco.IRange;
+	tracker: Monaco.editor.IEditorDecorationsCollection;
 	original: string;
 	zoneId: string | null;
 	widget: Monaco.editor.IOverlayWidget;
@@ -60,6 +65,7 @@ function teardown(): void {
 	s.abort?.abort();
 	for (const d of s.disposables) d.dispose();
 	s.decorations.clear();
+	s.tracker.clear();
 	s.editor.changeViewZones((a) => {
 		if (s.zoneId) a.removeZone(s.zoneId);
 	});
@@ -130,10 +136,12 @@ export function startInlineEdit(preset = ''): void {
 			? []
 			: [{ range, options: { isWholeLine: true, className: 'anvil-ai-range' } }],
 	);
+	const monaco = getLoadedMonaco();
 	session = {
 		editor,
 		model,
 		range,
+		tracker: trackRange(monaco, editor, range),
 		original: model.getValueInRange(range),
 		zoneId,
 		widget,
@@ -143,7 +151,6 @@ export function startInlineEdit(preset = ''): void {
 		disposables: [],
 		ownEdit: false,
 	};
-	const monaco = getLoadedMonaco();
 	if (monaco) {
 		const keys = bindInlineEditKeys(monaco, editor, {
 			cancel: cancelInlineEdit,
@@ -181,9 +188,24 @@ function lineCount(text: string): number {
 	return text ? text.split('\n').length : 0;
 }
 
+/** Moves the session onto where its code is now; false (error shown) if it was deleted. */
+function refreshRange(s: Session): boolean {
+	const range = currentRange(s.tracker, s.model, s.range);
+	if (!range) {
+		useInlineEdit.setState({
+			phase: 'prompt',
+			error: 'The code to edit was deleted. Press Esc and select it again.',
+		});
+		return false;
+	}
+	s.range = range;
+	s.original = s.model.getValueInRange(range);
+	return true;
+}
+
 export async function submitInlineEdit(instruction: string): Promise<void> {
 	const s = session;
-	if (!s || !instruction.trim()) return;
+	if (!s || !instruction.trim() || !refreshRange(s)) return;
 	const monaco = getLoadedMonaco();
 	const ctx = activeEditor();
 	const insert =
@@ -235,6 +257,8 @@ export async function submitInlineEdit(instruction: string): Promise<void> {
 			onPartial: (text) => useInlineEdit.setState({ partial: text }),
 		});
 		if (session !== s) return;
+		// Edits made while it generated moved the code: replace it where it is now.
+		if (!refreshRange(s)) return;
 		let code = extractCode(reply);
 		if (!insert && s.original.endsWith('\n') === false && code.endsWith('\n'))
 			code = code.replace(/\n+$/, '');
