@@ -113,6 +113,22 @@ describe('GitService', { timeout: 30_000 }, () => {
 		expect(byPath).toEqual({ 'app/b.ts': 'b.ts', 'root.md': null });
 	});
 
+	it('blames and reads HEAD by workspace path when the open folder is a subfolder', async () => {
+		mkdirSync(join(repo, 'app'));
+		writeFileSync(join(repo, 'app', 'b.ts'), 'sub\n');
+		// Same name at the repo root: must not be picked instead.
+		writeFileSync(join(repo, 'b.ts'), 'root\n');
+		run('add', '.');
+		run('commit', '-q', '-m', 'files');
+		const git = new GitService(() => join(repo, 'app'));
+		expect(await git.headContent('b.ts')).toBe('sub\n');
+		const blame = await git.blame('b.ts', 1);
+		expect(blame).toMatchObject({ author: 'Anvil Test', summary: 'files' });
+		await expect(git.headContent('../b.ts')).rejects.toMatchObject({
+			code: 'FS_OUTSIDE_WORKSPACE',
+		});
+	});
+
 	it('passes git only an allowlisted environment', () => {
 		const env = gitEnv({
 			Path: 'C:/bin',

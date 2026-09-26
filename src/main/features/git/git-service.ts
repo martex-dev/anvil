@@ -276,10 +276,22 @@ export class GitService {
 		}
 	}
 
+	/**
+	 * Repo-relative path of a path relative to the open folder, which may be a subfolder of the
+	 * repo. Goes through the real workspace path: git reports long names, the folder may have
+	 * been opened via an 8.3 short name.
+	 */
+	private repoPathOfWorkspacePath(root: string, path: string): string {
+		const workspace = this.getWorkspaceRoot();
+		if (!workspace) throw new AnvilError('GIT_NOT_A_REPO', 'No folder is open');
+		const abs = toAbsolute(realpathSync.native(workspace), path);
+		return relative(root, abs).split(sep).join('/');
+	}
+
+	/** `path` is relative to the open folder (the editor's view), not to the repo root. */
 	async blame(path: string, line: number): Promise<GitBlame | null> {
 		const { root, g } = await this.requireRepo();
-		const abs = toAbsolute(root, path);
-		const repoPath = relative(root, abs).split(sep).join('/');
+		const repoPath = this.repoPathOfWorkspacePath(root, path);
 		let out: string;
 		try {
 			out = await g.raw(['blame', '--porcelain', '-L', `${line},${line}`, '--', repoPath]);
@@ -298,11 +310,11 @@ export class GitService {
 		};
 	}
 
+	/** `path` is relative to the open folder (the editor's view), not to the repo root. */
 	async headContent(path: string): Promise<string | null> {
 		const root = await this.repoRoot();
 		if (!root) return null;
-		const abs = toAbsolute(root, path);
-		const repoPath = relative(root, abs).split(sep).join('/');
+		const repoPath = this.repoPathOfWorkspacePath(root, path);
 		try {
 			const text = await git(root).show([`HEAD:${repoPath}`]);
 			return isBinary(text) || text.length > MAX_DIFF_BYTES ? null : text;
