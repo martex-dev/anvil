@@ -109,7 +109,7 @@ test('AI: chat with selection, apply via diff, inline edit, ghost text', async (
 		await chat.getByRole('button', { name: 'Selection' }).click();
 		await expect(chat.locator('[data-attached="selection"]')).toContainText('calc.py:1-2');
 
-		await chat.getByRole('textbox', { name: 'Message' }).fill('Why does add() return -1?');
+		await chat.getByRole('combobox', { name: 'Message' }).fill('Why does add() return -1?');
 		await page.keyboard.press('Enter');
 		const reply = chat.locator('[data-chat-role="assistant"]').last();
 		await expect(reply).toHaveAttribute('data-streaming', 'false', { timeout: 20_000 });
@@ -132,6 +132,8 @@ test('AI: chat with selection, apply via diff, inline edit, ghost text', async (
 			timeout: 10_000,
 		});
 		expect(readFileSync(join(project.dir, 'calc.py'), 'utf8')).toBe(ORIGINAL);
+		// The dialog animates closed before handing focus back to the editor.
+		await expect(editor.locator('.native-edit-context')).toBeFocused();
 		await page.keyboard.press('Control+z');
 		await expect(editor.locator('.view-lines')).toContainText('return a - b');
 
