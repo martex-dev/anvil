@@ -35,8 +35,10 @@ export type SearchFile = z.infer<typeof SearchFileSchema>;
 export const SearchResultSchema = z.object({
 	files: z.array(SearchFileSchema),
 	matchCount: z.number().int(),
-	/** Stopped at the match limit; refine the query to see everything. */
+	/** Incomplete (match limit or time limit); refine the query to see everything. */
 	truncated: z.boolean(),
+	/** Stopped by the time limit on a very large folder. */
+	timedOut: z.boolean().optional(),
 	durationMs: z.number(),
 });
 export type SearchResult = z.infer<typeof SearchResultSchema>;

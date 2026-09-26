@@ -175,8 +175,10 @@ export function SearchPanel(): JSX.Element {
 						{result.matchCount === 0
 							? 'No results'
 							: `${result.matchCount} result${result.matchCount === 1 ? '' : 's'} in ${result.files.length} file${result.files.length === 1 ? '' : 's'}`}
-						{result.truncated && ' (stopped at the limit; narrow the search)'} ·{' '}
-						{result.durationMs} ms
+						{result.timedOut
+							? ' (stopped after 20 s; narrow the search)'
+							: result.truncated && ' (stopped at the limit; narrow the search)'}{' '}
+						· {result.durationMs} ms
 					</p>
 					<SearchResults files={result.files} />
 				</>

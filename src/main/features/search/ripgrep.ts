@@ -51,7 +51,10 @@ export function rgArgs(input: SearchQuery): string[] {
 export class Ripgrep {
 	private current: ChildProcess | null = null;
 
-	constructor(private readonly binary: string = rgPath()) {}
+	constructor(
+		private readonly binary: string = rgPath(),
+		private readonly timeoutMs: number = TIMEOUT_MS,
+	) {}
 
 	cancel(): void {
 		this.current?.kill();
@@ -74,7 +77,12 @@ export class Ripgrep {
 		});
 
 		return new Promise((resolve, reject) => {
-			const timer = setTimeout(() => child.kill(), TIMEOUT_MS);
+			// A search that runs too long is stopped and shown as partial, never as complete.
+			let timedOut = false;
+			const timer = setTimeout(() => {
+				timedOut = true;
+				child.kill();
+			}, this.timeoutMs);
 			child.on('error', (error) => {
 				clearTimeout(timer);
 				reject(
@@ -102,7 +110,8 @@ export class Ripgrep {
 				resolve({
 					files: collector.result(),
 					matchCount: collector.count,
-					truncated: collector.truncated,
+					truncated: collector.truncated || timedOut,
+					timedOut,
 					durationMs: Math.round(performance.now() - started),
 				});
 			});

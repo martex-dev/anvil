@@ -69,6 +69,11 @@ describe('Ripgrep (real binary)', () => {
 		expect(none.files).toEqual([]);
 	});
 
+	it('marks a search stopped by the time limit as incomplete', async () => {
+		const result = await new Ripgrep(undefined, 1).search(root, { query: 'price' });
+		expect(result).toMatchObject({ truncated: true, timedOut: true });
+	});
+
 	it('reports an invalid regex as a readable error', async () => {
 		await expect(rg.search(root, { query: '(unclosed', regex: true })).rejects.toMatchObject({
 			code: 'SEARCH_BAD_QUERY',
