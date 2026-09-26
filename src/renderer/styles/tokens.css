@@ -54,6 +54,9 @@ html[data-density='roomy'] {
 [data-theme] {
 	--accent: var(--theme-accent);
 	--accent-2: var(--theme-accent-2);
+	/* Caret and current line number. A palette whose accent vanishes on its own paper (yellow on
+	   white) sets --skin-editor-accent. */
+	--editor-accent: var(--skin-editor-accent, var(--accent));
 
 	--accent-soft: color-mix(in oklab, var(--accent) 14%, transparent);
 	--accent-faint: color-mix(in oklab, var(--accent) 7%, transparent);

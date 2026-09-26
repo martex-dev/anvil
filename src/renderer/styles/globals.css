@@ -482,11 +482,11 @@ html[data-ambient='false'] .ambient::before {
 
 /* Neon cursor: the caret glows in the accent. */
 html[data-neon-cursor='true'] .monaco-editor .cursors-layer .cursor {
-	background-color: var(--accent) !important;
-	border-color: var(--accent) !important;
+	background-color: var(--editor-accent) !important;
+	border-color: var(--editor-accent) !important;
 	box-shadow:
-		0 0 6px 0 var(--accent),
-		0 0 14px 1px color-mix(in oklab, var(--accent) 60%, transparent);
+		0 0 6px 0 var(--editor-accent),
+		0 0 14px 1px color-mix(in oklab, var(--editor-accent) 60%, transparent);
 }
 
 /* Rainbow indentation: six alternating tints drawn behind the leading whitespace. */
