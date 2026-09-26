@@ -46,6 +46,7 @@ export function TodoView(): JSX.Element {
 					<button
 						key={t}
 						type='button'
+						aria-pressed={active === t}
 						onClick={() => setOnly(active === t ? null : t)}
 						className={cn(
 							'flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-mono text-10 outline-none focus-visible:shadow-glow',
@@ -111,8 +112,13 @@ export function TodoView(): JSX.Element {
 										{i.tag}
 									</span>
 									<span className='flex min-w-0 flex-col'>
-										<span className='truncate text-12 text-fg-0'>{i.text}</span>
-										<span className='flex items-center gap-1 truncate text-10 text-fg-2'>
+										<span className='truncate text-12 text-fg-0' title={i.text}>
+											{i.text}
+										</span>
+										<span
+											className='flex items-center gap-1 truncate text-10 text-fg-2'
+											title={`${i.path}:${i.line}`}
+										>
 											<FileBadge name={i.path.split('/').at(-1) ?? i.path} />
 											{i.path}:{i.line}
 										</span>
