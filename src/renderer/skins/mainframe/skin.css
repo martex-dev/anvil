@@ -203,3 +203,13 @@ html[data-skin='mainframe'] [role='status'].animate-spin {
 html[data-skin='mainframe'][data-fx='off'] [role='status'].animate-spin {
 	animation: none;
 }
+/* Reduced motion (setting or OS) stills every spinner; the block cursor stays lit, like the
+   global spinner keeps its ring. */
+html[data-skin='mainframe'][data-reduce-motion='true'] [role='status'].animate-spin {
+	animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+	html[data-skin='mainframe'] [role='status'].animate-spin {
+		animation: none;
+	}
+}
