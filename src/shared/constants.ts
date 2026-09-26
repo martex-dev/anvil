@@ -1,12 +1,11 @@
 export const APP_NAME = 'Anvil';
 
 /**
- * Native window chrome colors. Main can't read CSS variables, so these mirror tokens.css
- * (--bg-0 and --text-1). Keep them in sync if the tokens change.
+ * Window chrome. The background shows before the renderer paints (it mirrors Cyber Glass
+ * --bg-0; main can't read CSS). The title bar height is the default skins build on.
  */
 export const WINDOW_CHROME = {
 	background: '#05060A',
-	symbol: '#9AA8C0',
 	titleBarHeight: 40,
 } as const;
 

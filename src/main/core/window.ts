@@ -21,12 +21,8 @@ export function createMainWindow(): BrowserWindow {
 		...(app.isPackaged ? {} : { icon: join(__dirname, '../../resources/installer/icon.png') }),
 		show: false,
 		backgroundColor: WINDOW_CHROME.background,
+		// Frameless: each skin draws its own title bar and window buttons (window-handlers.ts).
 		titleBarStyle: 'hidden',
-		titleBarOverlay: {
-			color: WINDOW_CHROME.background,
-			symbolColor: WINDOW_CHROME.symbol,
-			height: WINDOW_CHROME.titleBarHeight,
-		},
 		webPreferences: {
 			preload: join(__dirname, '../preload/index.js'),
 			contextIsolation: true,

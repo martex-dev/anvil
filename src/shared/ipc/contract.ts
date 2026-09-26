@@ -13,6 +13,7 @@ import { settingsChannels, settingsEvents } from './channels/settings';
 import { terminalChannels, terminalEvents } from './channels/terminal';
 import { toolsChannels } from './channels/tools';
 import { updateChannels, updateEvents } from './channels/update';
+import { windowChannels, windowEvents } from './channels/window';
 import { workspaceChannels, workspaceEvents } from './channels/workspace';
 import { defineEvents } from './define';
 
@@ -35,6 +36,7 @@ export const ipcContract = {
 	...dataChannels,
 	...toolsChannels,
 	...updateChannels,
+	...windowChannels,
 };
 
 /** Push events main → renderer. Payloads are validated in main before sending. */
@@ -49,6 +51,7 @@ export const eventContract = defineEvents({
 	...aiEvents,
 	...pythonEvents,
 	...updateEvents,
+	...windowEvents,
 });
 
 export type IpcContract = typeof ipcContract;

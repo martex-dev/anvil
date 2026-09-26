@@ -15,6 +15,7 @@ import { installGlobalSecurity } from './core/security';
 import { JsonStore } from './core/store/json-store';
 import { registerUpdater } from './core/update/updater';
 import { createMainWindow } from './core/window';
+import { registerWindowHandlers, watchWindowState } from './core/window-handlers';
 import { createWorkspace } from './core/workspace';
 import type { WorkspaceWatcher } from './core/workspace/watcher';
 import { aiFeature } from './features/ai';
@@ -51,6 +52,7 @@ async function start(): Promise<void> {
 	const settings = store;
 	const secrets = createSecretsService();
 	registerAppHandlers(settings);
+	registerWindowHandlers(() => mainWindow);
 	registerSecretsHandlers(secrets);
 	registerUpdater(() => readSettings(settings).autoUpdate);
 
@@ -93,6 +95,7 @@ async function start(): Promise<void> {
 function openWindow(): void {
 	const win = createMainWindow();
 	mainWindow = win;
+	watchWindowState(win);
 	win.on('closed', () => {
 		if (mainWindow === win) mainWindow = null;
 	});
