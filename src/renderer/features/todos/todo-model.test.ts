@@ -28,6 +28,17 @@ describe('parseTodo', () => {
 		});
 	});
 
+	it('drops an owner tag and the colon from the description', () => {
+		expect(parseTodo('a.py', match('# TODO(marto): fix x')).text).toBe('fix x');
+		expect(parseTodo('a.ts', match('/* HACK (jo) : slow path */')).text).toBe('slow path */');
+		expect(parseTodo('a.ts', match('// XXX: (a, b) order'))).toMatchObject({
+			tag: 'XXX',
+			text: '(a, b) order',
+		});
+		// Nothing after the marker: show the whole line rather than an empty row.
+		expect(parseTodo('a.py', match('# TODO:')).text).toBe('# TODO:');
+	});
+
 	it('keeps the path and position', () => {
 		expect(parseTodo('src/a.py', match('x = 1  # FIXME later'))).toEqual({
 			path: 'src/a.py',

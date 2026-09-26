@@ -33,7 +33,8 @@ export function parseTodo(path: string, m: SearchMatch): TodoItem {
 	const [start, end] = m.ranges[0] ?? [0, 0];
 	const found = /[A-Z]+$/.exec(m.text.slice(start, end))?.[0] ?? '';
 	const tag = isTag(found) ? found : 'TODO';
-	const after = m.text.slice(end).replace(/^[\s:()\w-]*?[:)]?\s*/, '');
+	// Drops an owner and the colon: `TODO(marto): fix x` → `fix x`.
+	const after = m.text.slice(end).replace(/^\s*(?:\([^)]*\))?\s*:?\s*/, '');
 	return { path, line: m.line, column: m.column, tag, text: after.trim() || m.text.trim() };
 }
 
