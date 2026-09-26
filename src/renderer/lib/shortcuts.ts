@@ -27,6 +27,7 @@ interface KeyLike {
 	metaKey?: boolean;
 	shiftKey: boolean;
 	altKey: boolean;
+	getModifierState?: (key: string) => boolean;
 }
 
 const CODE_ALIASES: Record<string, string> = {
@@ -42,22 +43,27 @@ const CODE_ALIASES: Record<string, string> = {
 	';': 'semicolon',
 };
 
+/** A single printable ASCII character (letters, digits, punctuation, space). */
+const PRINTABLE_ASCII = /^[\x20-\x7e]$/;
+
 export function matchesShortcut(event: KeyLike, shortcut: string): boolean {
+	// AltGr reports Ctrl+Alt on Windows; it types characters (ż, ś, @, €), never a shortcut.
+	if (event.getModifierState?.('AltGraph')) return false;
 	const s = parseShortcut(shortcut);
 	const ctrl = event.ctrlKey || Boolean(event.metaKey);
 	if (ctrl !== s.ctrl || event.shiftKey !== s.shift || event.altKey !== s.alt) return false;
-	// Shift changes `key` for digits/punctuation ("!" for 1), so fall back to the physical code.
 	const key = event.key.toLowerCase();
 	if (key === s.key) return true;
-	if (event.code) {
-		const code = event.code.toLowerCase();
-		return (
-			code === `key${s.key}` ||
-			code === `digit${s.key}` ||
-			(CODE_ALIASES[s.key] !== undefined && code === CODE_ALIASES[s.key])
-		);
-	}
-	return false;
+	if (!event.code) return false;
+	const code = event.code.toLowerCase();
+	// Letters use the physical key only on non-Latin layouts (Cyrillic, Greek...). When the key
+	// already prints a different ASCII character (AZERTY, Dvorak), the printed letter wins.
+	if (code === `key${s.key}`) return !PRINTABLE_ASCII.test(event.key);
+	// Shift changes `key` for digits/punctuation ("!" for 1), so fall back to the physical code.
+	return (
+		code === `digit${s.key}` ||
+		(CODE_ALIASES[s.key] !== undefined && code === CODE_ALIASES[s.key])
+	);
 }
 
 /** Function keys may be bound without modifiers; everything else needs Ctrl or Alt. */

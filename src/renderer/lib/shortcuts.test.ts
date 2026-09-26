@@ -39,6 +39,25 @@ describe('shortcuts', () => {
 		).toBe(true);
 	});
 
+	it('ignores AltGr characters that report Ctrl+Alt', () => {
+		const altGrZ = {
+			...ev('ż', { ctrl: true, alt: true }, 'KeyZ'),
+			getModifierState: (k: string) => k === 'AltGraph',
+		};
+		expect(matchesShortcut(altGrZ, 'Ctrl+Alt+Z')).toBe(false);
+		expect(matchesShortcut(ev('z', { ctrl: true, alt: true }, 'KeyZ'), 'Ctrl+Alt+Z')).toBe(
+			true,
+		);
+	});
+
+	it('uses the printed letter on Latin layouts and the physical key on others', () => {
+		// AZERTY: the physical Q key prints "a".
+		expect(matchesShortcut(ev('a', { ctrl: true }, 'KeyQ'), 'Ctrl+Q')).toBe(false);
+		expect(matchesShortcut(ev('a', { ctrl: true }, 'KeyQ'), 'Ctrl+A')).toBe(true);
+		// Cyrillic: the physical P key prints "з".
+		expect(matchesShortcut(ev('з', { ctrl: true }, 'KeyP'), 'Ctrl+P')).toBe(true);
+	});
+
 	it('allows bare function keys only', () => {
 		expect(isBindable('F5')).toBe(true);
 		expect(isBindable('Shift+Enter')).toBe(false);
