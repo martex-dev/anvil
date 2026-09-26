@@ -37,6 +37,17 @@ describe('tabs store', () => {
 		expect(useTabsStore.getState().groups[0]?.tabIds).toEqual(['code:b.py', 'code:c.py']);
 	});
 
+	it('forgets a replaced preview unless another group still shows it', () => {
+		const s = useTabsStore.getState();
+		s.open(code('a.py', true));
+		s.open(code('b.py', true));
+		expect(Object.keys(useTabsStore.getState().tabs)).toEqual(['code:b.py']);
+		s.split('code:b.py');
+		s.focus(0);
+		s.open(code('c.py', true));
+		expect(useTabsStore.getState().tabs['code:b.py']).toBeDefined();
+	});
+
 	it('closing activates the right neighbour and reports whether the tab is gone', () => {
 		const s = useTabsStore.getState();
 		s.open(code('a.py'));
