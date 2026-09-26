@@ -88,6 +88,13 @@ export function formatStatText(value: string | null, numeric: boolean): string {
 }
 
 /** What the column profile covers: stats see every loaded row, which for a big file is the head. */
+/** "1,204 rows", or "12 of 1,204 rows" while a filter hides some of them. */
+export function rowCountLabel(totalRows: number, loadedRows: number): string {
+	if (totalRows < loadedRows)
+		return `${formatCount(totalRows)} of ${formatCount(loadedRows)} rows`;
+	return `${formatCount(totalRows)} rows`;
+}
+
 export function profileScope(truncated: boolean, loadedRows: number): string {
 	return truncated
 		? `Computed over the first ${formatCount(loadedRows)} rows (all that was loaded), ignoring the filter.`

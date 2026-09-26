@@ -13,6 +13,7 @@ import {
 	pagesForRange,
 	profileScope,
 	ROW_HEIGHT,
+	rowCountLabel,
 	scrollTopForRow,
 	toDelimited,
 	typeTag,
@@ -120,5 +121,12 @@ describe('profileScope', () => {
 		expect(profileScope(true, 250000)).toBe(
 			'Computed over the first 250,000 rows (all that was loaded), ignoring the filter.',
 		);
+	});
+});
+
+describe('rowCountLabel', () => {
+	it('says how many rows a filter kept', () => {
+		expect(rowCountLabel(12, 1204331)).toBe('12 of 1,204,331 rows');
+		expect(rowCountLabel(1204331, 1204331)).toBe('1,204,331 rows');
 	});
 });

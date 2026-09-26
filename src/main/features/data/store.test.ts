@@ -49,6 +49,7 @@ describe('DataStore', () => {
 		expect(sorted.rows.map((r) => r[0])).toEqual(['BTC', 'ETH', 'SOL']);
 		const filtered = await store.page(spec, { ...all, filter: 'sol' });
 		expect(filtered.rows).toEqual([['SOL', '150']]);
+		expect(filtered).toMatchObject({ totalRows: 1, loadedRows: 3 });
 	});
 
 	it('profiles a string column with min and max', async () => {

@@ -17,7 +17,7 @@ import { IconButton } from '../../ui/IconButton';
 import { Input } from '../../ui/Input';
 import { Spinner } from '../../ui/Spinner';
 import { Tooltip } from '../../ui/Tooltip';
-import { fileName, formatCount, isTextFormat } from './data-format';
+import { fileName, formatCount, isTextFormat, rowCountLabel } from './data-format';
 
 interface DataToolbarProps {
 	path: string;
@@ -71,8 +71,10 @@ export function DataToolbar({
 			</div>
 			{meta && (
 				<span className='num shrink-0 text-12 text-fg-1'>
-					<span className='text-fg-0'>{formatCount(meta.totalRows)}</span> rows ×{' '}
-					<span className='text-fg-0'>{formatCount(meta.columns.length)}</span> cols
+					<span className='text-fg-0'>
+						{rowCountLabel(meta.totalRows, meta.loadedRows)}
+					</span>{' '}
+					× <span className='text-fg-0'>{formatCount(meta.columns.length)}</span> cols
 				</span>
 			)}
 			{meta?.truncated && (

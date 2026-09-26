@@ -79,6 +79,7 @@ export class DataStore {
 				.slice(query.offset, query.offset + query.limit)
 				.map((i) => entry.table.rows[i] ?? []),
 			totalRows: idx.length,
+			loadedRows: entry.table.rows.length,
 			truncated: entry.table.truncated,
 			engine: entry.table.engine,
 		};
