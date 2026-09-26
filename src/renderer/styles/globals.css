@@ -1,13 +1,7 @@
 @import 'tailwindcss';
+@import './themes.css';
 @import './tokens.css';
-
-@import '@fontsource/geist-sans/latin-400.css';
-@import '@fontsource/geist-sans/latin-500.css';
-@import '@fontsource/geist-sans/latin-600.css';
-@import '@fontsource/geist-sans/latin-700.css';
-@import '@fontsource/jetbrains-mono/latin-400.css';
-@import '@fontsource/jetbrains-mono/latin-500.css';
-@import '@fontsource/jetbrains-mono/latin-700.css';
+@import './fonts.css';
 
 /*
  * Map tokens into Tailwind. Default palettes are wiped so only token colors exist:
@@ -80,7 +74,6 @@
 
 	html {
 		font-size: var(--ui-font-size);
-		color-scheme: dark;
 	}
 
 	body {
@@ -183,9 +176,7 @@
 		backdrop-filter: blur(calc(var(--glass-blur) * 1.4)) saturate(160%);
 		border: 1px solid var(--border-strong);
 		border-radius: var(--radius-lg);
-		box-shadow:
-			var(--shadow-panel),
-			0 24px 64px -20px rgb(0 0 0 / 0.8);
+		box-shadow: var(--shadow-panel), var(--shadow-float);
 	}
 	/* The pane you're working in lights up along its edge. */
 	.pane-focus:focus-within {
@@ -348,8 +339,8 @@
 	/* A faint scanline texture that reads as "screen" without costing anything. */
 	background-image: repeating-linear-gradient(
 		0deg,
-		rgb(255 255 255 / 0.012) 0px,
-		rgb(255 255 255 / 0.012) 1px,
+		var(--grain) 0px,
+		var(--grain) 1px,
 		transparent 1px,
 		transparent 3px
 	);
@@ -485,4 +476,87 @@ html[data-ambient='false'] .ambient::before {
 
 .xterm .xterm-viewport {
 	background-color: transparent !important;
+}
+
+/* ---- Editor candy (each has a toggle in Settings → Editor) ---------------------------- */
+
+/* Neon cursor: the caret glows in the accent. */
+html[data-neon-cursor='true'] .monaco-editor .cursors-layer .cursor {
+	background-color: var(--accent) !important;
+	border-color: var(--accent) !important;
+	box-shadow:
+		0 0 6px 0 var(--accent),
+		0 0 14px 1px color-mix(in oklab, var(--accent) 60%, transparent);
+}
+
+/* Rainbow indentation: six alternating tints drawn behind the leading whitespace. */
+.monaco-editor .anvil-indent-0 {
+	background: color-mix(in oklab, var(--syn-function) 7%, transparent);
+}
+.monaco-editor .anvil-indent-1 {
+	background: color-mix(in oklab, var(--syn-keyword) 7%, transparent);
+}
+.monaco-editor .anvil-indent-2 {
+	background: color-mix(in oklab, var(--syn-string) 7%, transparent);
+}
+.monaco-editor .anvil-indent-3 {
+	background: color-mix(in oklab, var(--syn-number) 7%, transparent);
+}
+.monaco-editor .anvil-indent-4 {
+	background: color-mix(in oklab, var(--syn-control) 7%, transparent);
+}
+.monaco-editor .anvil-indent-5 {
+	background: color-mix(in oklab, var(--syn-type) 7%, transparent);
+}
+
+/* TODO / FIXME / HACK / NOTE markers. */
+.monaco-editor .anvil-todo-todo,
+.monaco-editor .anvil-todo-fix,
+.monaco-editor .anvil-todo-hack,
+.monaco-editor .anvil-todo-note {
+	font-weight: 700;
+	font-style: normal;
+	border-radius: 3px;
+	padding: 0 1px;
+}
+.monaco-editor .anvil-todo-todo {
+	color: var(--info) !important;
+	background: var(--info-soft);
+}
+.monaco-editor .anvil-todo-fix {
+	color: var(--down) !important;
+	background: var(--down-soft);
+}
+.monaco-editor .anvil-todo-hack {
+	color: var(--warn) !important;
+	background: var(--warn-soft);
+}
+.monaco-editor .anvil-todo-note {
+	color: var(--up) !important;
+	background: var(--up-soft);
+}
+
+/* Error lens: the problem written after its line, over a faint wash. */
+.monaco-editor .anvil-lens-line-error {
+	background: color-mix(in oklab, var(--down) 6%, transparent);
+}
+.monaco-editor .anvil-lens-line-warn {
+	background: color-mix(in oklab, var(--warn) 5%, transparent);
+}
+.monaco-editor .anvil-lens-error,
+.monaco-editor .anvil-lens-warn {
+	font-style: italic;
+	opacity: 0.85;
+}
+.monaco-editor .anvil-lens-error {
+	color: var(--down) !important;
+}
+.monaco-editor .anvil-lens-warn {
+	color: var(--warn) !important;
+}
+
+/* Spotlight: everything outside the current block fades back. */
+.monaco-editor .anvil-dim {
+	opacity: 0.28;
+	transition: opacity var(--dur-base) var(--ease-out);
 }
