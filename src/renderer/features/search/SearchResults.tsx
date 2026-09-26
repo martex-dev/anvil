@@ -5,6 +5,7 @@ import type { SearchFile, SearchMatch } from '@shared/ipc/channels/search';
 
 import { cn } from '../../lib/cn';
 import { requestOpenFile } from '../../stores/workbench-store';
+import { fileMatchCount } from './search-count';
 
 function Highlighted({ match }: { match: SearchMatch }): JSX.Element {
 	const parts: JSX.Element[] = [];
@@ -71,7 +72,7 @@ export function SearchResults({
 										: undefined
 								}
 							>
-								{file.matches.length}
+								{fileMatchCount(file)}
 								{file.capped && '+'}
 							</span>
 						</button>
