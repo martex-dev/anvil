@@ -1,0 +1,203 @@
+/*
+ * Cyber Glass, pushed further. The base look (glass panes, hairlines, ambient grid) is the
+ * shared default in globals.css; this adds the deep-space backdrop layers, a rotating neon
+ * edge on the focused pane and a shimmering wordmark. All motion stops with data-fx != full.
+ */
+
+@property --cy-angle {
+	syntax: '<angle>';
+	inherits: false;
+	initial-value: 0deg;
+}
+
+/* ---- Backdrop layers ---------------------------------------------------------------------- */
+
+html[data-skin='cyber'] .cy-aurora {
+	position: absolute;
+	width: 70vmax;
+	height: 45vmax;
+	border-radius: 50%;
+	filter: blur(80px);
+	opacity: 0.32;
+	will-change: transform;
+}
+html[data-skin='cyber'] .cy-aurora-a {
+	top: -22vmax;
+	left: 10vw;
+	background: radial-gradient(
+		closest-side,
+		color-mix(in oklab, var(--accent) 70%, transparent),
+		transparent
+	);
+	animation: cy-drift-a 38s ease-in-out infinite alternate;
+}
+html[data-skin='cyber'] .cy-aurora-b {
+	right: -18vmax;
+	bottom: -20vmax;
+	background: radial-gradient(
+		closest-side,
+		color-mix(in oklab, var(--accent-2) 70%, transparent),
+		transparent
+	);
+	animation: cy-drift-b 46s ease-in-out infinite alternate;
+}
+
+/* Stars: dots from tiled radial gradients, two depths twinkling out of phase. */
+html[data-skin='cyber'] .cy-stars {
+	position: absolute;
+	inset: 0;
+	background-repeat: repeat;
+}
+html[data-skin='cyber'] .cy-stars-far {
+	background-image:
+		radial-gradient(1px 1px at 20px 30px, var(--text-1), transparent 60%),
+		radial-gradient(1px 1px at 130px 80px, var(--text-2), transparent 60%),
+		radial-gradient(1px 1px at 220px 160px, var(--text-1), transparent 60%),
+		radial-gradient(1px 1px at 70px 210px, var(--text-2), transparent 60%),
+		radial-gradient(1px 1px at 280px 40px, var(--text-2), transparent 60%);
+	background-size: 320px 260px;
+	opacity: 0.35;
+	animation: cy-twinkle 7s ease-in-out infinite alternate;
+}
+html[data-skin='cyber'] .cy-stars-near {
+	background-image:
+		radial-gradient(1.5px 1.5px at 60px 120px, var(--accent), transparent 60%),
+		radial-gradient(1.5px 1.5px at 340px 60px, var(--text-0), transparent 60%),
+		radial-gradient(1.5px 1.5px at 480px 300px, var(--accent-2), transparent 60%),
+		radial-gradient(1px 1px at 200px 360px, var(--text-0), transparent 60%);
+	background-size: 560px 420px;
+	opacity: 0.45;
+	animation: cy-twinkle 5s ease-in-out -2.5s infinite alternate;
+}
+
+/* A glowing horizon line and a neon floor grid in perspective, scrolling toward the viewer. */
+html[data-skin='cyber'] .cy-horizon {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 34%;
+	height: 1px;
+	background: linear-gradient(
+		90deg,
+		transparent,
+		color-mix(in oklab, var(--accent) 55%, transparent) 30%,
+		color-mix(in oklab, var(--accent-2) 55%, transparent) 70%,
+		transparent
+	);
+	box-shadow: 0 0 24px 2px color-mix(in oklab, var(--accent) 35%, transparent);
+	opacity: 0.55;
+}
+html[data-skin='cyber'] .cy-floor {
+	position: absolute;
+	left: -50%;
+	right: -50%;
+	bottom: -8%;
+	height: 42%;
+	transform: perspective(420px) rotateX(64deg);
+	transform-origin: 50% 0;
+	background-image:
+		linear-gradient(color-mix(in oklab, var(--accent) 22%, transparent) 1px, transparent 1px),
+		linear-gradient(
+			90deg,
+			color-mix(in oklab, var(--accent-2) 18%, transparent) 1px,
+			transparent 1px
+		);
+	background-size: 64px 64px;
+	mask-image: linear-gradient(to bottom, transparent, black 35%, black);
+	opacity: 0.5;
+	animation: cy-floor-run 3.2s linear infinite;
+}
+
+/* The shared flat grid would fight the floor; keep it faint in the upper sky only. */
+html[data-skin='cyber'] .ambient::before {
+	opacity: 0.35;
+	mask-image: radial-gradient(ellipse 70% 40% at 50% 10%, black 10%, transparent 75%);
+}
+
+/* ---- Chrome accents --------------------------------------------------------------------- */
+
+/* The focused pane's edge: a slowly rotating neon gradient instead of a static hairline. */
+html[data-skin='cyber'][data-fx='full'] .glass.pane-focus:focus-within::before {
+	background: conic-gradient(
+		from var(--cy-angle),
+		color-mix(in oklab, var(--accent) 80%, transparent),
+		transparent 25%,
+		color-mix(in oklab, var(--accent-2) 70%, transparent) 50%,
+		transparent 75%,
+		color-mix(in oklab, var(--accent) 80%, transparent)
+	);
+	opacity: 1;
+	animation: cy-spin 6s linear infinite;
+}
+
+html[data-skin='cyber'] [data-part='brand'] .text-gradient {
+	background-image: linear-gradient(
+		100deg,
+		var(--accent) 10%,
+		var(--text-0) 45%,
+		var(--accent-2) 90%
+	);
+	background-size: 220% 100%;
+	animation: cy-shimmer 9s ease-in-out infinite;
+}
+
+html[data-skin='cyber'] [data-part='statusbar'] {
+	box-shadow: inset 0 1px 0 color-mix(in oklab, var(--accent) 22%, transparent);
+}
+
+html[data-skin='cyber'] [data-part='activity-item'][data-active='true'] {
+	box-shadow: 0 0 16px -4px color-mix(in oklab, var(--accent) 70%, transparent);
+}
+
+/* ---- Effects levels ---------------------------------------------------------------------- */
+
+html[data-skin='cyber']:not([data-fx='full']) :is(.cy-aurora, .cy-stars, .cy-floor),
+html[data-skin='cyber']:not([data-fx='full']) [data-part='brand'] .text-gradient {
+	animation: none;
+}
+html[data-skin='cyber'][data-fx='off'] :is(.cy-aurora, .cy-stars, .cy-floor, .cy-horizon) {
+	display: none;
+}
+html[data-skin='cyber'][data-ambient='false'] :is(.cy-aurora, .cy-stars, .cy-floor, .cy-horizon) {
+	display: none;
+}
+
+@keyframes cy-drift-a {
+	to {
+		transform: translate(18vw, 6vh) scale(1.15);
+	}
+}
+@keyframes cy-drift-b {
+	to {
+		transform: translate(-16vw, -8vh) scale(1.1);
+	}
+}
+@keyframes cy-twinkle {
+	from {
+		opacity: 0.15;
+	}
+	to {
+		opacity: 0.55;
+	}
+}
+@keyframes cy-floor-run {
+	to {
+		background-position:
+			0 64px,
+			0 0;
+	}
+}
+@keyframes cy-spin {
+	to {
+		--cy-angle: 360deg;
+	}
+}
+@keyframes cy-shimmer {
+	0%,
+	100% {
+		background-position: 0% 50%;
+	}
+	50% {
+		background-position: 100% 50%;
+	}
+}
