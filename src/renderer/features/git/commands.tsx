@@ -92,8 +92,23 @@ async function showLog(): Promise<void> {
 
 async function diffActiveFile(): Promise<void> {
 	const tab = focusedTab(useTabsStore.getState());
-	if (!tab?.path) return;
-	const status = await call('git:status');
+	if (!tab?.path) {
+		toast.info('Open a file first', 'Diff Active File compares the focused file with HEAD.');
+		return;
+	}
+	const status = await call('git:status').catch((error: unknown) => {
+		toast.error(
+			'Could not read git status',
+			error instanceof Error ? error.message : undefined,
+		);
+		return null;
+	});
+	if (!status) return;
+	// Outside a repository the change lists are empty, which is not "matches HEAD".
+	if (!status.isRepo) {
+		toast.info('Not a git repository', 'The open folder is not tracked by git.');
+		return;
+	}
 	const change = [...status.unstaged, ...status.staged].find((c) => c.workspacePath === tab.path);
 	if (!change) {
 		toast.info('No changes', `${tab.path} matches HEAD.`);

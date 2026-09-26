@@ -9,6 +9,7 @@ vi.mock('../../ui/QuickPick', () => ({ quickPick: (...args: unknown[]) => quickP
 
 const { GIT_COMMANDS } = await import('./commands');
 const { useToastStore } = await import('../../stores/toast-store');
+const { codeTabId, useTabsStore } = await import('../../stores/tabs-store');
 
 function run(id: string): Promise<void> {
 	const command = GIT_COMMANDS.find((c) => c.id === id);
@@ -58,5 +59,38 @@ describe('git.log', () => {
 		await run('git.log');
 		expect(writeText).not.toHaveBeenCalled();
 		expect(useToastStore.getState().toasts).toEqual([]);
+	});
+});
+
+describe('git.diffFile', () => {
+	const toastTitles = (): string[] => useToastStore.getState().toasts.map((t) => t.title);
+	beforeEach(() => {
+		call.mockReset();
+		useToastStore.setState({ toasts: [] });
+		useTabsStore.getState().reset();
+	});
+
+	it('asks for a file when no file tab is focused', async () => {
+		await run('git.diffFile');
+		expect(call).not.toHaveBeenCalled();
+		expect(toastTitles()).toEqual(['Open a file first']);
+	});
+
+	it('says so outside a repository instead of claiming the file matches HEAD', async () => {
+		useTabsStore
+			.getState()
+			.open({ id: codeTabId('main.py'), kind: 'code', path: 'main.py', title: 'main.py' });
+		call.mockResolvedValue({ isRepo: false, staged: [], unstaged: [] });
+		await run('git.diffFile');
+		expect(toastTitles()).toEqual(['Not a git repository']);
+	});
+
+	it('reports a failed status read', async () => {
+		useTabsStore
+			.getState()
+			.open({ id: codeTabId('main.py'), kind: 'code', path: 'main.py', title: 'main.py' });
+		call.mockRejectedValue(new Error('index.lock exists'));
+		await run('git.diffFile');
+		expect(toastTitles()).toEqual(['Could not read git status']);
 	});
 });
