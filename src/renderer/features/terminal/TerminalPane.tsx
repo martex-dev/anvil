@@ -77,7 +77,11 @@ export function TerminalPane({ tab, visible }: { tab: TermTab; visible: boolean 
 					</span>
 				}
 				action={
-					<Button size='sm' onClick={() => void presets.refetch()}>
+					<Button
+						size='sm'
+						loading={presets.isFetching}
+						onClick={() => void presets.refetch()}
+					>
 						Check again
 					</Button>
 				}
