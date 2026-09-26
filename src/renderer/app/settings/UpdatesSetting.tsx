@@ -2,34 +2,12 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { RefreshCcw } from 'lucide-react';
 import type { JSX } from 'react';
 
-import type { UpdateStatus } from '@shared/ipc/channels/update';
-
 import { call } from '../../lib/ipc';
 import { Button } from '../../ui/Button';
 import { Switch } from '../../ui/Switch';
 import { useUpdateStatus } from '../hooks/use-update';
+import { describeUpdate } from '../update-text';
 import { SettingRow } from './SettingRow';
-
-function describe(status: UpdateStatus | undefined): string {
-	switch (status?.state) {
-		case undefined:
-			return '…';
-		case 'disabled':
-			return `Updates are off: ${status.reason.toLowerCase()}.`;
-		case 'idle':
-			return status.lastChecked
-				? `Up to date (checked ${new Date(status.lastChecked).toLocaleString()}).`
-				: 'Checks a minute after start, then every 6 hours.';
-		case 'checking':
-			return 'Checking…';
-		case 'downloading':
-			return `Downloading ${status.version}: ${status.percent}%`;
-		case 'ready':
-			return `${status.version} is downloaded: restart to install it.`;
-		case 'error':
-			return `Last check failed: ${status.message}`;
-	}
-}
 
 export function UpdatesSetting({
 	autoUpdate,
@@ -48,7 +26,7 @@ export function UpdatesSetting({
 	return (
 		<SettingRow
 			label={`Updates · Anvil ${version.data ?? ''}`}
-			description={describe(status.data)}
+			description={describeUpdate(status.data)}
 			htmlFor='auto-update'
 		>
 			<div className='flex items-center gap-3'>

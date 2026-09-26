@@ -24,6 +24,7 @@ import { useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
 import { useUiStore } from '../../stores/ui-store';
 import { getSettings, updateSettings } from '../hooks/use-settings';
+import { updateCheckToast } from '../update-text';
 import type { Command } from './types';
 
 const VIEW_KEYS: Partial<Record<SideView, string>> = {
@@ -283,15 +284,8 @@ export const CORE_COMMANDS: Command[] = [
 		title: 'Check for Updates',
 		category: 'Anvil',
 		run: async () => {
-			const s = await call('update:check');
-			toast.info(
-				'Updates',
-				s.state === 'disabled'
-					? s.reason
-					: s.state === 'idle'
-						? 'You are up to date'
-						: s.state,
-			);
+			const t = updateCheckToast(await call('update:check'));
+			toast[t.tone](t.title, t.description);
 		},
 	},
 ];
