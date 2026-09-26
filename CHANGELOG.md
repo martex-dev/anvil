@@ -3,6 +3,83 @@
 What changed in each release of Anvil. The release workflow publishes a version's section as
 its GitHub release notes.
 
+## [0.2.5] - 2026-09-26
+
+Git, search and navigation: 69 fixes from the full bug sweep of 0.2.0.
+
+### Fixed
+
+- **git:** Re-detect the repo after git init or a deleted .git
+- **git:** Resolve blame and head content paths against the open folder
+- **git:** Pass the user's ssh client and config home to git
+- **git:** Keep git messages in english for not-a-repo detection
+- **git:** Stage and unstage large change sets in batches
+- **git:** Keep files named '..something' inside the open folder
+- **git:** Only swallow expected missing-path errors in diff and blame
+- **git:** Say 'already up to date' after a no-op pull
+- **search:** Drop highlight ranges hidden by indentation trimming
+- **search:** Include dotfiles and dot-folders in find in files
+- **search:** Flag searches stopped by the time limit as incomplete
+- **search:** Show when a file hit the per-file match cap
+- **search:** Treat unreadable files as warnings, not a bad query
+- **search:** Include the reason in invalid-regex errors
+- **git:** Give change-list rows and headers a visible focus ring
+- **git:** Cap change lists at 1000 rendered rows
+- **git:** Keep keyboard focus in the list after staging a file
+- **git:** Announce change status to screen readers
+- **git:** Keep the commit message when switching side views
+- **git:** Confirm before the ai replaces a typed commit message
+- **git:** Block committing while the ai message is streaming
+- **ai:** Stop the shimmer sweep under reduced motion
+- **git:** Return focus to the message box after committing
+- **git:** Unstage both sides of a staged rename
+- **git:** Highlight git diffs for every language the editor knows
+- **git:** Keep the last status when a refresh fails
+- **git:** Show progress for refresh, pull and push
+- **git:** Disable pull on branches without an upstream
+- **git:** Use arrow-up for push and a cloud for publish
+- **git:** Report branch and log listing failures
+- **git:** Only push in sync after the pull succeeded
+- **git:** Copy the hash of a commit picked in recent commits
+- **git:** Explain why diff active file cannot run
+- **git:** Focus the message box from the commit command
+- **git:** Share pull and push progress between the palette and the panel
+- **history:** Key the snapshot list by workspace root
+- **history:** Show loading and error states for snapshots
+- **history:** Confirm before clearing a file's snapshots
+- **history:** Report snapshots that cannot be read
+- **history:** Show keyboard focus on snapshot rows
+- **history:** Reveal the restore button on keyboard focus
+- **history:** Keep the snapshot list valid and show the full path
+- **history:** Keep snapshot ages current while the view is open
+- **outline:** Make the remove-bookmark button reachable by keyboard
+- **outline:** Reset the symbol filter per file and label it
+- **outline:** Navigate the outline tree with the arrow keys
+- **outline:** Skip class and def lines inside python docstrings
+- **editor:** Refresh the outline when the editor shows another file
+- **problems:** Make fix with ai reachable by keyboard
+- **problems:** Keep the fix with ai icon in the accent color
+- **problems:** Show an empty state when the filter matches nothing
+- **problems:** Key rows by diagnostic, label the filter and show full paths
+- **problems:** Navigate problems with the arrow keys
+- **problems:** Discard the open-file result in the row handler
+- **problems:** Sort warnings before infos consistently
+- **search:** Show when hidden include/exclude globs still filter
+- **search:** Fade the option toggles like other icon buttons
+- **search:** Re-run on enter and clear or leave on escape
+- **search:** Show searching for a first query and dim stale results
+- **search:** Count per-file badges the same way as the summary
+- **search:** Reset collapsed files per query and navigate results by keyboard
+- **search:** Open results in the preview tab and show full paths
+- **search:** Re-run the search when files change on disk
+- **todos:** Scan todos on their own ripgrep lane
+- **todos:** Take the tag from the matched marker
+- **todos:** Drop a tag filter once its tag is gone
+- **todos:** Rescan on file changes and say when the list is cut off
+- **todos:** Strip owner tags from todo descriptions
+- **todos:** Expose the active filter and full todo text
+- **skins:** Keep the focus ring on keyboard-focused outline and problems rows in Cockpit and Y2K, fit outline rows inside the pane in Y2K and band them in Mainframe greenbar
+
 ## [0.2.4] - 2026-09-26
 
 AI assistant: 53 fixes from the full bug sweep of 0.2.0.
