@@ -1,0 +1,195 @@
+import type { Settings } from '@shared/settings';
+
+import { resolveToken } from '../resolve-color';
+
+export type EditorPrefs = Pick<
+	Settings,
+	| 'editorFontSize'
+	| 'editorLigatures'
+	| 'tabSize'
+	| 'wordWrap'
+	| 'minimap'
+	| 'reduceMotion'
+	| 'ghostText'
+>;
+
+function syntaxRules(c: (token: string) => string): unknown[] {
+	const rule = (scope: string | string[], token: string, fontStyle?: string): unknown => ({
+		scope,
+		settings: { foreground: c(token), ...(fontStyle ? { fontStyle } : {}) },
+	});
+	return [
+		rule(['comment', 'punctuation.definition.comment'], '--syn-comment', 'italic'),
+		rule(['keyword', 'storage', 'storage.type', 'keyword.operator.new'], '--syn-keyword'),
+		rule(
+			[
+				'keyword.control',
+				'keyword.control.flow',
+				'keyword.control.import',
+				'keyword.control.return',
+			],
+			'--syn-control',
+		),
+		rule(['string', 'string.quoted', 'punctuation.definition.string'], '--syn-string'),
+		rule(['string.regexp', 'constant.character.escape'], '--syn-regexp'),
+		rule(['constant.numeric', 'constant.language.numeric'], '--syn-number'),
+		rule(
+			[
+				'constant.language',
+				'variable.language.self',
+				'variable.language.this',
+				'support.constant',
+			],
+			'--syn-builtin',
+		),
+		rule(
+			[
+				'entity.name.function',
+				'support.function',
+				'meta.function-call.generic',
+				'variable.function',
+			],
+			'--syn-function',
+		),
+		rule(
+			[
+				'entity.name.type',
+				'entity.name.class',
+				'support.type',
+				'support.class',
+				'entity.other.inherited-class',
+			],
+			'--syn-type',
+		),
+		rule(['variable', 'meta.definition.variable'], '--syn-variable'),
+		rule(['variable.parameter', 'meta.function.parameters'], '--syn-parameter', 'italic'),
+		rule(
+			['variable.other.property', 'meta.attribute', 'support.variable.property'],
+			'--syn-property',
+		),
+		rule(
+			[
+				'entity.name.function.decorator',
+				'meta.decorator',
+				'punctuation.definition.decorator',
+			],
+			'--syn-decorator',
+		),
+		rule(
+			['keyword.operator', 'punctuation.separator', 'punctuation.accessor'],
+			'--syn-operator',
+		),
+		rule(['markup.heading', 'entity.name.section'], '--syn-function', 'bold'),
+		rule(['markup.bold'], '--syn-number', 'bold'),
+		rule(['markup.italic'], '--syn-keyword', 'italic'),
+		rule(['markup.inline.raw', 'markup.fenced_code'], '--syn-string'),
+	];
+}
+
+/**
+ * VS Code user settings (JSON) that restyle "Default Dark Modern" with Anvil's tokens: the
+ * editor surface is transparent so the glass plate behind it shows through.
+ */
+export function buildUserConfiguration(prefs: EditorPrefs): string {
+	const c = (token: string): string => resolveToken(token);
+	const clear = '#00000000';
+	const colors = {
+		'editor.background': clear,
+		'editorGutter.background': clear,
+		// Opaque-ish: code scrolled under the minimap must not show through it.
+		'minimap.background': c('--bg-1'),
+		'minimap.errorHighlight': c('--down-soft'),
+		'minimap.warningHighlight': c('--warn-soft'),
+		'editor.foreground': c('--text-0'),
+		'editorLineNumber.foreground': c('--text-2'),
+		'editorLineNumber.activeForeground': c('--accent'),
+		'editorCursor.foreground': c('--accent'),
+		'editor.lineHighlightBackground': c('--accent-faint'),
+		'editor.lineHighlightBorder': clear,
+		'editor.selectionBackground': c('--accent-soft'),
+		'editor.inactiveSelectionBackground': c('--bg-3'),
+		'editor.wordHighlightBackground': c('--accent-faint'),
+		'editor.findMatchBackground': c('--warn-soft'),
+		'editor.findMatchHighlightBackground': c('--accent-faint'),
+		'editorBracketMatch.background': c('--accent-soft'),
+		'editorBracketMatch.border': c('--accent'),
+		'editorIndentGuide.background1': c('--border'),
+		'editorIndentGuide.activeBackground1': c('--border-strong'),
+		'editorWhitespace.foreground': c('--border-strong'),
+		'editorRuler.foreground': c('--border'),
+		'editorWidget.background': c('--bg-2'),
+		'editorWidget.border': c('--border-strong'),
+		'editorSuggestWidget.background': c('--bg-2'),
+		'editorSuggestWidget.border': c('--border-strong'),
+		'editorSuggestWidget.selectedBackground': c('--bg-3'),
+		'editorSuggestWidget.highlightForeground': c('--accent'),
+		'editorHoverWidget.background': c('--bg-2'),
+		'editorHoverWidget.border': c('--border-strong'),
+		'editorStickyScroll.background': c('--bg-1'),
+		'editorStickyScrollHover.background': c('--bg-2'),
+		'editorGhostText.foreground': c('--text-2'),
+		'editorInlayHint.background': c('--bg-2'),
+		'editorInlayHint.foreground': c('--text-2'),
+		'editorCodeLens.foreground': c('--text-2'),
+		'editorOverviewRuler.border': clear,
+		'scrollbarSlider.background': c('--bg-3'),
+		'scrollbarSlider.hoverBackground': c('--border-strong'),
+		'scrollbarSlider.activeBackground': c('--accent-soft'),
+		'minimapSlider.background': c('--accent-faint'),
+		'minimapSlider.hoverBackground': c('--accent-soft'),
+		focusBorder: c('--accent'),
+		'editorError.foreground': c('--down'),
+		'editorWarning.foreground': c('--warn'),
+		'editorInfo.foreground': c('--info'),
+		'editorGutter.addedBackground': c('--up'),
+		'editorGutter.modifiedBackground': c('--info'),
+		'editorGutter.deletedBackground': c('--down'),
+		'peekView.border': c('--accent'),
+		'peekViewEditor.background': c('--bg-1'),
+		'peekViewResult.background': c('--bg-2'),
+		'peekViewTitle.background': c('--bg-2'),
+		'diffEditor.insertedLineBackground': c('--up-soft'),
+		'diffEditor.insertedTextBackground': c('--up-soft'),
+		'diffEditor.removedLineBackground': c('--down-soft'),
+		'diffEditor.removedTextBackground': c('--down-soft'),
+		'diffEditor.diagonalFill': c('--bg-3'),
+		'editorBracketHighlight.foreground1': c('--syn-function'),
+		'editorBracketHighlight.foreground2': c('--syn-keyword'),
+		'editorBracketHighlight.foreground3': c('--syn-number'),
+	};
+	const size = prefs.editorFontSize;
+	return JSON.stringify({
+		'workbench.colorTheme': 'Default Dark Modern',
+		'workbench.colorCustomizations': colors,
+		'editor.tokenColorCustomizations': { textMateRules: syntaxRules(c) },
+		'editor.fontFamily': "'JetBrains Mono', ui-monospace, monospace",
+		'editor.fontSize': size,
+		'editor.lineHeight': Math.round(size * 1.65),
+		'editor.fontLigatures': prefs.editorLigatures,
+		'editor.tabSize': prefs.tabSize,
+		'editor.detectIndentation': true,
+		'editor.wordWrap': prefs.wordWrap ? 'on' : 'off',
+		'editor.minimap.enabled': prefs.minimap,
+		'editor.minimap.renderCharacters': false,
+		'editor.minimap.scale': 2,
+		'editor.renderWhitespace': 'selection',
+		'editor.bracketPairColorization.enabled': true,
+		'editor.guides.bracketPairs': 'active',
+		'editor.stickyScroll.enabled': true,
+		'editor.inlineSuggest.enabled': prefs.ghostText,
+		'editor.inlineSuggest.showToolbar': 'onHover',
+		'editor.suggest.preview': true,
+		'editor.linkedEditing': true,
+		'editor.smoothScrolling': !prefs.reduceMotion,
+		'editor.cursorBlinking': prefs.reduceMotion ? 'solid' : 'expand',
+		'editor.cursorSmoothCaretAnimation': prefs.reduceMotion ? 'off' : 'on',
+		'editor.cursorWidth': 2,
+		'editor.scrollBeyondLastLine': false,
+		'editor.padding.top': 10,
+		'editor.glyphMargin': true,
+		'editor.renderLineHighlight': 'all',
+		'editor.inlayHints.enabled': 'onUnlessPressed',
+		'editor.unicodeHighlight.ambiguousCharacters': true,
+		'files.eol': 'auto',
+	});
+}
