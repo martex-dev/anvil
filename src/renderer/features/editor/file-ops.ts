@@ -3,6 +3,7 @@ import type * as Monaco from 'monaco-editor';
 import { getSettings } from '../../app/hooks/use-settings';
 import { call, IpcCallError } from '../../lib/ipc';
 import { rlog } from '../../lib/log';
+import { minimalEdits } from '../../lib/minimal-edits';
 import type { MonacoApi } from '../../lib/monaco/setup';
 import { codeTabId, useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
@@ -170,13 +171,18 @@ function cleanWhitespace(model: Monaco.editor.ITextModel): void {
 	let after = before;
 	if (trimTrailingWhitespace) after = after.replace(/[ \t]+(?=\r?\n|$)/g, '');
 	if (insertFinalNewline && after.length > 0 && !after.endsWith('\n')) after += eol;
-	if (after !== before) {
-		model.pushEditOperations(
-			[],
-			[{ range: model.getFullModelRange(), text: after }],
-			() => null,
-		);
-	}
+	if (after !== before) replaceText(model, after);
+}
+
+/**
+ * Turns the buffer into `text` as one undoable edit that touches only the changed lines, so
+ * cursors, scroll and folds elsewhere stay put (a whole-buffer replace resets them all).
+ */
+function replaceText(model: Monaco.editor.ITextModel, text: string): void {
+	const edits = minimalEdits(model.getLinesContent(), text, model.getEOL()) ?? [
+		{ range: model.getFullModelRange(), text },
+	];
+	if (edits.length > 0) model.pushEditOperations([], edits, () => null);
 }
 
 export async function openFile(monaco: MonacoApi, root: string, path: string): Promise<void> {
@@ -243,13 +249,7 @@ export async function formatPython(
 	try {
 		const before = model.getValue();
 		const { content } = await call('python:format', { path, content: before });
-		if (content !== before && model.getValue() === before) {
-			model.pushEditOperations(
-				[],
-				[{ range: model.getFullModelRange(), text: content }],
-				() => null,
-			);
-		}
+		if (content !== before && model.getValue() === before) replaceText(model, content);
 		return true;
 	} catch (error) {
 		toast.warn('Format skipped', error instanceof Error ? error.message : undefined);
@@ -306,14 +306,8 @@ export async function reloadFromDisk(path: string): Promise<void> {
 	try {
 		const file = await call('fs:readFile', path);
 		if (file.binary || file.tooLarge) return;
-		if (file.content !== t.model.getValue()) {
-			// pushEditOperations keeps the reload undoable, unlike setValue.
-			t.model.pushEditOperations(
-				[],
-				[{ range: t.model.getFullModelRange(), text: file.content }],
-				() => null,
-			);
-		}
+		// An edit (not setValue) keeps the reload undoable.
+		if (file.content !== t.model.getValue()) replaceText(t.model, file.content);
 		t.savedVersion = t.model.getAlternativeVersionId();
 		useEditorStore.getState().update(path, { mtimeMs: file.mtimeMs, changedOnDisk: false });
 		markDirty(path);

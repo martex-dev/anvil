@@ -13,7 +13,8 @@ vi.mock('../../lib/ipc', () => ({
 vi.mock('../../lib/log', () => ({ rlog: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 vi.mock('../../app/hooks/use-settings', () => ({ getSettings: () => ({}) }));
 
-const { closeFile, getViewState, openFile, saveFile, saveViewState } = await import('./file-ops');
+const { closeFile, getViewState, openFile, reloadFromDisk, saveFile, saveViewState } =
+	await import('./file-ops');
 
 /** Just enough of a text model for openFile / closeFile. */
 function fakeModel(text: string): unknown {
@@ -124,5 +125,36 @@ describe('file ops', () => {
 		call.mockClear();
 		expect(await saveFile('a.py')).toBe(true);
 		expect(call).not.toHaveBeenCalled();
+	});
+
+	it('reloads a changed file by editing only the changed lines', async () => {
+		const pushEditOperations = vi.fn();
+		const reloadable = {
+			...monaco,
+			editor: {
+				...monaco.editor,
+				createModel: (value: string) => ({
+					...(fakeModel(value) as object),
+					getLinesContent: () => value.split('\n'),
+					getEOL: () => '\n',
+					getFullModelRange: () => 'everything',
+					pushEditOperations,
+				}),
+			},
+		} as unknown as MonacoApi;
+		call.mockResolvedValue({ ...text, content: 'a = 1\nb = 2\nc = 3\n' });
+		await openFile(reloadable, 'C:/proj', 'a.py');
+		call.mockResolvedValue({ ...text, content: 'a = 1\nb = 20\nc = 3\n' });
+		await reloadFromDisk('a.py');
+		expect(pushEditOperations).toHaveBeenCalledWith(
+			[],
+			[
+				{
+					range: { startLineNumber: 2, startColumn: 6, endLineNumber: 2, endColumn: 6 },
+					text: '0',
+				},
+			],
+			expect.any(Function),
+		);
 	});
 });

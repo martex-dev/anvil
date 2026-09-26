@@ -7,14 +7,39 @@ export interface LineChange {
 	end: number;
 }
 
+/** A run of old lines replaced by new lines; 0-based line indices, counts may be 0. */
+export interface LineHunk {
+	oldStart: number;
+	oldCount: number;
+	newStart: number;
+	newCount: number;
+}
+
 /**
  * Myers' O(ND) diff over lines, reduced to gutter hunks. Common prefix/suffix are trimmed first,
  * so typical edits (a few lines in a big file) cost almost nothing. Gives up (returns null) past
  * `maxCost` edit steps: a gutter isn't worth freezing the UI over a rewritten file.
  */
 export function diffLines(oldText: string, newText: string, maxCost = 4000): LineChange[] | null {
-	const a = oldText.split(/\r?\n/);
-	const b = newText.split(/\r?\n/);
+	const hunks = diffHunks(oldText.split(/\r?\n/), newText.split(/\r?\n/), maxCost);
+	if (!hunks) return null;
+	return hunks.map((h) => {
+		const start = h.newStart + 1;
+		if (h.newCount === 0) return { kind: 'deleted', start, end: start - 1 };
+		return {
+			kind: h.oldCount === 0 ? 'added' : 'modified',
+			start,
+			end: start + h.newCount - 1,
+		};
+	});
+}
+
+/** The same diff as {@link diffLines}, with each hunk's position in both texts. */
+export function diffHunks(
+	a: readonly string[],
+	b: readonly string[],
+	maxCost = 4000,
+): LineHunk[] | null {
 	let pre = 0;
 	while (pre < a.length && pre < b.length && a[pre] === b[pre]) pre++;
 	let suf = 0;
@@ -84,7 +109,7 @@ export function diffLines(oldText: string, newText: string, maxCost = 4000): Lin
 	}
 
 	// Group runs of removed (A) / inserted (B) lines between matches into hunks.
-	const changes: LineChange[] = [];
+	const hunks: LineHunk[] = [];
 	let i = 0;
 	let j = 0;
 	while (i < n || j < m) {
@@ -93,31 +118,22 @@ export function diffLines(oldText: string, newText: string, maxCost = 4000): Lin
 			j++;
 			continue;
 		}
-		let removed = 0;
-		let inserted = 0;
+		const startA = i;
 		const startB = j;
-		while (i < n && !keepA[i]) {
-			i++;
-			removed++;
-		}
-		while (j < m && !keepB[j]) {
-			j++;
-			inserted++;
-		}
-		if (removed === 0 && inserted === 0) {
+		while (i < n && !keepA[i]) i++;
+		while (j < m && !keepB[j]) j++;
+		if (i === startA && j === startB) {
 			// Defensive: never loop forever on an inconsistent trace.
 			i++;
 			j++;
 			continue;
 		}
-		const start = pre + startB + 1;
-		if (inserted === 0) changes.push({ kind: 'deleted', start, end: start - 1 });
-		else
-			changes.push({
-				kind: removed === 0 ? 'added' : 'modified',
-				start,
-				end: start + inserted - 1,
-			});
+		hunks.push({
+			oldStart: pre + startA,
+			oldCount: i - startA,
+			newStart: pre + startB,
+			newCount: j - startB,
+		});
 	}
-	return changes;
+	return hunks;
 }
