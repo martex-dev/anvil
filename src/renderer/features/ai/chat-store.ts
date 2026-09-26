@@ -4,7 +4,7 @@ import type { AiContext, AiModelRef } from '@shared/ipc/channels/ai';
 
 import { call } from '../../lib/ipc';
 import { toast } from '../../stores/toast-store';
-import { buildHistory } from './chat-history';
+import { buildContext, buildHistory } from './chat-history';
 
 export interface ChatMessage {
 	id: string;
@@ -102,9 +102,14 @@ export const useChat = create<ChatState>((set, get) => {
 		};
 		const history = buildHistory([...before, user]);
 		set({ messages: [...before, user, reply], activeRequest: requestId });
-		call('ai:send', { requestId, mode: 'chat', model, messages: history, context }).catch(
-			(error: unknown) =>
-				get().onError(requestId, error instanceof Error ? error.message : String(error)),
+		call('ai:send', {
+			requestId,
+			mode: 'chat',
+			model,
+			messages: history,
+			context: buildContext(before, context),
+		}).catch((error: unknown) =>
+			get().onError(requestId, error instanceof Error ? error.message : String(error)),
 		);
 	};
 
