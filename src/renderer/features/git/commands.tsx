@@ -67,9 +67,9 @@ async function switchBranch(): Promise<void> {
 }
 
 async function showLog(): Promise<void> {
-	await quickPick({
+	const hash = await quickPick({
 		title: 'log',
-		placeholder: 'Recent commits',
+		placeholder: 'Recent commits (Enter copies the hash)',
 		loadErrorTitle: 'Could not read the log',
 		items: call('git:log', { limit: 200 }).then((commits) =>
 			commits.map((c) => ({
@@ -81,6 +81,13 @@ async function showLog(): Promise<void> {
 			})),
 		),
 	});
+	if (!hash) return;
+	try {
+		await navigator.clipboard.writeText(hash);
+		toast.success('Commit hash copied', hash.slice(0, 10));
+	} catch (error) {
+		toast.error('Could not copy the hash', error instanceof Error ? error.message : undefined);
+	}
 }
 
 async function diffActiveFile(): Promise<void> {

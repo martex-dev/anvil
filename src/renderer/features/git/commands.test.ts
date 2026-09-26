@@ -4,6 +4,8 @@ const call = vi.fn();
 vi.mock('../../lib/ipc', () => ({ call: (...args: unknown[]) => call(...args) }));
 // Dispatches a window event; there is no window under the node test environment.
 vi.mock('../editor/extras/git-lines', () => ({ invalidateGitLines: vi.fn() }));
+const quickPick = vi.fn();
+vi.mock('../../ui/QuickPick', () => ({ quickPick: (...args: unknown[]) => quickPick(...args) }));
 
 const { GIT_COMMANDS } = await import('./commands');
 const { useToastStore } = await import('../../stores/toast-store');
@@ -31,5 +33,30 @@ describe('git.sync', () => {
 		await run('git.sync');
 		expect(call.mock.calls.map((c) => c[0])).toEqual(['git:pull']);
 		expect(useToastStore.getState().toasts.map((t) => t.title)).toEqual(['Pulled failed']);
+	});
+});
+
+describe('git.log', () => {
+	const writeText = vi.fn();
+	beforeEach(() => {
+		call.mockReset().mockResolvedValue([]);
+		writeText.mockReset().mockResolvedValue(undefined);
+		quickPick.mockReset();
+		useToastStore.setState({ toasts: [] });
+		vi.stubGlobal('navigator', { clipboard: { writeText } });
+	});
+
+	it('copies the picked commit hash', async () => {
+		quickPick.mockResolvedValue('0123456789abcdef');
+		await run('git.log');
+		expect(writeText).toHaveBeenCalledWith('0123456789abcdef');
+		expect(useToastStore.getState().toasts.map((t) => t.title)).toEqual(['Commit hash copied']);
+	});
+
+	it('does nothing when the picker is dismissed', async () => {
+		quickPick.mockResolvedValue(null);
+		await run('git.log');
+		expect(writeText).not.toHaveBeenCalled();
+		expect(useToastStore.getState().toasts).toEqual([]);
 	});
 });
