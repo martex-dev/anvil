@@ -41,7 +41,7 @@ npm test               # vitest
 npm run test:e2e       # build + playwright
 npm run dist           # NSIS installer in release/
 npx tsx scripts/readme-shots.mts <demo-folder> docs/screenshots   # README images (mock AI)
-npx tsx scripts/theme-shots.mts <demo-folder> <out-dir> [ids]       # every theme + picker, gallery, snap
+npx tsx scripts/skin-shots.mts <demo-folder> <out-dir> [skin:palette,...] [--extras]
 ```
 
 Run lint, typecheck, unit and e2e tests before every commit.
