@@ -26,13 +26,37 @@ function Keys(): JSX.Element {
 		queryKey: SAVED_SECRETS_KEY,
 		queryFn: () => call('secrets:listSaved'),
 	});
-	const set = new Set(saved.data ?? []);
+	const note = (
+		<p className='text-12 text-fg-2'>
+			Encrypted with Windows DPAPI and kept in the main process only. A saved key is never
+			shown again or sent to the UI.
+		</p>
+	);
+	// Without the saved list every row would claim "Missing" and invite re-pasting keys.
+	if (saved.isError)
+		return (
+			<div className='flex flex-col gap-3'>
+				{note}
+				<ErrorState
+					title='Could not read saved keys'
+					message={saved.error.message}
+					onRetry={() => void saved.refetch()}
+				/>
+			</div>
+		);
+	if (!saved.data)
+		return (
+			<div className='flex flex-col gap-3'>
+				{note}
+				{SECRET_SPECS.map((spec) => (
+					<div key={spec.key} className='shimmer h-16 rounded-lg' />
+				))}
+			</div>
+		);
+	const set = new Set(saved.data);
 	return (
 		<div className='flex flex-col gap-3'>
-			<p className='text-12 text-fg-2'>
-				Encrypted with Windows DPAPI and kept in the main process only. A saved key is never
-				shown again or sent to the UI.
-			</p>
+			{note}
 			<ul className='divide-y divide-glass-edge rounded-lg border border-glass-edge'>
 				{SECRET_SPECS.map((spec) => (
 					<SecretRow
