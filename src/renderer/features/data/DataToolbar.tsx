@@ -37,6 +37,10 @@ interface DataToolbarProps {
 	filterRef?: RefObject<HTMLInputElement | null>;
 }
 
+function truncatedNote(loadedRows: number): string {
+	return `Only the first ${formatCount(loadedRows)} rows of this very large file were loaded`;
+}
+
 export function DataToolbar({
 	path,
 	meta,
@@ -78,8 +82,13 @@ export function DataToolbar({
 				</span>
 			)}
 			{meta?.truncated && (
-				<Tooltip content='Only the first rows of this very large file were loaded'>
-					<span>
+				<Tooltip content={truncatedNote(meta.loadedRows)}>
+					{/* Focusable so keyboard and screen-reader users can reach the explanation. */}
+					<span
+						tabIndex={0}
+						aria-label={`Truncated: ${truncatedNote(meta.loadedRows)}`}
+						className='rounded-md focus-visible:shadow-glow focus-visible:outline-none'
+					>
 						<Badge tone='warn'>
 							<TriangleAlert size={11} />
 							Truncated
