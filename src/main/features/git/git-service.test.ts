@@ -134,6 +134,9 @@ describe('GitService', { timeout: 30_000 }, () => {
 			Path: 'C:/bin',
 			USERPROFILE: 'C:/Users/marto',
 			GCM_INTERACTIVE: 'auto',
+			GIT_SSH: 'C:/Program Files/PuTTY/plink.exe',
+			GIT_SSH_COMMAND: 'ssh -i ~/.ssh/work',
+			XDG_CONFIG_HOME: '/home/marto/.config',
 			GIT_ASKPASS: 'C:/other-app/askpass.exe',
 			VSCODE_GIT_IPC_HANDLE: 'pipe',
 			EDITOR: 'code --wait',
@@ -143,6 +146,9 @@ describe('GitService', { timeout: 30_000 }, () => {
 			Path: 'C:/bin',
 			USERPROFILE: 'C:/Users/marto',
 			GCM_INTERACTIVE: 'auto',
+			GIT_SSH: 'C:/Program Files/PuTTY/plink.exe',
+			GIT_SSH_COMMAND: 'ssh -i ~/.ssh/work',
+			XDG_CONFIG_HOME: '/home/marto/.config',
 			GIT_TERMINAL_PROMPT: '0',
 		});
 	});

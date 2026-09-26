@@ -54,6 +54,16 @@ const ENV_ALLOW = new Set(
 		'LANG',
 		'LANGUAGE',
 		'SSH_AUTH_SOCK',
+		// The user's SSH client (PuTTY's plink via GIT_SSH, set by TortoiseGit/PuTTY installers).
+		'GIT_SSH',
+		'GIT_SSH_COMMAND',
+		'GIT_SSH_VARIANT',
+		// Where git (and GPG for signed commits) find the user's config and identity on Linux.
+		'XDG_CONFIG_HOME',
+		'GNUPGHOME',
+		// Git Credential Manager / askpass windows on Linux.
+		'DISPLAY',
+		'WAYLAND_DISPLAY',
 		'HTTP_PROXY',
 		'HTTPS_PROXY',
 		'NO_PROXY',
