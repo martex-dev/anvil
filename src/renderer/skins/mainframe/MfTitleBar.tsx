@@ -1,4 +1,5 @@
 import type { JSX } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 
 import { runCommandById, shortcutFor } from '../../app/commands/run';
 import type { CommandCategory } from '../../app/commands/types';
@@ -29,7 +30,18 @@ const MENUS: ReadonlyArray<{ label: string; categories: readonly CommandCategory
 export function MfTitleBar(): JSX.Element {
 	const { info } = useWorkspace();
 	const openQuick = useUiStore((s) => s.openQuickOpen);
-	const layout = useLayoutStore();
+	// Zen hides the panes, so the toggles show what is visible, not what is remembered. A narrow
+	// selection also keeps splitter drags from re-rendering the title bar.
+	const layout = useLayoutStore(
+		useShallow((s) => ({
+			sideOpen: s.sideOpen && !s.zen,
+			panelOpen: s.panelOpen && !s.zen,
+			aiOpen: s.aiOpen && !s.zen,
+			toggleSide: s.toggleSide,
+			togglePanel: s.togglePanel,
+			toggleAi: s.toggleAi,
+		})),
+	);
 	return (
 		<header data-part='titlebar' className='mf-titlebar drag'>
 			<span data-part='brand' className='mf-brand'>
