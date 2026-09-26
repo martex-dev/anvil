@@ -1,9 +1,10 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { create } from 'zustand';
 
 import type { SearchQuery, SearchResult } from '@shared/ipc/channels/search';
 
 import { call, IpcCallError } from '../../lib/ipc';
+import { useFsRefresh } from '../../lib/use-fs-refresh';
 
 /** Search box state; kept outside the view so it survives switching side views. */
 export const useSearchParams = create<{
@@ -32,6 +33,7 @@ export function useFileSearch(
 	/** Runs the same search again (files may have changed since). */
 	refetch: () => void;
 } {
+	const client = useQueryClient();
 	const q = useQuery({
 		queryKey: ['search', root, query],
 		queryFn: () => call('search:run', query),
@@ -41,6 +43,9 @@ export function useFileSearch(
 		staleTime: 5_000,
 		retry: false,
 	});
+	// Edits and saves move lines: re-run so results don't jump to where a match used to be.
+	// Marks every cached query of this folder stale; only the visible one re-runs now.
+	useFsRefresh(() => void client.invalidateQueries({ queryKey: ['search', root] }));
 	// A search replaced by a newer keystroke isn't an error worth showing.
 	const cancelled = q.error instanceof IpcCallError && q.error.code === 'SEARCH_CANCELLED';
 	return {
