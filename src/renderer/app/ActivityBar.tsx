@@ -1,6 +1,5 @@
 import {
 	Blocks,
-	Bot,
 	Files,
 	GitBranch,
 	History,
@@ -9,14 +8,15 @@ import {
 	type LucideIcon,
 	Play,
 	Search,
-	Settings,
 	Wrench,
 } from 'lucide-react';
 import type { JSX } from 'react';
 
 import { useGitStatus } from '../features/git/use-git';
 import { cn } from '../lib/cn';
-import { type SideView, useLayoutStore } from '../stores/layout-store';
+import { useLook } from '../skins/look-store';
+import { SkinIcon } from '../skins/SkinIcon';
+import { SIDE_VIEWS, type SideView, useLayoutStore } from '../stores/layout-store';
 import { Tooltip } from '../ui/Tooltip';
 import { runCommandById, shortcutFor } from './commands/run';
 
@@ -32,47 +32,88 @@ export const VIEW_META: Record<SideView, { label: string; icon: LucideIcon; comm
 	toolbox: { label: 'Toolbox', icon: Wrench, command: 'view.toolbox' },
 };
 
-const ORDER: SideView[] = [
-	'explorer',
-	'search',
-	'git',
-	'run',
-	'outline',
-	'todos',
-	'history',
-	'snippets',
-	'toolbox',
-];
+/** Short names for labelled activity strips ('F1 FILES'). */
+export const VIEW_SHORT: Record<SideView, string> = {
+	explorer: 'Files',
+	search: 'Search',
+	git: 'Git',
+	run: 'Run',
+	outline: 'Outline',
+	todos: 'Todos',
+	history: 'History',
+	snippets: 'Snippets',
+	toolbox: 'Tools',
+};
 
-function Item({ view, badge }: { view: SideView; badge?: number }): JSX.Element {
-	const active = useLayoutStore((s) => s.sideOpen && s.sideView === view);
-	const meta = VIEW_META[view];
-	const Icon = meta.icon;
+interface ItemProps {
+	label: string;
+	short: string;
+	command: string;
+	icon: SideView | 'ai' | 'settings';
+	active: boolean;
+	onClick: () => void;
+	vertical: boolean;
+	labels: boolean;
+	index?: number;
+	badge?: number;
+}
+
+function Item({
+	label,
+	short,
+	command,
+	icon,
+	active,
+	onClick,
+	vertical,
+	labels,
+	index,
+	badge,
+}: ItemProps): JSX.Element {
 	return (
-		<Tooltip content={meta.label} shortcut={shortcutFor(meta.command)} side='right'>
+		<Tooltip
+			content={label}
+			shortcut={shortcutFor(command)}
+			side={vertical ? 'right' : 'bottom'}
+		>
 			<button
 				type='button'
-				aria-label={meta.label}
+				aria-label={label}
 				aria-pressed={active}
-				onClick={() => useLayoutStore.getState().toggleView(view)}
+				data-part='activity-item'
+				data-view={icon}
+				data-index={index}
+				data-active={active}
+				onClick={onClick}
 				className={cn(
-					'relative flex size-10 items-center justify-center rounded-lg outline-none transition-[color,background-color] transition-fast',
+					'relative flex shrink-0 items-center justify-center gap-1.5 rounded-lg outline-none transition-[color,background-color] transition-fast focus-visible:shadow-glow',
+					vertical ? 'size-10' : 'h-full px-2.5',
 					active
 						? 'bg-accent-faint text-accent'
 						: 'text-fg-2 hover:bg-bg-3/50 hover:text-fg-0',
-					'focus-visible:shadow-glow',
 				)}
 			>
-				{active && (
-					<span className='accent-line absolute top-2 bottom-2 -left-[5px] w-[2px] rounded-full' />
+				{active && vertical && (
+					<span
+						data-part='activity-marker'
+						className='accent-line absolute top-2 bottom-2 -left-[5px] w-[2px] rounded-full'
+					/>
 				)}
-				<Icon
-					size={18}
-					strokeWidth={1.75}
+				<SkinIcon
+					name={icon}
+					size={vertical ? 18 : 14}
 					className={active ? 'drop-shadow-[0_0_6px_var(--accent)]' : ''}
 				/>
+				{labels && (
+					<span data-part='activity-label' className='text-12 whitespace-nowrap'>
+						{short}
+					</span>
+				)}
 				{badge !== undefined && badge > 0 && (
-					<span className='num absolute top-1 right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-0.5 text-[9px] font-bold text-on-accent'>
+					<span
+						data-part='activity-badge'
+						className='num absolute top-1 right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-0.5 text-[9px] font-bold text-on-accent'
+					>
 						{badge > 99 ? '99+' : badge}
 					</span>
 				)}
@@ -81,43 +122,64 @@ function Item({ view, badge }: { view: SideView; badge?: number }): JSX.Element 
 	);
 }
 
+/**
+ * The views switcher. The skin decides the shape: a vertical bar (left or right), a labelled
+ * strip above the workbench, or a rail that slides in on hover. Items carry `data-index` so a
+ * skin can print F-key hints in CSS.
+ */
 export function ActivityBar(): JSX.Element {
+	const { layout } = useLook();
 	const { status } = useGitStatus();
 	const changes = status?.isRepo ? status.staged.length + status.unstaged.length : 0;
 	const aiOpen = useLayoutStore((s) => s.aiOpen);
+	const current = useLayoutStore((s) => (s.sideOpen ? s.sideView : null));
+	const vertical = layout.activity !== 'top';
+	const labels = layout.activityLabels;
+	const common = { vertical, labels };
 	return (
 		<nav
 			aria-label='Views'
-			className='glass flex w-12 shrink-0 flex-col items-center gap-1 py-2'
+			data-part='activity'
+			data-orientation={vertical ? 'vertical' : 'horizontal'}
+			data-placement={layout.activity}
+			className={cn(
+				'glass flex shrink-0 items-center gap-1',
+				vertical ? 'w-12 flex-col py-2' : 'h-9 flex-row overflow-x-auto px-1.5',
+			)}
 		>
-			{ORDER.map((view) => (
-				<Item key={view} view={view} {...(view === 'git' ? { badge: changes } : {})} />
+			{SIDE_VIEWS.map((view, i) => (
+				<Item
+					key={view}
+					label={VIEW_META[view].label}
+					short={VIEW_SHORT[view]}
+					command={VIEW_META[view].command}
+					icon={view}
+					index={i + 1}
+					active={current === view}
+					onClick={() => useLayoutStore.getState().toggleView(view)}
+					{...(view === 'git' ? { badge: changes } : {})}
+					{...common}
+				/>
 			))}
-			<span className='flex-1' />
-			<Tooltip content='AI assistant' shortcut={shortcutFor('view.toggleAi')} side='right'>
-				<button
-					type='button'
-					aria-label='AI assistant'
-					aria-pressed={aiOpen}
-					onClick={() => useLayoutStore.getState().toggleAi()}
-					className={cn(
-						'flex size-10 items-center justify-center rounded-lg outline-none transition-colors transition-fast focus-visible:shadow-glow',
-						aiOpen ? 'text-accent-2' : 'text-fg-2 hover:bg-bg-3/50 hover:text-fg-0',
-					)}
-				>
-					<Bot size={18} strokeWidth={1.75} />
-				</button>
-			</Tooltip>
-			<Tooltip content='Settings' shortcut={shortcutFor('anvil.settings')} side='right'>
-				<button
-					type='button'
-					aria-label='Settings'
-					onClick={() => runCommandById('anvil.settings')}
-					className='flex size-10 items-center justify-center rounded-lg text-fg-2 outline-none hover:bg-bg-3/50 hover:text-fg-0 focus-visible:shadow-glow'
-				>
-					<Settings size={18} strokeWidth={1.75} />
-				</button>
-			</Tooltip>
+			<span data-part='activity-spacer' className='flex-1' />
+			<Item
+				label='AI assistant'
+				short='AI'
+				command='view.toggleAi'
+				icon='ai'
+				active={aiOpen}
+				onClick={() => useLayoutStore.getState().toggleAi()}
+				{...common}
+			/>
+			<Item
+				label='Settings'
+				short='Setup'
+				command='anvil.settings'
+				icon='settings'
+				active={false}
+				onClick={() => runCommandById('anvil.settings')}
+				{...common}
+			/>
 		</nav>
 	);
 }
