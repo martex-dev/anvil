@@ -2,9 +2,11 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { rgArgs, Ripgrep } from './ripgrep';
+import { queryError, rgArgs, Ripgrep } from './ripgrep';
+
+vi.mock('electron-log/main', () => ({ default: { warn: vi.fn() } }));
 
 let root: string;
 
@@ -32,6 +34,22 @@ describe('rgArgs', () => {
 		expect(args).toContain('--ignore-case');
 		expect(args.slice(-3)).toEqual(['--', '-x', '.']);
 		expect(args.join(' ')).toContain('--glob src/** --glob !*.md');
+	});
+});
+
+describe('queryError', () => {
+	it('blames the query only for regex and glob errors', () => {
+		expect(
+			queryError('rg: regex parse error:\n    (\n    ^\nerror: unclosed group\n'),
+		).toMatchObject({
+			code: 'SEARCH_BAD_QUERY',
+		});
+		expect(queryError("rg: error parsing glob '{a': unclosed alternate group")).toMatchObject({
+			code: 'SEARCH_BAD_QUERY',
+		});
+		// An unreadable file is not a bad query: the search still resolves with what it found.
+		expect(queryError('rg: ./locked.db: Access is denied. (os error 5)\n')).toBeNull();
+		expect(queryError('')).toBeNull();
 	});
 });
 
