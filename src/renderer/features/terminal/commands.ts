@@ -1,10 +1,19 @@
-import { Bot, Sparkles, SquareTerminal, TerminalSquare, Wand2, X } from 'lucide-react';
+import {
+	ArrowLeftRight,
+	Bot,
+	Pencil,
+	Sparkles,
+	SquareTerminal,
+	TerminalSquare,
+	Wand2,
+	X,
+} from 'lucide-react';
 
 import type { Command } from '../../app/commands/types';
 import { useLayoutStore } from '../../stores/layout-store';
 import { toast } from '../../stores/toast-store';
 import { quickPick } from '../../ui/QuickPick';
-import { closeTerminal, newTerminal, useTerminalStore } from './terminal-store';
+import { closeTerminal, focusTerminal, newTerminal, useTerminalStore } from './terminal-store';
 
 /** Command Prompt and Git Bash are Windows shells; main doesn't offer them elsewhere. */
 function newWindowsTerminal(preset: 'cmd' | 'gitbash', label: string): void {
@@ -37,6 +46,49 @@ export async function killActiveTerminal(): Promise<void> {
 	}
 	closeTerminal(tab.id);
 	toast.info(`Killed ${tab.title}`);
+}
+
+async function renameActiveTerminal(): Promise<void> {
+	const { tabs, active } = useTerminalStore.getState();
+	const tab = tabs.find((t) => t.id === active);
+	if (!tab) {
+		toast.info('No terminal to rename');
+		return;
+	}
+	const picked = await quickPick({
+		title: 'rename terminal',
+		placeholder: `New name for ${tab.title}`,
+		items: [],
+		allowCustom: { label: (text) => `Rename to "${text}"` },
+	});
+	const name = picked?.startsWith('custom:') ? picked.slice(7).trim() : '';
+	if (name) useTerminalStore.getState().rename(tab.id, name.slice(0, 200));
+}
+
+async function switchTerminal(): Promise<void> {
+	const { tabs, active } = useTerminalStore.getState();
+	if (tabs.length === 0) {
+		toast.info('No terminals open');
+		return;
+	}
+	const picked = await quickPick({
+		title: 'switch terminal',
+		placeholder: 'Terminal to show',
+		items: tabs.map((t) => ({ id: t.id, label: t.title, current: t.id === active })),
+	});
+	if (picked && tabs.some((t) => t.id === picked)) focusTerminal(picked);
+}
+
+/** Shows the next (+1) or previous (-1) terminal tab, wrapping around. */
+export function cycleTerminal(step: 1 | -1): void {
+	const { tabs, active } = useTerminalStore.getState();
+	if (tabs.length === 0) {
+		toast.info('No terminals open');
+		return;
+	}
+	const index = tabs.findIndex((t) => t.id === active);
+	const next = tabs[(index + step + tabs.length) % tabs.length];
+	if (next) focusTerminal(next.id);
 }
 
 export const TERMINAL_COMMANDS: Command[] = [
@@ -99,5 +151,32 @@ export const TERMINAL_COMMANDS: Command[] = [
 		category: 'Terminal',
 		icon: X,
 		run: killActiveTerminal,
+	},
+	{
+		id: 'terminal.rename',
+		title: 'Rename Terminal…',
+		category: 'Terminal',
+		icon: Pencil,
+		run: renameActiveTerminal,
+	},
+	{
+		id: 'terminal.switch',
+		title: 'Switch Terminal…',
+		category: 'Terminal',
+		keywords: ['select', 'focus', 'tab'],
+		icon: ArrowLeftRight,
+		run: switchTerminal,
+	},
+	{
+		id: 'terminal.next',
+		title: 'Next Terminal',
+		category: 'Terminal',
+		run: () => cycleTerminal(1),
+	},
+	{
+		id: 'terminal.prev',
+		title: 'Previous Terminal',
+		category: 'Terminal',
+		run: () => cycleTerminal(-1),
 	},
 ];

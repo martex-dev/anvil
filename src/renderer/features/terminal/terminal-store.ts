@@ -100,12 +100,33 @@ export function findRoleTab(role: string): TermTab | undefined {
 	return useTerminalStore.getState().tabs.find((t) => t.role === role && (t.root ?? '') === root);
 }
 
+/**
+ * A title no open tab has: `base` itself for a named terminal (then `base 2`, `base 3`…), or
+ * `base N` with the lowest free N, so closing 'pwsh 1' and opening another can't repeat 'pwsh 2'.
+ */
+export function uniqueTitle(taken: readonly string[], base: string, numbered: boolean): string {
+	if (!numbered && !taken.includes(base)) return base;
+	for (let n = numbered ? 1 : 2; ; n++) {
+		const title = `${base} ${n}`;
+		if (!taken.includes(title)) return title;
+	}
+}
+
 export function newTerminal(preset: TerminalPresetId, title?: string): void {
-	const n = useTerminalStore.getState().tabs.filter((t) => t.preset === preset).length + 1;
-	useTerminalStore
-		.getState()
-		.add({ id: newId(), preset, title: title ?? `${PRESET_LABEL[preset]} ${n}` });
+	const taken = useTerminalStore.getState().tabs.map((t) => t.title);
+	const name = uniqueTitle(taken, title ?? PRESET_LABEL[preset], title === undefined);
+	useTerminalStore.getState().add({ id: newId(), preset, title: name });
 	useLayoutStore.getState().showPanel('terminal');
+}
+
+/** Shows a terminal tab and gives it keyboard focus (palette switching). */
+export function focusTerminal(id: string): void {
+	useLayoutStore.getState().showPanel('terminal');
+	useTerminalStore.getState().setActive(id);
+	// After the panel and tab have rendered visible: a hidden textarea can't take focus.
+	requestAnimationFrame(() =>
+		window.dispatchEvent(new CustomEvent(FOCUS_TERMINAL_EVENT, { detail: id })),
+	);
 }
 
 export function closeTerminal(id: string): void {
@@ -205,11 +226,7 @@ export function showRoleTerminal(options: {
 		store.add({ id: newId(), ...options, root: currentRoot() });
 		return;
 	}
-	store.setActive(existing.id);
-	// After the panel and tab have rendered visible: a hidden textarea can't take focus.
-	requestAnimationFrame(() =>
-		window.dispatchEvent(new CustomEvent(FOCUS_TERMINAL_EVENT, { detail: existing.id })),
-	);
+	focusTerminal(existing.id);
 }
 
 /** Whether a role's terminal has a live session (the REPL namespace survives between runs). */

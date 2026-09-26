@@ -12,7 +12,8 @@ vi.mock('../../ui/QuickPick', () => ({ quickPick }));
 
 const { useLayoutStore } = await import('../../stores/layout-store');
 const { useTerminalStore } = await import('./terminal-store');
-const { killActiveTerminal } = await import('./commands');
+const { cycleTerminal, killActiveTerminal } = await import('./commands');
+const { uniqueTitle } = await import('./terminal-store');
 
 const tab = { id: 'anvil-1111-2222', preset: 'powershell' as const, title: 'pwsh 1' };
 
@@ -47,5 +48,25 @@ describe('killActiveTerminal', () => {
 		expect(quickPick).toHaveBeenCalled();
 		expect(call).not.toHaveBeenCalled();
 		expect(useTerminalStore.getState().tabs).toHaveLength(1);
+	});
+});
+
+describe('terminal names and switching', () => {
+	it('numbers new terminals with the lowest free number', () => {
+		expect(uniqueTitle(['pwsh 2'], 'pwsh', true)).toBe('pwsh 1');
+		expect(uniqueTitle(['pwsh 1', 'pwsh 2'], 'pwsh', true)).toBe('pwsh 3');
+		expect(uniqueTitle([], 'claude', false)).toBe('claude');
+		expect(uniqueTitle(['claude'], 'claude', false)).toBe('claude 2');
+	});
+
+	it('cycles through terminals, wrapping around', () => {
+		vi.stubGlobal('requestAnimationFrame', () => 0);
+		const other = { ...tab, id: 'anvil-3333-4444', title: 'pwsh 2' };
+		useTerminalStore.setState({ tabs: [tab, other], active: other.id });
+		cycleTerminal(1);
+		expect(useTerminalStore.getState().active).toBe(tab.id);
+		cycleTerminal(-1);
+		expect(useTerminalStore.getState().active).toBe(other.id);
+		vi.unstubAllGlobals();
 	});
 });
