@@ -121,6 +121,25 @@ describe('FsService', () => {
 		await expect(fs.rename('src', 'README.md')).rejects.toMatchObject({ code: 'FS_EXISTS' });
 	});
 
+	it('trashes or renames a link to an outside folder, but never files through it', async () => {
+		const outside = mkdtempSync(join(tmpdir(), 'anvil-outside-'));
+		try {
+			writeFileSync(join(outside, 'x.txt'), 'x');
+			symlinkSync(outside, join(root, 'ext'), 'junction');
+			const outsideError = { code: 'FS_OUTSIDE_WORKSPACE' };
+			await expect(fs.trash('ext/x.txt')).rejects.toMatchObject(outsideError);
+			await expect(fs.rename('ext/x.txt', 'y.txt')).rejects.toMatchObject(outsideError);
+			expect(trash).not.toHaveBeenCalled();
+			expect(existsSync(join(outside, 'x.txt'))).toBe(true);
+			// The link itself lives in the workspace.
+			await fs.trash('ext');
+			expect(trash).toHaveBeenCalledWith(join(root, 'ext'));
+			expect((await fs.rename('ext', 'ext2')).path).toBe('ext2');
+		} finally {
+			rmSync(outside, { recursive: true, force: true });
+		}
+	});
+
 	it('trashes through the host (recycle bin), never the root', async () => {
 		await fs.trash('src/b.ts');
 		expect(trash).toHaveBeenCalledWith(join(root, 'src', 'b.ts'));
