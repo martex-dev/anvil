@@ -75,7 +75,7 @@ export function SnapPreview({
 		>
 			{body}
 			{image && loading && (
-				<span className='glass-strong absolute top-3 right-3 flex items-center gap-2 rounded-md px-2 py-1'>
+				<span className='glass-strong animate-fade absolute top-3 right-3 flex items-center gap-2 rounded-md px-2 py-1'>
 					<Spinner size={12} label='Updating preview' />
 					<span className='hud'>Rendering</span>
 				</span>
@@ -83,9 +83,9 @@ export function SnapPreview({
 			{image && error && !loading && (
 				<span
 					role='alert'
-					className='absolute bottom-3 left-1/2 flex max-w-[80%] -translate-x-1/2 items-center gap-2 rounded-md border border-down/40 bg-down-soft px-2 py-1 text-12 text-down'
+					className='animate-fade absolute bottom-3 left-1/2 flex max-w-[80%] -translate-x-1/2 items-center gap-2 rounded-md border border-down/40 bg-down-soft px-2 py-1 text-12 text-down'
 				>
-					<TriangleAlert size={13} className='shrink-0' />
+					<TriangleAlert size={13} className='shrink-0' aria-hidden />
 					<span className='truncate'>{error}</span>
 					<button
 						type='button'
