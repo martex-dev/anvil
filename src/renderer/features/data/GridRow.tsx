@@ -3,7 +3,7 @@ import { type JSX, memo, type ReactNode } from 'react';
 import type { DataColumn } from '@shared/ipc/channels/data';
 
 import { cn } from '../../lib/cn';
-import { isNegative, isNumericType, ROW_HEIGHT } from './data-format';
+import { isNegative, isNumericType, isTrueText, ROW_HEIGHT } from './data-format';
 
 interface GridRowProps {
 	index: number;
@@ -30,7 +30,9 @@ function renderCell(value: string | null | undefined, column: DataColumn): React
 	}
 	if (column.type === 'bool') {
 		return (
-			<span className={cn('num', value === 'true' ? 'text-info' : 'text-fg-1')}>{value}</span>
+			<span className={cn('num', isTrueText(value) ? 'text-info' : 'text-fg-1')}>
+				{value}
+			</span>
 		);
 	}
 	if (column.type === 'date') return <span className='num text-fg-1'>{value}</span>;

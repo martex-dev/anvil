@@ -31,6 +31,11 @@ export function isTextFormat(format: DataFormat): boolean {
 	return TEXT_FORMATS.has(format);
 }
 
+/** Bool cells arrive as 'true', 'True' (Python's str(True)) or 'TRUE'. */
+export function isTrueText(value: string): boolean {
+	return value.toLowerCase() === 'true';
+}
+
 export function typeTag(type: ColumnType): string {
 	return TYPE_TAGS[type];
 }

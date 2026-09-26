@@ -8,6 +8,7 @@ import {
 	formatStat,
 	formatStatText,
 	initialColumnWidth,
+	isTrueText,
 	MAX_SCROLL_PX,
 	nextSort,
 	pagesForRange,
@@ -140,5 +141,12 @@ describe('visibleRowRange', () => {
 	it('stops at the last row', () => {
 		expect(visibleRowRange(8, 24 * 20, 10)).toEqual({ top: 8, bottom: 9 });
 		expect(visibleRowRange(0, 0, 1)).toEqual({ top: 0, bottom: 0 });
+	});
+});
+
+describe('isTrueText', () => {
+	it('matches true in any case, as the bool type check does', () => {
+		expect(['true', 'True', 'TRUE'].map(isTrueText)).toEqual([true, true, true]);
+		expect(['false', 'False', 'yes'].map(isTrueText)).toEqual([false, false, false]);
 	});
 });
