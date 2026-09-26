@@ -3,6 +3,62 @@
 What changed in each release of Anvil. The release workflow publishes a version's section as
 its GitHub release notes.
 
+## [0.2.2] - 2026-09-26
+
+Terminal, Python and tasks: 47 fixes from the full bug sweep of 0.2.0.
+
+### Fixed
+
+- **python:** Find all-users conda installs via %ProgramData%
+- **python:** Handle ruff stdin errors and time out a hung format
+- **python:** Point cell tracebacks at the source file and line
+- **python:** Log failures when announcing the selected interpreter
+- **python:** Only accept discovered interpreters in python:select
+- **python:** Log and surface why package listing failed
+- **python:** Escape single quotes in run commands on macOS/Linux
+- **python:** Pass ruff an absolute --stdin-filename
+- **python:** Fall back to system Pythons when a folder has no env
+- **tasks:** Keep task ids unique across task kinds
+- **tasks:** Quote npm script names and detect bun.lock
+- **terminal:** Type the initial command only into a newly started session
+- **terminal:** Restart an exited terminal instead of dropping commands
+- **terminal:** Let 'Check again' find a just-installed CLI
+- **terminal:** Start each session once when opens race
+- **terminal:** Keep the backlog as chunks and replay it from a full line
+- **python:** Show a neutral chip while the interpreter loads
+- **python:** Pick up a venv created or deleted in the open folder
+- **tasks:** Show an error state when listing tasks fails
+- **tasks:** Refresh the task list when task files change
+- **python:** Make 'Rescan interpreters' rescan and show busy refresh buttons
+- **python:** Truncate long interpreter labels in the Run view
+- **python:** Show interpreter and tool-check errors instead of 'none'
+- **python:** Add empty and no-match package states; stop shimmer under reduced motion
+- **python:** Save dirty files before tests and tasks; explain an empty pytest target
+- **python:** Open the REPL without printing sys.version into it
+- **python:** Send to the REPL without waiting on a tools check
+- **python:** Run one-line compound statements instead of hanging the REPL
+- **python:** Report interpreter discovery failures and keep 'Automatic' in the picker
+- **python:** Handle python:changed once, under the folder it was resolved for
+- **terminal:** Let a terminal that failed to start retry or close
+- **terminal:** Explain a terminal profile this system doesn't offer
+- **terminal:** Keep a running terminal mounted when the presets query fails
+- **terminal:** Confirm the install-command copy only after it succeeds
+- **terminal:** Confirm and report 'Kill Active Terminal'
+- **terminal:** Link absolute paths that contain spaces
+- **terminal:** Don't reuse another folder's Run, REPL and task terminals
+- **terminal:** Run the first command sent to a restored terminal tab
+- **terminal:** Validate restored terminal tabs and restore the active one
+- **terminal:** Give new terminals unique names and add rename/switch commands
+- **terminal:** Copy with Ctrl+C regardless of Caps Lock, and with Ctrl+Shift+C
+- **terminal:** Report a failed terminal restart instead of looking alive
+- **terminal:** Focus the terminal after switching tabs or killing the active one
+- **terminal:** Change the terminal font size without re-creating xterm
+- **terminal:** Stop the cursor blinking under reduced motion
+- **terminal:** Refit after a font change and keep a monospace fallback
+- **terminal:** Paint xterm on an opaque editor-token background
+- **skins:** The Workbench skin's taskbar focuses the terminal it switches to
+- **terminal:** Draw the terminal cursor in the editor's caret color, so it stays visible on light palettes
+
 ## [0.2.1] - 2026-09-26
 
 Editor: 66 fixes from the full bug sweep of 0.2.0.
