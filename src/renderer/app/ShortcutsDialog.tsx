@@ -1,7 +1,9 @@
 import { type JSX, useMemo, useState } from 'react';
 
 import { useUiStore } from '../stores/ui-store';
+import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
+import { EmptyState } from '../ui/EmptyState';
 import { Input } from '../ui/Input';
 import { Kbd } from '../ui/Kbd';
 import { getCommands } from './commands/run';
@@ -11,6 +13,13 @@ export function ShortcutsDialog(): JSX.Element {
 	const open = useUiStore((s) => s.shortcutsOpen);
 	const setOpen = useUiStore((s) => s.setShortcutsOpen);
 	const [filter, setFilter] = useState('');
+	// Each opening starts unfiltered, however the sheet was closed (Esc, command, click away);
+	// a leftover filter made shortcuts look missing.
+	const [wasOpen, setWasOpen] = useState(open);
+	if (open !== wasOpen) {
+		setWasOpen(open);
+		if (open) setFilter('');
+	}
 	const groups = useMemo(() => {
 		const f = filter.toLowerCase();
 		const bound = getCommands().filter(
@@ -29,6 +38,17 @@ export function ShortcutsDialog(): JSX.Element {
 				placeholder='Filter by action or key'
 				className='mb-3'
 			/>
+			{groups.length === 0 && (
+				<EmptyState
+					title='No shortcuts match'
+					description={`Nothing bound matches "${filter}".`}
+					action={
+						<Button variant='ghost' onClick={() => setFilter('')}>
+							Clear filter
+						</Button>
+					}
+				/>
+			)}
 			<div className='columns-2 gap-6'>
 				{groups.map(([category, commands]) => (
 					<section key={category} className='mb-4 break-inside-avoid'>
@@ -36,7 +56,9 @@ export function ShortcutsDialog(): JSX.Element {
 						<ul>
 							{commands.map((c) => (
 								<li key={c.id} className='flex h-7 items-center gap-2 text-12'>
-									<span className='flex-1 truncate text-fg-1'>{c.title}</span>
+									<span title={c.title} className='flex-1 truncate text-fg-1'>
+										{c.title}
+									</span>
 									{c.scope === 'editor' && (
 										<span className='text-10 text-fg-2'>editor</span>
 									)}

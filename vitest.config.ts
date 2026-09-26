@@ -13,7 +13,7 @@ export default defineConfig({
 	test: {
 		include: ['src/**/*.test.{ts,tsx}'],
 		environment: 'node',
-		// Vitest blanks CSS by default; the theme test reads themes.css as text.
-		css: { include: [/themes\.css/] },
+		// Vitest blanks CSS by default; the theme test reads themes.css and tokens.css as text.
+		css: { include: [/(themes|tokens)\.css/] },
 	},
 });

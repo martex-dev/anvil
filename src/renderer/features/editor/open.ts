@@ -75,6 +75,40 @@ export function takeQuietOpen(path: string): boolean {
 	return quietOpens.delete(path);
 }
 
+/** Frees what a tab held: a code buffer, or the data grid's cached table in main. */
+function release(tab: Tab): void {
+	if (tab.kind === 'code' && tab.path) {
+		closeFile(tab.path);
+		// Never swapped in (a preview replaced before Monaco came up): drop its pending marks.
+		quietOpens.delete(tab.path);
+		unloaded.delete(tab.path);
+	}
+	if (tab.kind === 'data' && tab.path) {
+		const path = tab.path;
+		void call('data:evict', path).catch((error: unknown) =>
+			rlog.warn('editor', `data:evict failed for ${path}`, error),
+		);
+	}
+}
+
+/**
+ * Opens a tab. When it replaces the group's preview, a dirty preview is kept (pinned) so its
+ * edits keep a tab, and a clean one that no group shows any more is released.
+ */
+function openTab(tab: Tab, group: number | undefined): void {
+	const tabs = useTabsStore.getState();
+	const target = tabs.groups.find((g) => g.id === (group ?? tabs.focused));
+	const oldId = tab.preview ? target?.tabIds.find((id) => tabs.tabs[id]?.preview) : undefined;
+	const old = oldId && oldId !== tab.id ? tabs.tabs[oldId] : undefined;
+	if (old?.kind === 'code' && old.path) {
+		const path = old.path;
+		if (useEditorStore.getState().files.some((f) => f.path === path && f.dirty))
+			tabs.pin(old.id);
+	}
+	tabs.open(tab, group === undefined ? {} : { group });
+	if (old && !useTabsStore.getState().tabs[old.id]) release(old);
+}
+
 /** Opens a file in the right viewer: text in Monaco, tables in the grid, images, notebooks. */
 export async function openPath(root: string, request: OpenFileRequest): Promise<void> {
 	if (isScratch(request.path)) return openScratchTab();
@@ -92,7 +126,7 @@ export async function openPath(root: string, request: OpenFileRequest): Promise<
 	}
 	const tab = tabFor(request.path, kind, request.preview ?? false);
 	if (kind !== 'code') {
-		tabs.open(tab, group === undefined ? {} : { group });
+		openTab(tab, group);
 		return;
 	}
 	const focus = request.focus ?? !request.preview;
@@ -116,7 +150,7 @@ export async function openPath(root: string, request: OpenFileRequest): Promise<
 				}
 			: null,
 	);
-	tabs.open(tab, group === undefined ? {} : { group });
+	openTab(tab, group);
 	let monaco: MonacoApi;
 	try {
 		monaco = await loadMonaco(editorPrefs());
@@ -171,10 +205,7 @@ export function closeTab(group: number, id: string): void {
 	}
 	const gone = tabs.close(group, id);
 	// The other group may still show the table: keep its cached data until the last tab goes.
-	if (gone && tab.kind === 'data' && tab.path)
-		void call('data:evict', tab.path).catch((error: unknown) =>
-			rlog.warn('editor', `data evict failed: ${tab.path ?? ''}`, error),
-		);
+	if (gone && tab.kind === 'data') release(tab);
 }
 
 /** Called once a dirty buffer is saved or discarded from the close dialog. */

@@ -52,7 +52,11 @@ function Item({ view, badge }: { view: SideView; badge?: number }): JSX.Element 
 		<Tooltip content={meta.label} shortcut={shortcutFor(meta.command)} side='right'>
 			<button
 				type='button'
-				aria-label={meta.label}
+				aria-label={
+					badge !== undefined && badge > 0
+						? `${meta.label}, ${badge} changes`
+						: meta.label
+				}
 				aria-pressed={active}
 				onClick={() => useLayoutStore.getState().toggleView(view)}
 				className={cn(
@@ -101,10 +105,15 @@ export function ActivityBar(): JSX.Element {
 					aria-pressed={aiOpen}
 					onClick={() => useLayoutStore.getState().toggleAi()}
 					className={cn(
-						'flex size-10 items-center justify-center rounded-lg outline-none transition-colors transition-fast focus-visible:shadow-glow',
-						aiOpen ? 'text-accent-2' : 'text-fg-2 hover:bg-bg-3/50 hover:text-fg-0',
+						'relative flex size-10 items-center justify-center rounded-lg outline-none transition-colors transition-fast focus-visible:shadow-glow',
+						aiOpen
+							? 'bg-accent-faint text-accent-2'
+							: 'text-fg-2 hover:bg-bg-3/50 hover:text-fg-0',
 					)}
 				>
+					{aiOpen && (
+						<span className='accent-line absolute top-2 bottom-2 -left-[5px] w-[2px] rounded-full' />
+					)}
 					<Bot size={18} strokeWidth={1.75} />
 				</button>
 			</Tooltip>
@@ -113,7 +122,7 @@ export function ActivityBar(): JSX.Element {
 					type='button'
 					aria-label='Settings'
 					onClick={() => runCommandById('anvil.settings')}
-					className='flex size-10 items-center justify-center rounded-lg text-fg-2 outline-none hover:bg-bg-3/50 hover:text-fg-0 focus-visible:shadow-glow'
+					className='flex size-10 items-center justify-center rounded-lg text-fg-2 outline-none transition-colors transition-fast hover:bg-bg-3/50 hover:text-fg-0 focus-visible:shadow-glow'
 				>
 					<Settings size={18} strokeWidth={1.75} />
 				</button>

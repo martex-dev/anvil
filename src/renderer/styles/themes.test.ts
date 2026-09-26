@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import { ACCENTS } from '@shared/settings';
+
 import { DEFAULT_THEME, themeById, THEMES } from './theme-list';
 import css from './themes.css?raw';
+import tokensCss from './tokens.css?raw';
 
 const REQUIRED = [
 	'--bg-0',
@@ -149,5 +152,51 @@ describe.each(THEMES.map((theme) => [theme.id, theme] as const))('theme %s', (id
 		const bg = colorOf(block, '--bg-1');
 		expect(contrast(colorOf(block, '--text-0'), bg)).toBeGreaterThanOrEqual(4.5);
 		expect(contrast(colorOf(block, '--text-1'), bg)).toBeGreaterThanOrEqual(3);
+	});
+});
+
+/** Resolves `--accent` / `--on-accent` for a preset on a theme, following tokens.css's rules. */
+function presetColors(preset: string, theme: string): { accent: string; onAccent: string } {
+	const stripped = tokensCss.replace(/\/\*[\s\S]*?\*\//g, '');
+	const root = new Map<string, string>();
+	const rootBody = /:root\s*\{([^}]*)\}/.exec(stripped)?.[1] ?? '';
+	for (const [, k = '', v = ''] of rootBody.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g))
+		root.set(k, v.trim());
+	let vars = new Map<string, string>();
+	let specific = false;
+	const rules = stripped.matchAll(
+		/html\[data-accent='(\w+)'\](?::is\(([^)]*)\))?\s*\{([^}]*)\}/g,
+	);
+	for (const [, id = '', themes, body = ''] of rules) {
+		if (id !== preset) continue;
+		const forTheme = themes?.includes(`[data-theme='${theme}']`) ?? false;
+		// Theme-specific rules are more specific than the plain preset rule, whatever the order.
+		if (themes !== undefined && !forTheme) continue;
+		if (specific && !forTheme) continue;
+		specific = forTheme;
+		vars = new Map(
+			[...body.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)].map((m) => [
+				m[1] ?? '',
+				(m[2] ?? '').trim(),
+			]),
+		);
+	}
+	const resolve = (name: string): string => {
+		const value = vars.get(name) ?? '';
+		const ref = /^var\((--[\w-]+)\)$/.exec(value)?.[1];
+		const hex = ref ? root.get(ref) : value;
+		if (!hex || !HEX.test(hex)) throw new Error(`${preset}/${theme}: ${name} is '${value}'`);
+		return hex;
+	};
+	return { accent: resolve('--accent'), onAccent: resolve('--on-accent') };
+}
+
+describe.each(THEMES.map((theme) => [theme.id] as const))('accent presets on %s', (id) => {
+	const bg = colorOf(blockFor(id), '--bg-1');
+
+	it.each(ACCENTS.map((a) => [a] as const))('keeps %s readable as text and as a fill', (a) => {
+		const { accent, onAccent } = presetColors(a, id);
+		expect(contrast(accent, bg)).toBeGreaterThanOrEqual(3);
+		expect(contrast(onAccent, accent)).toBeGreaterThanOrEqual(4.5);
 	});
 });

@@ -137,8 +137,10 @@ describe('feedback instead of silence', () => {
 		vi.mocked(activeEditor).mockReturnValue(null);
 		await fixProblemsHere();
 		addDocstring();
-		const titles = useToastStore.getState().toasts.map((t) => t.title);
-		expect(titles).toEqual(['Open a file first', 'Open a file first']);
+		// Both actions answered; identical toasts fold into one counted toast.
+		expect(useToastStore.getState().toasts).toMatchObject([
+			{ title: 'Open a file first', count: 2 },
+		]);
 		expect(startInlineEdit).not.toHaveBeenCalled();
 	});
 

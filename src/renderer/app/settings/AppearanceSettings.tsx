@@ -37,6 +37,7 @@ export function AppearanceSettings({
 				description='Blur and translucency on the panes. "Off" is fastest on integrated GPUs and battery.'
 			>
 				<SettingSegmented
+					aria-label='Glass'
 					value={s.glass}
 					options={['full', 'subtle', 'off'] as const}
 					onChange={(glass) => update({ glass })}

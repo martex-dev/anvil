@@ -8,7 +8,12 @@ vi.mock('../editor/extras/git-lines', () => ({ invalidateGitLines: vi.fn() }));
 const { runRemote, useGitRemote } = await import('./git-ops');
 const { useToastStore } = await import('../../stores/toast-store');
 
-const titles = (): string[] => useToastStore.getState().toasts.map((t) => t.title);
+// Dismissed toasts stay in the store (closed) while they animate out.
+const titles = (): string[] =>
+	useToastStore
+		.getState()
+		.toasts.filter((t) => t.open)
+		.map((t) => t.title);
 
 beforeEach(() => {
 	call.mockReset();

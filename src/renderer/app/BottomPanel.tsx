@@ -1,24 +1,27 @@
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, Maximize2, Minimize2, Plus, SquareTerminal, X } from 'lucide-react';
+import { ChevronDown, Maximize2, Minimize2, Plus, RotateCw, SquareTerminal, X } from 'lucide-react';
 import { DropdownMenu } from 'radix-ui';
 import { type JSX, useState } from 'react';
 
 import { useProblems } from '../features/problems/problems-store';
 import { ProblemsView } from '../features/problems/ProblemsView';
-import {
-	closeTerminal,
-	focusTerminal,
-	newTerminal,
-	useTerminalStore,
-} from '../features/terminal/terminal-store';
+import { newTerminal, useTerminalStore } from '../features/terminal/terminal-store';
 import { PRESETS_KEY, TerminalPane } from '../features/terminal/TerminalPane';
 import { cn } from '../lib/cn';
 import { call } from '../lib/ipc';
+import { handleTabKeys } from '../lib/roving';
 import { type PanelTab, useLayoutStore } from '../stores/layout-store';
 import { useRegisterOverlay } from '../stores/overlay-store';
+import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
 import { IconButton } from '../ui/IconButton';
+import { Spinner } from '../ui/Spinner';
+import { Tooltip } from '../ui/Tooltip';
 import { shortcutFor } from './commands/run';
+import { TerminalTabs } from './TerminalTabs';
+
+const ITEM =
+	'flex h-7 cursor-default items-center gap-2 rounded-md px-2 text-12 text-fg-1 outline-none data-[disabled]:opacity-40 data-[highlighted]:bg-accent-faint data-[highlighted]:text-fg-0';
 
 function PresetMenu(): JSX.Element {
 	const [open, setOpen] = useState(false);
@@ -30,12 +33,14 @@ function PresetMenu(): JSX.Element {
 	});
 	return (
 		<DropdownMenu.Root open={open} onOpenChange={setOpen}>
-			<DropdownMenu.Trigger
-				aria-label='New terminal profile'
-				className='flex size-6 items-center justify-center rounded-md text-fg-2 outline-none hover:bg-bg-3 hover:text-fg-0 focus-visible:shadow-glow'
-			>
-				<ChevronDown size={13} />
-			</DropdownMenu.Trigger>
+			<Tooltip content='New terminal profile'>
+				<DropdownMenu.Trigger
+					aria-label='New terminal profile'
+					className='flex size-6 items-center justify-center rounded-md text-fg-2 outline-none transition-colors transition-fast hover:bg-bg-3 hover:text-fg-0 focus-visible:shadow-glow'
+				>
+					<ChevronDown size={13} />
+				</DropdownMenu.Trigger>
+			</Tooltip>
 			<DropdownMenu.Portal>
 				<DropdownMenu.Content
 					align='end'
@@ -45,12 +50,39 @@ function PresetMenu(): JSX.Element {
 					<DropdownMenu.Label className='hud px-2 pt-1 pb-1'>
 						New terminal
 					</DropdownMenu.Label>
+					{presets.isPending && (
+						<div className='flex h-7 items-center gap-2 px-2 text-12 text-fg-2'>
+							<Spinner size={12} label='Loading profiles' />
+							Loading profiles…
+						</div>
+					)}
+					{presets.isError && (
+						<>
+							<p role='alert' className='max-w-64 px-2 py-1 text-12 text-down'>
+								Could not list terminal profiles: {presets.error.message}
+							</p>
+							<DropdownMenu.Item
+								onSelect={(e) => {
+									// Keep the menu open so the reloaded list shows in place.
+									e.preventDefault();
+									void presets.refetch();
+								}}
+								className={ITEM}
+							>
+								<RotateCw size={13} className='text-fg-2' />
+								Retry
+							</DropdownMenu.Item>
+						</>
+					)}
+					{presets.isSuccess && presets.data.length === 0 && (
+						<p className='px-2 py-1 text-12 text-fg-2'>No terminal profiles found.</p>
+					)}
 					{(presets.data ?? []).map((p) => (
 						<DropdownMenu.Item
 							key={p.id}
 							disabled={!p.available}
 							onSelect={() => newTerminal(p.id)}
-							className='flex h-7 cursor-default items-center gap-2 rounded-md px-2 text-12 text-fg-1 outline-none data-[disabled]:opacity-40 data-[highlighted]:bg-accent-faint data-[highlighted]:text-fg-0'
+							className={ITEM}
 							title={p.reason ?? undefined}
 						>
 							<SquareTerminal size={13} className='text-fg-2' />
@@ -66,6 +98,14 @@ function PresetMenu(): JSX.Element {
 	);
 }
 
+const PANEL_TABS: readonly PanelTab[] = ['terminal', 'problems'];
+const PANEL_CONTENT_ID = 'bottom-panel-content';
+const tabId = (tab: PanelTab): string => `bottom-panel-tab-${tab}`;
+const selectPanelTab = (index: number): void => {
+	const tab = PANEL_TABS[index];
+	if (tab) useLayoutStore.getState().showPanel(tab);
+};
+
 function TabButton({
 	tab,
 	label,
@@ -76,14 +116,19 @@ function TabButton({
 	count?: number;
 }): JSX.Element {
 	const active = useLayoutStore((s) => s.panelTab === tab);
+	const index = PANEL_TABS.indexOf(tab);
 	return (
 		<button
 			type='button'
 			role='tab'
+			id={tabId(tab)}
 			aria-selected={active}
-			onClick={() => useLayoutStore.getState().showPanel(tab)}
+			aria-controls={PANEL_CONTENT_ID}
+			tabIndex={active ? 0 : -1}
+			onClick={() => selectPanelTab(index)}
+			onKeyDown={(e) => handleTabKeys(e, index, PANEL_TABS.length, selectPanelTab)}
 			className={cn(
-				'hud relative flex h-full items-center gap-1.5 px-2 outline-none transition-colors transition-fast focus-visible:text-fg-0',
+				'hud relative flex h-full items-center gap-1.5 rounded-md px-2 outline-none transition-colors transition-fast focus-visible:text-fg-0 focus-visible:shadow-glow',
 				active ? 'text-fg-0' : 'hover:text-fg-1',
 			)}
 		>
@@ -113,53 +158,14 @@ export function BottomPanel(): JSX.Element {
 	return (
 		<section
 			aria-label='Panel'
-			className='glass pane-focus flex h-full min-h-0 flex-col overflow-hidden'
+			className='glass pane-focus animate-fade flex h-full min-h-0 flex-col overflow-hidden'
 		>
 			<div className='flex h-9 shrink-0 items-center gap-1 border-b border-glass-edge pr-1.5 pl-1'>
-				<div role='tablist' className='flex h-full items-center'>
+				<div role='tablist' aria-label='Panel' className='flex h-full items-center'>
 					<TabButton tab='terminal' label='Terminal' />
 					<TabButton tab='problems' label='Problems' count={problems} />
 				</div>
-				{tab === 'terminal' && (
-					<div className='ml-2 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto'>
-						{terms.map((t) => (
-							<div
-								key={t.id}
-								className={cn(
-									'group flex h-6 shrink-0 cursor-default items-center gap-1.5 rounded-md border pr-0.5 pl-2 font-mono text-11 transition-colors transition-fast',
-									t.id === activeTerm
-										? 'border-accent/40 bg-accent-faint text-fg-0'
-										: 'border-transparent text-fg-2 hover:bg-bg-3/50 hover:text-fg-1',
-								)}
-								onClick={() => focusTerminal(t.id)}
-								onAuxClick={(e) => e.button === 1 && closeTerminal(t.id)}
-							>
-								<span
-									className={cn(
-										'size-1.5 rounded-full',
-										t.role === 'repl'
-											? 'bg-accent-2'
-											: t.role === 'run'
-												? 'bg-up'
-												: 'bg-accent',
-									)}
-								/>
-								{t.title}
-								<button
-									type='button'
-									aria-label={`Kill ${t.title}`}
-									onClick={(e) => {
-										e.stopPropagation();
-										closeTerminal(t.id);
-									}}
-									className='rounded-sm p-0.5 opacity-0 group-hover:opacity-100 hover:bg-bg-3'
-								>
-									<X size={11} />
-								</button>
-							</div>
-						))}
-					</div>
-				)}
+				{tab === 'terminal' && <TerminalTabs />}
 				{tab !== 'terminal' && <span className='flex-1' />}
 				<div className='flex shrink-0 items-center gap-0.5'>
 					{tab === 'terminal' && (
@@ -189,7 +195,12 @@ export function BottomPanel(): JSX.Element {
 					/>
 				</div>
 			</div>
-			<div className='relative min-h-0 flex-1'>
+			<div
+				id={PANEL_CONTENT_ID}
+				role='tabpanel'
+				aria-labelledby={tabId(tab)}
+				className='relative min-h-0 flex-1'
+			>
 				{tab === 'problems' && <ProblemsView />}
 				{terms.length === 0 && tab === 'terminal' && (
 					<EmptyState
@@ -197,13 +208,9 @@ export function BottomPanel(): JSX.Element {
 						title='No terminals'
 						description='PowerShell, a Python REPL, Claude Code, Codex or Gemini CLI.'
 						action={
-							<button
-								type='button'
-								onClick={() => newTerminal('powershell')}
-								className='rounded-md border border-border-strong px-3 py-1 text-12 text-fg-1 hover:border-accent/40 hover:text-fg-0'
-							>
+							<Button size='sm' onClick={() => newTerminal('powershell')}>
 								New terminal
-							</button>
+							</Button>
 						}
 					/>
 				)}
@@ -211,10 +218,13 @@ export function BottomPanel(): JSX.Element {
 					.filter((t) => seen.has(t.id))
 					.map((t) => {
 						const visible = tab === 'terminal' && t.id === activeTerm;
+						// A plate like the editor's: xterm repaints constantly and must not draw
+						// straight onto the pane's live backdrop blur.
 						return (
 							<div
 								key={t.id}
 								className={cn('absolute inset-0', !visible && 'invisible')}
+								style={{ background: 'var(--editor-bg)' }}
 							>
 								<TerminalPane tab={t} visible={visible} />
 							</div>

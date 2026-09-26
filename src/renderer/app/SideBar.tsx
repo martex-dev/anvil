@@ -4,6 +4,7 @@ import { ExplorerPanel } from '../features/explorer/ExplorerPanel';
 import { GitPanel } from '../features/git/GitPanel';
 import { SearchPanel } from '../features/search/SearchPanel';
 import { SIDE_VIEWS, type SideView, useLayoutStore } from '../stores/layout-store';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { Spinner } from '../ui/Spinner';
 import { VIEW_META } from './ActivityBar';
 
@@ -56,23 +57,26 @@ export function SideBar(): JSX.Element {
 	return (
 		<aside
 			aria-label={VIEW_META[view].label}
-			className='glass pane-focus flex h-full min-w-0 flex-col overflow-hidden'
+			className='glass pane-focus animate-fade flex h-full min-w-0 flex-col overflow-hidden'
 		>
 			<header className='flex h-9 shrink-0 items-center gap-2 border-b border-glass-edge px-3'>
 				<span className='num text-10 text-accent'>{String(index).padStart(2, '0')}</span>
 				<span className='h-3 w-px bg-glass-edge' />
 				<h2 className='hud text-fg-1'>{VIEW_META[view].label}</h2>
 			</header>
-			<div className='min-h-0 flex-1'>
-				<Suspense
-					fallback={
-						<div className='flex h-24 items-center justify-center'>
-							<Spinner />
-						</div>
-					}
-				>
-					<View view={view} />
-				</Suspense>
+			{/* Keyed on the view so switching views fades the new one in. */}
+			<div key={view} className='animate-fade min-h-0 flex-1'>
+				<ErrorBoundary name={VIEW_META[view].label} resetKey={view}>
+					<Suspense
+						fallback={
+							<div className='flex h-24 items-center justify-center'>
+								<Spinner />
+							</div>
+						}
+					>
+						<View view={view} />
+					</Suspense>
+				</ErrorBoundary>
 			</div>
 		</aside>
 	);

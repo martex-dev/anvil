@@ -1,8 +1,7 @@
 import type { JSX } from 'react';
 
-import { EDITOR_FONTS, type EditorFontId, type Settings } from '@shared/settings';
+import { EDITOR_FONTS, editorFontFamily, type EditorFontId, type Settings } from '@shared/settings';
 
-import { repaintShield } from '../../features/editor/extras/shield';
 import { Select } from '../../ui/Select';
 import { SettingRow } from './SettingRow';
 import { SettingSegmented } from './SettingSegmented';
@@ -32,6 +31,7 @@ export function EditorSettings({
 					options={EDITOR_FONTS.map((f) => ({
 						value: f.id,
 						label: f.ligatures ? f.name : `${f.name} (no ligatures)`,
+						fontFamily: editorFontFamily(f.id),
 					}))}
 					className='w-52'
 				/>
@@ -46,6 +46,7 @@ export function EditorSettings({
 			/>
 			<SettingRow label='Line height' description='Air between lines, relative to font size.'>
 				<SettingSegmented
+					aria-label='Line height'
 					value={String(s.editorLineHeight)}
 					options={LINE_HEIGHTS}
 					onChange={(v) => update({ editorLineHeight: Number(v) })}
@@ -53,6 +54,7 @@ export function EditorSettings({
 			</SettingRow>
 			<SettingRow label='Cursor'>
 				<SettingSegmented
+					aria-label='Cursor'
 					value={s.cursorStyle}
 					options={['line', 'block', 'underline'] as const}
 					onChange={(cursorStyle) => update({ cursorStyle })}
@@ -149,10 +151,7 @@ export function EditorSettings({
 				label='Secret shield'
 				description='Blur .env values, flag API keys, private keys and seed phrases in code, and block commits that stage them.'
 				value={s.secretShield}
-				onChange={(secretShield) => {
-					update({ secretShield });
-					setTimeout(repaintShield, 50);
-				}}
+				onChange={(secretShield) => update({ secretShield })}
 			/>
 		</div>
 	);

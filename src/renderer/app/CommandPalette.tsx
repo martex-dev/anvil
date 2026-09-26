@@ -1,12 +1,12 @@
 import { Command } from 'cmdk';
-import { CornerDownLeft } from 'lucide-react';
 import { type JSX, useState } from 'react';
 
 import { useRegisterOverlay } from '../stores/overlay-store';
 import { useUiStore } from '../stores/ui-store';
 import { Kbd } from '../ui/Kbd';
-import { readRecentCommands, recordRecentCommand } from './commands/recent';
-import { getCommands, runCommand } from './commands/run';
+import { CommandItem } from './CommandItem';
+import { readRecentCommands } from './commands/recent';
+import { getCommands } from './commands/run';
 import type { Command as AppCommand, CommandCategory } from './commands/types';
 
 const ORDER: CommandCategory[] = [
@@ -39,39 +39,17 @@ export function CommandPalette(): JSX.Element {
 				.filter((c): c is AppCommand => c !== undefined)
 		: [];
 
-	const item = (command: AppCommand, prefix: string): JSX.Element => {
-		const Icon = command.icon;
-		return (
-			<Command.Item
-				key={`${prefix}${command.id}`}
-				value={`${prefix}${command.category} ${command.title} ${command.id}`}
-				keywords={command.keywords ?? []}
-				onSelect={() => {
-					setOpen(false);
-					setSearch('');
-					recordRecentCommand(command.id);
-					// Let the palette close (and focus return) before the command runs.
-					setTimeout(() => void runCommand(command), 0);
-				}}
-				className='group flex h-8 cursor-default items-center gap-2.5 rounded-md px-2 text-13 text-fg-1 data-[selected=true]:bg-accent-faint data-[selected=true]:text-fg-0'
-			>
-				{Icon ? (
-					<Icon size={14} className='text-fg-2 group-data-[selected=true]:text-accent' />
-				) : (
-					<span className='w-3.5' />
-				)}
-				<span className='flex-1 truncate'>
-					<span className='text-fg-2'>{command.category}: </span>
-					{command.title}
-				</span>
-				{command.shortcut && <Kbd keys={command.shortcut} />}
-				<CornerDownLeft
-					size={12}
-					className='hidden text-fg-2 group-data-[selected=true]:block'
-				/>
-			</Command.Item>
-		);
-	};
+	const item = (command: AppCommand, prefix: string): JSX.Element => (
+		<CommandItem
+			key={`${prefix}${command.id}`}
+			command={command}
+			value={`${prefix}${command.category} ${command.title} ${command.id}`}
+			onPick={() => {
+				setOpen(false);
+				setSearch('');
+			}}
+		/>
+	);
 
 	return (
 		<Command.Dialog
