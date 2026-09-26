@@ -1,0 +1,170 @@
+/*
+ * Cockpit: the command line under the title. "ANVIL ▮ FILE · >COMMAND ... <GO>" on the left,
+ * live readouts (interpreter, CPU and memory ticks, date, clock) on the right.
+ */
+
+html[data-skin='cockpit'] .ck-cmdline {
+	position: relative;
+	z-index: 10;
+	display: flex;
+	flex-shrink: 0;
+	align-items: stretch;
+	height: 24px;
+	margin: var(--pane-gap) var(--pane-gap) var(--pane-gap);
+	border: 1px solid var(--border);
+	background: var(--skin-tape);
+	font-size: 11px;
+}
+
+html[data-skin='cockpit'] .ck-prompt {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	min-width: 180px;
+	cursor: text;
+}
+html[data-skin='cockpit'] .ck-prompt:focus-within {
+	box-shadow: inset 0 0 0 1px var(--accent);
+}
+html[data-skin='cockpit'] .ck-prompt-ps {
+	display: flex;
+	align-items: center;
+	height: 100%;
+	padding: 0 6px 0 8px;
+	color: var(--accent);
+	font-family: var(--font-code);
+	font-size: 12px;
+	font-weight: 700;
+}
+html[data-skin='cockpit'] .ck-caret {
+	width: 7px;
+	height: 13px;
+	margin-right: 6px;
+	background: var(--accent);
+}
+html[data-skin='cockpit'] .ck-prompt:focus-within .ck-caret {
+	display: none;
+}
+html[data-skin='cockpit'] .ck-prompt-input {
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+	border: 0;
+	background: transparent;
+	caret-color: var(--accent);
+	color: var(--skin-value);
+	font-family: var(--font-code);
+	font-size: 12px;
+	outline: none;
+	cursor: text;
+}
+html[data-skin='cockpit'] .ck-prompt-input::placeholder {
+	color: var(--text-2);
+	letter-spacing: 0.04em;
+}
+html[data-skin='cockpit'] .ck-prompt-input:focus-visible {
+	outline: none;
+}
+html[data-skin='cockpit'] .ck-prompt-hint {
+	margin-right: 6px;
+	padding: 0 4px;
+	border: 1px solid var(--border-strong);
+	color: var(--text-2);
+	font-size: 10px;
+	text-transform: uppercase;
+}
+
+html[data-skin='cockpit'] .ck-go {
+	align-self: center;
+	height: 18px;
+	margin-right: 3px;
+	padding: 0 8px;
+	background: var(--skin-go);
+	color: var(--skin-on-go);
+	font-family: var(--font-code);
+	font-size: 11px;
+	font-weight: 700;
+	outline: none;
+}
+html[data-skin='cockpit'] .ck-go:hover {
+	background: color-mix(in oklab, var(--skin-go) 80%, var(--skin-value));
+}
+html[data-skin='cockpit'] .ck-go:focus-visible {
+	box-shadow:
+		0 0 0 1px var(--skin-tape),
+		0 0 0 2px var(--skin-go);
+}
+
+/* ---- Readouts ----------------------------------------------------------------------------- */
+
+html[data-skin='cockpit'] .ck-readouts {
+	display: flex;
+	align-items: stretch;
+	min-width: 0;
+	overflow: hidden;
+}
+html[data-skin='cockpit'] .ck-readout {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	padding: 0 8px;
+	border-left: 1px solid var(--border);
+	white-space: nowrap;
+}
+html[data-skin='cockpit'] .ck-readout-btn {
+	outline: none;
+}
+html[data-skin='cockpit'] .ck-readout-btn:hover {
+	background: var(--bg-3);
+}
+html[data-skin='cockpit'] .ck-readout-btn:focus-visible {
+	box-shadow: inset 0 0 0 1px var(--accent);
+}
+html[data-skin='cockpit'] .ck-readout .ck-field-dim {
+	max-width: 96px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+html[data-skin='cockpit'] .ck-clock {
+	background: var(--bg-2);
+}
+html[data-skin='cockpit'] .ck-clock-time {
+	color: var(--skin-value);
+	font-size: 13px;
+	font-weight: 700;
+}
+
+/* A figure that ticks: last-move arrow plus a brief flash of the move's color. */
+html[data-skin='cockpit'] .ck-tick {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	color: var(--skin-value);
+}
+html[data-skin='cockpit'] .ck-tick-text {
+	position: relative;
+}
+html[data-skin='cockpit'] .ck-tick-arrow {
+	position: relative;
+	font-size: 8px;
+	color: var(--text-2);
+}
+html[data-skin='cockpit'] .ck-tick[data-tone='up'] .ck-tick-arrow {
+	color: var(--up);
+}
+html[data-skin='cockpit'] .ck-tick[data-tone='down'] .ck-tick-arrow {
+	color: var(--down);
+}
+html[data-skin='cockpit'] .ck-tick-flash {
+	position: absolute;
+	inset: -2px -3px;
+	opacity: 0;
+	pointer-events: none;
+}
+html[data-skin='cockpit'] .ck-tick[data-tone='up'] .ck-tick-flash {
+	background: var(--up);
+}
+html[data-skin='cockpit'] .ck-tick[data-tone='down'] .ck-tick-flash {
+	background: var(--down);
+}
