@@ -43,6 +43,23 @@ let featureFailures: readonly FeatureFailure[] = [];
 let watcher: WorkspaceWatcher | null = null;
 let mainWindow: BrowserWindow | null = null;
 
+// One Anvil per profile: a second process would keep its own copy of settings and secrets and
+// overwrite the first one's on save (and run a second updater). Relaunching focuses this window.
+// The lock lives in userData, so e2e runs with their own --user-data-dir stay independent.
+const isPrimary = app.requestSingleInstanceLock();
+if (!isPrimary) app.quit();
+app.on('second-instance', () => {
+	const win = mainWindow;
+	if (!win) {
+		// macOS keeps running with no window; open one once startup has finished.
+		if (store && features) openWindow(store);
+		return;
+	}
+	if (win.isMinimized()) win.restore();
+	win.show();
+	win.focus();
+});
+
 async function start(): Promise<void> {
 	installGlobalSecurity();
 	serveRenderer(join(__dirname, '../renderer'));
@@ -108,12 +125,14 @@ function openWindow(settings: JsonStore): void {
 	});
 }
 
-app.whenReady()
-	.then(start)
-	.catch((error: unknown) => {
-		log.error('[main] fatal startup error', error);
-		app.exit(1);
-	});
+if (isPrimary) {
+	app.whenReady()
+		.then(start)
+		.catch((error: unknown) => {
+			log.error('[main] fatal startup error', error);
+			app.exit(1);
+		});
+}
 
 app.on('window-all-closed', () => {
 	if (process.platform !== 'darwin') app.quit();
