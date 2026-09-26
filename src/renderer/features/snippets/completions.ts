@@ -3,6 +3,7 @@ import type * as Monaco from 'monaco-editor';
 import type { MonacoApi } from '../../lib/monaco/setup';
 import { SNIPPET_LANGUAGE_IDS, snippetsFor } from './library';
 import { placeholderPreview } from './placeholders';
+import { prefixStartColumn } from './prefix-range';
 
 /**
  * Offers Anvil's snippets by prefix in the editor's suggest widget. Returns one disposable that
@@ -27,6 +28,17 @@ export function registerSnippetCompletions(monaco: MonacoApi): Monaco.IDisposabl
 						position.lineNumber,
 						word.endColumn,
 					);
+					// Hyphenated prefixes need a range that spans the hyphen; the others keep the
+					// language's word range so `a-b` expressions don't swallow the `a-`.
+					const hyphenRange = new monaco.Range(
+						position.lineNumber,
+						prefixStartColumn(
+							model.getLineContent(position.lineNumber),
+							position.column,
+						),
+						position.lineNumber,
+						word.endColumn,
+					);
 					return {
 						suggestions: snippets.map((s, i) => ({
 							label: s.prefix,
@@ -36,7 +48,7 @@ export function registerSnippetCompletions(monaco: MonacoApi): Monaco.IDisposabl
 							insertText: s.body,
 							insertTextRules:
 								monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-							range,
+							range: s.prefix.includes('-') ? hyphenRange : range,
 							// '~' sorts after letters so language-server items keep the top slots.
 							sortText: '~' + s.prefix,
 						})),
