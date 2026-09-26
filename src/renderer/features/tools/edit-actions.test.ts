@@ -1,10 +1,12 @@
 import type * as Monaco from 'monaco-editor';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { focusedEditor } from '../../lib/monaco/editors';
 import { toast } from '../../stores/toast-store';
-import { insertAtCursors, replaceTargets } from './edit-actions';
+import { quickPick } from '../../ui/QuickPick';
+import { insertAtCursors, replaceTargets, transformSelection } from './edit-actions';
 
-vi.mock('../../lib/monaco/editors', () => ({ focusedEditor: () => null }));
+vi.mock('../../lib/monaco/editors', () => ({ focusedEditor: vi.fn(() => null) }));
 vi.mock('../../stores/toast-store', () => ({
 	toast: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), success: vi.fn() },
 }));
@@ -130,5 +132,22 @@ describe('insertAtCursors', () => {
 		);
 		insertAtCursors(editor, (i) => `id-${i}`);
 		expect(edits.map((e) => e.text)).toEqual(['id-0', 'id-1', 'id-2']);
+	});
+});
+
+describe('transformSelection', () => {
+	it('applies the shuffle order the preview showed', async () => {
+		const lines = Array.from({ length: 8 }, (_, i) => `l${i}`);
+		const { editor, edits } = fakeEditor([lines.join('\n')], [cursor(1, 1)]);
+		vi.mocked(focusedEditor).mockReturnValue(editor);
+		let shown: string | undefined;
+		vi.mocked(quickPick).mockImplementation((options) => {
+			const items = Array.isArray(options.items) ? options.items : [];
+			shown = items.find((item) => item.id === 'shuffle-lines')?.detail;
+			return Promise.resolve('shuffle-lines');
+		});
+		await transformSelection();
+		expect(edits).toHaveLength(1);
+		expect(edits[0]?.text.replace(/\s+/g, ' ')).toBe(shown);
 	});
 });

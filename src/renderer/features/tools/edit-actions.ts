@@ -119,6 +119,8 @@ export async function transformSelection(): Promise<void> {
 	// Preview each transform on the real selection when it's small enough to run 46 times.
 	const sample = targets(editor)[0]?.text ?? '';
 	const live = sample.length > 0 && sample.length <= 2000;
+	// Kept so random transforms (shuffle) apply the ordering the preview showed.
+	const previews = new Map<string, string>();
 	const picked = await quickPick({
 		title: 'transform',
 		placeholder: 'snake_case, sort lines, base64, JSON pretty…',
@@ -126,7 +128,9 @@ export async function transformSelection(): Promise<void> {
 			let detail = t.example;
 			if (live) {
 				try {
-					detail = clip(t.run(sample), 80);
+					const output = t.run(sample);
+					previews.set(t.id, output);
+					detail = clip(output, 80);
 				} catch {
 					detail = `(${t.example})`;
 				}
@@ -141,7 +145,15 @@ export async function transformSelection(): Promise<void> {
 		}),
 	});
 	const transform = TRANSFORMS.find((t) => t.id === picked);
-	if (transform) replaceTargets(editor, transform.run);
+	if (!transform) return;
+	const preview = previews.get(transform.id);
+	let previewUsed = false;
+	replaceTargets(editor, (text) => {
+		// Only the previewed selection, and only once, so other selections still get their own run.
+		if (preview === undefined || previewUsed || text !== sample) return transform.run(text);
+		previewUsed = true;
+		return preview;
+	});
 }
 
 export function evaluateMath(): void {
