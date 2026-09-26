@@ -286,6 +286,26 @@
 	.animate-fade {
 		animation: fade-in var(--dur-slow) var(--ease-out);
 	}
+	/* Exits: Radix keeps a closing overlay mounted until its animation ends, so whatever pops or
+	   fades in leaves the same way. Token durations, so reduced motion makes them instant. */
+	.animate-in[data-state='closed'] {
+		animation: pop-out var(--dur-fast) var(--ease-out) both;
+	}
+	.animate-fade[data-state='closed'] {
+		animation: fade-out var(--dur-fast) var(--ease-out) both;
+	}
+	/* Toasts follow a swipe to the right, snap back when it's cancelled, and carry on off the
+	   edge from where it was let go. */
+	.toast-swipe[data-swipe='move'] {
+		translate: var(--radix-toast-swipe-move-x) 0;
+	}
+	.toast-swipe[data-swipe='cancel'] {
+		translate: 0 0;
+		transition: translate var(--dur-fast) var(--ease-out);
+	}
+	.toast-swipe[data-state='closed'][data-swipe='end'] {
+		animation: swipe-out var(--dur-fast) var(--ease-out) both;
+	}
 	.pulse-dot {
 		animation: pulse-dot 1.8s ease-in-out infinite;
 	}
@@ -416,6 +436,33 @@ html[data-reduce-motion='true'] .shimmer {
 	to {
 		opacity: 1;
 		transform: none;
+	}
+}
+@keyframes pop-out {
+	from {
+		opacity: 1;
+		transform: none;
+	}
+	to {
+		opacity: 0;
+		transform: translateY(4px) scale(0.985);
+	}
+}
+@keyframes fade-out {
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+	}
+}
+@keyframes swipe-out {
+	from {
+		translate: var(--radix-toast-swipe-end-x) 0;
+	}
+	to {
+		translate: 100% 0;
+		opacity: 0;
 	}
 }
 @keyframes fade-in {

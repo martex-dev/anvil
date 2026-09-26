@@ -10,12 +10,14 @@ export interface ToastItem {
 	durationMs: number;
 	/** How many identical toasts this one stands for (shown as ×n). */
 	count: number;
+	/** False while it animates out; closed toasts are pruned on the next push. */
+	open: boolean;
 }
 
 interface ToastState {
 	toasts: ToastItem[];
 	push: (
-		toast: Omit<ToastItem, 'id' | 'durationMs' | 'count'> & { durationMs?: number },
+		toast: Omit<ToastItem, 'id' | 'durationMs' | 'count' | 'open'> & { durationMs?: number },
 	) => number;
 	dismiss: (id: number) => void;
 }
@@ -25,9 +27,12 @@ let nextId = 1;
 /** Toasts on screen at once. */
 export const MAX_TOASTS = 5;
 
-/** Drops the oldest toasts over the cap, errors last so a burst of info can't hide a failure. */
+/**
+ * Forgets closed toasts (their exit animation is long over by the next push) and drops the oldest
+ * over the cap, errors last so a burst of info can't hide a failure.
+ */
 function capToasts(toasts: ToastItem[]): ToastItem[] {
-	const out = [...toasts];
+	const out = toasts.filter((t) => t.open);
 	while (out.length > MAX_TOASTS) {
 		const victim = out.findIndex((t) => t.tone !== 'error');
 		out.splice(victim === -1 ? 0 : victim, 1);
@@ -43,6 +48,7 @@ export const useToastStore = create<ToastState>((set) => ({
 		set((s) => {
 			const same = s.toasts.find(
 				(t) =>
+					t.open &&
 					t.tone === toast.tone &&
 					t.title === toast.title &&
 					t.description === toast.description,
@@ -54,11 +60,14 @@ export const useToastStore = create<ToastState>((set) => ({
 						t === same ? { ...t, id, durationMs, count: t.count + 1 } : t,
 					),
 				};
-			return { toasts: capToasts([...s.toasts, { ...toast, id, durationMs, count: 1 }]) };
+			const item: ToastItem = { ...toast, id, durationMs, count: 1, open: true };
+			return { toasts: capToasts([...s.toasts, item]) };
 		});
 		return id;
 	},
-	dismiss: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
+	// Closing keeps the item so Radix can play its exit animation before unmounting it.
+	dismiss: (id) =>
+		set((s) => ({ toasts: s.toasts.map((t) => (t.id === id ? { ...t, open: false } : t)) })),
 }));
 
 /** Imperative helper so non-React code (commands, query callbacks) can raise toasts. */

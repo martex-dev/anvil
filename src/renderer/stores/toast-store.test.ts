@@ -21,6 +21,16 @@ describe('toast store', () => {
 		expect(titles).not.toContain('Error 0');
 	});
 
+	it('keeps a dismissed toast for its exit animation, then prunes it', () => {
+		const id = toast.info('Saved');
+		useToastStore.getState().dismiss(id);
+		expect(useToastStore.getState().toasts).toMatchObject([{ id, open: false }]);
+		toast.info('Saved');
+		const toasts = useToastStore.getState().toasts;
+		expect(toasts).toHaveLength(1);
+		expect(toasts[0]).toMatchObject({ open: true, count: 1 });
+	});
+
 	it('folds identical toasts into one with a count and a fresh id', () => {
 		const first = toast.warn('Disk full', 'C:\\data');
 		const second = toast.warn('Disk full', 'C:\\data');
