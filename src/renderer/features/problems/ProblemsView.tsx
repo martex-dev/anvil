@@ -2,6 +2,7 @@ import { CircleAlert, CircleCheck, Info, SearchX, Sparkles, TriangleAlert } from
 import { type JSX, useMemo, useState } from 'react';
 
 import { cn } from '../../lib/cn';
+import { rovingKeyDown } from '../../lib/roving';
 import { requestOpenFile } from '../../stores/workbench-store';
 import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
@@ -34,6 +35,11 @@ export function ProblemsView(): JSX.Element {
 		() => new Map(groups.map(([path, problems]) => [path, problemKeys(problems)])),
 		[groups],
 	);
+	// Roving tabindex: the tree is one Tab stop (the last focused row, else the first) and the
+	// arrow keys move between rows.
+	const [lastFocused, setLastFocused] = useState<string | null>(null);
+	const rowIds = groups.flatMap(([path]) => (keys.get(path) ?? []).map((k) => `${path}|${k}`));
+	const tabStop = lastFocused && rowIds.includes(lastFocused) ? lastFocused : rowIds[0];
 
 	if (items.length === 0) {
 		return (
@@ -72,9 +78,10 @@ export function ProblemsView(): JSX.Element {
 					className='min-h-0 flex-1 overflow-auto pb-2 text-12'
 					role='tree'
 					aria-label='Problems'
+					onKeyDown={rovingKeyDown}
 				>
 					{groups.map(([path, problems]) => (
-						<div key={path} role='group'>
+						<div key={path} role='group' aria-label={path}>
 							<div className='flex h-6 items-center gap-2 px-3 text-fg-1'>
 								<FileBadge name={path.split('/').at(-1) ?? path} />
 								<span className='truncate' title={path}>
@@ -84,53 +91,58 @@ export function ProblemsView(): JSX.Element {
 									{problems.length}
 								</span>
 							</div>
-							{problems.map((p, i) => (
-								<div
-									key={keys.get(path)?.[i] ?? i}
-									role='treeitem'
-									tabIndex={0}
-									onClick={() =>
-										requestOpenFile({
-											path: p.path,
-											line: p.line,
-											column: p.column,
-										})
-									}
-									onKeyDown={(e) =>
-										e.key === 'Enter' &&
-										requestOpenFile({
-											path: p.path,
-											line: p.line,
-											column: p.column,
-										})
-									}
-									className={cn(
-										'group flex min-h-6 cursor-default items-start gap-2 py-0.5 pr-2 pl-7 outline-none',
-										'hover:bg-accent-faint focus-visible:bg-accent-faint',
-									)}
-								>
-									<span className='mt-[3px]'>{ICON[p.severity]}</span>
-									<span className='selectable min-w-0 flex-1 text-fg-0'>
-										{p.message}
-									</span>
-									<span className='shrink-0 text-11 text-fg-2'>{p.source}</span>
-									<span className='num shrink-0 text-11 text-fg-2'>
-										[{p.line}:{p.column}]
-									</span>
-									<IconButton
-										size='sm'
-										label='Fix with AI'
-										icon={<Sparkles size={12} className='text-accent-2' />}
-										onClick={(e) => {
-											e.stopPropagation();
-											void askAiAboutProblem(p);
+							{problems.map((p, i) => {
+								const id = `${path}|${keys.get(path)?.[i] ?? i}`;
+								const open = (): void =>
+									requestOpenFile({
+										path: p.path,
+										line: p.line,
+										column: p.column,
+									});
+								return (
+									<div
+										key={id}
+										role='treeitem'
+										data-roving
+										tabIndex={id === tabStop ? 0 : -1}
+										onFocus={() => setLastFocused(id)}
+										onClick={open}
+										onKeyDown={(e) => {
+											// Keys pressed on the row's own button are the button's.
+											if (e.target !== e.currentTarget) return;
+											if (e.key !== 'Enter' && e.key !== ' ') return;
+											e.preventDefault();
+											open();
 										}}
-										// Enter/Space on the button must not also open the file via the row.
-										onKeyDown={(e) => e.stopPropagation()}
-										className='-my-0.5 shrink-0 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100'
-									/>
-								</div>
-							))}
+										className={cn(
+											'group flex min-h-6 cursor-default items-start gap-2 py-0.5 pr-2 pl-7 outline-none',
+											'hover:bg-accent-faint focus-visible:bg-accent-faint focus-visible:shadow-glow',
+										)}
+									>
+										<span className='mt-[3px]'>{ICON[p.severity]}</span>
+										<span className='selectable min-w-0 flex-1 text-fg-0'>
+											{p.message}
+										</span>
+										<span className='shrink-0 text-11 text-fg-2'>
+											{p.source}
+										</span>
+										<span className='num shrink-0 text-11 text-fg-2'>
+											[{p.line}:{p.column}]
+										</span>
+										<IconButton
+											size='sm'
+											label='Fix with AI'
+											icon={<Sparkles size={12} className='text-accent-2' />}
+											onClick={(e) => {
+												e.stopPropagation();
+												void askAiAboutProblem(p);
+											}}
+											tabIndex={id === tabStop ? 0 : -1}
+											className='-my-0.5 shrink-0 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100'
+										/>
+									</div>
+								);
+							})}
 						</div>
 					))}
 				</div>

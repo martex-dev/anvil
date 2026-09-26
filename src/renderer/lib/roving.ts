@@ -26,7 +26,8 @@ export function rovingTarget(key: string, index: number, count: number): number 
 /** Keydown handler for a list container: moves DOM focus between its `data-roving` items. */
 export function rovingKeyDown(event: KeyboardEvent<HTMLElement>): void {
 	const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('[data-roving]'));
-	const index = items.findIndex((el) => el === document.activeElement);
+	// Focus may be on a control inside an item (a row's action button).
+	const index = items.findIndex((el) => el.contains(document.activeElement));
 	const target = rovingTarget(event.key, index, items.length);
 	if (target === null) return;
 	event.preventDefault();
