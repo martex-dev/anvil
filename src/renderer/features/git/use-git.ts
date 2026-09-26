@@ -18,7 +18,8 @@ export function useGitStatus(): {
 	status: GitStatus | undefined;
 	isLoading: boolean;
 	error: Error | null;
-	refetch: () => void;
+	/** Resolves once the refetch has settled (it never rejects; failures land in `error`). */
+	refetch: () => Promise<void>;
 } {
 	const client = useQueryClient();
 	const { info } = useWorkspace();
@@ -36,7 +37,7 @@ export function useGitStatus(): {
 		status: query.data,
 		isLoading: query.isLoading,
 		error: query.error,
-		refetch: () => void query.refetch(),
+		refetch: () => query.refetch().then(() => undefined),
 	};
 }
 
@@ -46,6 +47,9 @@ export function useGitActions(): {
 	commit: (message: string) => Promise<boolean>;
 	pull: () => void;
 	push: () => void;
+	/** Per-operation progress, for a spinner on the button that started it. */
+	pulling: boolean;
+	pushing: boolean;
 	busy: boolean;
 } {
 	const client = useQueryClient();
@@ -112,6 +116,8 @@ export function useGitActions(): {
 				.catch(() => false),
 		pull: () => pull.mutate(),
 		push: () => push.mutate(),
+		pulling: pull.isPending,
+		pushing: push.isPending,
 		busy: [stage, unstage, commit, pull, push].some((m) => m.isPending),
 	};
 }

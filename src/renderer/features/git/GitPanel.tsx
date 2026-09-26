@@ -6,7 +6,7 @@ import {
 	RefreshCw,
 	TriangleAlert,
 } from 'lucide-react';
-import type { JSX } from 'react';
+import { type JSX, useState } from 'react';
 
 import type { GitChange } from '@shared/ipc/channels/git';
 
@@ -75,6 +75,12 @@ export function GitPanel(): JSX.Element {
 	const { info } = useWorkspace();
 	const { status, isLoading, error, refetch } = useGitStatus();
 	const actions = useGitActions();
+	// Only a refresh the user asked for shows a spinner; the 5 s poll would make it flicker.
+	const [refreshing, setRefreshing] = useState(false);
+	const refresh = (): void => {
+		setRefreshing(true);
+		void refetch().finally(() => setRefreshing(false));
+	};
 
 	if (!info.root) {
 		return (
@@ -95,7 +101,7 @@ export function GitPanel(): JSX.Element {
 	// Only a failure with nothing to show replaces the panel. A failed poll after a good one (a
 	// terminal git holding the index lock) keeps the last status, and the unsent commit message.
 	if (error && !status)
-		return <ErrorState title='Git failed' message={error.message} onRetry={refetch} />;
+		return <ErrorState title='Git failed' message={error.message} onRetry={refresh} />;
 	if (!status?.isRepo) {
 		return (
 			<EmptyState
@@ -130,23 +136,44 @@ export function GitPanel(): JSX.Element {
 				)}
 				<IconButton
 					size='sm'
-					label='Pull'
-					icon={<ArrowDown size={13} />}
+					label={actions.pulling ? 'Pulling…' : 'Pull'}
+					icon={
+						actions.pulling ? (
+							<Spinner size={12} label='Pulling' />
+						) : (
+							<ArrowDown size={13} />
+						)
+					}
 					disabled={actions.busy}
 					onClick={actions.pull}
 				/>
 				<IconButton
 					size='sm'
-					label={status.tracking ? 'Push' : 'Publish Branch'}
-					icon={<GitPullRequestArrow size={13} />}
+					label={
+						actions.pushing ? 'Pushing…' : status.tracking ? 'Push' : 'Publish Branch'
+					}
+					icon={
+						actions.pushing ? (
+							<Spinner size={12} label='Pushing' />
+						) : (
+							<GitPullRequestArrow size={13} />
+						)
+					}
 					disabled={actions.busy}
 					onClick={actions.push}
 				/>
 				<IconButton
 					size='sm'
-					label='Refresh'
-					icon={<RefreshCw size={13} />}
-					onClick={refetch}
+					label={refreshing ? 'Refreshing…' : 'Refresh'}
+					icon={
+						refreshing ? (
+							<Spinner size={12} label='Refreshing' />
+						) : (
+							<RefreshCw size={13} />
+						)
+					}
+					aria-busy={refreshing || undefined}
+					onClick={refresh}
 				/>
 			</div>
 			{error && (
@@ -158,7 +185,7 @@ export function GitPanel(): JSX.Element {
 					<span className='min-w-0 flex-1 truncate' title={error.message}>
 						Couldn&rsquo;t refresh: {error.message}
 					</span>
-					<Button variant='ghost' size='sm' onClick={refetch}>
+					<Button variant='ghost' size='sm' loading={refreshing} onClick={refresh}>
 						Retry
 					</Button>
 				</div>
