@@ -133,7 +133,11 @@ export function TemplatesDialog(): JSX.Element {
 							<div className='hud mb-2'>Files · {selected.files.length}</div>
 							<ul className='max-h-64 overflow-auto font-mono text-11 text-fg-1'>
 								{selected.files.map((f) => (
-									<li key={f} className='truncate'>
+									<li
+										key={f}
+										className='truncate'
+										title={`${name || 'project'}/${f}`}
+									>
 										{name || 'project'}/{f}
 									</li>
 								))}
