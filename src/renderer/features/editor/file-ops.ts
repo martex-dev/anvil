@@ -1,5 +1,7 @@
 import type * as Monaco from 'monaco-editor';
 
+import type { TextEncoding } from '@shared/ipc/channels/fs';
+
 import { getSettings } from '../../app/hooks/use-settings';
 import { call, IpcCallError } from '../../lib/ipc';
 import { rlog } from '../../lib/log';
@@ -13,8 +15,9 @@ interface Tracked {
 	savedVersion: number;
 	listener: Monaco.IDisposable;
 	viewState: Monaco.editor.ICodeEditorViewState | null;
-	/** The file on disk starts with a UTF-8 BOM; saves keep it. */
+	/** The file on disk starts with a UTF-8 BOM / is not UTF-8; saves keep both. */
 	bom: boolean;
+	encoding: TextEncoding;
 }
 
 const tracked = new Map<string, Tracked>();
@@ -141,6 +144,7 @@ export function openScratch(monaco: MonacoApi): void {
 		},
 		viewState: null,
 		bom: false,
+		encoding: 'utf8',
 	});
 	store.add({
 		path: SCRATCH_PATH,
@@ -210,6 +214,7 @@ export async function openFile(monaco: MonacoApi, root: string, path: string): P
 			listener: model.onDidChangeContent(() => markDirty(path)),
 			viewState: null,
 			bom: file.bom,
+			encoding: file.encoding,
 		};
 		tracked.set(path, t);
 		store.update(path, { state: 'ready', mtimeMs: file.mtimeMs });
@@ -263,6 +268,7 @@ export async function saveFile(path: string, force = false): Promise<boolean> {
 			path,
 			content: t.model.getValue(),
 			bom: t.bom,
+			encoding: t.encoding,
 			...(force ? {} : { expectedMtimeMs: file.mtimeMs }),
 		});
 		t.savedVersion = version;
@@ -304,6 +310,7 @@ export async function reloadFromDisk(path: string): Promise<void> {
 		}
 		t.savedVersion = t.model.getAlternativeVersionId();
 		t.bom = file.bom;
+		t.encoding = file.encoding;
 		useEditorStore.getState().update(path, { mtimeMs: file.mtimeMs, changedOnDisk: false });
 		markDirty(path);
 	} catch (error) {

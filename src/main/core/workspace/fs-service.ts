@@ -2,10 +2,11 @@ import { existsSync, type Stats } from 'node:fs';
 import { lstat, mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, extname, join } from 'node:path';
 
-import type { FileContent, FsEntry } from '@shared/ipc/channels/fs';
+import type { FileContent, FsEntry, TextEncoding } from '@shared/ipc/channels/fs';
 
 import { AnvilError } from '../errors';
 import { assertRealInside, toAbsolute, toRelative, validateName } from './fs-guard';
+import { decodeText, encodeText } from './text-codec';
 
 export const MAX_EDITABLE_BYTES = 5 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
@@ -44,6 +45,15 @@ function detectEol(text: string): '\n' | '\r\n' {
 	const lf = text.indexOf('\n');
 	return crlf !== -1 && crlf < lf + 1 ? '\r\n' : '\n';
 }
+
+const EMPTY_TEXT = {
+	content: '',
+	binary: false,
+	tooLarge: false,
+	eol: '\n',
+	bom: false,
+	encoding: 'utf8',
+} as const satisfies Partial<FileContent>;
 
 /** Workspace-scoped file operations. Every path goes through the guard first. */
 export class FsService {
@@ -104,16 +114,13 @@ export class FsService {
 		if (!s.isFile()) throw new AnvilError('FS_NOT_A_FILE', `${rel} is not a file`);
 		const base = { path: rel, size: s.size, mtimeMs: s.mtimeMs };
 		if (s.size > MAX_EDITABLE_BYTES) {
-			return { ...base, content: '', binary: false, tooLarge: true, eol: '\n', bom: false };
+			return { ...base, ...EMPTY_TEXT, tooLarge: true };
 		}
 		const buf = await readFile(abs);
-		if (looksBinary(buf))
-			return { ...base, content: '', binary: true, tooLarge: false, eol: '\n', bom: false };
-		// Strip a UTF-8 BOM so the editor doesn't show it, but report it so a save writes it
-		// back: Excel CSVs and PowerShell 5 scripts depend on it.
-		const raw = buf.toString('utf8');
-		const bom = raw.charCodeAt(0) === 0xfeff;
-		const text = bom ? raw.slice(1) : raw;
+		if (looksBinary(buf)) return { ...base, ...EMPTY_TEXT, binary: true };
+		// The BOM is stripped so the editor doesn't show it, but reported (with the encoding) so
+		// a save writes the same bytes back: Excel CSVs and PowerShell 5 scripts depend on it.
+		const { text, encoding, bom } = decodeText(buf);
 		return {
 			...base,
 			content: text,
@@ -121,6 +128,7 @@ export class FsService {
 			tooLarge: false,
 			eol: detectEol(text),
 			bom,
+			encoding,
 		};
 	}
 
@@ -129,6 +137,7 @@ export class FsService {
 		content: string,
 		expectedMtimeMs?: number,
 		bom = false,
+		encoding: TextEncoding = 'utf8',
 	): Promise<{ mtimeMs: number }> {
 		const root = this.root();
 		const abs = toAbsolute(root, rel);
@@ -140,7 +149,7 @@ export class FsService {
 				throw new AnvilError('FS_CONFLICT', `${rel} changed on disk since it was opened`);
 			}
 		}
-		await writeFile(abs, bom ? `\ufeff${content}` : content, 'utf8');
+		await writeFile(abs, encodeText(content, encoding, bom, rel));
 		return { mtimeMs: (await stat(abs)).mtimeMs };
 	}
 

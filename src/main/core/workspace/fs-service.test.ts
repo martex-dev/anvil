@@ -65,6 +65,16 @@ describe('FsService', () => {
 		expect((await fs.readFile('README.md')).bom).toBe(false);
 	});
 
+	it('keeps the bytes of a non-UTF-8 (Windows-1252) file when saving', async () => {
+		writeFileSync(join(root, 'prices.csv'), Buffer.from([0x63, 0x61, 0x66, 0xe9, 0x0a]));
+		const csv = await fs.readFile('prices.csv');
+		expect(csv).toMatchObject({ content: 'café\n', encoding: 'windows-1252' });
+		await fs.writeFile('prices.csv', 'caf\u00e9!\n', undefined, csv.bom, csv.encoding);
+		expect(readFileSync(join(root, 'prices.csv'))).toEqual(
+			Buffer.from([0x63, 0x61, 0x66, 0xe9, 0x21, 0x0a]),
+		);
+	});
+
 	it('reads text with EOL detection and flags binaries', async () => {
 		const readme = await fs.readFile('README.md');
 		expect(readme).toMatchObject({ binary: false, eol: '\r\n', content: '# hi\r\nthere\r\n' });

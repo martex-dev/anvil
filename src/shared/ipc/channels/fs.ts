@@ -17,6 +17,9 @@ export const FsEntrySchema = z.object({
 });
 export type FsEntry = z.infer<typeof FsEntrySchema>;
 
+export const TextEncodingSchema = z.enum(['utf8', 'windows-1252']);
+export type TextEncoding = z.infer<typeof TextEncodingSchema>;
+
 export const FileContentSchema = z.object({
 	path: z.string(),
 	content: z.string(),
@@ -28,6 +31,8 @@ export const FileContentSchema = z.object({
 	eol: z.enum(['\n', '\r\n']),
 	/** Started with a UTF-8 BOM (stripped from content); pass it back on save to keep it. */
 	bom: z.boolean(),
+	/** 'windows-1252' when the bytes are not valid UTF-8; pass it back on save to keep them. */
+	encoding: TextEncodingSchema,
 });
 export type FileContent = z.infer<typeof FileContentSchema>;
 
@@ -42,6 +47,8 @@ export const fsChannels = defineChannels({
 			expectedMtimeMs: z.number().optional(),
 			/** Prepend a UTF-8 BOM (the file had one when it was read). */
 			bom: z.boolean().optional(),
+			/** Encoding the file was read with (default UTF-8). */
+			encoding: TextEncodingSchema.optional(),
 		}),
 		output: z.object({ mtimeMs: z.number() }),
 	},
