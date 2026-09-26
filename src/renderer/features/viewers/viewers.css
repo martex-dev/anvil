@@ -1,0 +1,49 @@
+/* Document-scale typography on top of lib/markdown's .md-preview (which is sized for chat). */
+.md-doc {
+	font-size: 14px;
+	line-height: 1.72;
+}
+.md-doc h1 {
+	font-size: 28px;
+	letter-spacing: -0.01em;
+	padding-bottom: 0.3em;
+	border-bottom: 1px solid var(--glass-edge);
+}
+.md-doc h2 {
+	font-size: 20px;
+	border-bottom-color: var(--glass-edge);
+}
+.md-doc h3 {
+	font-size: 16px;
+}
+.md-doc pre,
+.md-doc th,
+.md-doc code {
+	background: color-mix(in oklab, var(--bg-2) 70%, transparent);
+}
+.md-doc pre {
+	border-color: var(--glass-edge);
+}
+.md-doc blockquote {
+	border-left-color: var(--accent);
+	background: var(--accent-faint);
+	padding: 0.4em 0.9em;
+	border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.md-doc table {
+	display: block;
+	max-width: 100%;
+	overflow-x: auto;
+}
+
+/* Transparent pixels read as a checkerboard, like every image editor. */
+.checkerboard {
+	background-color: var(--bg-1);
+	background-image: conic-gradient(
+		var(--bg-2) 25%,
+		transparent 0 50%,
+		var(--bg-2) 0 75%,
+		transparent 0
+	);
+	background-size: 16px 16px;
+}
