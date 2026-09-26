@@ -202,6 +202,7 @@ export class AiService {
 				);
 			}
 			if (controller.signal.aborted) return '';
+			if (error instanceof AnvilError) throw error;
 			throw new Error(unreachable(provider, error), { cause: error });
 		} finally {
 			clearTimeout(timer);

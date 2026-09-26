@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildCompletionRequest, extractCompletion, parseCompletion } from './completion';
+import {
+	buildCompletionRequest,
+	completionReasoningEffort,
+	extractCompletion,
+	parseCompletion,
+} from './completion';
 import { buildSystem } from './prompt';
 import { buildRequest, parseEvent, supportsFallback } from './providers';
 import { SseParser } from './sse';
@@ -131,6 +136,28 @@ describe('completion', () => {
 		expect(r.url).toBe('http://h:1/api/generate');
 		expect(r.body).toMatchObject({ prompt: input.prefix, suffix: input.suffix });
 		expect(parseCompletion('ollama', { response: 'return x' })).toBe('return x');
+	});
+
+	it('keeps reasoning to a minimum on OpenAI reasoning models', () => {
+		expect(completionReasoningEffort('gpt-5-mini')).toBe('minimal');
+		expect(completionReasoningEffort('gpt-5-2025-08-07')).toBe('minimal');
+		expect(completionReasoningEffort('o4-mini')).toBe('low');
+		expect(completionReasoningEffort('gpt-5-chat-latest')).toBeNull();
+		expect(completionReasoningEffort('gpt-4.1-mini')).toBeNull();
+		const r = buildCompletionRequest('openai', 'gpt-5-mini', 'k', input, '');
+		expect(r.body).toMatchObject({ reasoning_effort: 'minimal' });
+		const plain = buildCompletionRequest('openai', 'gpt-4.1-mini', 'k', input, '');
+		expect(plain.body).not.toHaveProperty('reasoning_effort');
+		expect(plain.body).toMatchObject({ max_completion_tokens: 200 });
+	});
+
+	it('explains an empty reply that ran out of tokens', () => {
+		const truncated = {
+			choices: [{ message: { content: '' }, finish_reason: 'length' }],
+		};
+		expect(() => parseCompletion('openai', truncated)).toThrow(/token budget/);
+		const nothing = { choices: [{ message: { content: '' }, finish_reason: 'stop' }] };
+		expect(parseCompletion('openai', nothing)).toBe('');
 	});
 
 	it('extracts the completion and strips stray fences', () => {
