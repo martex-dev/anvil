@@ -1,0 +1,199 @@
+/*
+ * Holo HUD: panes are chamfered plates drawn in light. The outline is painted (not a border)
+ * so the cut corners get their diagonal edge too; bright brackets mark the square corners.
+ * No backdrop-filter anywhere on panes: the backdrop animates, and blur would repaint the
+ * editor every frame.
+ */
+
+html[data-skin='holo'] {
+	--r-sm: 0px;
+	--r-md: 0px;
+	--r-lg: 0px;
+	--r-xl: 0px;
+
+	/* Chamfer size of panes and of small plates (menus, inputs, chips). */
+	--ho-cut: 14px;
+	--ho-cut-sm: 7px;
+	--ho-edge: color-mix(in oklab, var(--accent) 34%, transparent);
+	--ho-edge-hot: color-mix(in oklab, var(--accent) 80%, transparent);
+	--ho-bracket: var(--skin-bracket);
+	--ho-dim: color-mix(in oklab, var(--accent) 12%, transparent);
+	--ho-plate: color-mix(in oklab, var(--bg-2) 70%, transparent);
+
+	--glow:
+		0 0 0 1px color-mix(in oklab, var(--accent) 80%, transparent),
+		0 0 14px -2px color-mix(in oklab, var(--accent) 60%, transparent);
+	--glow-soft: 0 0 18px -6px color-mix(in oklab, var(--accent) 70%, transparent);
+	--shadow-panel: none;
+	--shadow-float: 0 20px 60px -24px var(--scrim);
+}
+
+html[data-skin='holo'][data-kind='light'] {
+	--ho-edge: color-mix(in oklab, var(--accent) 45%, transparent);
+	--ho-dim: color-mix(in oklab, var(--accent) 16%, transparent);
+	--ho-plate: color-mix(in oklab, var(--bg-2) 85%, transparent);
+	--glow:
+		0 0 0 1px var(--accent), 0 0 10px -3px color-mix(in oklab, var(--accent) 50%, transparent);
+}
+
+html[data-skin='holo'] body {
+	font-weight: 500;
+	letter-spacing: 0.01em;
+}
+
+html[data-skin='holo'] ::selection {
+	background: color-mix(in oklab, var(--accent) 34%, transparent);
+}
+
+html[data-skin='holo'] :focus-visible {
+	outline: 1px solid var(--accent);
+	outline-offset: 1px;
+}
+
+/* HUD micro-labels speak Orbitron. */
+html[data-skin='holo'] .hud {
+	font-family: var(--font-display);
+	font-size: 9px;
+	font-weight: 700;
+	letter-spacing: 0.22em;
+	color: var(--text-2);
+}
+
+/* ---- Panes --------------------------------------------------------------------------- */
+
+html[data-skin='holo'] .glass {
+	--c: var(--ho-cut);
+	--e: var(--ho-edge);
+	background: var(--glass);
+	backdrop-filter: none;
+	border: 0;
+	border-radius: 0;
+	box-shadow: none;
+	clip-path: polygon(
+		var(--c) 0,
+		100% 0,
+		100% calc(100% - var(--c)),
+		calc(100% - var(--c)) 100%,
+		0 100%,
+		0 var(--c)
+	);
+}
+
+/* The outline: four straight edges and the two chamfer diagonals. */
+html[data-skin='holo'] .glass::before {
+	inset: 0;
+	padding: 0;
+	border-radius: 0;
+	-webkit-mask: none;
+	mask: none;
+	opacity: 1;
+	z-index: 30;
+	background:
+		linear-gradient(
+				135deg,
+				transparent calc(50% - 0.9px),
+				var(--e) calc(50% - 0.9px) calc(50% + 0.9px),
+				transparent calc(50% + 0.9px)
+			)
+			left top / var(--c) var(--c) no-repeat,
+		linear-gradient(
+				135deg,
+				transparent calc(50% - 0.9px),
+				var(--e) calc(50% - 0.9px) calc(50% + 0.9px),
+				transparent calc(50% + 0.9px)
+			)
+			right bottom / var(--c) var(--c) no-repeat,
+		linear-gradient(var(--e), var(--e)) right top / calc(100% - var(--c)) 1px no-repeat,
+		linear-gradient(var(--e), var(--e)) left bottom / calc(100% - var(--c)) 1px no-repeat,
+		linear-gradient(var(--e), var(--e)) left bottom / 1px calc(100% - var(--c)) no-repeat,
+		linear-gradient(var(--e), var(--e)) right top / 1px calc(100% - var(--c)) no-repeat;
+	transition: none;
+}
+
+/* Brackets on the square corners, and a hot tick on each chamfer. */
+html[data-skin='holo'] .glass::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	z-index: 30;
+	--b: var(--ho-bracket);
+	background:
+		linear-gradient(var(--b), var(--b)) right top / 18px 2px no-repeat,
+		linear-gradient(var(--b), var(--b)) right top / 2px 18px no-repeat,
+		linear-gradient(var(--b), var(--b)) left bottom / 18px 2px no-repeat,
+		linear-gradient(var(--b), var(--b)) left bottom / 2px 18px no-repeat,
+		linear-gradient(var(--b), var(--b)) calc(var(--c) + 6px) 0 / 26px 2px no-repeat,
+		linear-gradient(var(--b), var(--b)) calc(100% - var(--c) - 6px) 100% / 26px 2px no-repeat;
+	opacity: 0.5;
+	transition: opacity var(--dur-base) var(--ease-out);
+}
+
+html[data-skin='holo'] .glass:focus-within::after,
+html[data-skin='holo'] [data-part='editor-group'][data-focused='true']::after {
+	opacity: 1;
+}
+
+html[data-skin='holo'] .pane-focus:focus-within,
+html[data-skin='holo'] [data-part='editor-group'][data-focused='true'] {
+	--e: color-mix(in oklab, var(--accent) 62%, transparent);
+	box-shadow: inset 0 0 40px -28px var(--accent);
+}
+
+/* Cyber's bracket span is redundant: every pane already carries brackets. */
+html[data-skin='holo'] .brackets-frame {
+	display: none;
+}
+
+/* ---- Floating plates: menus, pickers, dialogs, toasts, tooltips -------------------------- */
+
+html[data-skin='holo'] .glass-strong {
+	--c: var(--ho-cut-sm);
+	background: linear-gradient(180deg, var(--ho-dim), transparent 48px), var(--glass-strong);
+	backdrop-filter: none;
+	border: 1px solid var(--ho-edge);
+	border-radius: 0;
+	box-shadow:
+		inset 0 1px 0 color-mix(in oklab, var(--accent) 40%, transparent),
+		var(--shadow-float);
+	clip-path: polygon(
+		var(--c) 0,
+		100% 0,
+		100% calc(100% - var(--c)),
+		calc(100% - var(--c)) 100%,
+		0 100%,
+		0 var(--c)
+	);
+}
+
+/* Dialogs and the command palette are big enough for full-size chamfers. */
+html[data-skin='holo'] [role='dialog'].glass-strong,
+html[data-skin='holo'] .glass-strong[role='dialog'] {
+	--c: 18px;
+}
+
+/* Highlighted rows in menus and pickers: a lit bar on the left edge. */
+html[data-skin='holo'] .glass-strong [data-highlighted],
+html[data-skin='holo'] .glass-strong [aria-selected='true'] {
+	box-shadow: inset 2px 0 0 var(--accent);
+}
+
+html[data-skin='holo'] kbd {
+	font-family: var(--font-code);
+}
+
+/* ---- Scrollbars: thin luminous rails ---------------------------------------------------- */
+
+html[data-skin='holo'] ::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+html[data-skin='holo'] ::-webkit-scrollbar-thumb {
+	border-radius: 0;
+	border: 3px solid transparent;
+	background-clip: padding-box;
+	background-color: color-mix(in oklab, var(--accent) 30%, transparent);
+}
+html[data-skin='holo'] ::-webkit-scrollbar-thumb:hover {
+	background-color: color-mix(in oklab, var(--accent) 60%, transparent);
+}
