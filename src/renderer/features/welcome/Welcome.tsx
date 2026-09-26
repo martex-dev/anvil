@@ -97,7 +97,7 @@ export function Welcome(): JSX.Element {
 				<button
 					type='button'
 					onClick={() => useUiStore.getState().openSettings('keys')}
-					className='flex items-center gap-3 rounded-xl border border-warn/30 bg-warn-soft px-4 py-3 text-left text-13 text-warn hover:border-warn/60'
+					className='flex items-center gap-3 rounded-xl border border-warn/30 bg-warn-soft px-4 py-3 text-left text-13 text-warn outline-none transition-[border-color,box-shadow] transition-fast hover:border-warn/60 focus-visible:border-warn/60 focus-visible:shadow-glow'
 				>
 					<KeyRound size={16} />
 					<span className='flex-1'>
