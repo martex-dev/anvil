@@ -5,7 +5,7 @@ import { toast } from '../../stores/toast-store';
 import { useEditorStore } from '../editor/editor-store';
 import { isScratch, saveFile } from '../editor/file-ops';
 import { closeTerminal, runInTerminal, useTerminalStore } from '../terminal/terminal-store';
-import { cellAt, cellCode, dedent, findCells } from './cells';
+import { cellAt, cellCode, cellCodeLine, findCells, replText } from './cells';
 
 /** Whether the REPL runs IPython (checked once per session; `%run -i` needs it). */
 let ipython: Promise<boolean> | null = null;
@@ -45,13 +45,32 @@ export async function runPythonFile(module = false): Promise<void> {
 	await runInTerminal({ role: 'run', preset: 'powershell', title: 'run', command });
 }
 
+/** Where sent code came from: tracebacks then name the real file and its line numbers. */
+interface CodeSource {
+	/** Workspace-relative path of the file. */
+	path: string;
+	/** 1-based line of the file the code starts at. */
+	line: number;
+}
+
+function sourceAt(
+	model: { uri: { scheme: string; fsPath: string } },
+	line: number,
+): CodeSource | undefined {
+	const path = toWorkspacePath(model.uri);
+	return path && !isScratch(path) ? { path, line } : undefined;
+}
+
 /** Sends code to the Python REPL terminal, starting one (IPython if installed) if needed. */
-export async function sendToRepl(code: string): Promise<void> {
-	const text = dedent(code).trim();
+export async function sendToRepl(code: string, source?: CodeSource): Promise<void> {
+	const { text, skippedLines } = replText(code);
 	if (!text) return;
 	const multiline = text.includes('\n');
 	const ip = await hasIPython();
-	const command = multiline ? (await call('python:stageCell', { code: text })).command : text;
+	const staged = source ? { ...source, line: source.line + skippedLines } : undefined;
+	const command = multiline
+		? (await call('python:stageCell', { code: text, source: staged })).command
+		: text;
 	await runInTerminal({ role: 'repl', preset: 'repl', title: ip ? 'ipython' : 'repl', command });
 }
 
@@ -69,7 +88,7 @@ export async function runCell(advance: boolean, line?: number): Promise<void> {
 	const at = line ?? editor.getPosition()?.lineNumber ?? 1;
 	const cell = cellAt(cells, at);
 	const code = cell ? cellCode(lines, cell) : model.getValue();
-	await sendToRepl(code);
+	await sendToRepl(code, sourceAt(model, cell ? cellCodeLine(lines, cell) : 1));
 	if (advance && cell) {
 		const next = cells.find((c) => c.start > cell.end);
 		const target = next ? Math.min(next.start + 1, model.getLineCount()) : cell.end;
@@ -91,7 +110,7 @@ export async function runSelection(): Promise<void> {
 		editor.setPosition({ lineNumber: next, column: 1 });
 		return;
 	}
-	await sendToRepl(model.getValueInRange(selection));
+	await sendToRepl(model.getValueInRange(selection), sourceAt(model, selection.startLineNumber));
 }
 
 /** Kills the REPL (and its namespace) and starts a clean one. */

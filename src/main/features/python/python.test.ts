@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { candidates, envDirOf, parsePyvenvVersion } from './envs';
-import { cellCommand, moduleName, psQuote, REPL_STARTUP } from './index';
+import { cellCommand, moduleName, psQuote, REPL_STARTUP, stagedCode } from './index';
 import { activatedEnv } from './interpreter';
 
 let dir: string;
@@ -61,6 +61,12 @@ describe('run helpers', () => {
 	it('runs staged cells through the short REPL helper', () => {
 		expect(cellCommand(3)).toBe('_cell(3)');
 		expect(REPL_STARTUP).toContain('def _cell(n):');
-		expect(REPL_STARTUP).toContain("exec(compile(_f.read(), _p, 'exec'), globals())");
+		expect(REPL_STARTUP).toContain("exec(compile(_code, _p, 'exec'), globals())");
+		expect(REPL_STARTUP).toContain("'cell_%d.src' % n");
+	});
+
+	it('pads staged code so traceback lines match the source file', () => {
+		expect(stagedCode('x = 1\ny = 2', 4)).toBe('\n\n\nx = 1\ny = 2');
+		expect(stagedCode('x = 1', 1)).toBe('x = 1');
 	});
 });

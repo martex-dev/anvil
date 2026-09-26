@@ -49,17 +49,30 @@ export function moduleName(rel: string): string {
  * Loaded into every Anvil REPL through PYTHONSTARTUP (plain python and IPython both honour it).
  * `_cell(n)` runs staged cell n in the REPL's own namespace, so the prompt echoes a short call
  * instead of a long exec() line. Not `%run -i`: on Windows IPython keeps the quotes of a quoted
- * path, and userData paths often contain spaces.
+ * path, and userData paths often contain spaces. `cell_n.src` names the file the cell came
+ * from; compiling under that name makes tracebacks (and terminal links) point at the source.
  */
 export const REPL_STARTUP = [
 	'# Anvil REPL helpers. _cell(n) runs a staged "# %%" cell in this namespace.',
 	'def _cell(n):',
 	'\timport os as _os',
-	"\t_p = _os.path.join(_os.environ['ANVIL_CELLS'], 'cell_%d.py' % n)",
+	"\t_d = _os.environ['ANVIL_CELLS']",
+	"\t_p = _os.path.join(_d, 'cell_%d.py' % n)",
 	"\twith open(_p, encoding='utf-8') as _f:",
-	"\t\texec(compile(_f.read(), _p, 'exec'), globals())",
+	'\t\t_code = _f.read()',
+	'\ttry:',
+	"\t\twith open(_os.path.join(_d, 'cell_%d.src' % n), encoding='utf-8') as _f:",
+	'\t\t\t_p = _f.read().strip() or _p',
+	'\texcept OSError:',
+	'\t\tpass',
+	"\texec(compile(_code, _p, 'exec'), globals())",
 	'',
 ].join('\n');
+
+/** Staged cell text: blank lines in front so traceback line numbers match the source file. */
+export function stagedCode(code: string, line: number): string {
+	return '\n'.repeat(Math.max(0, line - 1)) + code;
+}
 
 export function cellCommand(n: number): string {
 	return `_cell(${n})`;
@@ -170,10 +183,15 @@ export const pythonFeature: MainFeature = {
 		writeFileSync(join(ctx.dataDir, 'anvil_startup.py'), REPL_STARTUP, 'utf8');
 		setReplSupport({ startup: join(ctx.dataDir, 'anvil_startup.py'), cells: ctx.dataDir });
 		let cellCounter = 0;
-		ctx.ipc.handle('python:stageCell', ({ code }) => {
+		ctx.ipc.handle('python:stageCell', ({ code, source }) => {
 			// Rotate a few files so a cell still running is never overwritten by the next one.
 			const n = cellCounter++ % 8;
-			writeFileSync(join(ctx.dataDir, `cell_${n}.py`), code, 'utf8');
+			const root = ctx.workspace.root();
+			const file = source && root ? toAbsolute(root, source.path) : null;
+			const text = file && source ? stagedCode(code, source.line) : code;
+			writeFileSync(join(ctx.dataDir, `cell_${n}.py`), text, 'utf8');
+			// Always rewritten, so a rotated slot never keeps the previous cell's file name.
+			writeFileSync(join(ctx.dataDir, `cell_${n}.src`), file ?? '', 'utf8');
 			return { command: cellCommand(n) };
 		});
 

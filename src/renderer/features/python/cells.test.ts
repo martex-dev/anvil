@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { cellAt, cellCode, dedent, findCells } from './cells';
+import { cellAt, cellCode, cellCodeLine, dedent, findCells, replText } from './cells';
 
 const src = [
 	'import polars as pl',
@@ -45,5 +45,18 @@ describe('cells', () => {
 	it('dedents a selection from inside a function', () => {
 		expect(dedent('\t\tx = 1\n\t\tif x:\n\t\t\tprint(x)')).toBe('x = 1\nif x:\n\tprint(x)');
 		expect(dedent('    a\n\n    b')).toBe('a\n\nb');
+	});
+
+	it('knows the source line each cell body starts at', () => {
+		const cells = findCells(src);
+		expect(cells.map((c) => cellCodeLine(src, c))).toEqual([1, 4, 7, 9]);
+	});
+
+	it('counts leading blank lines dropped before sending to the REPL', () => {
+		expect(replText('\n\n  x = 1\n  y = 2\n')).toEqual({
+			text: 'x = 1\ny = 2',
+			skippedLines: 2,
+		});
+		expect(replText('x = 1')).toEqual({ text: 'x = 1', skippedLines: 0 });
 	});
 });
