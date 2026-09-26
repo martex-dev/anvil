@@ -11,12 +11,14 @@ interface SplitterProps {
 	onEnd?: () => void;
 	onReset?: () => void;
 	label: string;
+	/** Current size and its range, announced by screen readers; `text` is the spoken form. */
+	value?: { now: number; min: number; max: number; text: string } | undefined;
 	className?: string;
 }
 
 /**
  * The gap between two glass panes doubles as the resize handle: invisible until hovered, then a
- * thin accent line. Keyboard: arrows resize, Home resets (double-click too).
+ * thin accent line. Primary button only. Keyboard: arrows resize, Home resets (double-click too).
  */
 export function Splitter({
 	axis,
@@ -25,17 +27,31 @@ export function Splitter({
 	onEnd,
 	onReset,
 	label,
+	value,
 	className,
 }: SplitterProps): JSX.Element {
 	const origin = useRef<number | null>(null);
 	const [active, setActive] = useState(false);
+	// Pointer up, cancel (Alt+Tab, pen lift) and lost capture all end the drag; only the first
+	// one counts, so onEnd runs once and the splitter never stays stuck in drag mode.
+	const endDrag = (): void => {
+		if (origin.current === null) return;
+		origin.current = null;
+		setActive(false);
+		onEnd?.();
+	};
 	return (
 		<div
 			role='separator'
 			aria-orientation={axis === 'x' ? 'vertical' : 'horizontal'}
 			aria-label={label}
+			aria-valuenow={value?.now}
+			aria-valuemin={value?.min}
+			aria-valuemax={value?.max}
+			aria-valuetext={value?.text}
 			tabIndex={0}
 			onPointerDown={(e) => {
+				if (e.button !== 0) return;
 				e.currentTarget.setPointerCapture(e.pointerId);
 				origin.current = axis === 'x' ? e.clientX : e.clientY;
 				setActive(true);
@@ -46,11 +62,12 @@ export function Splitter({
 				onDrag((axis === 'x' ? e.clientX : e.clientY) - origin.current);
 			}}
 			onPointerUp={(e) => {
-				e.currentTarget.releasePointerCapture(e.pointerId);
-				origin.current = null;
-				setActive(false);
-				onEnd?.();
+				if (e.currentTarget.hasPointerCapture(e.pointerId))
+					e.currentTarget.releasePointerCapture(e.pointerId);
+				endDrag();
 			}}
+			onPointerCancel={endDrag}
+			onLostPointerCapture={endDrag}
 			onDoubleClick={onReset}
 			onKeyDown={(e) => {
 				const step = e.shiftKey ? 48 : 12;

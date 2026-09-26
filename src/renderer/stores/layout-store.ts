@@ -72,6 +72,14 @@ export const MIN_EDITOR_WIDTH = 320;
 const MIN_SIDE = 180;
 const MIN_AI = 280;
 
+/** Allowed range of each resizable pane: px, or the left group's share for `splitRatio`. */
+export const PANE_LIMITS = {
+	sideWidth: { min: MIN_SIDE, max: 640 },
+	panelHeight: { min: 120, max: 900 },
+	aiWidth: { min: MIN_AI, max: 900 },
+	splitRatio: { min: 0.2, max: 0.8 },
+} as const;
+
 const viewportWidth = (): number =>
 	typeof window === 'undefined' ? Number.POSITIVE_INFINITY : window.innerWidth;
 
@@ -179,14 +187,11 @@ export const useLayoutStore = create<LayoutState & LayoutActions>((rawSet, get) 
 			set(
 				() => {
 					const next: Partial<LayoutState> = {};
-					if (patch.sideWidth !== undefined)
-						next.sideWidth = clamp(patch.sideWidth, MIN_SIDE, 640);
-					if (patch.panelHeight !== undefined)
-						next.panelHeight = clamp(patch.panelHeight, 120, 900);
-					if (patch.aiWidth !== undefined)
-						next.aiWidth = clamp(patch.aiWidth, MIN_AI, 900);
-					if (patch.splitRatio !== undefined)
-						next.splitRatio = clamp(patch.splitRatio, 0.2, 0.8);
+					for (const key of Object.keys(PANE_LIMITS) as (keyof typeof PANE_LIMITS)[]) {
+						const value = patch[key];
+						const { min, max } = PANE_LIMITS[key];
+						if (value !== undefined) next[key] = clamp(value, min, max);
+					}
 					return next;
 				},
 				patch.sideWidth !== undefined ? 'side' : 'ai',

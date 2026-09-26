@@ -2,6 +2,7 @@ import { FileWarning } from 'lucide-react';
 import { type JSX, lazy, Suspense, useEffect, useRef, useState } from 'react';
 
 import { useSettings } from '../../app/hooks/use-settings';
+import { PaneSplitter } from '../../app/PaneSplitter';
 import { cn } from '../../lib/cn';
 import { rlog } from '../../lib/log';
 import { loadMonaco } from '../../lib/monaco/load';
@@ -11,7 +12,6 @@ import { type Group, useTabsStore } from '../../stores/tabs-store';
 import { EmptyState } from '../../ui/EmptyState';
 import { ErrorState } from '../../ui/ErrorState';
 import { Spinner } from '../../ui/Spinner';
-import { Splitter } from '../../ui/Splitter';
 import { Breadcrumbs } from './Breadcrumbs';
 import { CodeEditor } from './CodeEditor';
 import { useEditorStore } from './editor-store';
@@ -201,7 +201,8 @@ export function EditorArea(): JSX.Element {
 					}}
 				>
 					{i > 0 && (
-						<Splitter
+						<PaneSplitter
+							pane='splitRatio'
 							axis='x'
 							label='Resize editor groups'
 							onStart={() =>

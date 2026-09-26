@@ -13,7 +13,6 @@ import { useLayoutStore } from '../stores/layout-store';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { QuickPickHost } from '../ui/QuickPick';
 import { Spinner } from '../ui/Spinner';
-import { Splitter } from '../ui/Splitter';
 import { ActivityBar } from './ActivityBar';
 import { BottomPanel } from './BottomPanel';
 import { CommandPalette } from './CommandPalette';
@@ -25,6 +24,7 @@ import { useLayoutPersistence } from './hooks/use-layout-persistence';
 import { useMonacoExtras } from './hooks/use-monaco-extras';
 import { useApplySettings } from './hooks/use-settings';
 import { useZenEscape } from './hooks/use-zen-escape';
+import { PaneSplitter } from './PaneSplitter';
 import { QuickOpen } from './QuickOpen';
 import { SettingsDialog } from './settings/SettingsDialog';
 import { ShortcutsDialog } from './ShortcutsDialog';
@@ -127,7 +127,8 @@ export function AppShell(): JSX.Element {
 						<SideWidth>
 							<SideBar />
 						</SideWidth>
-						<Splitter
+						<PaneSplitter
+							pane='sideWidth'
 							axis='x'
 							label='Resize side bar'
 							onStart={() => (start.current = useLayoutStore.getState().sideWidth)}
@@ -147,7 +148,8 @@ export function AppShell(): JSX.Element {
 					{showPanel && (
 						<>
 							{!panelMaximized && (
-								<Splitter
+								<PaneSplitter
+									pane='panelHeight'
 									axis='y'
 									label='Resize panel'
 									onStart={() =>
@@ -167,7 +169,8 @@ export function AppShell(): JSX.Element {
 				</div>
 				{showAi && (
 					<>
-						<Splitter
+						<PaneSplitter
+							pane='aiWidth'
 							axis='x'
 							label='Resize AI panel'
 							onStart={() => (start.current = useLayoutStore.getState().aiWidth)}
