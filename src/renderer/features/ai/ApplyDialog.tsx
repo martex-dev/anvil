@@ -105,12 +105,15 @@ function Preview({ proposal }: { proposal: Proposal }): JSX.Element {
 			useApply.getState().set(null);
 			return;
 		}
-		// One undoable edit; the editor marks the file unsaved and Ctrl+S writes it.
+		// One undoable edit, kept apart from any typing just before it; the editor marks the
+		// file unsaved and Ctrl+S writes it.
+		model.pushStackElement();
 		model.pushEditOperations(
 			[],
 			[{ range: model.getFullModelRange(), text: proposed }],
 			() => null,
 		);
+		model.pushStackElement();
 		toast.success(
 			'Applied: review and save',
 			`${proposal.path} (Ctrl+S to save, Ctrl+Z to undo)`,

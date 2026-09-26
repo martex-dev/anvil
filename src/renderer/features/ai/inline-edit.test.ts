@@ -191,4 +191,17 @@ describe('inline edit', () => {
 
 		expect(host?.style).toMatchObject({ left: '40px', width: '362px' });
 	});
+
+	it('rejects an insert as its own undo step, keeping the text after the cursor', async () => {
+		const m = open('foo()\n', range(1, 5, 1, 5));
+		streamOnce.mockResolvedValue('```py\nx, y\n```');
+		await submitInlineEdit('args');
+		expect(m.text()).toBe('foo(x, y)\n');
+		const stops = m.undoStops();
+
+		rejectInlineEdit();
+
+		expect(m.text()).toBe('foo()\n');
+		expect(m.undoStops() - stops).toBe(2);
+	});
 });

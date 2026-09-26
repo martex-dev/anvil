@@ -298,7 +298,10 @@ export function rejectInlineEdit(): void {
 	const s = session;
 	if (s?.applied) {
 		s.ownEdit = true;
+		// Its own undo step, so Ctrl+Z after Reject doesn't bring the rejected code back.
+		s.model.pushStackElement();
 		s.model.pushEditOperations([], [{ range: s.applied, text: s.original }], () => null);
+		s.model.pushStackElement();
 		s.ownEdit = false;
 	}
 	teardown();
