@@ -59,33 +59,48 @@ export const terminalFeature: MainFeature = {
 		ctx.ipc.handle(
 			'terminal:open',
 			async ({ sessionId, preset, cols, rows, initialCommand }) => {
-				const fresh = !live.has(sessionId);
-				if (fresh) await startSession(sessionId, preset, cols, rows);
-				else live.resize(sessionId, cols, rows);
+				const fresh = await live.ensure(sessionId, () =>
+					startSession(sessionId, preset, cols, rows),
+				);
+				if (!fresh) live.resize(sessionId, cols, rows);
+				// Only into a session this call started: reattaching (a reloaded window or StrictMode
+				// remounts the pane) must not run the file or task again.
 				// ConPTY buffers input typed before the shell's first prompt, so this is safe to send now.
-				if (initialCommand) live.write(sessionId, `${initialCommand}\r`);
+				if (initialCommand && fresh) live.write(sessionId, `${initialCommand}\r`);
 				const s = live.get(sessionId);
 				return {
 					sessionId,
 					title: s?.title ?? preset,
 					cwd: s?.cwd ?? cwd(),
-					backlog: fresh ? '' : (s?.backlog ?? ''),
+					backlog: fresh ? '' : live.backlog(sessionId),
 					running: Boolean(s?.pty),
 				};
 			},
 		);
-		ctx.ipc.handle('terminal:write', ({ sessionId, data }) => {
-			if (!live.has(sessionId)) return false;
-			live.write(sessionId, data);
-			return true;
+		ctx.ipc.handle('terminal:write', async ({ sessionId, data, restart }) => {
+			if (restart) {
+				// A pane that just mounted may still be starting this session: write once it's up.
+				await live.settled(sessionId);
+				const s = live.get(sessionId);
+				// Run / REPL / task commands restart a shell that has exited instead of vanishing.
+				if (s)
+					await live.relaunch(sessionId, () =>
+						startSession(sessionId, s.preset, s.cols, s.rows),
+					);
+			}
+			return live.write(sessionId, data);
 		});
 		ctx.ipc.handle('terminal:resize', ({ sessionId, cols, rows }) =>
 			live.resize(sessionId, cols, rows),
 		);
-		ctx.ipc.handle('terminal:restart', async ({ sessionId, cols, rows }) => {
+		ctx.ipc.handle('terminal:restart', async ({ sessionId, preset, cols, rows }) => {
 			const s = live.get(sessionId);
-			if (!s || s.pty) return;
-			await startSession(sessionId, s.preset, cols, rows);
+			// Gone from main: start it again rather than leave a pane that looks alive but isn't.
+			if (!s) {
+				await live.ensure(sessionId, () => startSession(sessionId, preset, cols, rows));
+				return;
+			}
+			await live.relaunch(sessionId, () => startSession(sessionId, s.preset, cols, rows));
 		});
 		ctx.ipc.handle('terminal:kill', (sessionId) => live.kill(sessionId));
 

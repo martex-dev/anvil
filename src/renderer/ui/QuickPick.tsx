@@ -4,7 +4,9 @@ import type { JSX, ReactNode } from 'react';
 import { create } from 'zustand';
 
 import { cn } from '../lib/cn';
+import { rlog } from '../lib/log';
 import { useRegisterOverlay } from '../stores/overlay-store';
+import { toast } from '../stores/toast-store';
 import { Kbd } from './Kbd';
 import { Spinner } from './Spinner';
 
@@ -69,7 +71,14 @@ export function quickPick(options: Omit<PickRequest, 'resolve'>): Promise<string
 				.then((items) =>
 					useQuickPickStore.setState({ items, active: initialActive(items) }),
 				)
-				.catch(() => useQuickPickStore.setState({ items: [] }));
+				.catch((error: unknown) => {
+					rlog.error('quick-pick', `loading "${options.title}" items failed`, error);
+					toast.error(
+						'Could not load the list',
+						error instanceof Error ? error.message : undefined,
+					);
+					useQuickPickStore.setState({ items: [] });
+				});
 		}
 	});
 }

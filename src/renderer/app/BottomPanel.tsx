@@ -5,7 +5,12 @@ import { type JSX, useState } from 'react';
 
 import { useProblems } from '../features/problems/problems-store';
 import { ProblemsView } from '../features/problems/ProblemsView';
-import { closeTerminal, newTerminal, useTerminalStore } from '../features/terminal/terminal-store';
+import {
+	closeTerminal,
+	focusTerminal,
+	newTerminal,
+	useTerminalStore,
+} from '../features/terminal/terminal-store';
 import { PRESETS_KEY, TerminalPane } from '../features/terminal/TerminalPane';
 import { cn } from '../lib/cn';
 import { call } from '../lib/ipc';
@@ -137,7 +142,7 @@ export function BottomPanel(): JSX.Element {
 										? 'border-accent/40 bg-accent-faint text-fg-0'
 										: 'border-transparent text-fg-2 hover:bg-bg-3/50 hover:text-fg-1',
 								)}
-								onClick={() => useTerminalStore.getState().setActive(t.id)}
+								onClick={() => focusTerminal(t.id)}
 								onAuxClick={(e) => e.button === 1 && closeTerminal(t.id)}
 							>
 								<span

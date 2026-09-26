@@ -1,14 +1,14 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { type QueryClient, useQuery } from '@tanstack/react-query';
 
 import type { PythonEnv } from '@shared/ipc/channels/python';
 
 import { useWorkspace } from '../../app/hooks/use-workspace';
 import { call } from '../../lib/ipc';
+import { rlog } from '../../lib/log';
 import { queryClient } from '../../lib/query-client';
-import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { toast } from '../../stores/toast-store';
 import { quickPick } from '../../ui/QuickPick';
-import { resetPythonTools } from './run';
+import { PRESETS_KEY } from '../terminal/TerminalPane';
 
 export const pythonKeys = {
 	selected: (root: string | null) => ['python', root, 'selected'] as const,
@@ -18,20 +18,52 @@ export const pythonKeys = {
 	tools: (root: string | null, env: string | null) => ['python', root, 'tools', env] as const,
 };
 
-/** The interpreter in use for the open folder; follows picks made anywhere. */
-export function useSelectedPython(): { env: PythonEnv | null; isLoading: boolean } {
+/** The interpreter in use for the open folder. PythonController keeps it current. */
+export function useSelectedPython(): {
+	env: PythonEnv | null;
+	isLoading: boolean;
+	error: Error | null;
+	refetch: () => void;
+} {
 	const { info } = useWorkspace();
-	const client = useQueryClient();
 	const q = useQuery({
 		queryKey: pythonKeys.selected(info.root),
 		queryFn: () => call('python:selected'),
 		staleTime: Infinity,
 	});
-	useAnvilEvent('python:changed', (env) => {
-		client.setQueryData(pythonKeys.selected(info.root), env);
-		void client.invalidateQueries({ queryKey: ['python', info.root] });
+	return {
+		env: q.data ?? null,
+		isLoading: q.isLoading,
+		error: q.error,
+		refetch: () => void q.refetch(),
+	};
+}
+
+/**
+ * Applies a python:changed event once (PythonController): stores the new interpreter under the
+ * folder main resolved it for and refreshes what depends on it. The selected query itself isn't
+ * refetched; the event already carries its value.
+ */
+export function applyPythonChanged(
+	client: QueryClient,
+	{ root, env }: { root: string | null; env: PythonEnv | null },
+): void {
+	client.setQueryData(pythonKeys.selected(root), env);
+	void client.invalidateQueries({
+		queryKey: ['python', root],
+		predicate: (q) => q.queryKey[2] !== 'selected',
 	});
-	return { env: q.data ?? null, isLoading: q.isLoading };
+	// The REPL and env-shell presets are only available while an interpreter resolves.
+	void client.invalidateQueries({ queryKey: PRESETS_KEY });
+}
+
+/** Rediscovers the interpreters (a venv made outside Anvil, a new install) and re-resolves. */
+export async function rescanPythonEnvs(root: string | null): Promise<void> {
+	await call('python:envs', { refresh: true });
+	await Promise.all([
+		queryClient.invalidateQueries({ queryKey: pythonKeys.selected(root) }),
+		queryClient.invalidateQueries({ queryKey: pythonKeys.envs(root) }),
+	]);
 }
 
 const KIND_LABEL: Record<PythonEnv['kind'], string> = {
@@ -52,26 +84,35 @@ export async function pickPythonEnv(): Promise<void> {
 	const picked = await quickPick({
 		title: 'python',
 		placeholder: 'Select the interpreter for this folder',
-		items: call('python:envs', { refresh: true }).then((envs) => [
-			...envs.map((e) => ({
-				id: e.path,
-				label: `${e.label}${e.version ? `  ·  Python ${e.version}` : ''}`,
-				description: `${KIND_LABEL[e.kind]}${e.local ? ' · this folder' : ''}`,
-				detail: e.path,
-				current: current?.path.toLowerCase() === e.path.toLowerCase(),
-			})),
-			{
-				id: '__auto__',
-				label: 'Automatic',
-				description: "the folder's .venv if there is one",
-				detail: 'Anvil picks',
-			},
-		]),
+		items: call('python:envs', { refresh: true })
+			.catch((error: unknown): PythonEnv[] => {
+				// Still offer Automatic: the folder's own venv may resolve without discovery.
+				rlog.error('python', 'listing interpreters failed', error);
+				toast.error(
+					'Could not list interpreters',
+					error instanceof Error ? error.message : undefined,
+				);
+				return [];
+			})
+			.then((envs) => [
+				...envs.map((e) => ({
+					id: e.path,
+					label: `${e.label}${e.version ? `  ·  Python ${e.version}` : ''}`,
+					description: `${KIND_LABEL[e.kind]}${e.local ? ' · this folder' : ''}`,
+					detail: e.path,
+					current: current?.path.toLowerCase() === e.path.toLowerCase(),
+				})),
+				{
+					id: '__auto__',
+					label: 'Automatic',
+					description: "the folder's .venv if there is one",
+					detail: 'Anvil picks',
+				},
+			]),
 	});
 	if (!picked) return;
 	try {
 		await call('python:select', picked === '__auto__' ? null : picked);
-		resetPythonTools();
 		toast.success('Interpreter selected', picked === '__auto__' ? 'Automatic' : picked);
 	} catch (error) {
 		toast.error(
