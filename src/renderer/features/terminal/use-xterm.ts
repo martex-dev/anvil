@@ -13,6 +13,7 @@ import { queryClient } from '../../lib/query-client';
 import { requestOpenFile } from '../../stores/workbench-store';
 import { useClipboardHistory } from '../editor/extras/clipboard';
 import { findFileLinks } from './file-links';
+import { FOCUS_TERMINAL_EVENT } from './terminal-store';
 import { buildXtermTheme } from './xterm-theme';
 
 import '@xterm/xterm/css/xterm.css';
@@ -187,7 +188,13 @@ export function useXterm(
 				}
 			});
 
+		const focusRequested = (e: Event): void => {
+			if (e instanceof CustomEvent && e.detail === sessionId) term.focus();
+		};
+		window.addEventListener(FOCUS_TERMINAL_EVENT, focusRequested);
+
 		return () => {
+			window.removeEventListener(FOCUS_TERMINAL_EVENT, focusRequested);
 			window.removeEventListener('anvil:appearance', recolor);
 			links.dispose();
 			disposed = true;

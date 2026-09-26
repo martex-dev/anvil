@@ -4,7 +4,13 @@ import { toWorkspacePath } from '../../lib/monaco/workspace-root';
 import { toast } from '../../stores/toast-store';
 import { useEditorStore } from '../editor/editor-store';
 import { isScratch, saveFile } from '../editor/file-ops';
-import { closeTerminal, runInTerminal, useTerminalStore } from '../terminal/terminal-store';
+import {
+	closeTerminal,
+	hasRole,
+	runInTerminal,
+	showRoleTerminal,
+	useTerminalStore,
+} from '../terminal/terminal-store';
 import { cellAt, cellCode, cellCodeLine, findCells, replText } from './cells';
 
 /** Whether the REPL runs IPython (checked once per session; `%run -i` needs it). */
@@ -72,6 +78,13 @@ export async function sendToRepl(code: string, source?: CodeSource): Promise<voi
 		? (await call('python:stageCell', { code: text, source: staged })).command
 		: text;
 	await runInTerminal({ role: 'repl', preset: 'repl', title: ip ? 'ipython' : 'repl', command });
+}
+
+/** Shows the Python REPL (starting one if needed) without typing anything into it. */
+export async function openRepl(): Promise<void> {
+	// The title only matters for a new tab; don't wait on the IPython check to show one.
+	const ip = hasRole('repl') ? false : await hasIPython();
+	showRoleTerminal({ role: 'repl', preset: 'repl', title: ip ? 'ipython' : 'repl' });
 }
 
 /** Runs the `# %%` cell at the cursor (or the whole file if it has no cells). */

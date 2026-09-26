@@ -14,7 +14,7 @@ import { toWorkspacePath } from '../../lib/monaco/workspace-root';
 import { toast } from '../../stores/toast-store';
 import { formatPython } from '../editor/file-ops';
 import { runInTerminal } from '../terminal/terminal-store';
-import { restartRepl, runCell, runPythonFile, runSelection, sendToRepl } from './run';
+import { openRepl, restartRepl, runCell, runPythonFile, runSelection } from './run';
 import { saveDirtyFiles } from './save-before-run';
 import { pickPythonEnv } from './use-python';
 
@@ -69,7 +69,7 @@ export const PYTHON_COMMANDS: Command[] = [
 		category: 'Python',
 		keywords: ['ipython', 'console', 'interactive'],
 		icon: SquareTerminal,
-		run: () => sendToRepl('import sys; print(sys.version)'),
+		run: openRepl,
 	},
 	{
 		id: 'python.restartRepl',

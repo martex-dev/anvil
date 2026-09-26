@@ -170,6 +170,32 @@ export async function runInTerminal(options: {
 	});
 }
 
+/** Asks the mounted xterm of a session to take keyboard focus (detail: session id). */
+export const FOCUS_TERMINAL_EVENT = 'anvil:focus-terminal';
+
+/**
+ * Shows and focuses the terminal that has `role` without typing anything into it, creating it
+ * (focused on start) if there is none. For "open the REPL" style commands.
+ */
+export function showRoleTerminal(options: {
+	role: string;
+	preset: TerminalPresetId;
+	title: string;
+}): void {
+	const store = useTerminalStore.getState();
+	useLayoutStore.getState().showPanel('terminal');
+	const existing = store.tabs.find((t) => t.role === options.role);
+	if (!existing) {
+		store.add({ id: newId(), ...options });
+		return;
+	}
+	store.setActive(existing.id);
+	// After the panel and tab have rendered visible: a hidden textarea can't take focus.
+	requestAnimationFrame(() =>
+		window.dispatchEvent(new CustomEvent(FOCUS_TERMINAL_EVENT, { detail: existing.id })),
+	);
+}
+
 /** Whether a role's terminal has a live session (the REPL namespace survives between runs). */
 export function hasRole(role: string): boolean {
 	return useTerminalStore.getState().tabs.some((t) => t.role === role);
