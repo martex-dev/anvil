@@ -46,11 +46,13 @@ export function InterpreterSection(): JSX.Element {
 					className='w-full rounded-lg border border-glass-edge bg-bg-2/40 p-2 text-left outline-none transition-colors transition-fast hover:border-accent/40 focus-visible:shadow-glow'
 				>
 					<div className='flex items-center gap-2'>
-						<span className='text-gradient font-mono text-16 font-bold'>
+						<span className='text-gradient shrink-0 font-mono text-16 font-bold'>
 							{env.version ?? '?'}
 						</span>
-						<span className='text-12 text-fg-0'>{env.label}</span>
-						<span className='hud ml-auto'>{env.kind}</span>
+						<span className='min-w-0 truncate text-12 text-fg-0' title={env.label}>
+							{env.label}
+						</span>
+						<span className='hud ml-auto shrink-0'>{env.kind}</span>
 					</div>
 					<div className='mt-1 truncate font-mono text-10 text-fg-2' title={env.path}>
 						{env.path}
