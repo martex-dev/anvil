@@ -1,0 +1,36 @@
+/* Workbench 95: the shared status bar as a row of sunken fields inside the window frame. */
+
+html[data-skin='workbench'] [data-part='statusbar'] {
+	height: 24px;
+	margin: 0 4px 4px;
+	padding: 2px 0 0;
+	gap: 2px;
+	border: 0;
+	background: transparent;
+	backdrop-filter: none;
+	color: var(--text-1);
+	font-family: var(--font-ui);
+	font-size: 12px;
+}
+html[data-skin='workbench'] [data-part='statusbar'] > :not(.flex-1) {
+	padding: 0 6px;
+	border-radius: 0;
+	box-shadow: var(--wb-thin-sunken);
+}
+html[data-skin='workbench'] [data-part='statusbar'] > .flex-1 {
+	box-shadow: var(--wb-thin-sunken);
+}
+/* The taskbar tray has the clock. */
+html[data-skin='workbench'] [data-part='statusbar'] > :last-child {
+	display: none;
+}
+html[data-skin='workbench'] [data-part='statusbar'] .num {
+	font-family: var(--font-ui);
+}
+html[data-skin='workbench'] [data-part='statusbar'] button:hover {
+	background: transparent;
+	color: var(--text-0);
+}
+html[data-skin='workbench'] [data-part='statusbar'] button:active {
+	box-shadow: var(--wb-pressed);
+}
