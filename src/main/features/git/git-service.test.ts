@@ -34,6 +34,20 @@ describe('GitService', { timeout: 30_000 }, () => {
 		}
 	});
 
+	it('notices `git init` and a deleted .git without a folder switch', async () => {
+		const plain = mkdtempSync(join(tmpdir(), 'anvil-plain-'));
+		try {
+			const git = new GitService(() => plain);
+			expect((await git.status()).isRepo).toBe(false);
+			execFileSync('git', ['init', '-q'], { cwd: plain });
+			expect((await git.status()).isRepo).toBe(true);
+			rmSync(join(plain, '.git'), { recursive: true, force: true });
+			expect((await git.status()).isRepo).toBe(false);
+		} finally {
+			rmSync(plain, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+		}
+	});
+
 	it('stages, commits, and diffs working-tree changes', async () => {
 		const git = new GitService(() => repo);
 		writeFileSync(join(repo, 'a.txt'), 'one\n');

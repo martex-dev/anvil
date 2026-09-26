@@ -2,7 +2,7 @@ import { realpathSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { isAbsolute, join, relative, sep } from 'node:path';
 
-import { type SimpleGit, simpleGit } from 'simple-git';
+import { type SimpleGit, simpleGit, type StatusResult } from 'simple-git';
 
 import type { GitBlame, GitCommit, GitStatus } from '@shared/ipc/channels/git';
 import { scanUnifiedDiff, type SecretFinding } from '@shared/secret-scan';
@@ -87,9 +87,14 @@ function git(baseDir: string): SimpleGit {
 
 const isBinary = (s: string): boolean => s.includes('\0');
 
+function isNotARepo(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : String(error);
+	return /not a git repository/i.test(message);
+}
+
 /** Git for the open folder, via the system git (simple-git). The repo root may be above it. */
 export class GitService {
-	private repoRootCache: { workspace: string; root: string | null } | null = null;
+	private repoRootCache: { workspace: string; root: string } | null = null;
 
 	constructor(private readonly getWorkspaceRoot: () => string | null) {}
 
@@ -103,11 +108,12 @@ export class GitService {
 			root = top ? join(top) : null;
 		} catch (error) {
 			// "Not a repo" is a normal state; anything else (git missing, blocked env…) is a real error.
-			const message = error instanceof Error ? error.message : String(error);
-			if (!/not a git repository/i.test(message)) throw error;
+			if (!isNotARepo(error)) throw error;
 			root = null;
 		}
-		this.repoRootCache = { workspace, root };
+		// Only a found repo is cached: a plain folder must notice `git init` run in a terminal
+		// (the empty state suggests exactly that), and rev-parse is cheap enough to repeat.
+		this.repoRootCache = root ? { workspace, root } : null;
 		return root;
 	}
 
@@ -127,8 +133,16 @@ export class GitService {
 		const root = await this.repoRoot();
 		const workspace = this.getWorkspaceRoot();
 		if (!root || !workspace) return NOT_A_REPO;
-		// -uall lists files inside new folders instead of collapsing them to "folder/".
-		const s = await git(root).status(['-uall']);
+		let s: StatusResult;
+		try {
+			// -uall lists files inside new folders instead of collapsing them to "folder/".
+			s = await git(root).status(['-uall']);
+		} catch (error) {
+			// The cached repo is gone (.git deleted): back to the "not a repo" state.
+			if (!isNotARepo(error)) throw error;
+			this.reset();
+			return NOT_A_REPO;
+		}
 		// git reports long paths; the folder may have been opened via an 8.3 short name (PCGAME~1).
 		const realWorkspace = realpathSync.native(workspace);
 		const toWorkspacePath = (repoPath: string): string | null => {
