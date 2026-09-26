@@ -171,6 +171,18 @@
 	html[data-glass='off'] .glass::before {
 		opacity: 0.35;
 	}
+	/*
+	 * Glass without the backdrop filter, for panes that host Monaco: a blurred layer under the
+	 * editor repaints on every scroll and keystroke. A denser tint stands in for the blur.
+	 */
+	.glass.glass-solid {
+		background: color-mix(in oklab, var(--glass) 50%, var(--bg-1));
+		backdrop-filter: none;
+	}
+	/* Glass off means no filter at all (saturate() alone still makes a compositing layer). */
+	html[data-glass='off'] :is(.glass, .glass-strong) {
+		backdrop-filter: none;
+	}
 	.glass-strong {
 		background: var(--glass-strong);
 		backdrop-filter: blur(calc(var(--glass-blur) * 1.4)) saturate(160%);
