@@ -24,6 +24,7 @@ import {
 	recentFiles,
 	resolvePendingEnter,
 } from './quick-open';
+import { QuickOpenFilesStatus } from './QuickOpenFilesStatus';
 
 function Highlight({
 	text,
@@ -183,13 +184,15 @@ export function QuickOpen(): JSX.Element {
 							<span className='hud'>{mode}</span>
 						</div>
 						<Command.List className='max-h-[min(460px,60vh)] overflow-auto p-1'>
-							{mode === 'files' && !info.root && (
-								<div className='px-3 py-6 text-center text-13 text-fg-2'>
-									Open a folder first (Ctrl+O).
-								</div>
-							)}
-							{mode === 'files' && info.root && files.isLoading && (
-								<div className='shimmer mx-2 my-3 h-6 rounded-md' />
+							{mode === 'files' && (
+								<QuickOpenFilesStatus
+									hasRoot={Boolean(info.root)}
+									loading={files.isLoading}
+									error={files.error}
+									onRetry={() => void files.refetch()}
+									empty={files.isSuccess && fileResults.length === 0}
+									query={query}
+								/>
 							)}
 							{mode === 'files' &&
 								fileResults.map((m) => {
@@ -291,6 +294,12 @@ export function QuickOpen(): JSX.Element {
 								</div>
 							)}
 						</Command.List>
+						{mode === 'files' && files.data?.truncated && (
+							<p className='border-t border-glass-edge px-3 py-1.5 text-11 text-fg-2'>
+								Only the first {files.data.files.length.toLocaleString()} files are
+								listed; open a subfolder or use the Explorer to reach the rest.
+							</p>
+						)}
 					</Command>
 				</RadixDialog.Content>
 			</RadixDialog.Portal>
