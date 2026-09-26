@@ -18,11 +18,14 @@ export interface SettingsStore {
 export class JsonStore implements SettingsStore {
 	private data: Record<string, unknown>;
 	private timer: NodeJS.Timeout | null = null;
+	/** Grows after each failed background write so a stuck file isn't retried in a tight loop. */
+	private retryMs = 0;
 
 	constructor(
 		private readonly filePath: string,
 		private readonly onInvalid: (key: string, issues: string) => void = () => undefined,
 		private readonly delayMs = 250,
+		private readonly onWriteError: (error: unknown) => void = () => undefined,
 	) {
 		this.data = this.load();
 	}
@@ -67,8 +70,24 @@ export class JsonStore implements SettingsStore {
 
 	private schedule(): void {
 		if (this.timer) return;
-		this.timer = setTimeout(() => this.flush(), this.delayMs);
+		this.timer = setTimeout(() => this.flushInBackground(), this.retryMs || this.delayMs);
 		this.timer.unref?.();
+	}
+
+	/**
+	 * A timer callback that throws would crash main. On Windows the rename often fails briefly
+	 * (antivirus, indexer holding the file), so report it and retry with backoff instead.
+	 */
+	private flushInBackground(): void {
+		try {
+			this.flush();
+			this.retryMs = 0;
+		} catch (error) {
+			this.timer = null;
+			this.retryMs = Math.min(Math.max(this.retryMs * 2, 1_000), 60_000);
+			this.onWriteError(error);
+			this.schedule();
+		}
 	}
 
 	private load(): Record<string, unknown> {

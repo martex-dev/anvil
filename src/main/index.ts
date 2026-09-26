@@ -49,8 +49,12 @@ async function start(): Promise<void> {
 	attachIpc();
 
 	const userData = app.getPath('userData');
-	store = new JsonStore(join(userData, 'settings.json'), (key, issues) =>
-		log.warn('[store] invalid value, using default', { key, issues: issues.slice(0, 300) }),
+	store = new JsonStore(
+		join(userData, 'settings.json'),
+		(key, issues) =>
+			log.warn('[store] invalid value, using default', { key, issues: issues.slice(0, 300) }),
+		250,
+		(error) => log.error('[store] saving settings failed, will retry', error),
 	);
 	const settings = store;
 	const secrets = createSecretsService();
