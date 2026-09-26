@@ -1,36 +1,31 @@
 import { z } from 'zod';
 
+import { EDITOR_FONT_IDS } from './fonts';
+
 /** Named accent presets; 'theme' follows the theme's own accent, 'custom' uses `customAccent`. */
 export const ACCENTS = ['cyan', 'magenta', 'lime', 'violet', 'amber'] as const;
 export type Accent = (typeof ACCENTS)[number];
 export const ACCENT_MODES = ['theme', ...ACCENTS, 'custom'] as const;
 export type AccentMode = (typeof ACCENT_MODES)[number];
 
-/** Coding fonts bundled with Anvil (loaded on first use). */
-export const EDITOR_FONTS = [
-	{ id: 'jetbrains', name: 'JetBrains Mono', family: 'JetBrains Mono', ligatures: true },
-	{ id: 'fira', name: 'Fira Code', family: 'Fira Code', ligatures: true },
-	{ id: 'cascadia', name: 'Cascadia Code', family: 'Cascadia Code', ligatures: true },
-	{ id: 'geist', name: 'Geist Mono', family: 'Geist Mono', ligatures: false },
-	{ id: 'monaspace', name: 'Monaspace Neon', family: 'Monaspace Neon', ligatures: true },
-	{ id: 'maple', name: 'Maple Mono', family: 'Maple Mono', ligatures: true },
-	{ id: 'victor', name: 'Victor Mono', family: 'Victor Mono', ligatures: true },
-	{ id: 'iosevka', name: 'Iosevka', family: 'Iosevka', ligatures: true },
-	{ id: 'plex', name: 'IBM Plex Mono', family: 'IBM Plex Mono', ligatures: false },
-] as const;
-export type EditorFontId = (typeof EDITOR_FONTS)[number]['id'];
-const FONT_IDS = EDITOR_FONTS.map((f) => f.id) as [EditorFontId, ...EditorFontId[]];
+export { EDITOR_FONTS, editorFontFamily, type EditorFontId } from './fonts';
 
-export function editorFontFamily(id: string): string {
-	const font = EDITOR_FONTS.find((f) => f.id === id) ?? EDITOR_FONTS[0];
-	return `'${font.family}', 'JetBrains Mono', ui-monospace, monospace`;
-}
+export const DENSITIES = ['compact', 'cozy', 'roomy'] as const;
+export const FX_LEVELS = ['full', 'subtle', 'off'] as const;
+
+/** What the user picked inside one skin: its color variant and UI font. */
+const SkinPrefsSchema = z.object({
+	palette: z.string().min(1).max(32).optional(),
+	uiFont: z.string().min(1).max(32).optional(),
+});
+export type SkinPrefs = z.infer<typeof SkinPrefsSchema>;
 
 export const SettingsSchema = z.object({
 	/** UI text size; the editor has its own. */
 	uiFontSize: z.number().int().min(11).max(15).default(13),
 	editorFontSize: z.number().int().min(10).max(24).default(14),
-	editorFont: z.enum(FONT_IDS).default('jetbrains'),
+	/** A bundled code font, or 'skin' for the skin's own. */
+	editorFont: z.enum(['skin', ...EDITOR_FONT_IDS]).default('skin'),
 	/** Line height as a multiple of the font size. */
 	editorLineHeight: z.number().min(1.2).max(2.2).default(1.65),
 	editorLigatures: z.boolean().default(true),
@@ -42,8 +37,21 @@ export const SettingsSchema = z.object({
 	insertFinalNewline: z.boolean().default(false),
 	/** Save a snapshot on every save so files can be rolled back from the History view. */
 	localHistory: z.boolean().default(true),
-	/** Theme id from the renderer's theme list; unknown ids fall back to the default theme. */
+	/**
+	 * The skin: a whole look (layout, chrome, fonts, icons). Unknown ids fall back to the
+	 * default skin.
+	 */
+	skin: z.string().min(1).max(32).default('cyber'),
+	/** Cyber Glass palette (kept separate so pre-skin settings carry over). */
 	theme: z.string().min(1).max(32).default('cyber'),
+	/** Per-skin choices, keyed by skin id. */
+	skinPrefs: z.record(z.string().max(32), SkinPrefsSchema).default({}),
+	/** Spacing scale for the whole UI. */
+	density: z.enum(DENSITIES).default('cozy'),
+	/** How much a skin animates and decorates: scanlines, glows, sweeps, noise. */
+	fx: z.enum(FX_LEVELS).default('full'),
+	/** Which side the side bar sits on; 'skin' follows the skin's layout. */
+	sidebarSide: z.enum(['skin', 'left', 'right']).default('skin'),
 	accent: z.enum(ACCENT_MODES).default('theme'),
 	customAccent: z
 		.string()
