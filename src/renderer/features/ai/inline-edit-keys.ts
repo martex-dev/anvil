@@ -51,3 +51,15 @@ export function bindInlineEditKeys(
 		},
 	};
 }
+
+/**
+ * Whether a keydown in the review box accepts the change: Ctrl/Cmd+Enter anywhere, or a plain
+ * Tab on the box itself. Shift+Tab and Tab on the Reject / Accept buttons move focus as usual.
+ */
+export function isAcceptKey(
+	e: Pick<KeyboardEvent, 'key' | 'shiftKey' | 'ctrlKey' | 'metaKey'>,
+	onBox: boolean,
+): boolean {
+	if (e.key === 'Enter') return e.ctrlKey || e.metaKey;
+	return e.key === 'Tab' && !e.shiftKey && onBox;
+}

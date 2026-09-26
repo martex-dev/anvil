@@ -11,6 +11,7 @@ import {
 	submitInlineEdit,
 	useInlineEdit,
 } from './inline-edit';
+import { isAcceptKey } from './inline-edit-keys';
 
 const SUGGESTIONS = [
 	'Add type hints',
@@ -42,10 +43,7 @@ function Box(): JSX.Element {
 					e.preventDefault();
 					e.stopPropagation();
 					cancelInlineEdit();
-				} else if (
-					phase === 'review' &&
-					((e.key === 'Enter' && (e.ctrlKey || e.metaKey)) || e.key === 'Tab')
-				) {
+				} else if (phase === 'review' && isAcceptKey(e, e.target === e.currentTarget)) {
 					e.preventDefault();
 					acceptInlineEdit();
 				}

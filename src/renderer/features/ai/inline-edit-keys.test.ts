@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { bindInlineEditKeys, INLINE_EDIT_ACTIVE, INLINE_EDIT_REVIEW } from './inline-edit-keys';
+import {
+	bindInlineEditKeys,
+	INLINE_EDIT_ACTIVE,
+	INLINE_EDIT_REVIEW,
+	isAcceptKey,
+} from './inline-edit-keys';
 
 type Action = { id: string; keybindings?: number[]; precondition?: string; run: () => void };
 
@@ -68,5 +73,26 @@ describe('bindInlineEditKeys', () => {
 		expect(keys.get(INLINE_EDIT_ACTIVE)).toBe(false);
 		expect(keys.get(INLINE_EDIT_REVIEW)).toBe(false);
 		expect(disposed).toEqual(actions.map((a) => a.id));
+	});
+});
+
+describe('isAcceptKey', () => {
+	const key = (k: string, mods: Partial<{ shiftKey: boolean; ctrlKey: boolean }> = {}) => ({
+		key: k,
+		shiftKey: false,
+		ctrlKey: false,
+		metaKey: false,
+		...mods,
+	});
+
+	it('accepts on Tab on the box and on Ctrl+Enter', () => {
+		expect(isAcceptKey(key('Tab'), true)).toBe(true);
+		expect(isAcceptKey(key('Enter', { ctrlKey: true }), false)).toBe(true);
+	});
+
+	it('lets Shift+Tab and Tab on the buttons move focus', () => {
+		expect(isAcceptKey(key('Tab', { shiftKey: true }), true)).toBe(false);
+		expect(isAcceptKey(key('Tab'), false)).toBe(false);
+		expect(isAcceptKey(key('Enter'), true)).toBe(false);
 	});
 });
