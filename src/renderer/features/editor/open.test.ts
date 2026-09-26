@@ -5,7 +5,8 @@ import { useTabsStore } from '../../stores/tabs-store';
 import { useToastStore } from '../../stores/toast-store';
 import { useEditorStore } from './editor-store';
 
-vi.mock('../../lib/ipc', () => ({ call: vi.fn() }));
+const call = vi.fn((..._args: unknown[]) => Promise.resolve());
+vi.mock('../../lib/ipc', () => ({ call: (...args: unknown[]) => call(...args) }));
 vi.mock('../../lib/log', () => ({ rlog: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 vi.mock('../../app/hooks/use-settings', () => ({ getSettings: () => ({}) }));
 const loadMonaco = vi.fn(() => Promise.resolve({}));
@@ -23,6 +24,7 @@ const {
 	canOpenAsTable,
 	closeAllTabs,
 	closeOtherTabs,
+	closeTab,
 	openPath,
 	openUnloadedFiles,
 	remembersRecent,
@@ -119,6 +121,22 @@ describe('closing several dirty tabs', () => {
 			'code:b.py',
 			'code:c.py',
 		]);
+	});
+});
+
+describe('closing a table', () => {
+	beforeEach(() => {
+		closeAllTabs();
+		call.mockClear();
+	});
+
+	it('keeps its data while the other group still shows it', async () => {
+		await openPath('C:/proj', { path: 'prices.csv' });
+		await openPath('C:/proj', { path: 'prices.csv', side: true });
+		closeTab(1, 'data:prices.csv');
+		expect(call).not.toHaveBeenCalled();
+		closeTab(0, 'data:prices.csv');
+		expect(call).toHaveBeenCalledWith('data:evict', 'prices.csv');
 	});
 });
 

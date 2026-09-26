@@ -169,8 +169,12 @@ export function closeTab(group: number, id: string): void {
 		closeFile(tab.path);
 		return;
 	}
-	tabs.close(group, id);
-	if (tab.kind === 'data' && tab.path) void call('data:evict', tab.path).catch(() => undefined);
+	const gone = tabs.close(group, id);
+	// The other group may still show the table: keep its cached data until the last tab goes.
+	if (gone && tab.kind === 'data' && tab.path)
+		void call('data:evict', tab.path).catch((error: unknown) =>
+			rlog.warn('editor', `data evict failed: ${tab.path ?? ''}`, error),
+		);
 }
 
 /** Called once a dirty buffer is saved or discarded from the close dialog. */
