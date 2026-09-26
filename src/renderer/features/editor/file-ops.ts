@@ -94,18 +94,40 @@ export async function openFile(monaco: MonacoApi, root: string, path: string): P
 	}
 }
 
+/**
+ * Saves in flight per path. A second save (Ctrl+S held down, Save then Save All) waits for the
+ * first; sent together, it would carry the mtime from before the first write and fail as a
+ * conflict with Anvil's own save.
+ */
+const saving = new Map<string, Promise<boolean>>();
+
 /** Saves one file if it has unsaved edits. With `force`, writes it even if it changed on disk. */
-export async function saveFile(path: string, force = false): Promise<boolean> {
+export function saveFile(path: string, force = false): Promise<boolean> {
+	const previous = saving.get(path) ?? Promise.resolve(true);
+	const run = (): Promise<boolean> => writeBuffer(path, force);
+	const next = previous.then(run, run);
+	saving.set(path, next);
+	const settle = (): void => {
+		if (saving.get(path) === next) saving.delete(path);
+	};
+	void next.then(settle, settle);
+	return next;
+}
+
+async function writeBuffer(path: string, force: boolean): Promise<boolean> {
 	const store = useEditorStore.getState();
 	const t = tracked.get(path);
-	const file = store.files.find((f) => f.path === path);
-	if (!t || !file) return false;
+	const known = store.files.find((f) => f.path === path);
+	if (!t || !known) return false;
 	// The scratchpad saves itself to local storage as you type.
 	if (isScratch(path)) return true;
 	// Nothing to write: a habitual Ctrl+S must not touch the file (mtime, watcher, git status,
 	// local history) or reformat code nobody edited.
-	if (!file.dirty && !force) return true;
+	if (!known.dirty && !force) return true;
 	if (getSettings().formatOnSave && path.endsWith('.py')) await formatPython(path, t.model);
+	// Closed while ruff ran: nothing left to save.
+	const file = useEditorStore.getState().files.find((f) => f.path === path);
+	if (tracked.get(path) !== t || !file) return false;
 	cleanWhitespace(t.model);
 	try {
 		const version = t.model.getAlternativeVersionId();

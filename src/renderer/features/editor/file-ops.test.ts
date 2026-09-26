@@ -196,4 +196,45 @@ describe('file ops', () => {
 		expect(useEditorStore.getState().files[0]).toMatchObject({ state: 'ready', mtimeMs: 9 });
 		expect(getModel('a.py')?.getValue()).toBe('new = 1\n');
 	});
+
+	it('runs a second save after the first, with the mtime the first one wrote', async () => {
+		let version = 1;
+		let onChange = (): void => undefined;
+		const editable = {
+			...monaco,
+			editor: {
+				...monaco.editor,
+				createModel: (value: string) => ({
+					...(fakeModel(value) as object),
+					getAlternativeVersionId: () => version,
+					onDidChangeContent: (listener: () => void) => {
+						onChange = listener;
+						return { dispose: () => undefined };
+					},
+				}),
+			},
+		} as unknown as MonacoApi;
+		call.mockResolvedValue(text);
+		await openFile(editable, 'C:/proj', 'a.py');
+		const writes: unknown[] = [];
+		call.mockImplementation((channel: string, input: unknown) => {
+			if (channel !== 'fs:writeFile') return Promise.resolve(text);
+			writes.push(input);
+			// Typing continues while the first write is on its way.
+			version += 1;
+			onChange();
+			return Promise.resolve({ mtimeMs: 10 + writes.length });
+		});
+		version = 2;
+		onChange();
+		const first = saveFile('a.py');
+		const second = saveFile('a.py');
+		expect(await first).toBe(true);
+		expect(await second).toBe(true);
+		expect(writes).toEqual([
+			expect.objectContaining({ expectedMtimeMs: 1 }),
+			expect.objectContaining({ expectedMtimeMs: 11 }),
+		]);
+		expect(useEditorStore.getState().conflict).toBeNull();
+	});
 });
