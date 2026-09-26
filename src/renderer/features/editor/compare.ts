@@ -11,6 +11,11 @@ export function selectedForCompare(): string | null {
 	return selected;
 }
 
+/** Another folder was opened: the selected path belonged to the old one. */
+export function clearCompareSelection(): void {
+	selected = null;
+}
+
 export function selectForCompare(path: string): void {
 	selected = path;
 	toast.info(

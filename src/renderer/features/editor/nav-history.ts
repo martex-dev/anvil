@@ -57,6 +57,14 @@ export class NavHistory {
 		this.forward = this.forward.filter((p) => p.path !== path);
 	}
 
+	/** Another folder was opened: its places mean nothing there. */
+	clear(): void {
+		this.back = [];
+		this.forward = [];
+		this.current = null;
+		this.navigating = false;
+	}
+
 	get canGoBack(): boolean {
 		return this.back.length > 0;
 	}

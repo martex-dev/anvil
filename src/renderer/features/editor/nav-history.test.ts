@@ -37,4 +37,16 @@ describe('NavHistory', () => {
 		h.forget('a.py');
 		expect(h.goBack()).toBeNull();
 	});
+
+	it('forgets everything on clear, so a new folder starts fresh', () => {
+		const h = new NavHistory();
+		h.visit(at('a.py', 1));
+		h.visit(at('b.py', 1));
+		h.clear();
+		expect(h.canGoBack).toBe(false);
+		expect(h.goBack()).toBeNull();
+		// The first place after clearing is a starting point, not a jump from the old folder.
+		h.visit(at('c.py', 1));
+		expect(h.canGoBack).toBe(false);
+	});
 });

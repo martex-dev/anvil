@@ -12,9 +12,11 @@ import { setMonacoWorkspaceRoot } from '../../lib/monaco/workspace-root';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { focusedTab, type Tab, useTabsStore } from '../../stores/tabs-store';
 import { useWorkbenchStore } from '../../stores/workbench-store';
+import { clearCompareSelection } from './compare';
 import { dirtyCount, useEditorStore } from './editor-store';
 import { invalidateGitLines } from './extras/git-lines';
 import { onExternalChange } from './file-ops';
+import { navHistory } from './nav-history';
 import { closeAllTabs, openPath } from './open';
 
 interface SavedTab {
@@ -106,9 +108,13 @@ export function EditorBridge(): null {
 	useAnvilEvent('fs:changed', ({ files }) => onExternalChange(files));
 	useAnvilEvent('git:changed', () => invalidateGitLines());
 
-	// New folder: close the old folder's tabs and restore this folder's session.
+	// New folder: close the old folder's tabs, forget its places, compare pick and HEAD
+	// contents (all keyed by relative path), and restore this folder's session.
 	useEffect(() => {
 		closeAllTabs();
+		navHistory.clear();
+		clearCompareSelection();
+		invalidateGitLines();
 		if (!root) {
 			useTabsStore
 				.getState()
