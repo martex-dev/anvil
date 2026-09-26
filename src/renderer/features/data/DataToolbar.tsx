@@ -8,7 +8,7 @@ import {
 	TriangleAlert,
 	X,
 } from 'lucide-react';
-import type { JSX } from 'react';
+import type { JSX, RefObject } from 'react';
 
 import type { DataPage } from '@shared/ipc/channels/data';
 
@@ -33,6 +33,8 @@ interface DataToolbarProps {
 	onReload: () => void;
 	profileOpen: boolean;
 	onToggleProfile: () => void;
+	/** The profile toggle; focus returns here when the profile panel closes itself. */
+	profileToggleRef?: RefObject<HTMLButtonElement | null>;
 }
 
 export function DataToolbar({
@@ -47,6 +49,7 @@ export function DataToolbar({
 	onReload,
 	profileOpen,
 	onToggleProfile,
+	profileToggleRef,
 }: DataToolbarProps): JSX.Element {
 	const name = fileName(path);
 	return (
@@ -125,6 +128,7 @@ export function DataToolbar({
 					onClick={onReload}
 				/>
 				<IconButton
+					ref={profileToggleRef}
 					label={profileOpen ? 'Hide column profile' : 'Show column profile'}
 					icon={<PanelRight size={15} />}
 					active={profileOpen}

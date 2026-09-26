@@ -37,6 +37,7 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 	const [profileColumn, setProfileColumn] = useState<number | null>(null);
 	const [profileOpen, setProfileOpen] = useState(true);
 	const firstRowRef = useRef(0);
+	const profileToggleRef = useRef<HTMLButtonElement>(null);
 	const [shownPath, setShownPath] = useState(path);
 
 	// A reused preview tab can switch files under us; view state belongs to the old file.
@@ -207,6 +208,7 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 				onReload={() => void reload()}
 				profileOpen={profileOpen}
 				onToggleProfile={() => setProfileOpen((open) => !open)}
+				profileToggleRef={profileToggleRef}
 			/>
 			<div className='flex min-h-0 flex-1'>
 				<div
@@ -223,7 +225,11 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 						index={profileColumn}
 						column={profileColumn === null ? undefined : columns[profileColumn]}
 						truncated={data.truncated}
-						onClose={() => setProfileOpen(false)}
+						onClose={() => {
+							setProfileOpen(false);
+							// The close button unmounts with the panel; don't drop focus to <body>.
+							profileToggleRef.current?.focus();
+						}}
 					/>
 				)}
 			</div>
