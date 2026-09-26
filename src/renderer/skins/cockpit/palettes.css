@@ -7,13 +7,10 @@
  *   --skin-tape       the status tape and command line background
  *   --skin-label      tiny all-caps field labels
  *   --skin-value      bright figures next to those labels
- *
- * Selectors carry a doubled attribute on purpose: skin stylesheets load alphabetically and
- * 'cockpit' sorts before 'cyber', whose `:root` block would otherwise win the tie.
  */
 
 /* Amber Terminal (default): the classic desk, amber and orange on pure black */
-[data-theme][data-theme='ck-amber'] {
+[data-theme='ck-amber'] {
 	color-scheme: dark;
 
 	--bg-0: #000000;
@@ -69,7 +66,7 @@
 }
 
 /* Eikon Navy: deep navy tiles, cyan headers, white figures */
-[data-theme][data-theme='ck-refinitiv'] {
+[data-theme='ck-refinitiv'] {
 	color-scheme: dark;
 
 	--bg-0: #010814;
@@ -125,7 +122,7 @@
 }
 
 /* Trading Floor: LED-board green and red on black */
-[data-theme][data-theme='ck-floor'] {
+[data-theme='ck-floor'] {
 	color-scheme: dark;
 
 	--bg-0: #000000;
@@ -181,7 +178,7 @@
 }
 
 /* Carbon Blue: graphite panels, electric blue edge */
-[data-theme][data-theme='ck-carbon'] {
+[data-theme='ck-carbon'] {
 	color-scheme: dark;
 
 	--bg-0: #0a0b0d;
@@ -237,7 +234,7 @@
 }
 
 /* Daylight Desk (light): light grey terminal, navy type, orange signal */
-[data-theme][data-theme='ck-daylight'] {
+[data-theme='ck-daylight'] {
 	color-scheme: light;
 
 	--bg-0: #c3c8cf;
