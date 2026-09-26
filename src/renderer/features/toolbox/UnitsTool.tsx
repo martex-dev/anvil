@@ -49,7 +49,7 @@ export function UnitsTool(): JSX.Element {
 						spellCheck={false}
 					/>
 				</Field>
-				<Field label='Unit' className='min-w-32 flex-1'>
+				<Field label='Unit' as='div' className='min-w-32 flex-1'>
 					<Select
 						aria-label='Unit'
 						value={unit}
