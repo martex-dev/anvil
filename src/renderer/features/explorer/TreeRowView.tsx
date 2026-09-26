@@ -53,6 +53,7 @@ export function TreeRowView({
 	return (
 		<div
 			role='treeitem'
+			data-part='tree-row'
 			aria-level={depth + 1}
 			aria-expanded={isDir ? expanded : undefined}
 			aria-selected={focused}

@@ -14,7 +14,10 @@ const HINTS: Array<[string, string]> = [
 /** What an empty editor group shows: the mark and the handful of keys worth knowing. */
 export function Watermark(): JSX.Element {
 	return (
-		<div className='flex h-full flex-col items-center justify-center gap-8 select-none'>
+		<div
+			data-part='watermark'
+			className='flex h-full flex-col items-center justify-center gap-8 select-none'
+		>
 			<div className='relative flex items-center justify-center'>
 				<span className='absolute size-28 rounded-full bg-accent-faint blur-2xl' />
 				<span className='relative size-10 rotate-45 border border-accent/60 shadow-glow-soft'>

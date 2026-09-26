@@ -171,7 +171,10 @@ export function ChatPanel(): JSX.Element {
 
 	return (
 		<div className='flex h-full flex-col' data-ai-chat>
-			<header className='flex h-9 shrink-0 items-center gap-1.5 border-b border-glass-edge pr-1.5 pl-3'>
+			<header
+				data-part='chat-header'
+				className='flex h-9 shrink-0 items-center gap-1.5 border-b border-glass-edge pr-1.5 pl-3'
+			>
 				<Bot size={14} className='text-accent-2' />
 				<span className='hud text-fg-1'>Assistant</span>
 				<button
@@ -329,6 +332,7 @@ export function ChatPanel(): JSX.Element {
 						</ul>
 					)}
 					<textarea
+						data-part='chat-input'
 						ref={inputRef}
 						aria-label='Message'
 						value={text}

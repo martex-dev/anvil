@@ -155,15 +155,21 @@ function TabView({
 				{hasError && (
 					<span
 						title='This file has errors'
+						data-part='tab-error'
 						className='size-1.5 shrink-0 rounded-full bg-down shadow-[0_0_6px_var(--down)]'
 					/>
 				)}
-				<span className={cn('truncate', tab.preview && 'italic', changed && 'text-warn')}>
+				<span
+					data-part='tab-label'
+					className={cn('truncate', tab.preview && 'italic', changed && 'text-warn')}
+				>
 					{label}
 				</span>
 				<button
 					type='button'
 					aria-label={dirty ? `Close ${label} (unsaved)` : `Close ${label}`}
+					data-part='tab-close'
+					data-dirty={dirty}
 					onClick={(e) => {
 						e.stopPropagation();
 						closeTab(group, tab.id);

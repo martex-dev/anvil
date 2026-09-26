@@ -40,7 +40,10 @@ export function Breadcrumbs({ tab, focused }: { tab: Tab; focused: boolean }): J
 	if (!tab.path) return null;
 	const parts = isScratch(tab.path) ? ['Scratchpad'] : tab.path.split('/');
 	return (
-		<div className='flex h-6 shrink-0 items-center gap-0.5 overflow-hidden px-3 font-mono text-11 whitespace-nowrap text-fg-2'>
+		<div
+			data-part='breadcrumbs'
+			className='flex h-6 shrink-0 items-center gap-0.5 overflow-hidden px-3 font-mono text-11 whitespace-nowrap text-fg-2'
+		>
 			{parts.map((part, i) => (
 				<span key={`${part}-${i}`} className='flex items-center gap-0.5'>
 					{i > 0 && <ChevronRight size={10} className='opacity-50' />}

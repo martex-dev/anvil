@@ -72,7 +72,7 @@ export function Welcome(): JSX.Element {
 	const { settings, keys } = useAiSettings();
 	const aiReady = settings ? (keys?.[settings.chat.provider] ?? false) : true;
 	return (
-		<div className='mx-auto flex max-w-5xl flex-col gap-10 px-10 py-12'>
+		<div data-part='welcome' className='mx-auto flex max-w-5xl flex-col gap-10 px-10 py-12'>
 			<header className='flex items-center gap-6'>
 				<div className='relative flex size-20 shrink-0 items-center justify-center'>
 					<span className='absolute inset-0 rounded-full bg-accent/20 blur-2xl' />
