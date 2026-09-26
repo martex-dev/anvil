@@ -1,5 +1,5 @@
 import { Pipette } from 'lucide-react';
-import { type JSX, useEffect, useRef } from 'react';
+import { type JSX, useCallback, useEffect, useRef } from 'react';
 
 import { ACCENTS, type Settings } from '@shared/settings';
 
@@ -21,11 +21,24 @@ export function AccentPicker({
 }): JSX.Element {
 	// The color input fires on every drag step: repaint live, save once it settles.
 	const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-	useEffect(() => () => clearTimeout(timer.current), []);
+	const pending = useRef<string | undefined>(undefined);
+	const save = useRef(update);
+	useEffect(() => {
+		save.current = update;
+	});
+	const flush = useCallback((): void => {
+		clearTimeout(timer.current);
+		const hex = pending.current;
+		pending.current = undefined;
+		if (hex) save.current({ accent: 'custom', customAccent: hex });
+	}, []);
+	// Closing Settings mid-debounce must still save the color that is already painted.
+	useEffect(() => flush, [flush]);
 	const pickCustom = (hex: string): void => {
 		applyAppearance({ ...s, accent: 'custom', customAccent: hex });
+		pending.current = hex;
 		clearTimeout(timer.current);
-		timer.current = setTimeout(() => update({ accent: 'custom', customAccent: hex }), 300);
+		timer.current = setTimeout(flush, 300);
 	};
 	return (
 		<div className='flex items-center gap-1.5'>
