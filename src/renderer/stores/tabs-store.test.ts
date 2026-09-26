@@ -72,6 +72,18 @@ describe('tabs store', () => {
 		expect(st.tabs['code:a.py']).toBeDefined();
 	});
 
+	it('folds away an empty left group while the right one still has tabs', () => {
+		const s = useTabsStore.getState();
+		s.open(code('a.py'));
+		s.split('code:a.py');
+		const second = useTabsStore.getState().groups[1]?.id ?? -1;
+		s.open(code('b.py'), { group: second });
+		s.close(0, 'code:a.py');
+		const st = useTabsStore.getState();
+		expect(st.groups.map((g) => g.id)).toEqual([second]);
+		expect(st.focused).toBe(second);
+	});
+
 	it('closing a group moves its tabs to the remaining one', () => {
 		const s = useTabsStore.getState();
 		s.open(code('a.py'));

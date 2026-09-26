@@ -108,9 +108,11 @@ export const useTabsStore = create<TabsState>((set, get) => ({
 	close: (group, id) => {
 		const s = get();
 		let groups = s.groups.map((g) => (g.id === group ? withoutTab(g, id) : g));
-		// An empty second group folds away; the first always stays.
-		if (groups.length > 1)
-			groups = groups.filter((g) => g.tabIds.length > 0 || g.id === groups[0]?.id);
+		// Empty groups fold away (left or right); one group always stays, even when empty.
+		if (groups.length > 1) {
+			const nonEmpty = groups.filter((g) => g.tabIds.length > 0);
+			groups = nonEmpty.length > 0 ? nonEmpty : groups.slice(0, 1);
+		}
 		const stillShown = groups.some((g) => g.tabIds.includes(id));
 		const tabs = stillShown
 			? s.tabs
