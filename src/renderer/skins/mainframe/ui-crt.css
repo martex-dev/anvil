@@ -33,7 +33,11 @@ html[data-skin='mainframe'] .mf-crt-vignette {
 		transparent 55%,
 		var(--skin-vignette) 100%
 	);
-	box-shadow: inset 0 0 90px 10px var(--skin-vignette);
+	/* The spread fills the corners outside the radius: the rounded bezel of the tube. */
+	border-radius: 12px;
+	box-shadow:
+		0 0 0 24px var(--bg-0),
+		inset 0 0 90px 10px var(--skin-vignette);
 }
 html[data-skin='mainframe'] .mf-crt-flicker {
 	display: none;
@@ -81,6 +85,7 @@ html[data-skin='mainframe'][data-kind='light'] .mf-crt-scan {
 }
 html[data-skin='mainframe'][data-kind='light'] .mf-crt-vignette {
 	background: none;
+	border-radius: 0;
 	box-shadow: inset 0 0 120px 0 var(--skin-vignette);
 }
 

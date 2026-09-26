@@ -213,9 +213,10 @@ html[data-skin='mainframe'] [data-part='tab']:hover > button > svg.invisible {
 	display: block;
 }
 html[data-skin='mainframe'] [data-part='tab'] > span.bg-down {
+	order: 7;
 	width: auto;
 	height: auto;
-	margin-right: 2px;
+	margin-left: 1px;
 	background: none;
 	box-shadow: none;
 	color: var(--down);

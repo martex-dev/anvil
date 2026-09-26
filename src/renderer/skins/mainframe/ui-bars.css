@@ -137,6 +137,7 @@ html[data-skin='mainframe'] .mf-toggle::after {
 html[data-skin='mainframe'] .mf-toggle:hover {
 	color: var(--text-0);
 }
+html[data-skin='mainframe'] .mf-toggle.mf-rev,
 html[data-skin='mainframe'] .mf-toggle.mf-rev:hover {
 	color: var(--on-accent);
 }
