@@ -20,6 +20,7 @@ import { useFeatureErrors } from './hooks/use-feature-errors';
 import { useFsInvalidation } from './hooks/use-fs-invalidation';
 import { useLayoutPersistence } from './hooks/use-layout-persistence';
 import { useMonacoExtras } from './hooks/use-monaco-extras';
+import { useSecretsReset } from './hooks/use-secrets-reset';
 import { useApplySettings } from './hooks/use-settings';
 import { QuickOpen } from './QuickOpen';
 import { SettingsDialog } from './settings/SettingsDialog';
@@ -48,6 +49,7 @@ export function AppShell(): JSX.Element {
 	useLayoutPersistence();
 	useMonacoExtras();
 	useFeatureErrors();
+	useSecretsReset();
 
 	const zen = layout.zen;
 	const showSide = layout.sideOpen && !zen;

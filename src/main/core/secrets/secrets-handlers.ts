@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 
 import { app, safeStorage } from 'electron';
+import log from 'electron-log/main';
 
 import { isKnownSecret } from '@shared/secrets';
 
@@ -18,6 +19,10 @@ export function createSecretsService(): SecretsService {
 		join(app.getPath('userData'), 'secrets.json'),
 		safeStorage,
 		isDeclaredKey,
+		() => {
+			log.warn('[secrets] secrets file was unreadable; moved it aside and started empty');
+			emitEvent('secrets:reset', {});
+		},
 	);
 }
 
