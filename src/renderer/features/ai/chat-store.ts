@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import type { AiContext, AiModelRef } from '@shared/ipc/channels/ai';
 
 import { call } from '../../lib/ipc';
+import { toast } from '../../stores/toast-store';
 
 export interface ChatMessage {
 	id: string;
@@ -34,7 +35,10 @@ interface ChatState {
 	/** Starts a reply; false (nothing sent) while another reply is streaming or text is empty. */
 	send: (text: string, model: AiModelRef) => boolean;
 	stop: () => void;
+	/** Starts a new conversation; an Undo toast brings the old messages back. */
 	clear: () => void;
+	/** Puts cleared messages back in front of whatever was said since. */
+	restore: (messages: ChatMessage[]) => void;
 	onDelta: (requestId: string, text: string) => void;
 	onDone: (
 		requestId: string,
@@ -121,9 +125,28 @@ export const useChat = create<ChatState>((set, get) => ({
 		if (id) void call('ai:cancel', id).catch(() => undefined);
 	},
 	clear: () => {
+		const previous = get().messages;
 		get().stop();
 		set({ messages: [], activeRequest: null, attached: [] });
+		// One click on + (or /clear) shouldn't lose a conversation for good.
+		if (previous.length > 0)
+			toast.info('Conversation cleared', undefined, {
+				label: 'Undo',
+				run: () => get().restore(previous),
+			});
 	},
+	restore: (messages) =>
+		set((s) => ({
+			messages: [
+				// The reply that was streaming was cancelled by clear().
+				...messages.map((m) =>
+					m.streaming
+						? { ...m, streaming: false, ...(m.content ? {} : { error: 'Stopped' }) }
+						: m,
+				),
+				...s.messages,
+			],
+		})),
 	onDelta: (requestId, text) =>
 		set((s) => ({
 			messages: s.messages.map((m) =>
