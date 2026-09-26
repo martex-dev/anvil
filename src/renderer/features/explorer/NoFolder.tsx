@@ -53,7 +53,7 @@ export function NoFolder({ recent }: { recent: string[] }): JSX.Element {
 									size='sm'
 									label='Remove from recent'
 									icon={<X size={12} />}
-									className='opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
+									className='opacity-0 transition-[background-color,color,opacity] group-hover:opacity-100 focus-visible:opacity-100'
 									onClick={() => forget(path)}
 								/>
 							</li>
