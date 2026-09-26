@@ -1,10 +1,4 @@
-import {
-	keepPreviousData,
-	type QueryClient,
-	useQueries,
-	useQuery,
-	type UseQueryResult,
-} from '@tanstack/react-query';
+import { type QueryClient, useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import type { DataPage } from '@shared/ipc/channels/data';
 
@@ -52,11 +46,26 @@ function pageQuery(
 }
 
 /**
+ * Placeholder for page 0: the previous result, but only when it came from the same file. The
+ * viewer is reused when a tab shows another file, and another file's columns and row count must
+ * never stand in for this one's (the grid would draw the new cells under the old headers).
+ */
+export function sameFilePlaceholder(
+	path: string,
+): (
+	previous: DataPage | undefined,
+	previousQuery: { queryKey: readonly unknown[] } | undefined,
+) => DataPage | undefined {
+	return (previous, previousQuery) =>
+		previousQuery?.queryKey[2] === path ? previous : undefined;
+}
+
+/**
  * Page 0 doubles as the table's metadata (columns, row count). Keeping the previous result
  * while a new filter/sort loads stops the grid from flashing to a spinner on every keystroke.
  */
 export function useDataMeta(params: DataParams): UseQueryResult<DataPage> {
-	return useQuery({ ...pageQuery(params, 0), placeholderData: keepPreviousData });
+	return useQuery({ ...pageQuery(params, 0), placeholderData: sameFilePlaceholder(params.path) });
 }
 
 export type RowLookup = (row: number) => Row | 'loading' | 'error';
