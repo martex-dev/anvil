@@ -20,6 +20,7 @@ import { ErrorState } from '../../ui/ErrorState';
 import { IconButton } from '../../ui/IconButton';
 import { Spinner } from '../../ui/Spinner';
 import { Tooltip } from '../../ui/Tooltip';
+import { ReloadErrorBadge } from './ReloadErrorBadge';
 import { baseName, formatBytes } from './viewer-paths';
 
 import './viewers.css';
@@ -246,6 +247,7 @@ export function ImageViewer({ path }: { path: string }): JSX.Element {
 					</span>
 				)}
 				{data && <span className='hud num'>{formatBytes(data.size)}</span>}
+				{query.isError && data && <ReloadErrorBadge message={query.error.message} />}
 				<span className='flex-1' />
 				{query.isFetching && !query.isPending && <Spinner size={12} label='Refreshing' />}
 				<IconButton
