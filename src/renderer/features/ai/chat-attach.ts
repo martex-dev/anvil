@@ -25,8 +25,18 @@ export function attachCurrent(kind: 'file' | 'selection'): boolean {
 	return true;
 }
 
-/** Attaches the working tree's diff against HEAD. */
-export async function attachDiff(): Promise<void> {
+// git diff can take seconds on a big repo: repeated clicks share one run.
+let diffInFlight: Promise<void> | null = null;
+
+/** Attaches the working tree's diff against HEAD. Never rejects; failures are toasted. */
+export function attachDiff(): Promise<void> {
+	diffInFlight ??= readDiff().finally(() => {
+		diffInFlight = null;
+	});
+	return diffInFlight;
+}
+
+async function readDiff(): Promise<void> {
 	try {
 		const { diff, truncated } = await call('ai:gitDiff', { staged: false });
 		if (!diff.trim()) {

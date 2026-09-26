@@ -24,6 +24,7 @@ import { Button } from '../../ui/Button';
 import { ErrorState } from '../../ui/ErrorState';
 import { FileBadge } from '../../ui/FileBadge';
 import { IconButton } from '../../ui/IconButton';
+import { Spinner } from '../../ui/Spinner';
 import { PROVIDER_LABEL, useAiSettings } from './ai-settings';
 import { attachCurrent, attachDiff, attachPath } from './chat-attach';
 import { useChatFocus } from './chat-focus';
@@ -39,6 +40,7 @@ export function ChatPanel(): JSX.Element {
 	const text = useChat((s) => s.draft);
 	const setText = useChat((s) => s.setDraft);
 	const [pick, setPick] = useState(0);
+	const [diffPending, setDiffPending] = useState(false);
 	// Escape hides the popup for the text it was pressed on; typing brings it back.
 	const [dismissedAt, setDismissedAt] = useState<string | null>(null);
 	const {
@@ -212,8 +214,20 @@ export function ChatPanel(): JSX.Element {
 					<Button
 						size='sm'
 						variant='ghost'
-						icon={<GitCompare size={11} />}
-						onClick={() => void attachDiff()}
+						// A spinner rather than `loading`: disabling the focused button would drop focus.
+						icon={
+							diffPending ? (
+								<Spinner size={12} label='Reading git diff' />
+							) : (
+								<GitCompare size={11} />
+							)
+						}
+						aria-busy={diffPending || undefined}
+						onClick={() => {
+							if (diffPending) return;
+							setDiffPending(true);
+							void attachDiff().finally(() => setDiffPending(false));
+						}}
 					>
 						Diff
 					</Button>
