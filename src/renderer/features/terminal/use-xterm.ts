@@ -20,6 +20,14 @@ import { buildXtermTheme } from './xterm-theme';
 
 import '@xterm/xterm/css/xterm.css';
 
+/** The code font setting, with a monospace fallback so xterm never gets a proportional font. */
+function codeFont(): string {
+	return (
+		getComputedStyle(document.documentElement).getPropertyValue('--font-code').trim() ||
+		"'JetBrains Mono', ui-monospace, monospace"
+	);
+}
+
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
 /** The Reduce motion setting (on <html>) or the OS preference: then the cursor doesn't blink. */
@@ -74,9 +82,7 @@ export function useXterm(
 		let restarting = false;
 
 		const term = new Terminal({
-			fontFamily:
-				getComputedStyle(document.documentElement).getPropertyValue('--font-code').trim() ||
-				"'JetBrains Mono', ui-monospace, monospace",
+			fontFamily: codeFont(),
 			fontSize,
 			lineHeight: 1.2,
 			cursorBlink: !reducedMotion(),
@@ -114,10 +120,10 @@ export function useXterm(
 		// Theme / accent switches recolor running terminals without restarting them.
 		const recolor = (): void => {
 			term.options.theme = buildXtermTheme();
-			term.options.fontFamily = getComputedStyle(document.documentElement)
-				.getPropertyValue('--font-code')
-				.trim();
+			term.options.fontFamily = codeFont();
 			term.options.cursorBlink = !reducedMotion();
+			// A new font changes the cell size: refit so cols/rows (and the pty) match again.
+			refit();
 		};
 		window.addEventListener('anvil:appearance', recolor);
 		const motion = window.matchMedia(REDUCED_MOTION_QUERY);
