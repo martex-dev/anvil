@@ -6,6 +6,7 @@ import { InlineEditHost } from '../features/ai/InlineEditHost';
 import { EditorArea } from '../features/editor/EditorArea';
 import { EditorBridge } from '../features/editor/EditorBridge';
 import { LspController } from '../features/lsp/LspController';
+import { SnapDialog } from '../features/snap/SnapDialog';
 import { cn } from '../lib/cn';
 import { useLayoutStore } from '../stores/layout-store';
 import { QuickPickHost } from '../ui/QuickPick';
@@ -151,6 +152,7 @@ export function AppShell(): JSX.Element {
 			<ShortcutsDialog />
 			<TemplatesDialog />
 			<ApplyDialog />
+			<SnapDialog />
 		</div>
 	);
 }
