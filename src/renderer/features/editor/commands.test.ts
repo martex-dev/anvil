@@ -11,7 +11,6 @@ vi.mock('./extras/bookmarks', () => ({
 	nextBookmarkLine: (e: unknown) => nextBookmarkLine(e),
 	toggleBookmarkAt: vi.fn(),
 }));
-vi.mock('./extras/git-lines', () => ({ isBlameEnabled: vi.fn(), setBlameEnabled: vi.fn() }));
 vi.mock('./extras/shield', () => ({ repaintShield: vi.fn() }));
 vi.mock('./file-ops', () => ({
 	isScratch: (path: string | null) => path === '__scratch__',
@@ -27,9 +26,11 @@ let workspacePath: string | null = null;
 vi.mock('../../lib/monaco/workspace-root', () => ({ toWorkspacePath: () => workspacePath }));
 const writeText = vi.fn((_text: string) => Promise.resolve());
 vi.stubGlobal('navigator', { clipboard: { writeText: (text: string) => writeText(text) } });
+let settings: Record<string, unknown> = {};
+const updateSettings = vi.fn((_patch: Record<string, unknown>) => Promise.resolve());
 vi.mock('../../app/hooks/use-settings', () => ({
-	getSettings: () => ({}),
-	updateSettings: vi.fn(),
+	getSettings: () => settings,
+	updateSettings: (patch: Record<string, unknown>) => updateSettings(patch),
 }));
 
 const { EDITOR_COMMANDS } = await import('./commands');
@@ -79,5 +80,12 @@ describe('editor commands', () => {
 		await run('file.copyPath');
 		expect(writeText).not.toHaveBeenCalled();
 		expect(lastToast()?.title).toBe('Open a file first');
+	});
+
+	it('saves the inline blame toggle as a setting', async () => {
+		settings = { inlineBlame: true };
+		await run('git.toggleBlame');
+		expect(updateSettings).toHaveBeenCalledWith({ inlineBlame: false });
+		expect(lastToast()?.title).toBe('Inline blame off');
 	});
 });

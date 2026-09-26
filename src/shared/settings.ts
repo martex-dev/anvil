@@ -68,6 +68,8 @@ export const SettingsSchema = z.object({
 	todoHighlight: z.boolean().default(true),
 	/** Inline swatches (and a picker) for #hex, rgb() and hsl() colors in any file. */
 	colorSwatches: z.boolean().default(true),
+	/** "Author, time • message" after the line the cursor is on (Toggle Inline Blame). */
+	inlineBlame: z.boolean().default(true),
 	/** Tabs tinted by file type, with an error dot when the file has problems. */
 	tabTint: z.boolean().default(true),
 	/** Blur values in .env files and flag keys/seed phrases in code. */

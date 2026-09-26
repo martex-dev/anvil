@@ -22,7 +22,6 @@ import { focusedTab, useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
 import { requestOpenFile } from '../../stores/workbench-store';
 import { nextBookmarkLine, toggleBookmarkAt } from './extras/bookmarks';
-import { isBlameEnabled, setBlameEnabled } from './extras/git-lines';
 import { repaintShield } from './extras/shield';
 import { isScratch, saveAll, saveFile } from './file-ops';
 import { newFile } from './new-file';
@@ -209,9 +208,10 @@ export const EDITOR_COMMANDS: Command[] = [
 		title: 'Toggle Inline Blame',
 		category: 'Git',
 		icon: GitCommitHorizontal,
-		run: () => {
-			setBlameEnabled(!isBlameEnabled());
-			toast.info(`Inline blame ${isBlameEnabled() ? 'on' : 'off'}`);
+		run: async () => {
+			const on = !getSettings().inlineBlame;
+			await updateSettings({ inlineBlame: on });
+			toast.info(`Inline blame ${on ? 'on' : 'off'}`);
 		},
 	},
 	{

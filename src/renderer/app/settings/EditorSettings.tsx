@@ -106,6 +106,12 @@ export function EditorSettings({
 				onChange={(colorSwatches) => update({ colorSwatches })}
 			/>
 			<SettingToggle
+				label='Inline blame'
+				description='Author, time and commit message after the line the cursor is on.'
+				value={s.inlineBlame}
+				onChange={(inlineBlame) => update({ inlineBlame })}
+			/>
+			<SettingToggle
 				label='Word wrap'
 				description='Alt+Z toggles it from the editor.'
 				value={s.wordWrap}
