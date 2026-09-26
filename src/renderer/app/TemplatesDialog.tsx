@@ -5,7 +5,6 @@ import { type JSX, useRef, useState } from 'react';
 import { ProjectNameSchema } from '@shared/ipc/channels/tools';
 
 import { openRecentFolder } from '../features/explorer/workspace-actions';
-import { cn } from '../lib/cn';
 import { call } from '../lib/ipc';
 import { toast } from '../stores/toast-store';
 import { useUiStore } from '../stores/ui-store';
@@ -15,6 +14,7 @@ import { Dialog } from '../ui/Dialog';
 import { EmptyState } from '../ui/EmptyState';
 import { ErrorState } from '../ui/ErrorState';
 import { Input } from '../ui/Input';
+import { TemplateOptions } from './TemplateOptions';
 
 /** New project from a template: pick one, name it, choose where it goes, and it opens. */
 export function TemplatesDialog(): JSX.Element {
@@ -92,50 +92,24 @@ export function TemplatesDialog(): JSX.Element {
 			}
 		>
 			<div className='grid grid-cols-[1fr_1.1fr] gap-4'>
-				<ul className='flex flex-col gap-1.5'>
-					{(templates.data ?? []).map((t) => (
-						<li key={t.id}>
-							<button
-								type='button'
-								onClick={() => setPicked(t.id)}
-								className={cn(
-									'w-full rounded-lg border p-3 text-left outline-none transition-colors transition-fast focus-visible:shadow-glow',
-									selected?.id === t.id
-										? 'border-accent/50 bg-accent-faint'
-										: 'border-glass-edge hover:border-border-strong',
-								)}
-							>
-								<div className='text-13 font-medium text-fg-0'>{t.name}</div>
-								<div className='mt-0.5 text-12 text-fg-2'>{t.description}</div>
-								<div className='mt-1.5 flex flex-wrap gap-1'>
-									{t.tags.map((tag) => (
-										<span
-											key={tag}
-											className='rounded-sm bg-bg-3/70 px-1.5 font-mono text-10 text-fg-1'
-										>
-											{tag}
-										</span>
-									))}
-								</div>
-							</button>
-						</li>
-					))}
-					{templates.isLoading && <li className='shimmer h-20 rounded-lg' />}
+				<div className='flex flex-col gap-1.5'>
+					{templates.data && templates.data.length > 0 && (
+						<TemplateOptions
+							templates={templates.data}
+							selectedId={selected?.id}
+							onSelect={setPicked}
+						/>
+					)}
+					{templates.isLoading && <div className='shimmer h-20 rounded-lg' />}
 					{templates.isError && (
-						<li>
-							<ErrorState
-								title='Could not load templates'
-								message={templates.error.message}
-								onRetry={() => void templates.refetch()}
-							/>
-						</li>
+						<ErrorState
+							title='Could not load templates'
+							message={templates.error.message}
+							onRetry={() => void templates.refetch()}
+						/>
 					)}
-					{templates.data?.length === 0 && (
-						<li>
-							<EmptyState title='No templates available' />
-						</li>
-					)}
-				</ul>
+					{templates.data?.length === 0 && <EmptyState title='No templates available' />}
+				</div>
 				<div className='flex flex-col gap-3'>
 					<label className='flex flex-col gap-1'>
 						<span className='hud'>Project name</span>
