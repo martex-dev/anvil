@@ -103,7 +103,9 @@ export const TITLE_BAR_HEIGHT = WINDOW_CHROME.titleBarHeight;
 export function TitleBar(): JSX.Element {
 	const { info } = useWorkspace();
 	const openQuick = useUiStore((s) => s.openQuickOpen);
-	const layout = useLayoutStore();
+	const sideOpen = useLayoutStore((s) => s.sideOpen);
+	const panelOpen = useLayoutStore((s) => s.panelOpen);
+	const aiOpen = useLayoutStore((s) => s.aiOpen);
 	return (
 		<header
 			className='drag relative z-20 flex shrink-0 items-center gap-2 pr-[150px] pl-3'
@@ -156,25 +158,25 @@ export function TitleBar(): JSX.Element {
 					size='sm'
 					label='Toggle side bar'
 					shortcut={shortcutFor('view.toggleSide')}
-					active={layout.sideOpen}
+					active={sideOpen}
 					icon={<PanelLeft size={14} />}
-					onClick={layout.toggleSide}
+					onClick={() => useLayoutStore.getState().toggleSide()}
 				/>
 				<IconButton
 					size='sm'
 					label='Toggle panel'
 					shortcut={shortcutFor('view.togglePanel')}
-					active={layout.panelOpen}
+					active={panelOpen}
 					icon={<PanelBottom size={14} />}
-					onClick={() => layout.togglePanel()}
+					onClick={() => useLayoutStore.getState().togglePanel()}
 				/>
 				<IconButton
 					size='sm'
 					label='Toggle AI'
 					shortcut={shortcutFor('view.toggleAi')}
-					active={layout.aiOpen}
-					icon={layout.aiOpen ? <PanelRight size={14} /> : <Bot size={14} />}
-					onClick={() => layout.toggleAi()}
+					active={aiOpen}
+					icon={aiOpen ? <PanelRight size={14} /> : <Bot size={14} />}
+					onClick={() => useLayoutStore.getState().toggleAi()}
 				/>
 				<IconButton
 					size='sm'

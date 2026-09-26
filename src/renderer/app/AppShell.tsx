@@ -1,4 +1,5 @@
-import { type JSX, lazy, Suspense, useRef } from 'react';
+import { type JSX, lazy, type ReactNode, Suspense, useRef } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 
 import { AiStreamController } from '../features/ai/AiStreamController';
 import { ApplyDialog } from '../features/ai/ApplyDialog';
@@ -36,12 +37,63 @@ const ChatPanel = lazy(() =>
 	import('../features/ai/ChatPanel').then((m) => ({ default: m.ChatPanel })),
 );
 
+const resize: ReturnType<typeof useLayoutStore.getState>['resize'] = (patch) =>
+	useLayoutStore.getState().resize(patch);
+
+/*
+ * Pane sizes are read by these small wrappers, not by AppShell, so a splitter drag (a store
+ * update per pointermove) re-renders only the resized wrapper. Their children are elements
+ * created by AppShell, which React skips when the wrapper re-renders.
+ */
+function SideWidth({ children }: { children: ReactNode }): JSX.Element {
+	const width = useLayoutStore((s) => s.sideWidth);
+	return (
+		<div className='min-w-0 shrink-0' style={{ width }}>
+			{children}
+		</div>
+	);
+}
+
+function PanelHeight({ children }: { children: ReactNode }): JSX.Element {
+	const maximized = useLayoutStore((s) => s.panelMaximized);
+	const height = useLayoutStore((s) => s.panelHeight);
+	return (
+		<div
+			className={maximized ? 'min-h-0 flex-1' : 'shrink-0'}
+			style={maximized ? undefined : { height }}
+		>
+			{children}
+		</div>
+	);
+}
+
+function AiWidth({ children }: { children: ReactNode }): JSX.Element {
+	const width = useLayoutStore((s) => s.aiWidth);
+	return (
+		<aside
+			aria-label='AI assistant'
+			className='glass pane-focus min-w-0 shrink-0 overflow-hidden'
+			style={{ width }}
+		>
+			{children}
+		</aside>
+	);
+}
+
 /**
  * The workbench: floating glass panes over an ambient background. Activity bar, side bar,
  * editor groups over the terminal panel, and the AI pane on the right.
  */
 export function AppShell(): JSX.Element {
-	const layout = useLayoutStore();
+	const { sideOpen, panelOpen, aiOpen, zen, panelMaximized } = useLayoutStore(
+		useShallow((s) => ({
+			sideOpen: s.sideOpen,
+			panelOpen: s.panelOpen,
+			aiOpen: s.aiOpen,
+			zen: s.zen,
+			panelMaximized: s.panelMaximized,
+		})),
+	);
 	const start = useRef(0);
 	useGlobalShortcuts();
 	useApplySettings();
@@ -50,10 +102,9 @@ export function AppShell(): JSX.Element {
 	useLayoutPersistence();
 	useMonacoExtras();
 
-	const zen = layout.zen;
-	const showSide = layout.sideOpen && !zen;
-	const showPanel = layout.panelOpen && !zen;
-	const showAi = layout.aiOpen && !zen;
+	const showSide = sideOpen && !zen;
+	const showPanel = panelOpen && !zen;
+	const showAi = aiOpen && !zen;
 
 	return (
 		<div className='relative flex h-full flex-col'>
@@ -69,20 +120,20 @@ export function AppShell(): JSX.Element {
 				{!zen && <span className='w-1.5 shrink-0' />}
 				{showSide && (
 					<>
-						<div className='min-w-0 shrink-0' style={{ width: layout.sideWidth }}>
+						<SideWidth>
 							<SideBar />
-						</div>
+						</SideWidth>
 						<Splitter
 							axis='x'
 							label='Resize side bar'
 							onStart={() => (start.current = useLayoutStore.getState().sideWidth)}
-							onDrag={(d) => layout.resize({ sideWidth: start.current + d })}
-							onReset={() => layout.resize({ sideWidth: 272 })}
+							onDrag={(d) => resize({ sideWidth: start.current + d })}
+							onReset={() => resize({ sideWidth: 272 })}
 						/>
 					</>
 				)}
 				<div className='flex min-w-0 flex-1 flex-col'>
-					{!(showPanel && layout.panelMaximized) && (
+					{!(showPanel && panelMaximized) && (
 						<div className='min-h-0 flex-1'>
 							<ErrorBoundary name='Editor' className='glass'>
 								<EditorArea />
@@ -91,31 +142,22 @@ export function AppShell(): JSX.Element {
 					)}
 					{showPanel && (
 						<>
-							{!layout.panelMaximized && (
+							{!panelMaximized && (
 								<Splitter
 									axis='y'
 									label='Resize panel'
 									onStart={() =>
 										(start.current = useLayoutStore.getState().panelHeight)
 									}
-									onDrag={(d) =>
-										layout.resize({ panelHeight: start.current - d })
-									}
-									onReset={() => layout.resize({ panelHeight: 240 })}
+									onDrag={(d) => resize({ panelHeight: start.current - d })}
+									onReset={() => resize({ panelHeight: 240 })}
 								/>
 							)}
-							<div
-								className={layout.panelMaximized ? 'min-h-0 flex-1' : 'shrink-0'}
-								style={
-									layout.panelMaximized
-										? undefined
-										: { height: layout.panelHeight }
-								}
-							>
+							<PanelHeight>
 								<ErrorBoundary name='Panel' className='glass'>
 									<BottomPanel />
 								</ErrorBoundary>
-							</div>
+							</PanelHeight>
 						</>
 					)}
 				</div>
@@ -125,14 +167,10 @@ export function AppShell(): JSX.Element {
 							axis='x'
 							label='Resize AI panel'
 							onStart={() => (start.current = useLayoutStore.getState().aiWidth)}
-							onDrag={(d) => layout.resize({ aiWidth: start.current - d })}
-							onReset={() => layout.resize({ aiWidth: 380 })}
+							onDrag={(d) => resize({ aiWidth: start.current - d })}
+							onReset={() => resize({ aiWidth: 380 })}
 						/>
-						<aside
-							aria-label='AI assistant'
-							className='glass pane-focus min-w-0 shrink-0 overflow-hidden'
-							style={{ width: layout.aiWidth }}
-						>
+						<AiWidth>
 							<ErrorBoundary name='AI assistant'>
 								<Suspense
 									fallback={
@@ -144,7 +182,7 @@ export function AppShell(): JSX.Element {
 									<ChatPanel />
 								</Suspense>
 							</ErrorBoundary>
-						</aside>
+						</AiWidth>
 					</>
 				)}
 			</div>
