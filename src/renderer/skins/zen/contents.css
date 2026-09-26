@@ -1,0 +1,230 @@
+/*
+ * Zen Paper contents: the rail (a table of contents in the left margin) and the drawer (a
+ * sheet of paper that slides over the page), with pane titles set like chapter openings.
+ */
+
+/* ---- Contents rail ---------------------------------------------------------------------- */
+
+/* Above the drawer, so you can turn to another chapter while one is open. */
+html[data-skin='zen'] [data-part='activity-rail'] {
+	z-index: 40;
+	width: 20px;
+}
+html[data-skin='zen'] [data-part='activity-rail'] > div {
+	width: max-content;
+	padding: 0;
+	transition-duration: var(--zn-slow);
+	transition-timing-function: var(--zn-ease);
+}
+/* Tucked away right after a pick with the mouse, until the pointer has left it. */
+html[data-skin='zen'] [data-part='activity-rail'][data-zen-tucked]:not(:focus-within) {
+	width: 20px !important;
+}
+html[data-skin='zen'] [data-part='activity-rail'][data-zen-tucked]:not(:focus-within) > div {
+	translate: calc(-100% - 8px) 0 !important;
+}
+/* A single hairline in the margin hints at the contents hidden there. */
+html[data-skin='zen'] [data-part='activity-rail']::before {
+	content: '';
+	position: absolute;
+	top: calc(50% - 40px);
+	left: 9px;
+	width: 1px;
+	height: 80px;
+	background: linear-gradient(transparent, var(--zn-rule), transparent);
+	transition: opacity var(--zn-slow) var(--zn-ease);
+}
+html[data-skin='zen'] [data-part='activity-rail']:is(:hover, :focus-within)::before {
+	opacity: 0;
+}
+
+html[data-skin='zen'] [data-part='activity'] {
+	background: var(--skin-page);
+	box-shadow:
+		1px 0 0 var(--zn-rule-soft),
+		22px 0 44px -26px var(--skin-shadow);
+	font-family: var(--font-ui);
+}
+html[data-skin='zen'] [data-zen='contents-title'] {
+	margin: 0 0 14px;
+	padding-bottom: 12px;
+	border-bottom: 1px solid var(--zn-rule-soft);
+	font-family: var(--font-display);
+	font-style: italic;
+	font-size: 30px;
+	line-height: 1;
+	color: var(--text-0);
+}
+html[data-skin='zen'] [data-zen='contents-title']::first-letter {
+	color: var(--accent);
+}
+
+html[data-skin='zen'] [data-part='activity-item'] {
+	font-size: 15px;
+	color: var(--text-1);
+	transition: color var(--dur-fast) var(--ease-out);
+}
+html[data-skin='zen'] [data-part='activity-item']:is(:hover, :focus-visible) {
+	color: var(--text-0);
+	outline: none;
+}
+html[data-skin='zen'] [data-part='activity-item']:focus-visible [data-part='activity-label'] {
+	text-decoration: underline 1px var(--accent);
+	text-underline-offset: 4px;
+}
+html[data-skin='zen'] [data-zen='numeral'] {
+	flex: none;
+	width: 2.1em;
+	font-style: italic;
+	font-size: 12.5px;
+	text-align: right;
+	color: var(--text-2);
+}
+html[data-skin='zen'] [data-zen='numeral']::after {
+	content: '.';
+}
+html[data-skin='zen'] [data-part='activity-item'][data-view='ai'] [data-zen='numeral']::after,
+html[data-skin='zen']
+	[data-part='activity-item'][data-view='settings']
+	[data-zen='numeral']::after {
+	content: '';
+}
+html[data-skin='zen'] [data-part='activity-item'] [data-zen='leader'],
+html[data-skin='zen'] [data-zen='menu-item'] [data-zen='leader'] {
+	align-self: center;
+	height: 1px;
+	transform: translateY(4px);
+	background-image: radial-gradient(circle, var(--zn-rule) 0.7px, transparent 0.9px);
+	background-size: 5px 1px;
+	background-repeat: repeat-x;
+	opacity: 0.9;
+}
+html[data-skin='zen'] [data-zen='folio'] {
+	font-size: 12px;
+	font-variant-caps: all-small-caps;
+	letter-spacing: 0.05em;
+	color: var(--text-2);
+}
+html[data-skin='zen'] [data-part='activity-badge'] {
+	align-self: flex-start;
+	margin-left: -4px;
+	font-size: 10px;
+	font-style: italic;
+	color: var(--accent);
+}
+html[data-skin='zen'] [data-part='activity-item'][data-active='true'] {
+	color: var(--accent);
+}
+html[data-skin='zen'] [data-part='activity-item'][data-active='true'] [data-part='activity-label'] {
+	font-style: italic;
+}
+html[data-skin='zen'] [data-part='activity-item'][data-active='true'] [data-zen='numeral'] {
+	color: var(--accent);
+}
+html[data-skin='zen'] [data-part='activity'] [data-zen='rule'] {
+	display: flex;
+	justify-content: center;
+	margin: 10px 0 6px;
+	font-size: 12px;
+	color: var(--text-2);
+	background:
+		linear-gradient(var(--zn-rule-soft), var(--zn-rule-soft)) no-repeat left center /
+			calc(50% - 16px) 1px,
+		linear-gradient(var(--zn-rule-soft), var(--zn-rule-soft)) no-repeat right center /
+			calc(50% - 16px) 1px;
+}
+
+/* ---- Drawer: a sheet slid over the page ------------------------------------------------- */
+
+html[data-skin='zen'] [data-part='drawer'] > div:last-child {
+	transition-duration: var(--zn-slow);
+	transition-timing-function: var(--zn-ease);
+}
+html[data-skin='zen'] [data-part='drawer-backdrop'] {
+	transition-duration: var(--zn-slow);
+}
+html[data-skin='zen'] [data-part='drawer'] [data-part='sidebar'] {
+	background:
+		linear-gradient(
+			90deg,
+			transparent 70%,
+			color-mix(in oklab, var(--skin-shadow) 12%, transparent)
+		),
+		var(--skin-page);
+	box-shadow:
+		1px 0 0 var(--zn-rule-soft),
+		26px 0 50px -30px var(--skin-shadow),
+		6px 0 14px -10px var(--skin-shadow);
+}
+html[data-skin='zen'] [data-part='drawer'][data-side='right'] [data-part='sidebar'] {
+	box-shadow:
+		-1px 0 0 var(--zn-rule-soft),
+		-26px 0 50px -30px var(--skin-shadow);
+}
+
+/* ---- Pane titles: chapter openings ------------------------------------------------------ */
+
+html[data-skin='zen'] [data-part='sidebar'] > [data-part='pane-header'] {
+	position: relative;
+	height: auto;
+	padding: 26px 22px 12px 26px;
+	border-bottom: 0;
+	align-items: baseline;
+	gap: 0;
+}
+html[data-skin='zen'] [data-part='sidebar'] > [data-part='pane-header']::after {
+	content: '';
+	position: absolute;
+	left: 26px;
+	right: 22px;
+	bottom: 0;
+	height: 1px;
+	background: linear-gradient(90deg, var(--zn-rule), var(--zn-rule-soft) 60%, transparent);
+}
+html[data-skin='zen'] [data-part='sidebar'] [data-part='pane-rule'] {
+	display: none;
+}
+html[data-skin='zen'] [data-part='sidebar'] [data-part='pane-index'] {
+	order: 2;
+	margin-left: auto;
+	font-family: var(--font-display);
+	font-style: italic;
+	font-size: 14px;
+	color: var(--text-2);
+}
+html[data-skin='zen'] [data-part='sidebar'] [data-part='pane-index']::before {
+	content: '§ ';
+	font-style: normal;
+	font-size: 12px;
+}
+html[data-skin='zen'] [data-part='sidebar'] [data-part='pane-title'] {
+	font-family: var(--font-display);
+	font-style: italic;
+	font-size: 27px;
+	font-weight: 400;
+	line-height: 1.05;
+	letter-spacing: 0;
+	text-transform: none;
+	color: var(--text-0);
+}
+html[data-skin='zen'] [data-part='sidebar'] [data-part='pane-title']::first-letter {
+	color: var(--accent);
+	font-size: 1.22em;
+}
+html[data-skin='zen'] [data-part='sidebar'] [data-part='pane-title']::after {
+	content: '';
+	display: inline-block;
+	width: 0.46em;
+	height: 0.46em;
+	margin-left: 0.3em;
+	vertical-align: 0.14em;
+	background: var(--accent);
+	opacity: 0.8;
+	mask: var(--zn-fleuron) center / contain no-repeat;
+}
+html[data-skin='zen'] [data-part='sidebar'] > [data-part='pane-body'] {
+	padding-top: 8px;
+}
+html[data-skin='zen'] [data-part='activity'] [data-zen='rule'] [data-zen='fleuron'] {
+	color: var(--text-2);
+}
