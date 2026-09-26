@@ -1,5 +1,5 @@
 import { Minus, Plus, RotateCcw } from 'lucide-react';
-import type { JSX } from 'react';
+import { type JSX, type KeyboardEvent, useRef } from 'react';
 
 import { cn } from '../../lib/cn';
 import { IconButton } from '../../ui/IconButton';
@@ -45,6 +45,24 @@ export function SnapOptionsPanel({
 		{ key: 'watermark', label: 'Watermark' },
 	];
 
+	// Roving focus for the background radio group: one tab stop, arrows move and select.
+	const swatchRefs = useRef(new Map<string, HTMLButtonElement>());
+	const activeIndex = BACKGROUNDS.findIndex((bg) => bg.id === options.background);
+	const tabStop = activeIndex === -1 ? 0 : activeIndex;
+	const onSwatchKeyDown = (e: KeyboardEvent<HTMLDivElement>): void => {
+		const count = BACKGROUNDS.length;
+		let next = -1;
+		if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (tabStop + 1) % count;
+		else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (tabStop - 1 + count) % count;
+		else if (e.key === 'Home') next = 0;
+		else if (e.key === 'End') next = count - 1;
+		const bg = BACKGROUNDS[next];
+		if (!bg) return;
+		e.preventDefault();
+		onChange({ background: bg.id });
+		swatchRefs.current.get(bg.id)?.focus();
+	};
+
 	return (
 		<aside
 			aria-label='Snap options'
@@ -52,15 +70,25 @@ export function SnapOptionsPanel({
 		>
 			<section>
 				<h3 className='hud mb-2'>Background</h3>
-				<div role='radiogroup' aria-label='Background' className='grid grid-cols-4 gap-2'>
-					{BACKGROUNDS.map((bg) => {
+				<div
+					role='radiogroup'
+					aria-label='Background'
+					onKeyDown={onSwatchKeyDown}
+					className='grid grid-cols-4 gap-2'
+				>
+					{BACKGROUNDS.map((bg, index) => {
 						const active = bg.id === options.background;
 						return (
 							<Tooltip key={bg.id} content={bg.label}>
 								<button
+									ref={(el) => {
+										if (el) swatchRefs.current.set(bg.id, el);
+										else swatchRefs.current.delete(bg.id);
+									}}
 									type='button'
 									role='radio'
 									aria-checked={active}
+									tabIndex={index === tabStop ? 0 : -1}
 									aria-label={bg.label}
 									onClick={() => onChange({ background: bg.id })}
 									style={{ background: bg.css }}
