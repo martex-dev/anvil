@@ -58,7 +58,7 @@ function Feature({
 }): JSX.Element {
 	return (
 		<div className='group relative overflow-hidden rounded-xl border border-glass-edge bg-bg-2/25 p-4 transition-colors transition-base hover:border-accent/30'>
-			<span className='absolute -top-10 -right-10 size-28 rounded-full bg-accent-faint blur-2xl transition-opacity transition-base group-hover:opacity-100' />
+			<span className='absolute -top-10 -right-10 size-28 rounded-full bg-accent-faint opacity-0 blur-2xl transition-opacity transition-base group-hover:opacity-100' />
 			<div className='relative flex items-center gap-2 text-accent'>
 				{icon}
 				<h3 className='text-13 font-semibold text-fg-0'>{title}</h3>
