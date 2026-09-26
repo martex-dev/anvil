@@ -49,6 +49,8 @@ export const AI_COMMANDS: Command[] = [
 		title: 'Ask AI',
 		category: 'AI',
 		shortcut: 'Ctrl+L',
+		// Ctrl+L clears the screen in a shell.
+		terminalKeepsKey: true,
 		keywords: ['chat', 'assistant', 'claude'],
 		icon: Bot,
 		run: () => focusChat(true),
