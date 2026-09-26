@@ -6,7 +6,7 @@ import { call } from '../../lib/ipc';
 import { renderMarkdown } from '../../lib/markdown/markdown';
 import { toast } from '../../stores/toast-store';
 import { Button } from '../../ui/Button';
-import { useApply } from './ApplyDialog';
+import { openApply } from './ApplyDialog';
 import type { ChatMessage } from './chat-store';
 import { activeEditor } from './editor-context';
 import { splitFences } from './fences';
@@ -22,7 +22,7 @@ function applyToEditor(block: string): void {
 		);
 		return;
 	}
-	useApply.getState().set({
+	openApply({
 		path: editor.path,
 		language: editor.language,
 		block,

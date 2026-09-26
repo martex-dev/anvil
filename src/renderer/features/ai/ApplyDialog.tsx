@@ -37,6 +37,15 @@ function findModel(path: string): Monaco.editor.ITextModel | null {
 	return monaco?.editor.getModels().find((m) => toWorkspacePath(m.uri) === path) ?? null;
 }
 
+/** Opens the preview, or explains why not when the target file isn't open any more. */
+export function openApply(proposal: Proposal): void {
+	if (!findModel(proposal.path)) {
+		toast.info('Open the file first', `${proposal.path} isn't open in the editor anymore.`);
+		return;
+	}
+	useApply.getState().set(proposal);
+}
+
 function Preview({ proposal }: { proposal: Proposal }): JSX.Element {
 	const [mode, setMode] = useState<'selection' | 'file'>(
 		proposal.selection ? 'selection' : 'file',
@@ -93,6 +102,7 @@ function Preview({ proposal }: { proposal: Proposal }): JSX.Element {
 		const model = findModel(proposal.path);
 		if (!model) {
 			toast.error('File is no longer open', proposal.path);
+			useApply.getState().set(null);
 			return;
 		}
 		// One undoable edit; the editor marks the file unsaved and Ctrl+S writes it.
@@ -176,12 +186,8 @@ function Preview({ proposal }: { proposal: Proposal }): JSX.Element {
 export function ApplyDialog(): JSX.Element {
 	const proposal = useApply((s) => s.proposal);
 	useRegisterOverlay(proposal !== null);
+	// openApply checks the file up front; this only guards a model closed since then.
 	const missing = proposal !== null && !findModel(proposal.path);
-	useEffect(() => {
-		if (!missing || !proposal) return;
-		toast.info('Open the file first', `${proposal.path} isn't open in the editor anymore.`);
-		useApply.getState().set(null);
-	}, [missing, proposal]);
 	// Radix traps focus inside, marks the rest of the app inert (aria-modal), closes on Escape
 	// or a scrim click, and puts focus back where it was (the chat's Apply button) on close.
 	return (
