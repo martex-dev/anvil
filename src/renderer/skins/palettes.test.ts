@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_THEME, themeById, THEMES } from './theme-list';
-import css from './themes.css?raw';
+import { DEFAULT_THEME, themeById, THEMES } from '../styles/theme-list';
+import { SKINS } from './registry';
+
+// Each skin's palettes, as text: `./<skin>/palettes.css` -> CSS.
+const sheets = import.meta.glob<string>('./*/palettes.css', {
+	query: '?raw',
+	import: 'default',
+	eager: true,
+});
+const cssOf = (skin: string): string => sheets[`./${skin}/palettes.css`] ?? '';
+const css = Object.values(sheets).join('\n');
 
 const REQUIRED = [
 	'--bg-0',
@@ -95,7 +104,7 @@ const blocks = parseThemes(css);
 
 function blockFor(id: string): ThemeBlock {
 	const block = blocks.get(id);
-	if (!block) throw new Error(`No [data-theme='${id}'] block in themes.css`);
+	if (!block) throw new Error(`No [data-theme='${id}'] block in any palettes.css`);
 	return block;
 }
 
@@ -123,6 +132,21 @@ describe('theme list', () => {
 
 	it('makes the default theme the :root base', () => {
 		expect(css).toMatch(new RegExp(`:root,\\s*\\[data-theme='${DEFAULT_THEME}'\\]\\s*\\{`));
+	});
+});
+
+describe.each(SKINS.map((skin) => [skin.id, skin] as const))('skin %s', (id, skin) => {
+	it('ships its palettes in its own palettes.css', () => {
+		const own = [...parseThemes(cssOf(id)).keys()].sort();
+		expect(own).toEqual(skin.palettes.map((p) => p.id).sort());
+	});
+
+	it('has a default palette of its own', () => {
+		expect(skin.palettes.map((p) => p.id)).toContain(skin.defaultPalette);
+	});
+
+	it('offers at least one UI font', () => {
+		expect(skin.fonts.ui.length).toBeGreaterThan(0);
 	});
 });
 
