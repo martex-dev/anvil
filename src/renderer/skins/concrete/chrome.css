@@ -1,0 +1,193 @@
+/*
+ * Concrete chrome: the ink title band, the status strip under it and the numeral column down
+ * the right edge. Together they frame the panes like the margins of a poster.
+ */
+
+/* ---- Title band ------------------------------------------------------------------------ */
+
+html[data-skin='concrete'] .cc-title {
+	display: flex;
+	align-items: stretch;
+	height: 52px;
+}
+html[data-skin='concrete'] .cc-brand {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 0 14px 0 12px;
+	background: var(--accent);
+	color: var(--on-accent);
+}
+html[data-skin='concrete'] .cc-brand-word {
+	font-family: var(--font-display);
+	font-size: 32px;
+	line-height: 1;
+	letter-spacing: -0.02em;
+	text-transform: uppercase;
+	padding-top: 2px;
+}
+html[data-skin='concrete'] .cc-brand-cap {
+	display: flex;
+	flex-direction: column;
+	padding-left: 8px;
+	border-left: var(--cc-rule) solid currentColor;
+	font-size: 9px;
+	font-weight: 700;
+	line-height: 1.15;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+}
+
+html[data-skin='concrete'] .cc-menus {
+	display: flex;
+	align-items: stretch;
+	padding: 0 4px;
+}
+html[data-skin='concrete'] .cc-menu-trigger {
+	padding: 0 9px;
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--text-1);
+	outline-offset: -4px;
+	transition: none;
+}
+html[data-skin='concrete'] .cc-menu-trigger:hover {
+	background: var(--skin-band-text);
+	color: var(--skin-band);
+}
+html[data-skin='concrete'] .cc-menu-trigger[data-state='open'] {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+
+/* The running head: where you are, set like a catalogue line. */
+html[data-skin='concrete'] .cc-head {
+	display: flex;
+	flex: 1 1 0;
+	align-items: center;
+	min-width: 0;
+	margin: 10px 0;
+	padding: 0 14px;
+	overflow: hidden;
+	border-left: var(--cc-rule) solid var(--text-2);
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	white-space: nowrap;
+	color: var(--text-2);
+}
+html[data-skin='concrete'] .cc-head > span {
+	flex-shrink: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+html[data-skin='concrete'] .cc-head > span + span::before {
+	content: '/';
+	padding: 0 7px;
+	color: var(--text-2);
+}
+html[data-skin='concrete'] .cc-head-project {
+	color: var(--text-1);
+}
+html[data-skin='concrete'] .cc-head-file {
+	flex-shrink: 0;
+	color: var(--text-0);
+}
+
+html[data-skin='concrete'] .cc-find {
+	display: flex;
+	align-self: center;
+	align-items: center;
+	gap: 8px;
+	width: clamp(150px, 20vw, 300px);
+	height: 34px;
+	padding: 0 6px 0 9px;
+	border: var(--cc-rule) solid var(--text-0);
+	color: var(--text-1);
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+html[data-skin='concrete'] .cc-find:hover {
+	border-color: var(--accent);
+	background: var(--accent);
+	color: var(--on-accent);
+}
+html[data-skin='concrete'] .cc-find-text {
+	flex: 1;
+	overflow: hidden;
+	text-align: left;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+html[data-skin='concrete'] .cc-find-key {
+	padding: 1px 5px;
+	background: var(--text-0);
+	color: var(--skin-band);
+	font-family: var(--font-code);
+	font-size: 10px;
+	letter-spacing: 0;
+}
+
+html[data-skin='concrete'] .cc-actions {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 0 8px 0 10px;
+}
+html[data-skin='concrete'] .cc-tbtn {
+	width: 34px;
+	height: 34px;
+	border: 2px solid transparent;
+	color: var(--text-1);
+}
+html[data-skin='concrete'] .cc-tbtn:hover {
+	border-color: var(--text-0);
+	background: transparent;
+	color: var(--text-0);
+}
+html[data-skin='concrete'] .cc-tbtn[aria-pressed='true'] {
+	background: var(--text-0);
+	color: var(--skin-band);
+}
+html[data-skin='concrete'] .cc-tbtn-run {
+	color: var(--up);
+}
+
+/* Window boxes: square, ruled, the close box printed in the signal color. */
+html[data-skin='concrete'] .cc-winctl {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 0 10px 0 6px;
+}
+html[data-skin='concrete'] .cc-winctl > button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
+	border: 2px solid var(--text-0);
+	background: var(--skin-band);
+	color: var(--text-0);
+	outline-offset: 2px;
+}
+html[data-skin='concrete'] .cc-winctl > button:hover {
+	background: var(--text-0);
+	color: var(--skin-band);
+}
+html[data-skin='concrete'] .cc-winctl > button[data-action='close'] {
+	border-color: var(--skin-close);
+	background: var(--skin-close);
+	color: var(--skin-on-close);
+}
+html[data-skin='concrete'] .cc-winctl > button[data-action='close']:hover {
+	border-color: var(--text-0);
+	background: var(--text-0);
+	color: var(--skin-close);
+}
