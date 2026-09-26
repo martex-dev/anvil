@@ -18,11 +18,21 @@ interface BookmarkState {
 	clear: () => void;
 }
 
-const KEY = 'anvil.bookmarks';
+/**
+ * Bookmarks hold workspace-relative paths, so each folder keeps its own list: `src/main.py` in
+ * one project is not `src/main.py` in another.
+ */
+const keyFor = (root: string): string => `anvil.bookmarks:${root.toLowerCase()}`;
 
-function load(): Bookmark[] {
+/** The folder whose bookmarks are loaded (set by EditorBridge); null before one is open. */
+let currentRoot: string | null = null;
+/** True while swapping in another folder's list, so that swap isn't saved back. */
+let switching = false;
+
+function load(root: string | null): Bookmark[] {
+	if (!root) return [];
 	try {
-		const raw = JSON.parse(localStorage.getItem(KEY) ?? '[]') as unknown;
+		const raw = JSON.parse(localStorage.getItem(keyFor(root)) ?? '[]') as unknown;
 		return Array.isArray(raw)
 			? raw.filter(
 					(b): b is Bookmark =>
@@ -33,12 +43,13 @@ function load(): Bookmark[] {
 				)
 			: [];
 	} catch {
+		// Storage blocked or a corrupt value: start this folder with no bookmarks.
 		return [];
 	}
 }
 
 export const useBookmarks = create<BookmarkState>((set) => ({
-	items: load(),
+	items: [],
 	toggle: (b) =>
 		set((s) => ({
 			items: s.items.some((x) => x.path === b.path && x.line === b.line)
@@ -50,9 +61,22 @@ export const useBookmarks = create<BookmarkState>((set) => ({
 	clear: () => set({ items: [] }),
 }));
 
-useBookmarks.subscribe((s) => {
+/** Shows the bookmarks of the folder that is now open. */
+export function setBookmarksRoot(root: string | null): void {
+	if (root === currentRoot) return;
+	currentRoot = root;
+	switching = true;
 	try {
-		localStorage.setItem(KEY, JSON.stringify(s.items));
+		useBookmarks.setState({ items: load(root) });
+	} finally {
+		switching = false;
+	}
+}
+
+useBookmarks.subscribe((s) => {
+	if (switching || !currentRoot) return;
+	try {
+		localStorage.setItem(keyFor(currentRoot), JSON.stringify(s.items));
 	} catch {
 		// Losing bookmarks on a full storage is acceptable.
 	}

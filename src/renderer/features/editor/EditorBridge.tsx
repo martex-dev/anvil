@@ -14,6 +14,7 @@ import { focusedTab, type Tab, useTabsStore } from '../../stores/tabs-store';
 import { useWorkbenchStore } from '../../stores/workbench-store';
 import { clearCompareSelection } from './compare';
 import { dirtyCount, useEditorStore } from './editor-store';
+import { setBookmarksRoot } from './extras/bookmarks';
 import { invalidateGitLines } from './extras/git-lines';
 import { onExternalChange } from './file-ops';
 import { navHistory } from './nav-history';
@@ -69,8 +70,12 @@ export function EditorBridge(): null {
 	const client = useQueryClient();
 	const { info } = useWorkspace();
 	const root = info.root;
-	// Language features read other files through Monaco's file service, scoped to this folder.
-	useEffect(() => setMonacoWorkspaceRoot(root), [root]);
+	// Language features read other files through Monaco's file service, scoped to this folder;
+	// bookmarks are kept per folder too.
+	useEffect(() => {
+		setMonacoWorkspaceRoot(root);
+		setBookmarksRoot(root);
+	}, [root]);
 
 	useEffect(() => {
 		const { setOpenFileHandler } = useWorkbenchStore.getState();
