@@ -1,0 +1,94 @@
+/*
+ * Mainframe: the tube. Scanlines, a curved vignette and phosphor glow on dark palettes; on the
+ * greenbar paper, a soft page shading. fx=off removes all of it, fx=subtle keeps it static
+ * (no flicker), fx=full adds a slow flicker and lets the glow reach the code.
+ */
+
+html[data-skin='mainframe'] .mf-crt {
+	position: fixed;
+	inset: 0;
+	z-index: 80;
+	pointer-events: none;
+	overflow: hidden;
+}
+html[data-skin='mainframe'] .mf-crt > span {
+	position: absolute;
+	inset: 0;
+}
+html[data-skin='mainframe'] .mf-crt-scan {
+	background-image: repeating-linear-gradient(
+		to bottom,
+		transparent 0,
+		transparent 2px,
+		var(--skin-scan) 2px,
+		var(--skin-scan) 3px
+	);
+	opacity: 0.55;
+}
+/* Curved glass: darkest in the corners, a lift of phosphor haze in the middle. */
+html[data-skin='mainframe'] .mf-crt-vignette {
+	background: radial-gradient(
+		ellipse 120% 110% at 50% 50%,
+		var(--skin-haze) 0%,
+		transparent 55%,
+		var(--skin-vignette) 100%
+	);
+	box-shadow: inset 0 0 90px 10px var(--skin-vignette);
+}
+html[data-skin='mainframe'] .mf-crt-flicker {
+	display: none;
+	background: var(--skin-haze);
+}
+
+/* Phosphor bloom on the chrome. */
+html[data-skin='mainframe'][data-kind='dark'] #root,
+html[data-skin='mainframe'][data-kind='dark'] .glass-strong {
+	text-shadow: 0 0 5px var(--skin-glow);
+}
+html[data-skin='mainframe'][data-kind='dark'] [data-part='editor-surface'],
+html[data-skin='mainframe'][data-kind='dark'] .xterm {
+	text-shadow: none;
+}
+html[data-skin='mainframe'][data-kind='dark'][data-fx='full'] [data-part='editor-surface'] {
+	text-shadow: 0 0 3px var(--skin-glow);
+}
+
+html[data-skin='mainframe'][data-fx='full'][data-kind='dark'] .mf-crt-flicker {
+	display: block;
+	animation: mf-flicker 7s steps(1) infinite;
+}
+@keyframes mf-flicker {
+	0%,
+	100% {
+		opacity: 0;
+	}
+	31% {
+		opacity: 0.9;
+	}
+	32% {
+		opacity: 0;
+	}
+	74% {
+		opacity: 0.6;
+	}
+	75% {
+		opacity: 0;
+	}
+}
+
+html[data-skin='mainframe'][data-kind='light'] .mf-crt-scan {
+	display: none;
+}
+html[data-skin='mainframe'][data-kind='light'] .mf-crt-vignette {
+	background: none;
+	box-shadow: inset 0 0 120px 0 var(--skin-vignette);
+}
+
+html[data-skin='mainframe'][data-fx='off'] .mf-crt {
+	display: none;
+}
+html[data-skin='mainframe'][data-fx='off'] #root,
+html[data-skin='mainframe'][data-fx='off'] .glass-strong,
+html[data-skin='mainframe'][data-fx='off'] [data-part='editor-surface'] {
+	text-shadow: none;
+}

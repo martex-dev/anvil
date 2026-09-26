@@ -1,4 +1,5 @@
 import type { SkinChrome } from '../types';
+import { CrtOverlay } from './CrtOverlay';
 import { FKeyBar } from './FKeyBar';
 import { MfBackdrop } from './MfBackdrop';
 import { MfStatusBar } from './MfStatusBar';
@@ -12,6 +13,7 @@ const chrome: SkinChrome = {
 	StatusBar: MfStatusBar,
 	Bottom: FKeyBar,
 	Backdrop: MfBackdrop,
+	Overlay: CrtOverlay,
 };
 
 export default chrome;
