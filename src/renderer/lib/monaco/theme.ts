@@ -1,5 +1,6 @@
-import type { Settings } from '@shared/settings';
+import { editorFontFamily, type Settings } from '@shared/settings';
 
+import { themeById } from '../../styles/theme-list';
 import { resolveToken } from '../resolve-color';
 
 export type EditorPrefs = Pick<
@@ -11,6 +12,10 @@ export type EditorPrefs = Pick<
 	| 'minimap'
 	| 'reduceMotion'
 	| 'ghostText'
+	| 'editorFont'
+	| 'editorLineHeight'
+	| 'cursorStyle'
+	| 'colorSwatches'
 >;
 
 function syntaxRules(c: (token: string) => string): unknown[] {
@@ -87,7 +92,46 @@ function syntaxRules(c: (token: string) => string): unknown[] {
 }
 
 /**
- * VS Code user settings (JSON) that restyle "Default Dark Modern" with Anvil's tokens: the
+ * Colors for the language servers' semantic tokens. Without these, anything basedpyright or
+ * tsserver classifies (constants, modules, parameters) keeps the base VS Code theme's color
+ * and looks the same in every Anvil theme.
+ */
+function semanticRules(c: (token: string) => string): Record<string, unknown> {
+	const fg = (token: string, extra: Record<string, boolean> = {}): unknown => ({
+		foreground: c(token),
+		...extra,
+	});
+	return {
+		variable: fg('--syn-variable'),
+		'variable.readonly': fg('--syn-number'),
+		'variable.defaultLibrary': fg('--syn-builtin'),
+		parameter: fg('--syn-parameter', { italic: true }),
+		selfParameter: fg('--syn-builtin', { italic: true }),
+		property: fg('--syn-property'),
+		'property.readonly': fg('--syn-property'),
+		enumMember: fg('--syn-number'),
+		function: fg('--syn-function'),
+		method: fg('--syn-function'),
+		'function.defaultLibrary': fg('--syn-builtin'),
+		'method.defaultLibrary': fg('--syn-function'),
+		builtinFunction: fg('--syn-builtin'),
+		decorator: fg('--syn-decorator'),
+		class: fg('--syn-type'),
+		'class.defaultLibrary': fg('--syn-type'),
+		type: fg('--syn-type'),
+		typeParameter: fg('--syn-type', { italic: true }),
+		interface: fg('--syn-type'),
+		enum: fg('--syn-type'),
+		struct: fg('--syn-type'),
+		namespace: fg('--syn-type'),
+		module: fg('--syn-type'),
+		keyword: fg('--syn-keyword'),
+		'*.deprecated': { strikethrough: true },
+	};
+}
+
+/**
+ * VS Code user settings (JSON) that restyle the default themes with Anvil's tokens: the
  * editor surface is transparent so the glass plate behind it shows through.
  */
 export function buildUserConfiguration(prefs: EditorPrefs): string {
@@ -156,15 +200,21 @@ export function buildUserConfiguration(prefs: EditorPrefs): string {
 		'editorBracketHighlight.foreground1': c('--syn-function'),
 		'editorBracketHighlight.foreground2': c('--syn-keyword'),
 		'editorBracketHighlight.foreground3': c('--syn-number'),
+		'editorBracketHighlight.foreground4': c('--syn-type'),
+		'editorBracketHighlight.foreground5': c('--syn-control'),
+		'editorBracketHighlight.foreground6': c('--syn-string'),
 	};
 	const size = prefs.editorFontSize;
+	// The live theme (which may be a preview) decides light vs dark for Monaco's base rules.
+	const light = themeById(document.documentElement.dataset['theme'] ?? '').kind === 'light';
 	return JSON.stringify({
-		'workbench.colorTheme': 'Default Dark Modern',
+		'workbench.colorTheme': light ? 'Default Light Modern' : 'Default Dark Modern',
 		'workbench.colorCustomizations': colors,
 		'editor.tokenColorCustomizations': { textMateRules: syntaxRules(c) },
-		'editor.fontFamily': "'JetBrains Mono', ui-monospace, monospace",
+		'editor.semanticTokenColorCustomizations': { enabled: true, rules: semanticRules(c) },
+		'editor.fontFamily': editorFontFamily(prefs.editorFont),
 		'editor.fontSize': size,
-		'editor.lineHeight': Math.round(size * 1.65),
+		'editor.lineHeight': Math.round(size * prefs.editorLineHeight),
 		'editor.fontLigatures': prefs.editorLigatures,
 		'editor.tabSize': prefs.tabSize,
 		'editor.detectIndentation': true,
@@ -184,6 +234,9 @@ export function buildUserConfiguration(prefs: EditorPrefs): string {
 		'editor.cursorBlinking': prefs.reduceMotion ? 'solid' : 'expand',
 		'editor.cursorSmoothCaretAnimation': prefs.reduceMotion ? 'off' : 'on',
 		'editor.cursorWidth': 2,
+		'editor.cursorStyle': prefs.cursorStyle,
+		'editor.colorDecorators': prefs.colorSwatches,
+		'editor.guides.indentation': true,
 		'editor.scrollBeyondLastLine': false,
 		'editor.padding.top': 10,
 		'editor.glyphMargin': true,
