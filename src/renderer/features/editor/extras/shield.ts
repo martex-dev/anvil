@@ -9,6 +9,24 @@ import { toWorkspacePath } from '../../../lib/monaco/workspace-root';
 const OWNER = 'anvil-shield';
 const MAX_SCAN = 2 * 1024 * 1024;
 
+/**
+ * 0-based offset just past a dotenv value that begins at `from`. A quoted value runs to its
+ * closing quote, `#` included (`"abc #123"` is all secret); only an unquoted value can have a
+ * trailing ` # comment`. An unclosed quote hides the rest of the line.
+ */
+function valueEnd(text: string, from: number): number {
+	const quote = text[from];
+	if (quote === '"' || quote === "'") {
+		for (let i = from + 1; i < text.length; i++) {
+			// Double quotes allow backslash escapes (`\"`); single quotes are literal.
+			if (quote === '"' && text[i] === '\\') i++;
+			else if (text[i] === quote) return i + 1;
+		}
+		return text.trimEnd().length;
+	}
+	return text.replace(/\s+#.*$/, '').trimEnd().length;
+}
+
 /** `KEY=value` lines of a dotenv file: the value's column range, 1-based. */
 export function envValueRanges(
 	lines: readonly string[],
@@ -18,7 +36,7 @@ export function envValueRanges(
 		const m = /^\s*(?:export\s+)?[A-Za-z_][\w.-]*\s*=\s*/.exec(text);
 		if (!m || text.trimStart().startsWith('#')) return;
 		const start = m[0].length + 1;
-		const end = text.replace(/\s+#.*$/, '').trimEnd().length + 1;
+		const end = valueEnd(text, m[0].length) + 1;
 		if (end > start) out.push({ line: i + 1, start, end });
 	});
 	return out;
