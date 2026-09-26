@@ -364,6 +364,15 @@ html[data-reduce-motion='true'] .ambient::before {
 html[data-ambient='false'] .ambient::before {
 	display: none;
 }
+/* The loading sweep is a literal-duration loop, so the --dur-* tokens can't turn it off. */
+html[data-reduce-motion='true'] .shimmer {
+	animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+	.shimmer {
+		animation: none;
+	}
+}
 
 @keyframes grid-drift {
 	from {

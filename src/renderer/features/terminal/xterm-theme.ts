@@ -6,7 +6,9 @@ import { resolveToken } from '../../lib/resolve-color';
 export function buildXtermTheme(): ITheme {
 	const c = resolveToken;
 	return {
-		background: '#00000000',
+		// Opaque (xterm drops the token's alpha without allowTransparency): a transparent canvas
+		// would composite every repaint over the glass pane's backdrop-filter.
+		background: c('--editor-bg'),
 		foreground: c('--text-0'),
 		cursor: c('--accent'),
 		cursorAccent: c('--bg-1'),

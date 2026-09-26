@@ -1,4 +1,4 @@
-import { execFile, spawn } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';
 
@@ -6,11 +6,14 @@ import { z } from 'zod';
 
 import type { PythonEnv, PythonPackage, PythonTools } from '@shared/ipc/channels/python';
 
-import { AnvilError } from '../../core/errors';
+import { AnvilError, errorMessage } from '../../core/errors';
 import type { MainFeature } from '../../core/features';
+import { psQuote, shQuote } from '../../core/shell-quote';
 import { toAbsolute } from '../../core/workspace/fs-guard';
-import { discoverEnvs, envDirOf } from './envs';
+import { discoverEnvs, envDirOf, findEnv } from './envs';
 import { activatedEnv, interpreter, setReplSupport } from './interpreter';
+import { runRuffFormat } from './ruff-format';
+import { LocalEnvWatcher } from './venv-watch';
 
 const PickSchema = z.string().nullable();
 const CACHE_MS = 60_000;
@@ -26,13 +29,22 @@ function exec(
 			file,
 			args,
 			{ env, windowsHide: true, timeout, maxBuffer: 20 * 1024 * 1024 },
-			(error, stdout, stderr) => resolve({ ok: !error, stdout, stderr }),
+			// A spawn failure or timeout has no stderr; keep its message for diagnostics.
+			(error, stdout, stderr) =>
+				resolve({ ok: !error, stdout, stderr: stderr || (error?.message ?? '') }),
 		);
 	});
 }
 
-/** PowerShell single-quoted literal: only ' needs escaping (as ''). */
-export const psQuote = (s: string): string => `'${s.replace(/'/g, "''")}'`;
+/** First non-empty line of a tool's stderr, for short error messages. */
+function firstLine(text: string): string | null {
+	return (
+		text
+			.split(/\r?\n/)
+			.map((l) => l.trim())
+			.find((l) => l !== '') ?? null
+	);
+}
 
 /** `pkg/sub/mod.py` → `pkg.sub.mod`, for `python -m`. */
 export function moduleName(rel: string): string {
@@ -48,17 +60,30 @@ export function moduleName(rel: string): string {
  * Loaded into every Anvil REPL through PYTHONSTARTUP (plain python and IPython both honour it).
  * `_cell(n)` runs staged cell n in the REPL's own namespace, so the prompt echoes a short call
  * instead of a long exec() line. Not `%run -i`: on Windows IPython keeps the quotes of a quoted
- * path, and userData paths often contain spaces.
+ * path, and userData paths often contain spaces. `cell_n.src` names the file the cell came
+ * from; compiling under that name makes tracebacks (and terminal links) point at the source.
  */
 export const REPL_STARTUP = [
 	'# Anvil REPL helpers. _cell(n) runs a staged "# %%" cell in this namespace.',
 	'def _cell(n):',
 	'\timport os as _os',
-	"\t_p = _os.path.join(_os.environ['ANVIL_CELLS'], 'cell_%d.py' % n)",
+	"\t_d = _os.environ['ANVIL_CELLS']",
+	"\t_p = _os.path.join(_d, 'cell_%d.py' % n)",
 	"\twith open(_p, encoding='utf-8') as _f:",
-	"\t\texec(compile(_f.read(), _p, 'exec'), globals())",
+	'\t\t_code = _f.read()',
+	'\ttry:',
+	"\t\twith open(_os.path.join(_d, 'cell_%d.src' % n), encoding='utf-8') as _f:",
+	'\t\t\t_p = _f.read().strip() or _p',
+	'\texcept OSError:',
+	'\t\tpass',
+	"\texec(compile(_code, _p, 'exec'), globals())",
 	'',
 ].join('\n');
+
+/** Staged cell text: blank lines in front so traceback line numbers match the source file. */
+export function stagedCode(code: string, line: number): string {
+	return '\n'.repeat(Math.max(0, line - 1)) + code;
+}
 
 export function cellCommand(n: number): string {
 	return `_cell(${n})`;
@@ -78,6 +103,11 @@ export const pythonFeature: MainFeature = {
 				return cache.envs;
 			const found = await discoverEnvs(root);
 			cache = { root, at: Date.now(), envs: found };
+			// Lets resolve() fall back to a python.org / PATH install when there's no venv.
+			interpreter.setSystem(
+				root,
+				found.filter((e) => e.kind === 'system').map((e) => e.path),
+			);
 			return found;
 		};
 		const current = (): string => {
@@ -89,12 +119,10 @@ export const pythonFeature: MainFeature = {
 				);
 			return python;
 		};
-		const selected = async (): Promise<PythonEnv | null> => {
-			const python = interpreter.resolve(ctx.workspace.root());
+		const selectedFor = async (root: string | null): Promise<PythonEnv | null> => {
+			const python = interpreter.resolve(root);
 			if (!python) return null;
-			const known = (await envs(false)).find(
-				(e) => e.path.toLowerCase() === python.toLowerCase(),
-			);
+			const known = findEnv(await envs(false), python);
 			return (
 				known ?? {
 					path: python,
@@ -105,46 +133,79 @@ export const pythonFeature: MainFeature = {
 				}
 			);
 		};
-		const emitSelected = (): void =>
-			void selected().then((env) => ctx.emit('python:changed', env));
+		// `uv venv` in a terminal creates .venv behind Anvil's back; pick it up without a restart.
+		const localEnvs = new LocalEnvWatcher({
+			resolve: (root) => interpreter.resolve(root),
+			onChange: () => {
+				cache = null;
+				interpreter.announce();
+			},
+			onError: (e) => ctx.log.warn('venv watch failed', { message: errorMessage(e) }),
+		});
+		localEnvs.start(ctx.workspace.root());
+		ctx.onDispose(() => localEnvs.stop());
+		const emitSelected = (): void => {
+			localEnvs.sync();
+			const root = ctx.workspace.root();
+			void selectedFor(root)
+				.then((env) => ctx.emit('python:changed', { root, env }))
+				.catch((e: unknown) =>
+					ctx.log.error('python:changed failed', { message: errorMessage(e) }),
+				);
+		};
 		const off = interpreter.onChange(emitSelected);
 		ctx.onDispose(off);
-		ctx.workspace.onChange(() => {
+		// Discover once at startup so system Pythons are known before the first Run or REPL.
+		void envs(false).catch((e: unknown) =>
+			ctx.log.error('python discovery failed', { message: errorMessage(e) }),
+		);
+		ctx.workspace.onChange((root) => {
 			cache = null;
+			localEnvs.start(root);
 			emitSelected();
 		});
 
 		ctx.ipc.handle('python:envs', ({ refresh }) => envs(refresh));
-		ctx.ipc.handle('python:selected', selected);
-		ctx.ipc.handle('python:select', (path) => {
+		ctx.ipc.handle('python:selected', () => selectedFor(ctx.workspace.root()));
+		ctx.ipc.handle('python:select', async (path) => {
 			const root = ctx.workspace.root();
 			if (!root)
 				throw new AnvilError('PY_NO_FOLDER', 'Open a folder to pick its interpreter');
-			if (path !== null && !existsSync(path))
-				throw new AnvilError('PY_NOT_FOUND', `Interpreter not found: ${path}`);
+			if (path !== null) {
+				if (!existsSync(path))
+					throw new AnvilError('PY_NOT_FOUND', `Interpreter not found: ${path}`);
+				// Only a discovered interpreter: every REPL, Run and tool call spawns this path.
+				// Rediscover once in case the env was created after the list was cached.
+				if (!findEnv(await envs(false), path) && !findEnv(await envs(true), path))
+					throw new AnvilError('PY_NOT_FOUND', `Not a known Python interpreter: ${path}`);
+			}
 			interpreter.pick(root, path);
 		});
 
 		ctx.ipc.handle('python:packages', async (): Promise<PythonPackage[]> => {
 			const python = current();
 			const env = activatedEnv(python);
-			let out = await exec(
+			const pip = await exec(
 				python,
 				['-m', 'pip', 'list', '--format=json', '--disable-pip-version-check'],
 				env,
 			);
 			// uv-created venvs have no pip; uv can list them instead.
-			if (!out.ok)
-				out = await exec(
-					'uv',
-					['pip', 'list', '--format', 'json', '--python', python],
-					env,
-				);
-			if (!out.ok)
+			const out = pip.ok
+				? pip
+				: await exec('uv', ['pip', 'list', '--format', 'json', '--python', python], env);
+			if (!out.ok) {
+				ctx.log.warn('package listing failed', {
+					python,
+					pipStderr: pip.stderr.trim(),
+					uvStderr: out.stderr.trim(),
+				});
+				const reason = firstLine(pip.stderr) ?? firstLine(out.stderr);
 				throw new AnvilError(
 					'PY_LIST_FAILED',
-					'Could not list packages (pip and uv both failed)',
+					`Could not list packages (pip and uv both failed)${reason ? `: ${reason}` : ''}`,
 				);
+			}
 			try {
 				const rows = JSON.parse(out.stdout) as Array<{ name: string; version: string }>;
 				return rows.map((r) => ({ name: r.name, version: r.version }));
@@ -169,10 +230,15 @@ export const pythonFeature: MainFeature = {
 		writeFileSync(join(ctx.dataDir, 'anvil_startup.py'), REPL_STARTUP, 'utf8');
 		setReplSupport({ startup: join(ctx.dataDir, 'anvil_startup.py'), cells: ctx.dataDir });
 		let cellCounter = 0;
-		ctx.ipc.handle('python:stageCell', ({ code }) => {
+		ctx.ipc.handle('python:stageCell', ({ code, source }) => {
 			// Rotate a few files so a cell still running is never overwritten by the next one.
 			const n = cellCounter++ % 8;
-			writeFileSync(join(ctx.dataDir, `cell_${n}.py`), code, 'utf8');
+			const root = ctx.workspace.root();
+			const file = source && root ? toAbsolute(root, source.path) : null;
+			const text = file && source ? stagedCode(code, source.line) : code;
+			writeFileSync(join(ctx.dataDir, `cell_${n}.py`), text, 'utf8');
+			// Always rewritten, so a rotated slot never keeps the previous cell's file name.
+			writeFileSync(join(ctx.dataDir, `cell_${n}.src`), file ?? '', 'utf8');
 			return { command: cellCommand(n) };
 		});
 
@@ -182,12 +248,11 @@ export const pythonFeature: MainFeature = {
 			const python = current();
 			const abs = toAbsolute(root, path);
 			const rel = relative(root, abs).split(sep).join('/');
-			const target = module ? `-m ${moduleName(rel)}` : psQuote(abs);
+			const win = process.platform === 'win32';
+			const quote = win ? psQuote : shQuote;
+			const target = module ? `-m ${moduleName(rel)}` : quote(abs);
 			return {
-				command:
-					process.platform === 'win32'
-						? `& ${psQuote(python)} ${target}`
-						: `'${python}' ${module ? `-m ${moduleName(rel)}` : `'${abs}'`}`,
+				command: win ? `& ${psQuote(python)} ${target}` : `${quote(python)} ${target}`,
 			};
 		});
 
@@ -202,37 +267,18 @@ export const pythonFeature: MainFeature = {
 					)
 				: null;
 			const ruff = envRuff && existsSync(envRuff) ? envRuff : 'ruff';
-			// Run from the file's folder so ruff finds the project's pyproject/ruff.toml.
-			const cwd = root ? dirname(toAbsolute(root, path)) : undefined;
-			return new Promise((resolve, reject) => {
-				const child = spawn(ruff, ['format', '--stdin-filename', path, '-'], {
-					cwd,
-					env,
-					windowsHide: true,
-				});
-				let stdout = '';
-				let stderr = '';
-				child.stdout.on('data', (b: Buffer) => (stdout += b.toString('utf8')));
-				child.stderr.on('data', (b: Buffer) => (stderr += b.toString('utf8')));
-				child.on('error', () =>
-					reject(
-						new AnvilError(
-							'PY_NO_RUFF',
-							'ruff is not installed. Add it with `uv add --dev ruff` or `pip install ruff`.',
-						),
-					),
-				);
-				child.on('close', (code) => {
-					if (code === 0) resolve({ content: stdout });
-					else
-						reject(
-							new AnvilError(
-								'PY_FORMAT_FAILED',
-								stderr.trim().split(/\r?\n/).slice(0, 3).join(' ') || 'ruff failed',
-							),
-						);
-				});
-				child.stdin.end(content);
+			// Run from the file's folder so ruff finds the project's pyproject/ruff.toml, and name
+			// the file absolutely: a root-relative name would resolve against that folder and
+			// misapply per-file settings and excludes.
+			const abs = root ? toAbsolute(root, path) : null;
+			const cwd = abs ? dirname(abs) : undefined;
+			return runRuffFormat({
+				ruff,
+				args: ['format', '--stdin-filename', abs ?? path, '-'],
+				cwd,
+				env,
+				content,
+				onStdinError: (message) => ctx.log.warn('ruff stdin', { message }),
 			});
 		});
 	},

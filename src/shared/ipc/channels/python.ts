@@ -41,7 +41,16 @@ export const pythonChannels = defineChannels({
 	 * runs it in the current namespace.
 	 */
 	'python:stageCell': {
-		input: z.object({ code: z.string().max(2_000_000) }),
+		input: z.object({
+			code: z.string().max(2_000_000),
+			/** The file and line the code starts at, so tracebacks point at the real source. */
+			source: z
+				.object({
+					path: z.string().max(4096),
+					line: z.number().int().min(1).max(10_000_000),
+				})
+				.optional(),
+		}),
 		output: z.object({ command: z.string() }),
 	},
 	/** Formats Python source with ruff (the env's, or one on PATH). */
@@ -57,5 +66,9 @@ export const pythonChannels = defineChannels({
 });
 
 export const pythonEvents = {
-	'python:changed': PythonEnvSchema.nullable(),
+	/** `root`: the folder it was resolved for, so a late event never lands on the next folder. */
+	'python:changed': z.object({
+		root: z.string().nullable(),
+		env: PythonEnvSchema.nullable(),
+	}),
 };

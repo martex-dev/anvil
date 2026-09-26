@@ -4,8 +4,8 @@ import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { candidates, envDirOf, parsePyvenvVersion } from './envs';
-import { cellCommand, moduleName, psQuote, REPL_STARTUP } from './index';
+import { candidates, envDirOf, findEnv, parsePyvenvVersion } from './envs';
+import { cellCommand, moduleName, REPL_STARTUP, stagedCode } from './index';
 import { activatedEnv } from './interpreter';
 
 let dir: string;
@@ -37,6 +37,16 @@ describe('python envs', () => {
 		expect(candidates(dir)[0]?.kind).toBe('uv');
 	});
 
+	it('only matches discovered interpreters', () => {
+		const python = fakeVenv('.venv');
+		const envs = [
+			{ path: python, label: '.venv', kind: 'venv' as const, version: null, local: true },
+		];
+		expect(findEnv(envs, python)?.label).toBe('.venv');
+		expect(findEnv(envs, join(dir, 'evil.exe'))).toBeUndefined();
+		if (process.platform === 'win32') expect(findEnv(envs, python.toUpperCase())).toBeDefined();
+	});
+
 	it('maps an interpreter back to its environment folder', () => {
 		const python = fakeVenv('venv');
 		expect(envDirOf(python)).toBe(join(dir, 'venv'));
@@ -52,15 +62,20 @@ describe('python envs', () => {
 });
 
 describe('run helpers', () => {
-	it('builds module names and quotes for PowerShell', () => {
+	it('builds module names', () => {
 		expect(moduleName('src/pkg/train.py')).toBe('src.pkg.train');
 		expect(moduleName('pkg/__main__.py')).toBe('pkg');
-		expect(psQuote("C:\\it's here\\a.py")).toBe("'C:\\it''s here\\a.py'");
 	});
 
 	it('runs staged cells through the short REPL helper', () => {
 		expect(cellCommand(3)).toBe('_cell(3)');
 		expect(REPL_STARTUP).toContain('def _cell(n):');
-		expect(REPL_STARTUP).toContain("exec(compile(_f.read(), _p, 'exec'), globals())");
+		expect(REPL_STARTUP).toContain("exec(compile(_code, _p, 'exec'), globals())");
+		expect(REPL_STARTUP).toContain("'cell_%d.src' % n");
+	});
+
+	it('pads staged code so traceback lines match the source file', () => {
+		expect(stagedCode('x = 1\ny = 2', 4)).toBe('\n\n\nx = 1\ny = 2');
+		expect(stagedCode('x = 1', 1)).toBe('x = 1');
 	});
 });
