@@ -393,6 +393,16 @@ html[data-reduce-motion='true'] .shimmer {
 	}
 }
 
+/* Reduced motion: the shimmer's tint stays (the busy state remains visible), the sweep stops. */
+html[data-reduce-motion='true'] .shimmer {
+	animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+	.shimmer {
+		animation: none;
+	}
+}
+
 @keyframes grid-drift {
 	from {
 		transform: translateY(0);

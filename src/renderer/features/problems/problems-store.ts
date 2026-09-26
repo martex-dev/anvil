@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 import { onMonacoLoaded } from '../../lib/monaco/load';
 import { toWorkspacePath } from '../../lib/monaco/workspace-root';
+import { compareProblems } from './problems-model';
 
 export interface Problem {
 	path: string;
@@ -53,12 +54,7 @@ export function startProblemsTracking(): void {
 					source: m.source ?? m.owner,
 				});
 			}
-			items.sort(
-				(a, b) =>
-					a.path.localeCompare(b.path) ||
-					(a.severity === b.severity ? 0 : a.severity === 'error' ? -1 : 1) ||
-					a.line - b.line,
-			);
+			items.sort(compareProblems);
 			useProblems.setState({
 				items,
 				errors: items.filter((p) => p.severity === 'error').length,

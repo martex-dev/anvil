@@ -33,6 +33,27 @@ describe('outline', () => {
 		expect(s.find((x) => x.name === 'Strategy')?.end).toBe(12);
 	});
 
+	it('ignores class and def lines inside python docstrings', () => {
+		const doc = [
+			'class Book:',
+			'\t"""An order book.',
+			'',
+			'class of instruments quoted by one venue.',
+			'\tdef example(): not code',
+			'\t"""',
+			'\tdef bid(self):',
+			"\t\t'''One line.'''",
+			`\t\tx = "'''"`,
+			'\tdef ask(self):',
+			'\t\treturn 1',
+		];
+		expect(outlineFor('python', doc).map((x) => [x.name, x.kind, x.depth])).toEqual([
+			['Book', 'class', 0],
+			['bid', 'method', 1],
+			['ask', 'method', 1],
+		]);
+	});
+
 	it('tells which symbol the cursor is in', () => {
 		const s = outlineFor('python', py);
 		expect(symbolPath(s, 11).map((x) => x.name)).toEqual(['Strategy', 'signal']);
