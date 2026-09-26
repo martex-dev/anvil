@@ -27,9 +27,21 @@ function exec(
 			file,
 			args,
 			{ env, windowsHide: true, timeout, maxBuffer: 20 * 1024 * 1024 },
-			(error, stdout, stderr) => resolve({ ok: !error, stdout, stderr }),
+			// A spawn failure or timeout has no stderr; keep its message for diagnostics.
+			(error, stdout, stderr) =>
+				resolve({ ok: !error, stdout, stderr: stderr || (error?.message ?? '') }),
 		);
 	});
+}
+
+/** First non-empty line of a tool's stderr, for short error messages. */
+function firstLine(text: string): string | null {
+	return (
+		text
+			.split(/\r?\n/)
+			.map((l) => l.trim())
+			.find((l) => l !== '') ?? null
+	);
 }
 
 /** PowerShell single-quoted literal: only ' needs escaping (as ''). */
@@ -150,23 +162,27 @@ export const pythonFeature: MainFeature = {
 		ctx.ipc.handle('python:packages', async (): Promise<PythonPackage[]> => {
 			const python = current();
 			const env = activatedEnv(python);
-			let out = await exec(
+			const pip = await exec(
 				python,
 				['-m', 'pip', 'list', '--format=json', '--disable-pip-version-check'],
 				env,
 			);
 			// uv-created venvs have no pip; uv can list them instead.
-			if (!out.ok)
-				out = await exec(
-					'uv',
-					['pip', 'list', '--format', 'json', '--python', python],
-					env,
-				);
-			if (!out.ok)
+			const out = pip.ok
+				? pip
+				: await exec('uv', ['pip', 'list', '--format', 'json', '--python', python], env);
+			if (!out.ok) {
+				ctx.log.warn('package listing failed', {
+					python,
+					pipStderr: pip.stderr.trim(),
+					uvStderr: out.stderr.trim(),
+				});
+				const reason = firstLine(pip.stderr) ?? firstLine(out.stderr);
 				throw new AnvilError(
 					'PY_LIST_FAILED',
-					'Could not list packages (pip and uv both failed)',
+					`Could not list packages (pip and uv both failed)${reason ? `: ${reason}` : ''}`,
 				);
+			}
 			try {
 				const rows = JSON.parse(out.stdout) as Array<{ name: string; version: string }>;
 				return rows.map((r) => ({ name: r.name, version: r.version }));
