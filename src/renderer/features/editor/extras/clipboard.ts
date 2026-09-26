@@ -1,8 +1,6 @@
 import type * as Monaco from 'monaco-editor';
 import { create } from 'zustand';
 
-import type { MonacoApi } from '../../../lib/monaco/setup';
-
 export interface ClipEntry {
 	text: string;
 	at: number;
@@ -45,15 +43,20 @@ export function startClipboardTracking(): void {
 	document.addEventListener('cut', onCopy);
 }
 
-/** Monaco copies via its hidden textarea, so record what Ctrl+C / Ctrl+X take from the model. */
+/**
+ * Monaco copies through its hidden input, whose DOM selection is empty, so record what the copy
+ * takes from the model. Listening to the copy and cut events (rather than Ctrl+C) also catches
+ * the context menu, Ctrl+Insert and Shift+Delete.
+ */
 export function attachClipboard(
 	editor: Monaco.editor.IStandaloneCodeEditor,
-	monaco: MonacoApi,
 	path: () => string | null,
 ): Monaco.IDisposable {
-	return editor.onKeyDown((e) => {
-		if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
-		if (e.keyCode !== monaco.KeyCode.KeyC && e.keyCode !== monaco.KeyCode.KeyX) return;
+	const node = editor.getDomNode();
+	if (!node) return { dispose: () => undefined };
+	const onCopy = (): void => {
+		// Copies inside the editor's own widgets (find input, rename box) are plain DOM text.
+		if (!editor.hasTextFocus()) return;
 		const model = editor.getModel();
 		if (!model) return;
 		const parts = (editor.getSelections() ?? []).map((sel) =>
@@ -63,5 +66,13 @@ export function attachClipboard(
 				: model.getValueInRange(sel),
 		);
 		useClipboardHistory.getState().push(parts.join('\n'), path());
-	});
+	};
+	node.addEventListener('copy', onCopy, true);
+	node.addEventListener('cut', onCopy, true);
+	return {
+		dispose() {
+			node.removeEventListener('copy', onCopy, true);
+			node.removeEventListener('cut', onCopy, true);
+		},
+	};
 }

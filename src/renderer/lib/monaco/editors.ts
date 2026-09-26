@@ -31,3 +31,8 @@ export function focusedEditor(): Monaco.editor.IStandaloneCodeEditor | null {
 export function allGroupEditors(): Monaco.editor.IStandaloneCodeEditor[] {
 	return [...editors.values()];
 }
+
+/** Each group's editor with its group id. */
+export function groupEditors(): [number, Monaco.editor.IStandaloneCodeEditor][] {
+	return [...editors.entries()];
+}

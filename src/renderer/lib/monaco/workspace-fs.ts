@@ -21,6 +21,8 @@ const notFound = (uri: URI): Error =>
 		`Not in the open folder: ${uri.fsPath}`,
 		FileSystemProviderErrorCode.FileNotFound,
 	);
+const unreadable = (uri: URI, why: string, code: FileSystemProviderErrorCode): Error =>
+	FileSystemProviderError.create(`Can't open ${uri.fsPath}: the file is ${why}`, code);
 const readOnly = (): Error =>
 	FileSystemProviderError.create('Read-only', FileSystemProviderErrorCode.NoPermissions);
 
@@ -43,22 +45,16 @@ export class WorkspaceFileSystem implements IFileSystemProviderWithFileReadWrite
 	async stat(resource: URI): Promise<IStat> {
 		const rel = toWorkspacePath(resource);
 		if (rel === null) throw notFound(resource);
-		try {
-			const file = await call('fs:readFile', rel);
-			return {
-				type: FileType.File,
-				ctime: file.mtimeMs,
-				mtime: file.mtimeMs,
-				size: file.content.length,
-			};
-		} catch {
-			try {
-				await call('fs:list', rel);
-				return { type: FileType.Directory, ctime: 0, mtime: 0, size: 0 };
-			} catch {
-				throw notFound(resource);
-			}
-		}
+		// Metadata only: reading a file (up to 5 MB over IPC) just to stat it made peeks slow.
+		const s = await call('fs:stat', rel).catch(() => {
+			throw notFound(resource);
+		});
+		return {
+			type: s.kind === 'dir' ? FileType.Directory : FileType.File,
+			ctime: s.ctimeMs,
+			mtime: s.mtimeMs,
+			size: s.size,
+		};
 	}
 
 	async readFile(resource: URI): Promise<Uint8Array> {
@@ -67,6 +63,11 @@ export class WorkspaceFileSystem implements IFileSystemProviderWithFileReadWrite
 		const file = await call('fs:readFile', rel).catch(() => {
 			throw notFound(resource);
 		});
+		// Main sends no content for these; returning empty bytes would show the file as empty.
+		if (file.tooLarge)
+			throw unreadable(resource, 'too large', FileSystemProviderErrorCode.FileTooLarge);
+		if (file.binary)
+			throw unreadable(resource, 'binary', FileSystemProviderErrorCode.Unavailable);
 		return new TextEncoder().encode(file.content);
 	}
 

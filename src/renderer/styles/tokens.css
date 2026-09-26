@@ -16,6 +16,8 @@
 	--on-accent-light: #ffffff;
 
 	--glass-blur: 20px;
+	/* Monaco's own background: see-through so the glass plate behind the editor shows */
+	--editor-surface: transparent;
 
 	/* Motion */
 	--dur-fast: 120ms;

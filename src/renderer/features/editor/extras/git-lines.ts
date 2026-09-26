@@ -1,5 +1,7 @@
 import type * as Monaco from 'monaco-editor';
 
+import { getSettings } from '../../../app/hooks/use-settings';
+import { escapeMarkdown } from '../../../lib/escape-markdown';
 import { call } from '../../../lib/ipc';
 import { diffLines } from '../../../lib/line-diff';
 import type { MonacoApi } from '../../../lib/monaco/setup';
@@ -39,15 +41,6 @@ function headOf(path: string): Promise<string | null> {
 		headCache.set(path, hit);
 	}
 	return hit;
-}
-
-let blameEnabled = true;
-export function setBlameEnabled(on: boolean): void {
-	blameEnabled = on;
-	window.dispatchEvent(new CustomEvent('anvil:git-lines'));
-}
-export function isBlameEnabled(): boolean {
-	return blameEnabled;
 }
 
 /**
@@ -105,7 +98,7 @@ export function attachGitLines(
 		const model = editor.getModel();
 		const pos = editor.getPosition();
 		const path = model ? pathOf(model) : null;
-		if (!blameEnabled || !model || !pos || !path) return;
+		if (!getSettings().inlineBlame || !model || !pos || !path) return;
 		// A dirty buffer's line numbers no longer match what git blames.
 		if (useEditorStore.getState().files.find((f) => f.path === path)?.dirty) return;
 		const line = pos.lineNumber;
@@ -126,7 +119,7 @@ export function attachGitLines(
 					showIfCollapsed: true,
 					after: { content: text, inlineClassName: 'anvil-blame-text' },
 					hoverMessage: {
-						value: `**${info.hash.slice(0, 8)}** ${info.author}\n\n${info.summary}`,
+						value: `**${info.hash.slice(0, 8)}** ${escapeMarkdown(info.author)}\n\n${escapeMarkdown(info.summary)}`,
 					},
 				},
 			},
@@ -156,10 +149,14 @@ export function attachGitLines(
 		editor.onDidChangeCursorPosition(scheduleBlame),
 	];
 	window.addEventListener('anvil:git-lines', refresh);
+	// Fired after every settings change: the overview-ruler colors are resolved from the theme's
+	// tokens at paint time, and inline blame may have been switched on or off.
+	window.addEventListener('anvil:appearance', refresh);
 	refresh();
 	return {
 		dispose() {
 			window.removeEventListener('anvil:git-lines', refresh);
+			window.removeEventListener('anvil:appearance', refresh);
 			if (gutterTimer) clearTimeout(gutterTimer);
 			if (blameTimer) clearTimeout(blameTimer);
 			for (const s of subs) s.dispose();

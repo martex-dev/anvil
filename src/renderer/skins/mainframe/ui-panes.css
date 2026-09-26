@@ -212,7 +212,7 @@ html[data-skin='mainframe'] [data-part='tab'] > button:has(> svg.invisible) {
 html[data-skin='mainframe'] [data-part='tab'] > button > svg.invisible {
 	display: none;
 }
-html[data-skin='mainframe'] [data-part='tab']:hover > button > svg.invisible {
+html[data-skin='mainframe'] [data-part='tab']:is(:hover, :focus-visible) > button > svg.invisible {
 	display: block;
 }
 html[data-skin='mainframe'] [data-part='tab'] > span.bg-down {

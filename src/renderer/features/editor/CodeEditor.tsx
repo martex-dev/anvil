@@ -5,9 +5,10 @@ import { getCommands, runCommand } from '../../app/commands/run';
 import { registerGroupEditor } from '../../lib/monaco/editors';
 import { toMonacoKeybinding } from '../../lib/monaco/keybinding';
 import type { MonacoApi } from '../../lib/monaco/setup';
+import { isAltGraph } from '../../lib/shortcuts';
 import { useTabsStore } from '../../stores/tabs-store';
 import { runCell } from '../python/run';
-import { countWords, useEditorStore } from './editor-store';
+import { countWords, MAX_COUNTED_SELECTION, useEditorStore } from './editor-store';
 import { attachBookmarks } from './extras/bookmarks';
 import { attachCells } from './extras/cells';
 import { attachClipboard } from './extras/clipboard';
@@ -17,6 +18,7 @@ import { attachShield } from './extras/shield';
 import { attachSpotlight } from './extras/spotlight';
 import { getModel, getViewState, isScratch, saveViewState } from './file-ops';
 import { navHistory } from './nav-history';
+import { baseName, takeQuietOpen } from './open';
 
 interface CodeEditorProps {
 	monaco: MonacoApi;
@@ -24,6 +26,13 @@ interface CodeEditorProps {
 	/** Path of the code tab to show, or null when the group shows something else. */
 	path: string | null;
 	visible: boolean;
+}
+
+/** What a screen reader announces for the editor: the file, then which group it is in. */
+function ariaLabelFor(path: string | null, group: number): string {
+	const where = `editor group ${group + 1}`;
+	if (!path) return `Editor, ${where}`;
+	return `${isScratch(path) ? 'Scratchpad' : baseName(path)}, ${where}`;
 }
 
 /**
@@ -42,6 +51,7 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 		if (!hostRef.current) return;
 		const editor = monaco.editor.create(hostRef.current, {
 			model: null,
+			ariaLabel: ariaLabelFor(null, group),
 			automaticLayout: true,
 			fixedOverflowWidgets: true,
 		});
@@ -52,7 +62,20 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 			const model = editor.getModel();
 			const pos = editor.getPosition();
 			const sel = editor.getSelection();
-			const selText = model && sel && !sel.isEmpty() ? model.getValueInRange(sel) : '';
+			const hasSelection = model !== null && sel !== null && !sel.isEmpty();
+			// The length is cheap; the text is only copied out when it's small enough to count
+			// words in, so Shift+arrowing through a huge selection stays smooth.
+			const selected = hasSelection ? model.getValueLengthInRange(sel) : 0;
+			const selText =
+				hasSelection && selected <= MAX_COUNTED_SELECTION ? model.getValueInRange(sel) : '';
+			useEditorStore
+				.getState()
+				.setGroupLine(
+					group,
+					shown.current && model && pos
+						? { path: shown.current, line: pos.lineNumber }
+						: null,
+				);
 			useEditorStore.getState().setCursor(
 				model && pos
 					? {
@@ -60,12 +83,11 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 							column: pos.column,
 							language: model.getLanguageId(),
 							eol: model.getEOL() === '\r\n' ? 'CRLF' : 'LF',
-							selected: selText.length,
+							selected,
 							selectedWords: countWords(selText),
-							selectedLines:
-								sel && !sel.isEmpty()
-									? sel.endLineNumber - sel.startLineNumber + 1
-									: 0,
+							selectedLines: hasSelection
+								? sel.endLineNumber - sel.startLineNumber + 1
+								: 0,
 							lines: model.getLineCount(),
 							tabSize: model.getOptions().tabSize,
 							insertSpaces: model.getOptions().insertSpaces,
@@ -80,7 +102,7 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 			attachBookmarks(editor, monaco),
 			attachLens(editor, monaco),
 			attachSpotlight(editor, monaco),
-			attachClipboard(editor, monaco, () =>
+			attachClipboard(editor, () =>
 				isScratch(shown.current) ? 'Scratchpad' : shown.current,
 			),
 		];
@@ -114,6 +136,15 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 				updateCursor();
 			}),
 		];
+		// Monaco reads AltGr as Ctrl+Alt, so AltGr+L (ł) would run Next Bookmark instead of typing.
+		// A capture listener runs before Monaco's own keydown handler and flags such keystrokes;
+		// the actions' keybindings are disabled while the flag is set.
+		const altGraph = editor.createContextKey<boolean>('anvil.altGraph', false);
+		const onKeyDown = (event: KeyboardEvent): void => altGraph.set(isAltGraph(event));
+		window.addEventListener('keydown', onKeyDown, { capture: true });
+		subs.push({
+			dispose: () => window.removeEventListener('keydown', onKeyDown, { capture: true }),
+		});
 		// Palette commands scoped to the editor are real Monaco actions: their keys only fire
 		// while the editor has focus, and they show in Monaco's own context menu.
 		for (const command of getCommands()) {
@@ -124,6 +155,7 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 					id: `anvil.${command.id}`,
 					label: `${command.category}: ${command.title}`,
 					keybindings: binding === null ? [] : [binding],
+					keybindingContext: '!anvil.altGraph',
 					...(command.editorLanguage
 						? { precondition: `editorLangId == ${command.editorLanguage}` }
 						: {}),
@@ -140,43 +172,56 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 		return () => {
 			clearTimeout(contentTimer);
 			clearTimeout(navTimer);
-			if (shown.current) saveViewState(shown.current, editor.saveViewState());
+			if (shown.current) saveViewState(shown.current, group, editor.saveViewState());
 			for (const x of extras) x.dispose();
 			for (const s of subs) s.dispose();
 			unregister();
+			useEditorStore.getState().setGroupLine(group, null);
 			editor.dispose();
 			editorRef.current = null;
 		};
 	}, [monaco, group]);
 
-	// Show the tab's model, remembering scroll and cursor per file.
+	// Show the tab's model, remembering scroll and cursor per file in this group.
 	useEffect(() => {
 		const editor = editorRef.current;
 		if (!editor) return;
 		const next = path && ready ? path : null;
 		if (shown.current === next) return;
-		if (shown.current) saveViewState(shown.current, editor.saveViewState());
+		if (shown.current) saveViewState(shown.current, group, editor.saveViewState());
 		const model = next ? getModel(next) : null;
-		editor.setModel(model);
+		// Set before setModel: its change events already report the cursor for this path.
 		shown.current = model ? next : null;
+		editor.setModel(model);
+		editor.updateOptions({ ariaLabel: ariaLabelFor(shown.current, group) });
 		if (model && next) {
-			const view = getViewState(next);
+			const view = getViewState(next, group);
 			if (view) editor.restoreViewState(view);
-			if (visible) editor.focus();
+			// Only take focus for a user-initiated open in the group you're working in: session
+			// restore and previews must not pull keystrokes away from the terminal or a list.
+			const quiet = takeQuietOpen(next);
+			if (visible && !quiet && useTabsStore.getState().focused === group) editor.focus();
 		}
-	}, [path, ready, visible]);
+	}, [path, ready, visible, group]);
 
 	// Go-to-line requests (search results, problems, outline) for the file on screen.
 	const reveal = useEditorStore((s) => s.reveal);
 	useEffect(() => {
 		const editor = editorRef.current;
-		if (!editor || !reveal || !visible || reveal.path !== path || shown.current !== path)
+		if (
+			!editor ||
+			!reveal ||
+			!visible ||
+			reveal.group !== group ||
+			reveal.path !== path ||
+			shown.current !== path
+		)
 			return;
 		editor.setPosition({ lineNumber: reveal.line, column: reveal.column });
 		editor.revealLineInCenter(reveal.line);
-		editor.focus();
+		if (reveal.focus) editor.focus();
 		useEditorStore.getState().setReveal(null);
-	}, [reveal, path, visible, ready]);
+	}, [reveal, path, visible, ready, group]);
 
 	return (
 		<div

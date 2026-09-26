@@ -1,188 +1,48 @@
-import type * as Monaco from 'monaco-editor';
+import type { FileContent } from '@shared/ipc/channels/fs';
 
 import { getSettings } from '../../app/hooks/use-settings';
 import { call, IpcCallError } from '../../lib/ipc';
 import { rlog } from '../../lib/log';
 import type { MonacoApi } from '../../lib/monaco/setup';
 import { toast } from '../../stores/toast-store';
+import { languageOverride, markDirty, replaceText, toUri, type Tracked, tracked } from './buffers';
 import { useEditorStore } from './editor-store';
+import { cleanWhitespace, formatPython } from './format';
+import { isScratch } from './scratchpad';
 
-interface Tracked {
-	model: Monaco.editor.ITextModel;
-	/** Alternative version id at last load/save; differs from the current one when dirty. */
-	savedVersion: number;
-	listener: Monaco.IDisposable;
-	viewState: Monaco.editor.ICodeEditorViewState | null;
-}
+// Callers import the editor's buffer API from here; the pieces live in smaller modules.
+export { getModel, getViewState, saveViewState } from './buffers';
+export { formatPython } from './format';
+export { isScratch, openScratch, SCRATCH_PATH } from './scratchpad';
 
-const tracked = new Map<string, Tracked>();
-
-export function getModel(path: string): Monaco.editor.ITextModel | null {
-	return tracked.get(path)?.model ?? null;
-}
-
-export function saveViewState(
-	path: string,
-	state: Monaco.editor.ICodeEditorViewState | null,
-): void {
-	const t = tracked.get(path);
-	if (t) t.viewState = state;
-}
-
-export function getViewState(path: string): Monaco.editor.ICodeEditorViewState | null {
-	return tracked.get(path)?.viewState ?? null;
-}
-
-function toUri(monaco: MonacoApi, root: string, path: string): Monaco.Uri {
-	// Absolute file:// URIs are what language servers (Phase 2) expect.
-	return monaco.Uri.file(`${root.replace(/\\/g, '/')}/${path}`);
-}
-
-function markDirty(path: string): void {
-	const t = tracked.get(path);
-	if (!t) return;
-	useEditorStore
-		.getState()
-		.update(path, { dirty: t.model.getAlternativeVersionId() !== t.savedVersion });
-}
-
-/** Files VS Code's grammars don't claim but that read fine with a close cousin. */
-function languageOverride(path: string): string | undefined {
-	const name = path.split('/').at(-1)?.toLowerCase() ?? '';
-	if (name === '.env' || name.startsWith('.env.') || name.endsWith('.env')) return 'ini';
-	if (name.endsWith('.toml') || name === 'uv.lock' || name === 'poetry.lock') return 'ini';
-	return undefined;
-}
-
-/** The scratchpad's buffer id: a code tab that lives in local storage, not on disk. */
-export const SCRATCH_PATH = '__scratch__';
-const SCRATCH_KEY = 'anvil.scratchpad';
-const SCRATCH_DEFAULT = [
-	'# %% Scratchpad: persists between sessions, never touches your project.',
-	'# Ctrl+Enter runs a cell in the REPL · Change language from the palette.',
-	'',
-	'import math',
-	'',
-	'# %%',
-	'print(math.tau)',
-	'',
-].join('\n');
-
-export function isScratch(path: string | null | undefined): boolean {
-	return path === SCRATCH_PATH;
-}
-
-interface ScratchState {
-	text: string;
-	language: string;
-}
-
-function readScratch(): ScratchState | null {
-	try {
-		return JSON.parse(localStorage.getItem(SCRATCH_KEY) ?? 'null') as ScratchState | null;
-	} catch {
-		// Storage blocked or a corrupt value: start from the default text.
-		return null;
-	}
-}
-
-export function openScratch(monaco: MonacoApi): void {
-	const store = useEditorStore.getState();
-	if (store.files.some((f) => f.path === SCRATCH_PATH)) return;
-	const saved = readScratch();
-	const uri = monaco.Uri.parse('inmemory://anvil/scratchpad');
-	const model =
-		monaco.editor.getModel(uri) ??
-		monaco.editor.createModel(saved?.text ?? SCRATCH_DEFAULT, saved?.language ?? 'python', uri);
-	let timer: ReturnType<typeof setTimeout> | undefined;
-	const write = (): void => {
-		try {
-			localStorage.setItem(
-				SCRATCH_KEY,
-				JSON.stringify({ text: model.getValue(), language: model.getLanguageId() }),
-			);
-		} catch {
-			// Too big for local storage: the buffer still works for this session.
-		}
-	};
-	const persist = (): void => {
-		clearTimeout(timer);
-		timer = setTimeout(write, 400);
-	};
-	const content = model.onDidChangeContent(persist);
-	const language = model.onDidChangeLanguage(persist);
-	// VS Code's services treat inmemory: models as borrowed: when any feature (hover, peek,
-	// language client) takes a model reference and releases it, the model is destroyed under the
-	// open editor. Holding our own reference until the tab closes keeps the buffer alive.
-	let ref: Monaco.IDisposable | null = null;
-	let closed = false;
-	void import('@codingame/monaco-vscode-api/services')
-		.then(({ getService, ITextModelService }) => getService(ITextModelService))
-		.then((service) => service.createModelReference(uri))
-		.then((r) => {
-			if (closed) r.dispose();
-			else ref = r;
-		})
-		.catch((error: unknown) => rlog.warn('editor', 'scratchpad model reference failed', error));
-	tracked.set(SCRATCH_PATH, {
-		model,
-		savedVersion: model.getAlternativeVersionId(),
-		listener: {
-			dispose() {
-				closed = true;
-				clearTimeout(timer);
-				if (!model.isDisposed()) write();
-				content.dispose();
-				language.dispose();
-				ref?.dispose();
-			},
-		},
-		viewState: null,
-	});
-	store.add({
-		path: SCRATCH_PATH,
-		name: 'Scratchpad',
-		state: 'ready',
-		dirty: false,
-		mtimeMs: 0,
-		changedOnDisk: false,
-	});
-}
-
-/** Whitespace hygiene on save, as one undoable edit. */
-function cleanWhitespace(model: Monaco.editor.ITextModel): void {
-	const { trimTrailingWhitespace, insertFinalNewline } = getSettings();
-	if (!trimTrailingWhitespace && !insertFinalNewline) return;
-	const before = model.getValue();
-	const eol = model.getEOL();
-	let after = before;
-	if (trimTrailingWhitespace) after = after.replace(/[ \t]+(?=\r?\n|$)/g, '');
-	if (insertFinalNewline && after.length > 0 && !after.endsWith('\n')) after += eol;
-	if (after !== before) {
-		model.pushEditOperations(
-			[],
-			[{ range: model.getFullModelRange(), text: after }],
-			() => null,
-		);
-	}
-}
+/**
+ * The read in flight per path. Closing the tab (or the whole folder) drops it, so a read that
+ * lands afterwards is discarded instead of creating a buffer nobody shows, or filling a
+ * same-named file of the next folder with this one's content.
+ */
+const loads = new Map<string, symbol>();
 
 export async function openFile(monaco: MonacoApi, root: string, path: string): Promise<void> {
 	const store = useEditorStore.getState();
-	if (store.files.some((f) => f.path === path)) {
-		store.setActive(path);
-		return;
-	}
-	store.add({
-		path,
-		name: path.split('/').at(-1) ?? path,
-		state: 'loading',
-		dirty: false,
-		mtimeMs: 0,
-		changedOnDisk: false,
-	});
+	const known = store.files.find((f) => f.path === path);
+	// A failed read (file locked by another program) is retried; anything else is already open.
+	// Which file is active is the tabs' call (EditorBridge), not the loader's.
+	if (known && known.state !== 'error') return;
+	if (known) store.update(path, { state: 'loading', error: undefined });
+	else
+		store.add({
+			path,
+			name: path.split('/').at(-1) ?? path,
+			state: 'loading',
+			dirty: false,
+			mtimeMs: 0,
+			changedOnDisk: false,
+		});
+	const load = Symbol(path);
+	loads.set(path, load);
 	try {
 		const file = await call('fs:readFile', path);
+		if (loads.get(path) !== load) return;
 		if (file.binary || file.tooLarge) {
 			store.update(path, {
 				state: file.binary ? 'binary' : 'tooLarge',
@@ -205,53 +65,57 @@ export async function openFile(monaco: MonacoApi, root: string, path: string): P
 			model,
 			savedVersion: model.getAlternativeVersionId(),
 			listener: model.onDidChangeContent(() => markDirty(path)),
-			viewState: null,
+			viewStates: new Map(),
 		};
 		tracked.set(path, t);
 		store.update(path, { state: 'ready', mtimeMs: file.mtimeMs });
 	} catch (error) {
 		rlog.warn('editor', `open failed: ${path}`, error);
+		if (loads.get(path) !== load) return;
 		store.update(path, {
 			state: 'error',
 			error: error instanceof Error ? error.message : String(error),
 		});
+	} finally {
+		if (loads.get(path) === load) loads.delete(path);
 	}
 }
 
 /**
- * Formats a Python buffer with ruff in place, as one undoable edit. A formatting failure
- * (syntax error, ruff missing) is reported but never blocks the save itself.
+ * Saves in flight per path. A second save (Ctrl+S held down, Save then Save All) waits for the
+ * first; sent together, it would carry the mtime from before the first write and fail as a
+ * conflict with Anvil's own save.
  */
-export async function formatPython(
-	path: string,
-	model: Monaco.editor.ITextModel,
-): Promise<boolean> {
-	try {
-		const before = model.getValue();
-		const { content } = await call('python:format', { path, content: before });
-		if (content !== before && model.getValue() === before) {
-			model.pushEditOperations(
-				[],
-				[{ range: model.getFullModelRange(), text: content }],
-				() => null,
-			);
-		}
-		return true;
-	} catch (error) {
-		toast.warn('Format skipped', error instanceof Error ? error.message : undefined);
-		return false;
-	}
+const saving = new Map<string, Promise<boolean>>();
+
+/** Saves one file if it has unsaved edits. With `force`, writes it even if it changed on disk. */
+export function saveFile(path: string, force = false): Promise<boolean> {
+	const previous = saving.get(path) ?? Promise.resolve(true);
+	const run = (): Promise<boolean> => writeBuffer(path, force);
+	const next = previous.then(run, run);
+	saving.set(path, next);
+	const settle = (): void => {
+		if (saving.get(path) === next) saving.delete(path);
+	};
+	void next.then(settle, settle);
+	return next;
 }
 
-/** Saves one file. With `force`, overwrites even if it changed on disk. */
-export async function saveFile(path: string, force = false): Promise<boolean> {
+async function writeBuffer(path: string, force: boolean): Promise<boolean> {
 	const store = useEditorStore.getState();
 	const t = tracked.get(path);
-	const file = store.files.find((f) => f.path === path);
-	if (!t || !file) return false;
+	const known = store.files.find((f) => f.path === path);
+	if (!t || !known) return false;
 	// The scratchpad saves itself to local storage as you type.
 	if (isScratch(path)) return true;
-	if (getSettings().formatOnSave && path.endsWith('.py')) await formatPython(path, t.model);
+	// Nothing to write: a habitual Ctrl+S must not touch the file (mtime, watcher, git status,
+	// local history) or reformat code nobody edited.
+	if (!known.dirty && !force) return true;
+	if (getSettings().formatOnSave && path.endsWith('.py'))
+		await formatPython(path, t.model, { onSave: true });
+	// Closed while ruff ran: nothing left to save.
+	const file = useEditorStore.getState().files.find((f) => f.path === path);
+	if (tracked.get(path) !== t || !file) return false;
 	cleanWhitespace(t.model);
 	try {
 		const version = t.model.getAlternativeVersionId();
@@ -266,7 +130,7 @@ export async function saveFile(path: string, force = false): Promise<boolean> {
 		return true;
 	} catch (error) {
 		if (error instanceof IpcCallError && error.code === 'FS_CONFLICT') {
-			store.setConflict(path);
+			store.queueConflict(path);
 			return false;
 		}
 		rlog.error('editor', `save failed: ${path}`, error);
@@ -279,46 +143,96 @@ export async function saveFile(path: string, force = false): Promise<boolean> {
 }
 
 export async function saveAll(): Promise<void> {
-	for (const f of useEditorStore.getState().files) if (f.dirty) await saveFile(f.path);
+	const unsaved: string[] = [];
+	for (const f of useEditorStore.getState().files) {
+		if (f.dirty && !(await saveFile(f.path))) unsaved.push(f.name);
+	}
+	// Each failure has its own dialog or toast; this says how many are still unsaved overall.
+	if (unsaved.length > 1)
+		toast.warn(`${unsaved.length} files were not saved`, unsaved.join(', '));
 }
 
-/** Replaces the buffer with the disk version (used for external changes and "Reload"). */
+/**
+ * Puts the disk version into the buffer, unless the buffer was closed or edited while the read
+ * was in flight: then the new keystrokes stay and the tab is flagged as changed on disk.
+ */
+function applyDiskVersion(path: string, t: Tracked, file: FileContent, version: number): void {
+	if (tracked.get(path) !== t) return;
+	if (t.model.getAlternativeVersionId() !== version) {
+		useEditorStore.getState().update(path, { changedOnDisk: true });
+		return;
+	}
+	// An edit (not setValue) keeps the reload undoable.
+	if (file.content !== t.model.getValue()) replaceText(t.model, file.content);
+	t.savedVersion = t.model.getAlternativeVersionId();
+	useEditorStore.getState().update(path, { mtimeMs: file.mtimeMs, changedOnDisk: false });
+	markDirty(path);
+}
+
+/** Replaces the buffer with the disk version ("Reload from Disk", "Load Disk Version"). */
 export async function reloadFromDisk(path: string): Promise<void> {
 	const t = tracked.get(path);
 	if (!t) return;
+	const version = t.model.getAlternativeVersionId();
+	const name = path.split('/').at(-1) ?? path;
 	try {
 		const file = await call('fs:readFile', path);
-		if (file.binary || file.tooLarge) return;
-		if (file.content !== t.model.getValue()) {
-			// pushEditOperations keeps the reload undoable, unlike setValue.
-			t.model.pushEditOperations(
-				[],
-				[{ range: t.model.getFullModelRange(), text: file.content }],
-				() => null,
+		if (file.binary || file.tooLarge) {
+			toast.warn(
+				`Couldn't reload ${name}`,
+				`The file on disk is now ${file.binary ? 'binary' : 'too large to edit'}. Your version is kept.`,
 			);
+			useEditorStore.getState().update(path, { changedOnDisk: true });
+			return;
 		}
-		t.savedVersion = t.model.getAlternativeVersionId();
-		useEditorStore.getState().update(path, { mtimeMs: file.mtimeMs, changedOnDisk: false });
-		markDirty(path);
+		applyDiskVersion(path, t, file, version);
 	} catch (error) {
 		// The file was deleted or became unreadable; keep the buffer so nothing is lost.
+		rlog.warn('editor', `reload failed: ${path}`, error);
+		toast.error(`Couldn't reload ${name}`, error instanceof Error ? error.message : undefined);
+		useEditorStore.getState().update(path, { changedOnDisk: true });
+	}
+}
+
+/** Same mtime as the version we hold (1 ms tolerance: some filesystems round mtimes). */
+const sameMtime = (a: number, b: number): boolean => Math.abs(a - b) <= 1;
+
+/**
+ * A watcher report for an open file. The echo of Anvil's own save (same mtime as the version we
+ * hold) is ignored; otherwise a clean buffer follows disk and a dirty one gets flagged.
+ */
+async function followDisk(path: string): Promise<void> {
+	try {
+		// Judge a save's echo against the mtime that save writes, not the one before it.
+		await saving.get(path);
+		const t = tracked.get(path);
+		if (!t) return;
+		const version = t.model.getAlternativeVersionId();
+		const file = await call('fs:readFile', path);
+		const known = useEditorStore.getState().files.find((f) => f.path === path);
+		if (!known || known.state !== 'ready' || sameMtime(file.mtimeMs, known.mtimeMs)) return;
+		if (known.dirty || file.binary || file.tooLarge) {
+			useEditorStore.getState().update(path, { changedOnDisk: true });
+			return;
+		}
+		applyDiskVersion(path, t, file, version);
+	} catch (error) {
+		// Deleted or unreadable: keep the buffer and flag it.
 		rlog.warn('editor', `reload failed: ${path}`, error);
 		useEditorStore.getState().update(path, { changedOnDisk: true });
 	}
 }
 
-/** Called for files the watcher reports as changed. Clean buffers follow disk; dirty ones get flagged. */
+/** Called for files the watcher reports as changed. */
 export function onExternalChange(paths: readonly string[]): void {
-	const store = useEditorStore.getState();
+	const { files } = useEditorStore.getState();
 	for (const path of paths) {
-		const file = store.files.find((f) => f.path === path);
-		if (!file || file.state !== 'ready') continue;
-		if (file.dirty) store.update(path, { changedOnDisk: true });
-		else void reloadFromDisk(path);
+		if (files.some((f) => f.path === path && f.state === 'ready')) void followDisk(path);
 	}
 }
 
 export function closeFile(path: string): void {
+	loads.delete(path);
 	const t = tracked.get(path);
 	if (t) {
 		t.listener.dispose();

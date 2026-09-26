@@ -223,6 +223,11 @@ html[data-skin='cockpit']
 	[data-part='tab'][data-active='true'] {
 	box-shadow: inset 0 2px 0 var(--border-strong);
 }
+/* The top rule is a shadow, so keyboard focus (arrow keys walk the strip) is an outline. */
+html[data-skin='cockpit'] [data-part='tab']:focus-visible {
+	outline: 1px solid var(--accent);
+	outline-offset: -1px;
+}
 /* The shared tab draws its own top line and divider; the cell rules above replace both. */
 html[data-skin='cockpit'] [data-part='tab'] > span.absolute {
 	display: none;

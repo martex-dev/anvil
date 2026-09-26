@@ -65,6 +65,7 @@ export function createWorkspace(
 
 	router.handle('fs:list', (rel) => fs.list(rel));
 	router.handle('fs:readFile', (rel) => fs.readFile(rel));
+	router.handle('fs:stat', (rel) => fs.stat(rel));
 	router.handle('fs:writeFile', async ({ path, content, expectedMtimeMs }) => {
 		const result = await fs.writeFile(path, content, expectedMtimeMs);
 		try {

@@ -18,8 +18,13 @@ export interface FoundColor {
 	format: 'hex' | 'rgb' | 'hsl';
 }
 
+/**
+ * Long hex colors anywhere a token can start (not `page#section` or `&#8212;`). The short forms
+ * collide with issue refs (`fixes #123`) and hex words (`#add`, `#fade`) in comments and prose,
+ * so they only count as the start of a string literal: `'#fff'`.
+ */
 const PATTERN =
-	/#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b|rgba?\(\s*[\d.]+%?\s*[, ]\s*[\d.]+%?\s*[, ]\s*[\d.]+%?\s*(?:[,/]\s*[\d.]+%?\s*)?\)|hsla?\(\s*[\d.]+(?:deg)?\s*[, ]\s*[\d.]+%\s*[, ]\s*[\d.]+%\s*(?:[,/]\s*[\d.]+%?\s*)?\)/g;
+	/(?<![\w&#/])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6})\b|(?<=['"`])#[0-9a-fA-F]{3,4}\b|rgba?\(\s*[\d.]+%?\s*[, ]\s*[\d.]+%?\s*[, ]\s*[\d.]+%?\s*(?:[,/]\s*[\d.]+%?\s*)?\)|hsla?\(\s*[\d.]+(?:deg)?\s*[, ]\s*[\d.]+%\s*[, ]\s*[\d.]+%\s*(?:[,/]\s*[\d.]+%?\s*)?\)/g;
 
 const clamp = (n: number): number => Math.min(1, Math.max(0, n));
 const channel = (v: string, max: number): number =>

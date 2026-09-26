@@ -37,4 +37,36 @@ describe('NavHistory', () => {
 		h.forget('a.py');
 		expect(h.goBack()).toBeNull();
 	});
+
+	it('forgets everything on clear, so a new folder starts fresh', () => {
+		const h = new NavHistory();
+		h.visit(at('a.py', 1));
+		h.visit(at('b.py', 1));
+		h.clear();
+		expect(h.canGoBack).toBe(false);
+		expect(h.goBack()).toBeNull();
+		// The first place after clearing is a starting point, not a jump from the old folder.
+		h.visit(at('c.py', 1));
+		expect(h.canGoBack).toBe(false);
+	});
+
+	it('records the next jump when going back never reported arriving', () => {
+		const h = new NavHistory();
+		h.visit(at('a.py', 1));
+		h.visit(at('b.py', 1));
+		// a.py failed to open, so no cursor settles there; the next jump still counts.
+		expect(h.goBack()).toEqual(at('a.py', 1));
+		h.visit(at('c.py', 5));
+		expect(h.goBack()).toEqual(at('b.py', 1));
+	});
+
+	it('forgets deleted folders with everything in them', () => {
+		const h = new NavHistory();
+		h.visit(at('src/a.py', 1));
+		h.visit(at('srcx/b.py', 1));
+		h.visit(at('c.py', 1));
+		h.forget('src');
+		expect(h.goBack()).toEqual(at('srcx/b.py', 1));
+		expect(h.goBack()).toBeNull();
+	});
 });

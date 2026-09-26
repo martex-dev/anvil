@@ -5,7 +5,9 @@ import type { FsEntry } from '@shared/ipc/channels/fs';
 import { fsKeys } from '../../app/hooks/use-fs-invalidation';
 import { call } from '../../lib/ipc';
 import { toast } from '../../stores/toast-store';
-import { parentOf } from './tree-model';
+import { navHistory } from '../editor/nav-history';
+import { renameOpenPath } from '../editor/rename';
+import { joinPath, parentOf } from './tree-model';
 
 /**
  * File operations with immediate cache invalidation. The watcher would catch up anyway;
@@ -28,13 +30,19 @@ export function useFsActions(root: string): {
 	});
 	const renameM = useMutation({
 		mutationFn: (v: { path: string; newName: string }) => call('fs:rename', v),
-		onSuccess: (_e, v) => refresh(parentOf(v.path)),
+		onSuccess: (entry, v) => {
+			refresh(parentOf(v.path));
+			// Open tabs and unsaved buffers follow the file (or everything in a renamed folder).
+			renameOpenPath(root, v.path, joinPath(parentOf(v.path), entry.name));
+		},
 		onError: (error) => toast.error('Could not rename', error.message),
 	});
 	const trashM = useMutation({
 		mutationFn: (path: string) => call('fs:trash', path),
 		onSuccess: (_r, path) => {
 			refresh(parentOf(path));
+			// Back / Forward must not lead to a file that's gone.
+			navHistory.forget(path);
 			toast.info('Moved to Recycle Bin', path);
 		},
 		onError: (error) => toast.error('Could not delete', error.message),

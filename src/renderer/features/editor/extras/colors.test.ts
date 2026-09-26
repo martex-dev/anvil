@@ -32,5 +32,15 @@ describe('color literals', () => {
 
 	it('ignores things that only look like colors', () => {
 		expect(findColors('issue #12345 and #abcdefg')).toEqual([]);
+		expect(findColors('# fixes #123, see #1234; #add a #fade on #bad input')).toEqual([]);
+		expect(findColors('docs/page.html#facade and &#8212;')).toEqual([]);
+	});
+
+	it('finds short hex only as a string literal', () => {
+		const found = findColors('fg = "#fff"; bg = `#0008`; # was #abc');
+		expect(found.map((f) => [f.start, f.end])).toEqual([
+			[6, 10],
+			[19, 24],
+		]);
 	});
 });

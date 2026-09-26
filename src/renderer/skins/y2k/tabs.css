@@ -54,6 +54,12 @@ html[data-skin='y2k'] [data-part='tab']:hover {
 html[data-skin='y2k'] [data-part='tab'] > span.absolute {
 	display: none;
 }
+/* Keyboard focus (arrow keys move it along the strip): the shadow is the candy bevel, so the
+   ring is an outline. */
+html[data-skin='y2k'] [data-part='tab']:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
+}
 html[data-skin='y2k'] [data-part='tab'][data-active='true'] {
 	color: var(--on-accent);
 	background-image: var(--yk-jelly);

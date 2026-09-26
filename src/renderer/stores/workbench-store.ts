@@ -11,9 +11,25 @@ export interface OpenFileRequest {
 	as?: 'code' | 'data' | 'markdown';
 	/** Open in the other editor group (split). */
 	side?: boolean;
+	/**
+	 * Move keyboard focus into the editor. Defaults to true, except for previews (single clicks
+	 * in a list keep focus in the list). Session restore passes false.
+	 */
+	focus?: boolean;
+	/**
+	 * List the file in Quick Open's recent files. Defaults to true; navigation (Back / Forward,
+	 * go to definition) passes false so jumps don't reshuffle the list.
+	 */
+	remember?: boolean;
 }
 
 type OpenFileHandler = (request: OpenFileRequest) => void;
+
+/** A file the explorer should reveal and focus; `nonce` makes a repeat request count again. */
+export interface RevealRequest {
+	path: string;
+	nonce: number;
+}
 /** Returns a human-readable reason to block leaving the workspace, or null to allow it. */
 type LeaveGuard = () => string | null;
 
@@ -22,10 +38,17 @@ interface WorkbenchState {
 	activeFile: string | null;
 	openFileHandler: OpenFileHandler | null;
 	leaveGuards: ReadonlySet<LeaveGuard>;
+	/** Pending "Reveal in Explorer View"; the explorer clears it once handled. */
+	reveal: RevealRequest | null;
 	setActiveFile: (path: string | null) => void;
 	setOpenFileHandler: (handler: OpenFileHandler | null) => void;
 	addLeaveGuard: (guard: LeaveGuard) => () => void;
+	requestReveal: (path: string) => void;
+	clearReveal: () => void;
 }
+
+/** Never reset, so a request made after the last one was cleared still reads as new. */
+let revealCount = 0;
 
 /**
  * Tiny bus between modules that must not import each other: the explorer (or search, git…)
@@ -35,6 +58,7 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
 	activeFile: null,
 	openFileHandler: null,
 	leaveGuards: new Set(),
+	reveal: null,
 	setActiveFile: (activeFile) => set({ activeFile }),
 	setOpenFileHandler: (openFileHandler) => set({ openFileHandler }),
 	addLeaveGuard: (guard) => {
@@ -45,6 +69,8 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
 			set({ leaveGuards: next });
 		};
 	},
+	requestReveal: (path) => set({ reveal: { path, nonce: ++revealCount } }),
+	clearReveal: () => set({ reveal: null }),
 }));
 
 /** Returns false when no editor module is available to handle the request. */

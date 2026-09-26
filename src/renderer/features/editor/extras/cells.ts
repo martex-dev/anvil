@@ -1,7 +1,8 @@
 import type * as Monaco from 'monaco-editor';
 
 import type { MonacoApi } from '../../../lib/monaco/setup';
-import { cellAt, findCells } from '../../python/cells';
+import { cellAt } from '../../python/cells';
+import { cellsOf } from './model-structure';
 
 /**
  * Draws `# %%` cells in Python files: a hairline above each marker, a ▸ glyph to run it, and a
@@ -15,9 +16,6 @@ export function attachCells(
 	const markers = editor.createDecorationsCollection();
 	const active = editor.createDecorationsCollection();
 	let timer: ReturnType<typeof setTimeout> | null = null;
-
-	const cellsOf = (model: Monaco.editor.ITextModel): ReturnType<typeof findCells> =>
-		model.getLanguageId() === 'python' ? findCells(model.getLinesContent()) : [];
 
 	const paintActive = (): void => {
 		const model = editor.getModel();
@@ -36,6 +34,8 @@ export function attachCells(
 		);
 	};
 	const paint = (): void => {
+		if (timer) clearTimeout(timer);
+		timer = null;
 		const model = editor.getModel();
 		if (!model) {
 			markers.clear();
@@ -50,6 +50,9 @@ export function attachCells(
 					options: {
 						isWholeLine: true,
 						className: 'anvil-cell-line',
+						// Own lanes for the run arrow and bookmarks: on a `# %%` line with a bookmark
+						// Monaco widens the margin instead of drawing one glyph over the other.
+						glyphMargin: { position: monaco.editor.GlyphMarginLane.Left },
 						glyphMarginClassName: 'anvil-cell-glyph',
 						glyphMarginHoverMessage: {
 							value: `Run cell${c.title ? ` "${c.title}"` : ''} (Ctrl+Enter)`,
@@ -68,9 +71,17 @@ export function attachCells(
 		editor.onDidChangeModel(paint),
 		editor.onDidChangeModelLanguage(paint),
 		editor.onDidChangeModelContent(schedule),
-		editor.onDidChangeCursorPosition(paintActive),
+		// While an edit waits for its repaint, the next paint moves the wash; parsing the text
+		// on every keystroke's cursor move is what made large files sluggish.
+		editor.onDidChangeCursorPosition(() => {
+			if (!timer) paintActive();
+		}),
 		editor.onMouseDown((e) => {
 			if (e.target.type !== monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) return;
+			// Only a plain left click runs code: right-click opens the context menu, and a
+			// modified click (Shift-select, Ctrl) means something else.
+			const { leftButton, ctrlKey, shiftKey, altKey, metaKey } = e.event;
+			if (!leftButton || ctrlKey || shiftKey || altKey || metaKey) return;
 			const line = e.target.position?.lineNumber;
 			const model = editor.getModel();
 			if (!line || !model) return;
