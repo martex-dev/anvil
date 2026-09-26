@@ -1,6 +1,7 @@
 import { AI_COMMANDS } from '../../features/ai/commands';
 import { EDITOR_COMMANDS } from '../../features/editor/commands';
 import { GIT_COMMANDS } from '../../features/git/commands';
+import { LSP_COMMANDS } from '../../features/lsp/commands';
 import { PYTHON_COMMANDS } from '../../features/python/commands';
 import { TERMINAL_COMMANDS } from '../../features/terminal/commands';
 import { TOOL_COMMANDS } from '../../features/tools/commands';
@@ -17,6 +18,7 @@ export const ALL_COMMANDS: readonly Command[] = [
 	...GIT_COMMANDS,
 	...TERMINAL_COMMANDS,
 	...TOOL_COMMANDS,
+	...LSP_COMMANDS,
 ];
 
 setCommands(ALL_COMMANDS);

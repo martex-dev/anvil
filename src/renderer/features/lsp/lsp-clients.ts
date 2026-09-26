@@ -97,7 +97,7 @@ async function start(language: LspLanguage): Promise<void> {
 			return;
 		}
 		clients.set(language, { client, session: info.session });
-		status.set(language, 'ready');
+		status.set(language, 'ready', info.notice);
 	} catch (error) {
 		rlog.error('lsp', `${language} server failed to start`, error);
 		useLspStatus
