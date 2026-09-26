@@ -8,19 +8,20 @@ import {
 	Settings as SettingsIcon,
 } from 'lucide-react';
 import { DropdownMenu } from 'radix-ui';
-import { type JSX, useState } from 'react';
+import { type JSX, useRef, useState } from 'react';
 
 import { WINDOW_CHROME } from '@shared/constants';
 
 import { PythonEnvChip } from '../features/python/PythonEnvChip';
 import { cn } from '../lib/cn';
+import { focusedEditor } from '../lib/monaco/editors';
 import { useLayoutStore } from '../stores/layout-store';
 import { useRegisterOverlay } from '../stores/overlay-store';
 import { useUiStore } from '../stores/ui-store';
 import { IconButton } from '../ui/IconButton';
 import { Kbd } from '../ui/Kbd';
 import { getCommands, runCommand, runCommandById, shortcutFor } from './commands/run';
-import type { CommandCategory } from './commands/types';
+import type { Command as AppCommand, CommandCategory } from './commands/types';
 import { useWorkspace } from './hooks/use-workspace';
 
 const MENUS: Array<{ label: string; categories: CommandCategory[] }> = [
@@ -37,6 +38,8 @@ const MENUS: Array<{ label: string; categories: CommandCategory[] }> = [
 function Menu({ label, categories }: (typeof MENUS)[number]): JSX.Element {
 	const [open, setOpen] = useState(false);
 	useRegisterOverlay(open);
+	// The chosen command runs once the menu has closed (see onCloseAutoFocus).
+	const picked = useRef<AppCommand | null>(null);
 	const items = getCommands().filter((c) => categories.includes(c.category));
 	return (
 		<DropdownMenu.Root open={open} onOpenChange={setOpen}>
@@ -52,6 +55,20 @@ function Menu({ label, categories }: (typeof MENUS)[number]): JSX.Element {
 				<DropdownMenu.Content
 					align='start'
 					sideOffset={4}
+					onCloseAutoFocus={(e) => {
+						// Run here, not in onSelect: Radix restores focus to the menu button as the
+						// menu closes, which stole it back from Find, Go to Line and the like. Hand
+						// focus to the editor instead, then let the command move it if it wants.
+						const command = picked.current;
+						if (!command) return;
+						picked.current = null;
+						const editor = focusedEditor();
+						if (editor) {
+							e.preventDefault();
+							editor.focus();
+						}
+						void runCommand(command);
+					}}
 					className='glass-strong animate-in z-50 max-h-[70vh] min-w-64 overflow-auto p-1'
 				>
 					{categories.map((cat, ci) => {
@@ -72,7 +89,7 @@ function Menu({ label, categories }: (typeof MENUS)[number]): JSX.Element {
 									return (
 										<DropdownMenu.Item
 											key={c.id}
-											onSelect={() => void runCommand(c)}
+											onSelect={() => (picked.current = c)}
 											className='group flex h-7 cursor-default items-center gap-2 rounded-md px-2 text-12 text-fg-1 outline-none data-[highlighted]:bg-accent-faint data-[highlighted]:text-fg-0'
 										>
 											{Icon ? (
