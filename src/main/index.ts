@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, dialog } from 'electron';
 import log from 'electron-log/main';
 
 import { APP_ID } from '@shared/constants';
@@ -130,6 +130,11 @@ if (isPrimary) {
 		.then(start)
 		.catch((error: unknown) => {
 			log.error('[main] fatal startup error', error);
+			// Without this, Anvil simply never opens and the user has nothing to go on.
+			dialog.showErrorBox(
+				'Anvil failed to start',
+				`${error instanceof Error ? error.message : String(error)}\n\nDetails are in the log: ${join(app.getPath('userData'), 'logs', 'main.log')}`,
+			);
 			app.exit(1);
 		});
 }
