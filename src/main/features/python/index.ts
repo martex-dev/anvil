@@ -1,4 +1,4 @@
-import { execFile, spawn } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';
 
@@ -11,6 +11,7 @@ import type { MainFeature } from '../../core/features';
 import { toAbsolute } from '../../core/workspace/fs-guard';
 import { discoverEnvs, envDirOf } from './envs';
 import { activatedEnv, interpreter, setReplSupport } from './interpreter';
+import { runRuffFormat } from './ruff-format';
 
 const PickSchema = z.string().nullable();
 const CACHE_MS = 60_000;
@@ -204,35 +205,13 @@ export const pythonFeature: MainFeature = {
 			const ruff = envRuff && existsSync(envRuff) ? envRuff : 'ruff';
 			// Run from the file's folder so ruff finds the project's pyproject/ruff.toml.
 			const cwd = root ? dirname(toAbsolute(root, path)) : undefined;
-			return new Promise((resolve, reject) => {
-				const child = spawn(ruff, ['format', '--stdin-filename', path, '-'], {
-					cwd,
-					env,
-					windowsHide: true,
-				});
-				let stdout = '';
-				let stderr = '';
-				child.stdout.on('data', (b: Buffer) => (stdout += b.toString('utf8')));
-				child.stderr.on('data', (b: Buffer) => (stderr += b.toString('utf8')));
-				child.on('error', () =>
-					reject(
-						new AnvilError(
-							'PY_NO_RUFF',
-							'ruff is not installed. Add it with `uv add --dev ruff` or `pip install ruff`.',
-						),
-					),
-				);
-				child.on('close', (code) => {
-					if (code === 0) resolve({ content: stdout });
-					else
-						reject(
-							new AnvilError(
-								'PY_FORMAT_FAILED',
-								stderr.trim().split(/\r?\n/).slice(0, 3).join(' ') || 'ruff failed',
-							),
-						);
-				});
-				child.stdin.end(content);
+			return runRuffFormat({
+				ruff,
+				args: ['format', '--stdin-filename', path, '-'],
+				cwd,
+				env,
+				content,
+				onStdinError: (message) => ctx.log.warn('ruff stdin', { message }),
 			});
 		});
 	},
