@@ -170,12 +170,14 @@ export function view(
 		const numeric = NUMERIC.has(table.columns[sort.column]?.type ?? 'string');
 		const dir = sort.desc ? -1 : 1;
 		const key = (i: number): Cell => table.rows[i]?.[sort.column] ?? null;
+		// A Collator is much faster than localeCompare over a million rows (same ordering).
+		const collator = new Intl.Collator(undefined, { numeric: true });
 		idx.sort((a, b) => {
 			const x = key(a);
 			const y = key(b);
 			if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1;
 			if (numeric) return (Number(x) - Number(y)) * dir;
-			return x.localeCompare(y, undefined, { numeric: true }) * dir;
+			return collator.compare(x, y) * dir;
 		});
 	}
 	return idx;
@@ -241,13 +243,20 @@ export function columnStats(table: Table, c: number): ColumnStats {
 	const freq = new Map<string, number>();
 	for (const v of values) freq.set(v, (freq.get(v) ?? 0) + 1);
 	const top = [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
-	const sorted = [...values].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+	// One linear pass: sorting a copy of a million strings just for min/max is far slower.
+	const collator = new Intl.Collator(undefined, { numeric: true });
+	let min: string | null = null;
+	let max: string | null = null;
+	for (const v of values) {
+		if (min === null || collator.compare(v, min) < 0) min = v;
+		if (max === null || collator.compare(v, max) > 0) max = v;
+	}
 	return {
 		count: values.length,
 		nulls,
 		unique,
-		min: sorted[0] ?? null,
-		max: sorted.at(-1) ?? null,
+		min,
+		max,
 		mean: null,
 		std: null,
 		histogram: top.map(([label, count]) => ({ label, count })),

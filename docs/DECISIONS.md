@@ -105,3 +105,11 @@ Short ADRs: the context, what was decided, and what it costs.
 **Decision.** `openScratch` takes a reference through `ITextModelService` and keeps it until the tab closes. Closing flushes the text to local storage first.
 
 **Consequences.** The scratchpad lives exactly as long as its tab. Any future in-memory buffer (untitled files, AI previews that are real editors) needs the same treatment.
+
+## ADR-014: The data viewer works in a worker thread
+
+**Context.** The data viewer parses up to 200 MB of CSV/JSON and filters, sorts and profiles up to a million rows. Done inside IPC handlers, that ran on Electron's main process, so opening a big file, typing a filter or clicking a column header froze windows, menus, terminals and every other IPC call for seconds.
+
+**Decision.** The data feature keeps its tables in a `node:worker_threads` worker (`features/data/worker.ts`, bundled by electron-vite's `?modulePath` import). The main thread only validates the request (workspace, path guard, format, which Python) and forwards it; `DataWorkerClient` matches replies to requests, turns error codes back into `AnvilError`s, and restarts the worker on the next call if it dies. The worker file is unpacked from `app.asar` so Node can always load it.
+
+**Consequences.** The UI stays responsive whatever the file size, and a worker crash (for example out of memory) fails only the pending data requests. Requests are copied between threads (structured clone), which is cheap for pages and stats but means the worker must stay free of Electron imports: it only uses Node built-ins and pure modules.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatOf } from './index';
+import { formatOf } from './format';
 import { mapDtype } from './python-reader';
 import {
 	buildTable,

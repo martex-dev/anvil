@@ -23,6 +23,8 @@ asarUnpack:
   - node_modules/basedpyright/**
   - node_modules/typescript-language-server/**
   - node_modules/typescript/**
+  # The data viewer's worker thread (see src/main/features/data/index.ts).
+  - out/main/worker-*.js
 
 win:
   target:

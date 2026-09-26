@@ -3,7 +3,6 @@ import { execFile } from 'node:child_process';
 import type { ColumnType } from '@shared/ipc/channels/data';
 
 import { AnvilError } from '../../core/errors';
-import { activatedEnv } from '../python/interpreter';
 import { buildTable, type Cell, type Table } from './table';
 
 /**
@@ -64,13 +63,19 @@ export function mapDtype(dtype: string): ColumnType {
 	return 'string';
 }
 
-export function readWithPython(python: string, absPath: string, limit: number): Promise<Table> {
+/** `env` is the interpreter's activated environment (see `activatedEnv`). */
+export function readWithPython(
+	python: string,
+	env: NodeJS.ProcessEnv,
+	absPath: string,
+	limit: number,
+): Promise<Table> {
 	return new Promise((resolve, reject) => {
 		execFile(
 			python,
 			['-c', SCRIPT, absPath, String(limit)],
 			{
-				env: activatedEnv(python),
+				env,
 				windowsHide: true,
 				timeout: 120_000,
 				maxBuffer: 512 * 1024 * 1024,
