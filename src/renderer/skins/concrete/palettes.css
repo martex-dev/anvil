@@ -7,13 +7,11 @@
  *   accent-text         the accent when it has to be read as text on paper
  *   grid / dot          the backdrop grid and halftone
  *   close / on-close    the window close box
- *
- * The attribute is doubled on purpose: Cyber Glass declares its palette on `:root` too, which
- * has the same specificity as a lone [data-theme] and loads after this file, so it would win.
+ *   editor-accent       the caret on light paper, where the yellow accent would vanish
  */
 
 /* Poster: off-white paper, pure black ink, one screaming yellow */
-[data-theme][data-theme='cc-poster'] {
+[data-theme='cc-poster'] {
 	color-scheme: light;
 
 	--bg-0: #e6e2d6;
@@ -73,10 +71,13 @@
 	--skin-dot: rgb(11 11 11 / 0.16);
 	--skin-close: #e8261c;
 	--skin-on-close: #ffffff;
+
+	/* The yellow accent would vanish as a caret on paper: print it in ink. */
+	--skin-editor-accent: #0b0b0b;
 }
 
 /* Riso: blue risograph ink with a misregistered fluoro-pink second pass, on cream */
-[data-theme][data-theme='cc-riso'] {
+[data-theme='cc-riso'] {
 	color-scheme: light;
 
 	--bg-0: #ebe2cc;
@@ -136,10 +137,13 @@
 	--skin-dot: rgb(255 74 166 / 0.28);
 	--skin-close: #ff4aa6;
 	--skin-on-close: #141f5c;
+
+	/* The yellow accent would vanish as a caret on paper: print it in ink. */
+	--skin-editor-accent: #172a7a;
 }
 
 /* Mint: mint card stock, black ink, a tomato-red accent */
-[data-theme][data-theme='cc-mint'] {
+[data-theme='cc-mint'] {
 	color-scheme: light;
 
 	--bg-0: #b4e6cb;
@@ -199,10 +203,13 @@
 	--skin-dot: rgb(11 11 11 / 0.14);
 	--skin-close: #ff5a36;
 	--skin-on-close: #0b0b0b;
+
+	/* The yellow accent would vanish as a caret on paper: print it in ink. */
+	--skin-editor-accent: #0b0b0b;
 }
 
 /* Blueprint: cyanotype blue paper, white rules, safety-orange accent */
-[data-theme][data-theme='cc-blueprint'] {
+[data-theme='cc-blueprint'] {
 	color-scheme: dark;
 
 	--bg-0: #0a2e70;
@@ -265,7 +272,7 @@
 }
 
 /* Night: black paper, white ink, signal red */
-[data-theme][data-theme='cc-night'] {
+[data-theme='cc-night'] {
 	color-scheme: dark;
 
 	--bg-0: #0a0a0a;

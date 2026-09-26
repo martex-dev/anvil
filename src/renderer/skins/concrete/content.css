@@ -96,20 +96,6 @@ html[data-skin='concrete'] [data-part='tab'][data-active='true'] .bg-down {
 	box-shadow: none;
 }
 
-/*
- * Light palettes: Monaco takes its caret and current line number from --accent, and a yellow
- * caret on paper is invisible. Print them in ink instead (dark palettes keep the accent).
- */
-html[data-skin='concrete'][data-kind='light'] .monaco-editor .cursors-layer .cursor {
-	background-color: var(--text-0) !important;
-	border-color: var(--text-0) !important;
-	box-shadow: none !important;
-}
-html[data-skin='concrete'][data-kind='light'] .monaco-editor .line-numbers.active-line-number {
-	color: var(--text-0) !important;
-	font-weight: 700;
-}
-
 /* Empty states headline in the display face; the chat's glowing bot becomes a printed stamp. */
 html[data-skin='concrete'] .min-h-40 > p.text-14.font-medium {
 	font-family: var(--font-display);
