@@ -16,11 +16,14 @@ function Toggle({
 	label,
 	pressed,
 	onClick,
+	dot = false,
 	children,
 }: {
 	label: string;
 	pressed: boolean;
 	onClick: () => void;
+	/** Marks a setting that is in effect although its toggle is off (hidden glob filters). */
+	dot?: boolean;
 	children: ReactNode;
 }): JSX.Element {
 	return (
@@ -31,7 +34,7 @@ function Toggle({
 				aria-pressed={pressed}
 				onClick={onClick}
 				className={cn(
-					'flex size-5 items-center justify-center rounded-sm',
+					'relative flex size-5 items-center justify-center rounded-sm',
 					'focus-visible:shadow-glow focus-visible:outline-none',
 					pressed
 						? 'bg-accent-soft text-accent'
@@ -39,6 +42,12 @@ function Toggle({
 				)}
 			>
 				{children}
+				{dot && (
+					<span
+						aria-hidden
+						className='absolute top-0.5 right-0.5 size-1 rounded-full bg-accent'
+					/>
+				)}
 			</button>
 		</Tooltip>
 	);
@@ -57,6 +66,7 @@ export function SearchPanel(): JSX.Element {
 	const wholeWord = params['wholeWord'] === true;
 	const include = str(params['include']);
 	const exclude = str(params['exclude']);
+	const filtered = Boolean(include || exclude);
 	const [showGlobs, setShowGlobs] = useState(Boolean(include || exclude));
 	const inputRef = useRef<HTMLInputElement>(null);
 	const focusTick = useSearchFocus((s) => s.tick);
@@ -131,8 +141,13 @@ export function SearchPanel(): JSX.Element {
 						<Regex size={14} />
 					</Toggle>
 					<Toggle
-						label='Files to include / exclude'
+						label={
+							filtered && !showGlobs
+								? 'Files to include / exclude (filters active)'
+								: 'Files to include / exclude'
+						}
 						pressed={showGlobs}
+						dot={filtered && !showGlobs}
 						onClick={() => setShowGlobs(!showGlobs)}
 					>
 						<SlidersHorizontal size={13} />
@@ -177,8 +192,8 @@ export function SearchPanel(): JSX.Element {
 							: `${result.matchCount} result${result.matchCount === 1 ? '' : 's'} in ${result.files.length} file${result.files.length === 1 ? '' : 's'}`}
 						{result.timedOut
 							? ' (stopped after 20 s; narrow the search)'
-							: result.truncated && ' (stopped at the limit; narrow the search)'}{' '}
-						· {result.durationMs} ms
+							: result.truncated && ' (stopped at the limit; narrow the search)'}
+						{filtered && ' · filtered by include/exclude'} · {result.durationMs} ms
 					</p>
 					<SearchResults files={result.files} />
 				</>
