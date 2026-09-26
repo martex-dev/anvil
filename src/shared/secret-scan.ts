@@ -28,6 +28,8 @@ interface Rule {
 	pattern: RegExp;
 	/** Capture group holding the secret itself (default: the whole match). */
 	group?: number;
+	/** Keyed on a variable name: the whole identifier must name a credential (isCredentialName). */
+	named?: true;
 }
 
 const NAME = String.raw`(?:priv(?:ate)?[_-]?key|secret|mnemonic|seed(?:[_-]?phrase)?|api[_-]?key|access[_-]?token|auth[_-]?token|password|passwd|pk)`;
@@ -77,6 +79,7 @@ const RULES: readonly Rule[] = [
 		severity: 'high',
 		pattern: new RegExp(String.raw`${NAME}\w*["']?\s*[:=]\s*["']?(0x[a-fA-F0-9]{64})\b`, 'gi'),
 		group: 1,
+		named: true,
 	},
 	{
 		kind: 'Seed phrase',
@@ -86,12 +89,14 @@ const RULES: readonly Rule[] = [
 			'gi',
 		),
 		group: 1,
+		named: true,
 	},
 	{
 		kind: 'Hardcoded credential',
 		severity: 'warn',
 		pattern: new RegExp(String.raw`${NAME}\w*["']?\s*[:=]\s*["']([^"'\s$\{]{16,})["']`, 'gi'),
 		group: 1,
+		named: true,
 	},
 ];
 
@@ -103,6 +108,58 @@ export function maskSecret(secret: string): string {
 
 function isPlaceholder(value: string): boolean {
 	return /^(?:x+|\*+|\.+|your[_-]|<|changeme|example|placeholder|test|dummy)/i.test(value);
+}
+
+/** A web address without credentials, or a file path: config, not a secret. */
+function isUrlOrPath(value: string): boolean {
+	return /^(?:https?:\/\/[^@\s]*$|\.{0,2}\/|~\/|[A-Za-z]:[\\/])/.test(value);
+}
+
+const CREDENTIAL_WORDS = new Set([
+	'secret',
+	'mnemonic',
+	'password',
+	'passwd',
+	'pk',
+	'privkey',
+	'privatekey',
+	'apikey',
+	'seedphrase',
+]);
+const CREDENTIAL_PAIRS = new Set([
+	'priv key',
+	'private key',
+	'api key',
+	'access token',
+	'auth token',
+]);
+
+/**
+ * Whether a whole identifier names a credential, judged by its words (snake, kebab or camel
+ * case), so `client_secret` and `walletPrivateKey` count but `pkg_index_url`, `secretary` and
+ * `seed_file` don't. A bare `seed` counts only as the last word (`wallet_seed`, `seed_phrase`).
+ */
+export function isCredentialName(identifier: string): boolean {
+	const words = identifier
+		.replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+		.toLowerCase()
+		.split(/[_-]+/)
+		.filter(Boolean);
+	return words.some((word, i) => {
+		const next = words[i + 1];
+		if (CREDENTIAL_WORDS.has(word)) return true;
+		if (next !== undefined && CREDENTIAL_PAIRS.has(`${word} ${next}`)) return true;
+		return word === 'seed' && (next === undefined || next === 'phrase');
+	});
+}
+
+/** The identifier around `offset`: letters, digits, `_` and `-` on both sides. */
+function identifierAt(text: string, offset: number): string {
+	let start = offset;
+	while (start > 0 && /[\w-]/.test(text[start - 1] ?? '')) start--;
+	let end = offset;
+	while (end < text.length && /[\w-]/.test(text[end] ?? '')) end++;
+	return text.slice(start, end);
 }
 
 export function scanText(text: string, path: string | null = null): SecretFinding[] {
@@ -128,7 +185,9 @@ export function scanText(text: string, path: string | null = null): SecretFindin
 			const end = start + secret.length;
 			// A specific rule already covered this span; don't report it twice.
 			if (taken.some(([a, b]) => start < b && end > a)) continue;
-			if (rule.severity === 'warn' && isPlaceholder(secret)) continue;
+			if (rule.named && !isCredentialName(identifierAt(text, match.index))) continue;
+			if (rule.severity === 'warn' && (isPlaceholder(secret) || isUrlOrPath(secret)))
+				continue;
 			taken.push([start, end]);
 			findings.push({
 				path,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isEnvFile, maskSecret, scanText, scanUnifiedDiff } from './secret-scan';
+import { isCredentialName, isEnvFile, maskSecret, scanText, scanUnifiedDiff } from './secret-scan';
 
 const kinds = (text: string): string[] => scanText(text).map((f) => f.kind);
 
@@ -46,6 +46,21 @@ describe('scanText', () => {
 		expect(kinds('api_key = os.environ["API_KEY"]')).toEqual([]);
 	});
 
+	it('ignores names that only contain a credential word', () => {
+		expect(kinds('pkg_index_url = "https://pypi.org/simple/extra"')).toEqual([]);
+		expect(kinds('secretary_email = "marto.assistant@example.org"')).toEqual([]);
+		expect(kinds('seed_file = "data/seeds/universe_2024.csv"')).toEqual([]);
+		expect(kinds('client_secret = "q8Jv2mR7tX4wZ9pL3nB6"')).toEqual(['Hardcoded credential']);
+		expect(kinds('walletPrivateKey = "q8Jv2mR7tX4wZ9pL3nB6"')).toEqual([
+			'Hardcoded credential',
+		]);
+	});
+
+	it('does not warn on URLs and paths assigned to credential names', () => {
+		expect(kinds('private_key_path = "C:/Users/marto/keys/id.pem"')).toEqual([]);
+		expect(kinds('secret_manager_url = "https://vault.example.com/v1"')).toEqual([]);
+	});
+
 	it('reports 1-based positions and never the raw value', () => {
 		const [f] = scanText(`a = 1\nk = "sk-ant-${'z'.repeat(30)}"`);
 		expect(f).toMatchObject({ line: 2, column: 6 });
@@ -67,6 +82,24 @@ describe('scanUnifiedDiff', () => {
 		const findings = scanUnifiedDiff(diff);
 		expect(findings).toHaveLength(1);
 		expect(findings[0]).toMatchObject({ path: 'bot.py', line: 2 });
+	});
+});
+
+describe('isCredentialName', () => {
+	it.each([
+		['PRIVATE_KEY', true],
+		['apiKey', true],
+		['api-key', true],
+		['AUTH_TOKEN', true],
+		['wallet_seed', true],
+		['seed_phrase', true],
+		['pk', true],
+		['pkg_name', false],
+		['secretary', false],
+		['seed_file', false],
+		['keyboard', false],
+	])('%s → %s', (name, expected) => {
+		expect(isCredentialName(name)).toBe(expected);
 	});
 });
 
