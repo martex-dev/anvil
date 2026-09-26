@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 
-import { EDITOR_FONTS, type EditorFontId, type Settings } from '@shared/settings';
+import { EDITOR_FONTS, editorFontFamily, type EditorFontId, type Settings } from '@shared/settings';
 
 import { Select } from '../../ui/Select';
 import { SettingRow } from './SettingRow';
@@ -31,6 +31,7 @@ export function EditorSettings({
 					options={EDITOR_FONTS.map((f) => ({
 						value: f.id,
 						label: f.ligatures ? f.name : `${f.name} (no ligatures)`,
+						fontFamily: editorFontFamily(f.id),
 					}))}
 					className='w-52'
 				/>

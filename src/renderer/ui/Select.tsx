@@ -9,6 +9,8 @@ export interface SelectOption {
 	value: string;
 	label: string;
 	disabled?: boolean;
+	/** Renders the label in this CSS font-family (a font picker previews each font). */
+	fontFamily?: string;
 }
 
 interface SelectProps {
@@ -75,7 +77,18 @@ export function Select({
 								<RadixSelect.ItemIndicator className='absolute left-1.5 text-accent'>
 									<Check size={12} />
 								</RadixSelect.ItemIndicator>
-								<RadixSelect.ItemText>{opt.label}</RadixSelect.ItemText>
+								<RadixSelect.ItemText>
+									{/* Inside ItemText so the trigger's copy keeps the face too. */}
+									<span
+										style={
+											opt.fontFamily
+												? { fontFamily: opt.fontFamily }
+												: undefined
+										}
+									>
+										{opt.label}
+									</span>
+								</RadixSelect.ItemText>
 							</RadixSelect.Item>
 						))}
 					</RadixSelect.Viewport>
