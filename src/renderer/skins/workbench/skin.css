@@ -1,0 +1,162 @@
+/*
+ * Workbench 95: base layer. Every 3D edge in the skin is two rings of 1px lines built from the
+ * palette's four bevel shades, so the look is defined once here as box-shadow recipes and the
+ * other sheets (panes.css, controls.css, chrome.css, overlays.css) just apply them.
+ */
+
+html[data-skin='workbench'] {
+	--r-sm: 0px;
+	--r-md: 0px;
+	--r-lg: 0px;
+	--r-xl: 0px;
+	--glass-blur: 0px;
+	--glow: 0 0 0 0 transparent;
+	--glow-soft: 0 0 0 0 transparent;
+	--shadow-panel: 0 0 0 0 transparent;
+	--shadow-float: 0 0 0 0 transparent;
+	--dur-fast: 0ms;
+	--dur-base: 0ms;
+
+	/* Raised: light top-left, dark bottom-right (buttons, windows). */
+	--wb-raised:
+		inset -1px -1px var(--skin-bevel-dark), inset 1px 1px var(--skin-bevel-light),
+		inset -2px -2px var(--skin-bevel-shadow), inset 2px 2px var(--skin-bevel-hi);
+	/* A window frame: the outer ring is hi, so a window reads softer than a button. */
+	--wb-window:
+		inset -1px -1px var(--skin-bevel-dark), inset 1px 1px var(--skin-bevel-hi),
+		inset -2px -2px var(--skin-bevel-shadow), inset 2px 2px var(--skin-bevel-light);
+	/* Sunken: fields, lists, the editor. */
+	--wb-sunken:
+		inset -1px -1px var(--skin-bevel-light), inset 1px 1px var(--skin-bevel-shadow),
+		inset -2px -2px var(--skin-bevel-hi), inset 2px 2px var(--skin-bevel-dark);
+	/* Pressed button: dark ring outside, shadow inside. */
+	--wb-pressed:
+		inset -1px -1px var(--skin-bevel-light), inset 1px 1px var(--skin-bevel-dark),
+		inset -2px -2px var(--skin-bevel-hi), inset 2px 2px var(--skin-bevel-shadow);
+	/* One-line bevels: status fields, flat toolbar buttons, separators. */
+	--wb-thin-raised:
+		inset -1px -1px var(--skin-bevel-shadow), inset 1px 1px var(--skin-bevel-light);
+	--wb-thin-sunken:
+		inset -1px -1px var(--skin-bevel-light), inset 1px 1px var(--skin-bevel-shadow);
+	/* The checkerboard of a toggled-on button or a scrollbar track. */
+	--wb-dither: repeating-conic-gradient(var(--skin-bevel-light) 0 25%, var(--skin-face) 0 50%) 0
+		0 / 2px 2px;
+	--wb-title: linear-gradient(90deg, var(--skin-title-a), var(--skin-title-b));
+	--wb-title-off: linear-gradient(90deg, var(--skin-title-off-a), var(--skin-title-off-b));
+}
+
+/* Effects off: flat title bars and no checkerboards. */
+html[data-skin='workbench'][data-fx='off'] {
+	--wb-dither: var(--skin-bevel-hi);
+	--wb-title: var(--skin-title-a);
+	--wb-title-off: var(--skin-title-off-a);
+}
+
+html[data-skin='workbench'] body {
+	background: var(--skin-face);
+	color: var(--text-0);
+	-webkit-font-smoothing: none;
+}
+
+html[data-skin='workbench'] ::selection {
+	background: var(--skin-select);
+	color: var(--skin-select-text);
+}
+
+/* The Win95 focus rectangle: a dotted line just inside the control. */
+html[data-skin='workbench'] :focus-visible {
+	outline: 1px dotted var(--text-0);
+	outline-offset: -4px;
+}
+html[data-skin='workbench'] input:focus-visible,
+html[data-skin='workbench'] textarea:focus-visible {
+	outline: none;
+}
+
+/* Content icons: square caps and hard pixel edges. */
+html[data-skin='workbench'] svg.lucide {
+	stroke-width: 2;
+	stroke-linecap: square;
+	stroke-linejoin: miter;
+	shape-rendering: crispEdges;
+}
+
+/* The mono uppercase HUD voice becomes a plain dialog label. */
+html[data-skin='workbench'] .hud {
+	font-family: var(--font-display);
+	font-size: 12px;
+	font-weight: 400;
+	letter-spacing: 0;
+	text-transform: none;
+	color: var(--text-1);
+}
+html[data-skin='workbench'] .text-gradient {
+	background: none;
+	color: var(--text-0);
+}
+html[data-skin='workbench'] .accent-line {
+	background: var(--accent);
+	box-shadow: none;
+}
+html[data-skin='workbench'] .neon {
+	text-shadow: none;
+}
+html[data-skin='workbench'] .shadow-glow,
+html[data-skin='workbench'] .shadow-glow-soft {
+	box-shadow: none;
+}
+
+/* ---- Scrollbars: grey arrows, a checkered track, a raised thumb ------------------------ */
+
+html[data-skin='workbench'] ::-webkit-scrollbar {
+	width: 16px;
+	height: 16px;
+}
+html[data-skin='workbench'] ::-webkit-scrollbar-track {
+	background: var(--wb-dither);
+}
+html[data-skin='workbench'] ::-webkit-scrollbar-corner {
+	background: var(--skin-face);
+}
+html[data-skin='workbench'] ::-webkit-scrollbar-thumb {
+	background: var(--skin-face);
+	border: 0;
+	border-radius: 0;
+	box-shadow: var(--wb-raised);
+}
+html[data-skin='workbench'] ::-webkit-scrollbar-thumb:hover {
+	background-color: var(--skin-face);
+}
+html[data-skin='workbench'] ::-webkit-scrollbar-button:single-button {
+	display: block;
+	width: 16px;
+	height: 16px;
+	background-color: var(--skin-face);
+	background-repeat: no-repeat;
+	box-shadow: var(--wb-raised);
+}
+html[data-skin='workbench'] ::-webkit-scrollbar-button:single-button:active {
+	box-shadow: var(--wb-thin-sunken);
+	background-position-x: 1px;
+}
+/* Arrow glyphs: a 7x4 triangle cut from a conic wedge. */
+html[data-skin='workbench'] ::-webkit-scrollbar-button:single-button:vertical:decrement {
+	background-image: conic-gradient(from 139deg at 50% 0, var(--text-0) 82deg, transparent 0);
+	background-size: 7px 4px;
+	background-position: 4px 6px;
+}
+html[data-skin='workbench'] ::-webkit-scrollbar-button:single-button:vertical:increment {
+	background-image: conic-gradient(from -41deg at 50% 100%, var(--text-0) 82deg, transparent 0);
+	background-size: 7px 4px;
+	background-position: 4px 6px;
+}
+html[data-skin='workbench'] ::-webkit-scrollbar-button:single-button:horizontal:decrement {
+	background-image: conic-gradient(from 49deg at 0 50%, var(--text-0) 82deg, transparent 0);
+	background-size: 4px 7px;
+	background-position: 6px 4px;
+}
+html[data-skin='workbench'] ::-webkit-scrollbar-button:single-button:horizontal:increment {
+	background-image: conic-gradient(from 229deg at 100% 50%, var(--text-0) 82deg, transparent 0);
+	background-size: 4px 7px;
+	background-position: 6px 4px;
+}
