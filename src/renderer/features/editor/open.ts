@@ -49,6 +49,17 @@ export async function openScratchTab(): Promise<void> {
 	}
 }
 
+/**
+ * Code files opened without taking focus (session restore, previews). The group's editor reads
+ * the mark once, when it swaps the file's model in.
+ */
+const quietOpens = new Set<string>();
+
+/** True (once) if `path` was opened without focus; clears the mark. */
+export function takeQuietOpen(path: string): boolean {
+	return quietOpens.delete(path);
+}
+
 export async function openPath(root: string, request: OpenFileRequest): Promise<void> {
 	if (isScratch(request.path)) return openScratchTab();
 	const kind: TabKind = request.as ?? kindForPath(request.path);
@@ -68,13 +79,24 @@ export async function openPath(root: string, request: OpenFileRequest): Promise<
 		tabs.open(tab, group === undefined ? {} : { group });
 		return;
 	}
-	useEditorStore
-		.getState()
-		.setReveal(
-			request.line
-				? { path: request.path, line: request.line, column: request.column ?? 1 }
-				: null,
-		);
+	const focus = request.focus ?? !request.preview;
+	const target = useTabsStore.getState().groups.find((g) => g.id === (group ?? tabs.focused));
+	const shown =
+		target?.active === tab.id &&
+		useEditorStore.getState().files.some((f) => f.path === request.path && f.state === 'ready');
+	// A file already on screen isn't swapped in again, so a mark for it would linger.
+	if (focus || shown) quietOpens.delete(request.path);
+	else quietOpens.add(request.path);
+	useEditorStore.getState().setReveal(
+		request.line
+			? {
+					path: request.path,
+					line: request.line,
+					column: request.column ?? 1,
+					focus,
+				}
+			: null,
+	);
 	tabs.open(tab, group === undefined ? {} : { group });
 	try {
 		const monaco = await loadMonaco(editorPrefs());
@@ -125,6 +147,7 @@ export function closeOtherTabs(group: number, keep: string): void {
 }
 
 export function closeAllTabs(): void {
+	quietOpens.clear();
 	for (const f of [...useEditorStore.getState().files]) closeFile(f.path);
 	useTabsStore.getState().reset();
 }

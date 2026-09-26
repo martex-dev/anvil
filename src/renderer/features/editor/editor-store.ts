@@ -48,6 +48,8 @@ export interface RevealRequest {
 	path: string;
 	line: number;
 	column: number;
+	/** Whether revealing also moves keyboard focus into the editor. */
+	focus: boolean;
 }
 
 interface EditorState {

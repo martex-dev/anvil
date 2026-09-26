@@ -134,6 +134,8 @@ export function EditorBridge(): null {
 									? t.kind
 									: undefined,
 							side: gi > 0 && useTabsStore.getState().groups.length === 1,
+							// Restoring must not pull focus from wherever you're already typing.
+							focus: false,
 						});
 					}
 					const group = useTabsStore.getState().groups[gi];

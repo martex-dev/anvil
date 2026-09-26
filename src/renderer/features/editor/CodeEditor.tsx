@@ -17,7 +17,7 @@ import { attachShield } from './extras/shield';
 import { attachSpotlight } from './extras/spotlight';
 import { getModel, getViewState, isScratch, saveViewState } from './file-ops';
 import { navHistory } from './nav-history';
-import { baseName } from './open';
+import { baseName, takeQuietOpen } from './open';
 
 interface CodeEditorProps {
 	monaco: MonacoApi;
@@ -186,7 +186,10 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 		if (model && next) {
 			const view = getViewState(next, group);
 			if (view) editor.restoreViewState(view);
-			if (visible) editor.focus();
+			// Only take focus for a user-initiated open in the group you're working in: session
+			// restore and previews must not pull keystrokes away from the terminal or a list.
+			const quiet = takeQuietOpen(next);
+			if (visible && !quiet && useTabsStore.getState().focused === group) editor.focus();
 		}
 	}, [path, ready, visible, group]);
 
@@ -198,7 +201,7 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 			return;
 		editor.setPosition({ lineNumber: reveal.line, column: reveal.column });
 		editor.revealLineInCenter(reveal.line);
-		editor.focus();
+		if (reveal.focus) editor.focus();
 		useEditorStore.getState().setReveal(null);
 	}, [reveal, path, visible, ready]);
 

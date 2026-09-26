@@ -11,6 +11,11 @@ export interface OpenFileRequest {
 	as?: 'code' | 'data' | 'markdown';
 	/** Open in the other editor group (split). */
 	side?: boolean;
+	/**
+	 * Move keyboard focus into the editor. Defaults to true, except for previews (single clicks
+	 * in a list keep focus in the list). Session restore passes false.
+	 */
+	focus?: boolean;
 }
 
 type OpenFileHandler = (request: OpenFileRequest) => void;
