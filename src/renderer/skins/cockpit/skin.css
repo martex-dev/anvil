@@ -104,11 +104,6 @@ html[data-skin='cockpit'] ::selection {
 	color: var(--on-accent);
 }
 
-html[data-skin='cockpit'] :focus-visible {
-	outline: 1px solid var(--accent);
-	outline-offset: -1px;
-}
-
 /* Lucide content icons: square caps and joins, a touch heavier, so they read like glyphs. */
 html[data-skin='cockpit'] svg.lucide {
 	stroke-width: 2.25;

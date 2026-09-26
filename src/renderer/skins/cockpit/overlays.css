@@ -1,0 +1,122 @@
+/*
+ * Cockpit: pickers, menus and dialogs. Solid slabs with a signal-colored rule; the highlighted
+ * row is an inverted bar and dialog titles sit in the same inverted header as the tiles.
+ */
+
+/* Layered so a widget's own "no outline" (text fields that show a caret) still wins. */
+@layer base {
+	html[data-skin='cockpit'] :focus-visible {
+		outline: 1px solid var(--accent);
+		outline-offset: -1px;
+	}
+}
+
+/* The scrim dims without blurring: a desk never goes out of focus. */
+html[data-skin='cockpit'] .bg-scrim {
+	backdrop-filter: none;
+}
+
+/* ---- Rows: menus, context menus, pickers --------------------------------------------------- */
+
+html[data-skin='cockpit'] [role='menuitem'][data-highlighted],
+html[data-skin='cockpit'] [cmdk-item][data-selected='true'] {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+html[data-skin='cockpit'] [role='menuitem'][data-highlighted] *,
+html[data-skin='cockpit'] [cmdk-item][data-selected='true'] :is(span, svg) {
+	color: var(--on-accent);
+}
+html[data-skin='cockpit'] [cmdk-item][data-selected='true'] kbd,
+html[data-skin='cockpit'] [role='menuitem'][data-highlighted] kbd {
+	border-color: var(--on-accent);
+	background: var(--accent);
+	color: var(--on-accent);
+}
+html[data-skin='cockpit'] [cmdk-item] {
+	height: 26px;
+}
+
+/* Group headings read as field labels over a rule. */
+html[data-skin='cockpit'] [cmdk-group-heading] {
+	margin-top: 4px;
+	border-top: 1px solid var(--border);
+	color: var(--skin-label);
+	font-family: var(--font-display);
+	font-weight: 700;
+	letter-spacing: var(--ck-caps);
+}
+html[data-skin='cockpit'] [cmdk-group]:first-child [cmdk-group-heading] {
+	margin-top: 0;
+	border-top: 0;
+}
+
+/* The picker's input row: a black command field with the signal-colored prompt. */
+html[data-skin='cockpit'] div:has(> [cmdk-input]) {
+	border-bottom-color: var(--accent);
+	background: var(--skin-tape);
+}
+html[data-skin='cockpit'] [cmdk-input] {
+	height: 36px;
+	font-family: var(--font-code);
+	font-size: 13px;
+	caret-color: var(--accent);
+}
+
+/* ---- Dialogs ------------------------------------------------------------------------------ */
+
+html[data-skin='cockpit'] [role='dialog'].glass-strong > div:first-child:not([cmdk-root]) {
+	align-items: center;
+	padding-block: 5px;
+	border-bottom: 0;
+	background: var(--skin-header);
+	color: var(--skin-on-header);
+}
+html[data-skin='cockpit'] [role='dialog'].glass-strong > div:first-child:not([cmdk-root]) h2 {
+	color: var(--skin-on-header);
+	font-family: var(--font-display);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: var(--ck-caps);
+	text-transform: uppercase;
+}
+html[data-skin='cockpit'] [role='dialog'].glass-strong > div:first-child:not([cmdk-root]) p {
+	margin-top: 0;
+	color: color-mix(in oklab, var(--skin-on-header) 75%, var(--skin-header));
+}
+html[data-skin='cockpit'] [role='dialog'].glass-strong > div:first-child:not([cmdk-root]) button {
+	color: var(--skin-on-header);
+}
+html[data-skin='cockpit']
+	[role='dialog'].glass-strong
+	> div:first-child:not([cmdk-root])
+	button:hover,
+html[data-skin='cockpit']
+	[role='dialog'].glass-strong
+	> div:first-child:not([cmdk-root])
+	button:focus-visible {
+	background: var(--skin-on-header);
+	color: var(--skin-header);
+	outline: none;
+}
+
+/* Switches become two-state keys: a square track with a square lamp. */
+html[data-skin='cockpit'] button[role='switch'] {
+	border-radius: 0;
+}
+html[data-skin='cockpit'] button[role='switch'] > span {
+	border-radius: 0;
+}
+html[data-skin='cockpit'] button[role='switch'][data-state='checked'] > span {
+	background: var(--up);
+}
+html[data-skin='cockpit'] button[role='switch'][data-state='checked'] {
+	border-color: var(--up);
+	background: color-mix(in oklab, var(--up) 18%, transparent);
+}
+
+/* Toasts carry their tone as a left bar already; keep the slab plain. */
+html[data-skin='cockpit'] [role='status'].glass-strong,
+html[data-skin='cockpit'] li.glass-strong {
+	border-color: var(--border-strong);
+}
