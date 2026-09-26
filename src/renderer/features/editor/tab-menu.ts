@@ -3,7 +3,7 @@ import { useTabsStore } from '../../stores/tabs-store';
 import type { MenuItem } from '../../ui/ContextMenu';
 import { isScratch } from './file-ops';
 import { closeOtherTabs, closeTab } from './open';
-import { revealInExplorer } from './tab-actions';
+import { copyPath, revealInExplorer } from './tab-actions';
 
 /** The right-click menu of a tab in `group`. File actions only for tabs backed by a real file. */
 export function tabMenuItems(tab: Tab, group: number): Array<MenuItem | 'separator'> {
@@ -22,10 +22,8 @@ export function tabMenuItems(tab: Tab, group: number): Array<MenuItem | 'separat
 	return [
 		...items,
 		'separator',
-		{
-			label: 'Copy Path',
-			onSelect: () => void navigator.clipboard.writeText(path),
-		},
+		{ label: 'Copy Path', onSelect: () => void copyPath(path, true) },
+		{ label: 'Copy Relative Path', onSelect: () => void copyPath(path, false) },
 		{ label: 'Reveal in Explorer View', onSelect: () => revealInExplorer(path) },
 	];
 }

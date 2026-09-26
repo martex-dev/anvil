@@ -2,9 +2,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useLayoutStore } from '../../stores/layout-store';
 import type { Tab } from '../../stores/tabs-store';
+import { useToastStore } from '../../stores/toast-store';
 import { useWorkbenchStore } from '../../stores/workbench-store';
 import type { MenuItem } from '../../ui/ContextMenu';
 
+const call = vi.fn((_channel: string, input: { path: string; absolute: boolean }) =>
+	Promise.resolve(input.absolute ? `C:\\proj\\${input.path.replace(/\//g, '\\')}` : input.path),
+);
+vi.mock('../../lib/ipc', () => ({
+	call: (channel: string, input: { path: string; absolute: boolean }) => call(channel, input),
+}));
+const writeText = vi.fn((_text: string) => Promise.resolve());
+vi.stubGlobal('navigator', { clipboard: { writeText: (text: string) => writeText(text) } });
 vi.mock('./open', () => ({ closeTab: vi.fn(), closeOtherTabs: vi.fn() }));
 vi.mock('./file-ops', () => ({
 	isScratch: (path: string | null | undefined) => path === '__scratch__',
@@ -52,5 +61,28 @@ describe('tab context menu', () => {
 			expect(item(tab, 'Reveal in Explorer View')).toBeUndefined();
 			expect(item(tab, 'Copy Path')).toBeUndefined();
 		}
+	});
+
+	it('copies the absolute or relative path and confirms it', async () => {
+		const tab = code('src/bot.py');
+		item(tab, 'Copy Path')?.onSelect();
+		await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith('C:\\proj\\src\\bot.py'));
+		item(tab, 'Copy Relative Path')?.onSelect();
+		await vi.waitFor(() => expect(writeText).toHaveBeenLastCalledWith('src/bot.py'));
+		expect(useToastStore.getState().toasts.at(-1)).toMatchObject({
+			tone: 'success',
+			title: 'Path copied',
+		});
+	});
+
+	it('reports a failed copy instead of dropping it', async () => {
+		writeText.mockRejectedValueOnce(new Error('Clipboard blocked'));
+		item(code('src/bot.py'), 'Copy Path')?.onSelect();
+		await vi.waitFor(() =>
+			expect(useToastStore.getState().toasts.at(-1)).toMatchObject({
+				tone: 'error',
+				description: 'Clipboard blocked',
+			}),
+		);
 	});
 });
