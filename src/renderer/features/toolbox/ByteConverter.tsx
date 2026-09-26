@@ -6,7 +6,7 @@ import { Field } from './Field';
 import { attempt } from './format';
 import { Segmented } from './Segmented';
 import { ToolError } from './ToolError';
-import { base58ToHex, hexToBase58 } from './tools';
+import { convertBytes } from './tools';
 
 type Target = 'hex' | 'base58';
 
@@ -22,15 +22,9 @@ export function ByteConverter(): JSX.Element {
 
 	const result = useMemo(() => {
 		if (input.trim() === '') return null;
-		return attempt(() => (target === 'hex' ? base58ToHex(input) : hexToBase58(input)));
+		return attempt(() => convertBytes(input, target));
 	}, [input, target]);
-
-	const hex = result?.ok
-		? target === 'hex'
-			? result.value
-			: input.replace(/\s+|^0x/gi, '')
-		: '';
-	const bytes = hex.length / 2;
+	const bytes = result?.ok ? result.value.bytes : 0;
 
 	return (
 		<div className='flex flex-col gap-2'>
@@ -60,7 +54,7 @@ export function ByteConverter(): JSX.Element {
 							{bytes} byte{bytes === 1 ? '' : 's'}
 						</span>
 					</span>
-					<CodeBlock value={result.value} label='converted bytes' />
+					<CodeBlock value={result.value.text} label='converted bytes' />
 				</div>
 			)}
 		</div>

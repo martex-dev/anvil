@@ -1,6 +1,13 @@
 import { base64UrlToBytes, bytesToHex, utf8Decode, utf8Encode } from './encoding';
 
-export { base58ToHex, decode, encode, type EncodingKind, hexToBase58 } from './encoding';
+export {
+	base58ToHex,
+	convertBytes,
+	decode,
+	encode,
+	type EncodingKind,
+	hexToBase58,
+} from './encoding';
 export { convertTimestamp, type TimestampInfo, type TimestampUnit } from './time';
 export {
 	convertUnits,

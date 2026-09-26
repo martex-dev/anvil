@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	base58ToHex,
 	compoundGrowth,
+	convertBytes,
 	convertTimestamp,
 	convertUnits,
 	decode,
@@ -163,6 +164,12 @@ describe('encode / decode', () => {
 });
 
 describe('base58 bytes', () => {
+	it('counts bytes from the decoded input, even with whitespace before 0x', () => {
+		expect(convertBytes(' 0xabcd', 'base58').bytes).toBe(2);
+		expect(convertBytes('0x ab cd', 'base58')).toEqual(convertBytes('abcd', 'base58'));
+		expect(convertBytes('1'.repeat(32), 'hex')).toEqual({ text: '00'.repeat(32), bytes: 32 });
+	});
+
 	it('maps the Solana System Program address to 32 zero bytes', () => {
 		const system = '1'.repeat(32);
 		expect(base58ToHex(system)).toBe('00'.repeat(32));
