@@ -1,0 +1,73 @@
+/*
+ * Zen Paper welcome: a title page. The wordmark is set in italic display type under an ivy
+ * leaf; feature cards lose their boxes and become short entries under hairline rules.
+ * The shared page has no hooks, so these rules lean on its structure, scoped to the editor.
+ */
+
+html[data-skin='zen'] [data-part='editor-surface'] .max-w-5xl > header > .size-20 {
+	background: var(--accent);
+	mask: var(--zn-fleuron) center / 58% no-repeat;
+}
+html[data-skin='zen'] [data-part='editor-surface'] .max-w-5xl > header > .size-20 > span {
+	display: none;
+}
+html[data-skin='zen'] [data-part='editor-surface'] .max-w-5xl > header h1 {
+	font-family: var(--font-display);
+	font-style: italic;
+	font-size: 72px;
+	font-weight: 400;
+	letter-spacing: 0;
+	color: var(--text-0);
+}
+html[data-skin='zen'] [data-part='editor-surface'] .max-w-5xl > header h1::first-letter {
+	color: var(--accent);
+}
+html[data-skin='zen'] [data-part='editor-surface'] .max-w-5xl > header p:first-of-type {
+	font-size: 16px;
+	font-style: italic;
+}
+
+/* The key notice: a note in the margin, not a banner. */
+html[data-skin='zen'] [data-part='editor-surface'] .max-w-5xl > .bg-warn-soft,
+html[data-skin='zen'] [data-part='editor-surface'] .max-w-5xl > * > .bg-warn-soft {
+	border: 0;
+	border-left: 1px solid var(--warn);
+	border-radius: 0;
+	background: none;
+	font-style: italic;
+}
+
+/* Feature cards: entries under a rule, the glow orbs gone. */
+html[data-skin='zen'] [data-part='editor-surface'] .max-w-5xl .rounded-xl.border {
+	border: 0;
+	border-top: 1px solid var(--zn-rule-soft);
+	border-radius: 0;
+	background: none;
+	padding-inline: 0;
+}
+html[data-skin='zen'] [data-part='editor-surface'] .max-w-5xl .rounded-xl.border:hover {
+	border-top-color: var(--accent);
+}
+html[data-skin='zen'] [data-part='editor-surface'] .max-w-5xl .blur-2xl {
+	display: none;
+}
+html[data-skin='zen'] [data-part='editor-surface'] .max-w-5xl h3 {
+	font-family: var(--font-display);
+	font-style: italic;
+	font-size: 19px;
+	font-weight: 400;
+}
+
+/* Start actions: hairline-ruled lines, no filled boxes. */
+html[data-skin='zen'] [data-part='editor-surface'] .max-w-5xl .rounded-lg.border {
+	border: 0;
+	border-bottom: 1px solid var(--zn-rule-soft);
+	border-radius: 0;
+	background: none;
+	box-shadow: none;
+	padding-inline: 2px;
+}
+html[data-skin='zen'] [data-part='editor-surface'] .max-w-5xl .rounded-lg.border:hover {
+	border-bottom-color: var(--accent);
+	background: none;
+}
