@@ -58,18 +58,13 @@ let session: Session | null = null;
 
 const ZONE_HEIGHT = 56;
 
-function teardown(): void {
+/** `editorGone`: the editor was disposed, so only state and the request are cleaned up. */
+function teardown(editorGone = false): void {
 	if (!session) return;
 	const s = session;
 	session = null;
 	s.abort?.abort();
 	for (const d of s.disposables) d.dispose();
-	s.decorations.clear();
-	s.tracker.clear();
-	s.editor.changeViewZones((a) => {
-		if (s.zoneId) a.removeZone(s.zoneId);
-	});
-	s.editor.removeOverlayWidget(s.widget);
 	useInlineEdit.setState({
 		phase: null,
 		host: null,
@@ -78,6 +73,13 @@ function teardown(): void {
 		stats: null,
 		preset: '',
 	});
+	if (editorGone) return;
+	s.decorations.clear();
+	s.tracker.clear();
+	s.editor.changeViewZones((a) => {
+		if (s.zoneId) a.removeZone(s.zoneId);
+	});
+	s.editor.removeOverlayWidget(s.widget);
 	s.editor.focus();
 }
 
@@ -161,6 +163,9 @@ export function startInlineEdit(preset = ''): void {
 	}
 	session.disposables.push(
 		editor.onDidChangeModel(() => teardown()),
+		// Closing the split must stop the request too, or it keeps spending tokens.
+		editor.onDidDispose(() => teardown(true)),
+		model.onWillDispose(() => teardown()),
 		model.onDidChangeContent(() => {
 			// Typing elsewhere while reviewing means "keep it".
 			if (session && !session.ownEdit && useInlineEdit.getState().phase === 'review')
