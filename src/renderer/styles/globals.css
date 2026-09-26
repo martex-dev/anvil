@@ -352,6 +352,15 @@ html[data-reduce-motion='true'] .ambient::before {
 html[data-ambient='false'] .ambient::before {
 	display: none;
 }
+/* Loading placeholders keep their static sheen but stop sweeping when motion is reduced. */
+html[data-reduce-motion='true'] .shimmer {
+	animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+	.shimmer {
+		animation: none;
+	}
+}
 
 @keyframes grid-drift {
 	from {
