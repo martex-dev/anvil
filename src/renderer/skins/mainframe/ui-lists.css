@@ -1,0 +1,149 @@
+/*
+ * Mainframe: lists and pane contents. The file tree reads like `ls -F` with `[+]` folds, the
+ * selected row is a reverse-video cursor bar, file-type badges are plain colored text.
+ */
+
+/* Anything on an accent block loses the phosphor bloom: dark text on light glow smears. */
+html[data-skin='mainframe']
+	:is(
+		.mf-rev,
+		.mf-brand,
+		.mf-fkey-n,
+		[data-active='true'],
+		[aria-selected='true'],
+		[data-selected='true'],
+		[data-highlighted],
+		[data-state='open'],
+		.bg-accent
+	) {
+	text-shadow: none;
+}
+
+/* ---- File tree ------------------------------------------------------------------------ */
+
+html[data-skin='mainframe'] [role='treeitem'] {
+	font-size: 14px;
+}
+html[data-skin='mainframe'] [role='treeitem'] > svg.lucide:first-of-type,
+html[data-skin='mainframe'] [role='treeitem'] > span.accent-line,
+html[data-skin='mainframe'] [role='treeitem'][aria-expanded] > span.w-7 {
+	display: none;
+}
+html[data-skin='mainframe'] [role='treeitem'][aria-expanded]::before {
+	width: 1.75rem;
+	flex-shrink: 0;
+	color: var(--text-2);
+	content: '[+]';
+}
+html[data-skin='mainframe'] [role='treeitem'][aria-expanded='true']::before {
+	content: '[-]';
+}
+html[data-skin='mainframe'] [role='treeitem'][aria-expanded] > span.truncate::after {
+	content: '/';
+	color: var(--text-2);
+}
+html[data-skin='mainframe'] [role='treeitem'][aria-selected='true'] {
+	background: var(--bg-3);
+}
+html[data-skin='mainframe'] [role='tree']:focus-within [role='treeitem'][aria-selected='true'],
+html[data-skin='mainframe']
+	[role='tree']:focus-within
+	[role='treeitem'][aria-selected='true']::before,
+html[data-skin='mainframe']
+	[role='tree']:focus-within
+	[role='treeitem'][aria-selected='true']
+	> span.truncate::after {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+html[data-skin='mainframe']
+	[role='tree']:focus-within
+	[role='treeitem'][aria-selected='true']
+	span {
+	color: var(--on-accent) !important;
+}
+
+/* File-type badges: colored text, no chip. */
+html[data-skin='mainframe'] span[class*='text-[8.5px]'] {
+	min-width: 3ch;
+	height: auto;
+	padding: 0;
+	justify-content: flex-start;
+	background: none !important;
+	box-shadow: none !important;
+	font-family: var(--font-ui);
+	font-size: 12px;
+	font-weight: 400;
+	letter-spacing: 0;
+}
+
+/* ---- Chat pane: `[ ASSISTANT ]─<claude-opus-5>──────[+]` ------------------------------ */
+
+html[data-skin='mainframe'] [data-part='chat'] header > svg {
+	display: none;
+}
+html[data-skin='mainframe'] [data-part='chat'] header > .hud {
+	padding: 0 4px;
+	color: var(--text-0);
+	font-size: 14px;
+}
+html[data-skin='mainframe'] [data-part='chat'] header > .hud::before {
+	content: '[ ';
+	color: var(--text-1);
+}
+html[data-skin='mainframe'] [data-part='chat'] header > .hud::after {
+	content: ' ]';
+	color: var(--text-1);
+}
+html[data-skin='mainframe'] [data-part='chat']:focus-within header > .hud,
+html[data-skin='mainframe'] [data-part='chat']:focus-within header > .hud::before,
+html[data-skin='mainframe'] [data-part='chat']:focus-within header > .hud::after {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+html[data-skin='mainframe'] [data-part='chat'] header > button:not([aria-label]) {
+	height: 100%;
+	margin-left: 8px;
+	padding: 0 4px;
+	border: 0;
+	font-family: var(--font-ui);
+	font-size: 14px;
+}
+html[data-skin='mainframe'] [data-part='chat'] header > button:not([aria-label])::before {
+	content: '<';
+	color: var(--text-2);
+}
+html[data-skin='mainframe'] [data-part='chat'] header > button:not([aria-label])::after {
+	content: '>';
+	color: var(--text-2);
+}
+html[data-skin='mainframe'] [data-part='chat'] header > button:not([aria-label]) > svg {
+	display: none;
+}
+
+/* Spacers inside header rows let the rule show through. */
+html[data-skin='mainframe'] [data-part='pane-header'] .flex-1:empty,
+html[data-skin='mainframe'] [data-part='chat'] header > .flex-1:empty {
+	background: transparent;
+}
+
+/* Icon buttons in header rows: a bracketed cell. */
+html[data-skin='mainframe']
+	:is([data-part='pane-header'], [data-part='chat'] header, [data-part='tabbar'] > div:last-child)
+	button[aria-label]:not([data-part]) {
+	width: auto;
+	min-width: 20px;
+	height: 100%;
+	padding: 0 2px;
+}
+html[data-skin='mainframe']
+	:is([data-part='pane-header'], [data-part='chat'] header, [data-part='tabbar'] > div:last-child)
+	button[aria-label]:not([data-part]):hover {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+
+/* The empty-state art: a plain glyph box, no blurred halo. */
+html[data-skin='mainframe'] .blur-xl {
+	display: none;
+}
