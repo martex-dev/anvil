@@ -122,6 +122,8 @@ export function attachGitLines(
 					model.getLineMaxColumn(line),
 				),
 				options: {
+					// Empty range at the end of the line: Monaco drops injected text without this.
+					showIfCollapsed: true,
 					after: { content: text, inlineClassName: 'anvil-blame-text' },
 					hoverMessage: {
 						value: `**${info.hash.slice(0, 8)}** ${info.author}\n\n${info.summary}`,

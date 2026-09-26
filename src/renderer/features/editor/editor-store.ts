@@ -15,6 +15,12 @@ export interface OpenFile {
 	changedOnDisk: boolean;
 }
 
+/** Words in a selection for the status bar; huge selections (Ctrl+A on a dump) aren't counted. */
+export function countWords(text: string): number {
+	if (!text || text.length > 500_000) return 0;
+	return text.match(/[\p{L}\p{N}_]+/gu)?.length ?? 0;
+}
+
 export interface CursorInfo {
 	line: number;
 	column: number;
@@ -22,6 +28,8 @@ export interface CursorInfo {
 	eol: 'LF' | 'CRLF';
 	/** Characters selected (0 when the selection is empty). */
 	selected: number;
+	selectedLines: number;
+	selectedWords: number;
 	lines: number;
 	tabSize: number;
 	insertSpaces: boolean;
