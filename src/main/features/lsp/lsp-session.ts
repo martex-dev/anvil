@@ -27,6 +27,8 @@ export class LspSession {
 			cwd,
 			env: launch.env,
 			windowsHide: true,
+			// Own process group on POSIX, so killTree can take down the server's workers too.
+			detached: process.platform !== 'win32',
 		});
 		this.child.stdout.on('data', (chunk: Buffer) => {
 			try {
