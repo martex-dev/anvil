@@ -36,6 +36,40 @@ export function resolveRelative(fromFile: string, href: string): string | null {
 	return parts.length > 0 ? parts.join('/') : null;
 }
 
+/**
+ * Finds the workspace file an Obsidian-style `[[target]]` points to, among `files` (every
+ * workspace-relative path). Tries the target next to the document, then from the root, then
+ * anywhere in the workspace (Obsidian links by unique name), each with and without `.md`.
+ * Matching is case-insensitive like Obsidian's; the shortest matching path wins.
+ */
+export function resolveWikilink(
+	fromFile: string,
+	target: string,
+	files: readonly string[],
+): string | null {
+	const clean = target.trim().replace(/\\/g, '/');
+	if (!clean || clean.startsWith('#')) return null;
+	const names = /\.[a-z\d]+$/i.test(clean) ? [clean, `${clean}.md`] : [`${clean}.md`, clean];
+	const byLower = new Map<string, string>();
+	for (const file of files) {
+		const key = file.toLowerCase();
+		if (!byLower.has(key)) byLower.set(key, file);
+	}
+	for (const name of names) {
+		for (const candidate of [resolveRelative(fromFile, name), resolveRelative('', name)]) {
+			const hit = candidate === null ? undefined : byLower.get(candidate.toLowerCase());
+			if (hit) return hit;
+		}
+	}
+	for (const name of names) {
+		const suffix = `/${name.replace(/^\/+/, '').toLowerCase()}`;
+		const hits = files.filter((file) => `/${file.toLowerCase()}`.endsWith(suffix));
+		hits.sort((a, b) => a.length - b.length || a.localeCompare(b));
+		if (hits[0]) return hits[0];
+	}
+	return null;
+}
+
 const UNITS = ['B', 'KB', 'MB', 'GB'] as const;
 
 export function formatBytes(bytes: number): string {

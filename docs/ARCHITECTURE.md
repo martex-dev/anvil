@@ -37,17 +37,17 @@ Main → renderer events (`fs:changed`, `ai:delta`, `terminal:data`…) are vali
 
 Each feature is a `MainFeature { id, activate(ctx) }`. The context gives it IPC registration, events, namespaced settings, secret _reads_ (main only), the workspace root and a private `userData/features/<id>` folder. Features don't import each other, with one deliberate exception: `python/interpreter.ts` is the shared "which Python" state that the terminal, LSP and data features all follow.
 
-| Feature              | What it does                                                                                                                                                                                          |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ai`                 | Streams chat and inline-edit replies (SSE) from Anthropic, OpenAI, Gemini or Ollama. Ghost text is a separate one-shot request. Claude requests use prompt caching and server-side refusal fallbacks. |
-| `lsp`                | Spawns basedpyright / typescript-language-server with Electron's own Node and relays JSON-RPC over IPC. Python's server gets the selected interpreter's environment.                                  |
-| `terminal`           | node-pty sessions with a scrollback backlog, so a reloaded window reattaches. Fixed presets only: the renderer never supplies a command line to spawn.                                                |
-| `python`             | Finds interpreters (venv/uv/conda/system), lists packages, checks tools, formats with ruff, stages REPL cells, builds run commands.                                                                   |
-| `data`               | Parses CSV/TSV/JSON(L) in Node. Parquet/Feather/Excel go through the user's Python (polars, then pandas). Results are cached; filter, sort, pages and column stats are served from the cache.         |
-| `git`                | simple-git with an allowlisted environment: status, diff, stage, commit, branches, log, blame, HEAD content for gutter markers, and a secret scan of what's staged.                                   |
-| `history`            | A snapshot on every save (deduplicated, 50 per file, 30 days), used by the History view.                                                                                                              |
-| `search`             | ripgrep: content search, plus the gitignore-aware file list for Quick Open.                                                                                                                           |
-| `tasks`, `templates` | Detected runnable tasks, and the "new project" template writer.                                                                                                                                       |
+| Feature              | What it does                                                                                                                                                                                                       |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ai`                 | Streams chat and inline-edit replies (SSE) from Anthropic, OpenAI, Gemini or Ollama. Ghost text is a separate one-shot request. Claude requests use prompt caching and server-side refusal fallbacks.              |
+| `lsp`                | Spawns basedpyright / typescript-language-server with Electron's own Node and relays JSON-RPC over IPC. Python's server gets the selected interpreter's environment.                                               |
+| `terminal`           | node-pty sessions with a scrollback backlog, so a reloaded window reattaches. Fixed presets only: the renderer never supplies a command line to spawn.                                                             |
+| `python`             | Finds interpreters (venv/uv/conda/system), lists packages, checks tools, formats with ruff, stages REPL cells, builds run commands.                                                                                |
+| `data`               | Parses CSV/TSV/JSON(L) in a worker thread (ADR-015). Parquet/Feather/Excel go through the user's Python (polars, then pandas). Results are cached; filter, sort, pages and column stats are served from the cache. |
+| `git`                | simple-git with an allowlisted environment: status, diff, stage, commit, branches, log, blame, HEAD content for gutter markers, and a secret scan of what's staged.                                                |
+| `history`            | A snapshot on every save (deduplicated, 50 per file, 30 days), used by the History view.                                                                                                                           |
+| `search`             | ripgrep: content search, plus the gitignore-aware file list for Quick Open.                                                                                                                                        |
+| `tasks`, `templates` | Detected runnable tasks, and the "new project" template writer.                                                                                                                                                    |
 
 ## The renderer
 

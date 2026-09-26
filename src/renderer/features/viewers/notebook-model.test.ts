@@ -129,6 +129,27 @@ describe('parseNotebook', () => {
 		]);
 	});
 
+	it('resolves progress-bar carriage returns across stream chunks', () => {
+		const parsed = parseNotebook(
+			nb([
+				{
+					cell_type: 'code',
+					source: '',
+					outputs: [
+						{ output_type: 'stream', name: 'stderr', text: '\r 10%|#' },
+						{ output_type: 'stream', name: 'stderr', text: '\r 50%|###' },
+						{ output_type: 'stream', name: 'stderr', text: '\r100%|#####\n' },
+						{ output_type: 'stream', name: 'stdout', text: 'done\n' },
+					],
+				},
+			]),
+		);
+		expect(parsed.cells[0]?.outputs).toEqual([
+			{ kind: 'stream', name: 'stderr', text: '100%|#####\n' },
+			{ kind: 'stream', name: 'stdout', text: 'done\n' },
+		]);
+	});
+
 	it('skips malformed cells and rejects non-notebooks', () => {
 		expect(
 			parseNotebook(nb([null, { cell_type: 'weird' }, { cell_type: 'raw' }])).cells,
@@ -187,5 +208,12 @@ describe('scriptFileName', () => {
 				new Set(['train.py', 'train_cells.py', 'train_cells2.py']),
 			),
 		).toBe('train_cells3.py');
+	});
+
+	it("uses the notebook language's script extension", () => {
+		expect(scriptFileName('fit.ipynb', new Set(), 'r')).toBe('fit.R');
+		expect(scriptFileName('fit.ipynb', new Set(['fit.r']), 'R')).toBe('fit_cells.R');
+		expect(scriptFileName('sim.ipynb', new Set(), 'julia')).toBe('sim.jl');
+		expect(scriptFileName('x.ipynb', new Set(), 'unknown')).toBe('x.py');
 	});
 });

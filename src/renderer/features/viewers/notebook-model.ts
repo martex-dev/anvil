@@ -104,7 +104,9 @@ function parseOutput(raw: unknown): NotebookOutput | null {
 			return {
 				kind: 'stream',
 				name: raw['name'] === 'stderr' ? 'stderr' : 'stdout',
-				text: applyCarriageReturns(stripAnsi(joinSource(raw['text']))),
+				// Carriage returns are resolved after merging (mergeStreams): a progress bar's
+				// frames are often split across chunks, and one chunk alone can't be resolved.
+				text: stripAnsi(joinSource(raw['text'])),
 			};
 		case 'execute_result':
 		case 'display_data':
@@ -125,8 +127,11 @@ function parseOutput(raw: unknown): NotebookOutput | null {
 	}
 }
 
-/** Jupyter splits one print loop into many stream chunks; merge neighbours of the same name. */
-function mergeStreams(outputs: NotebookOutput[]): NotebookOutput[] {
+/**
+ * Jupyter splits one print loop into many stream chunks; merge neighbours of the same name, then
+ * resolve carriage returns over the whole merged text so tqdm bars show only their final frame.
+ */
+function mergeStreams(outputs: readonly NotebookOutput[]): NotebookOutput[] {
 	const merged: NotebookOutput[] = [];
 	for (const output of outputs) {
 		const prev = merged[merged.length - 1];
@@ -136,7 +141,9 @@ function mergeStreams(outputs: NotebookOutput[]): NotebookOutput[] {
 			merged.push(output);
 		}
 	}
-	return merged;
+	return merged.map((output) =>
+		output.kind === 'stream' ? { ...output, text: applyCarriageReturns(output.text) } : output,
+	);
 }
 
 function parseCell(raw: unknown, index: number): NotebookCell | null {
@@ -226,16 +233,36 @@ export function notebookToScript(notebook: Pick<Notebook, 'cells'>): string {
 	return `${blocks.join('\n\n')}\n`;
 }
 
-/** `<name>.py`, else `<name>_cells.py`, `<name>_cells2.py`… — never overwrites an existing file. */
-export function scriptFileName(notebookName: string, existing: ReadonlySet<string>): string {
+// Languages whose line comment is '#', so the percent format's "# %%" markers stay valid code.
+const SCRIPT_EXTENSIONS: Readonly<Record<string, string>> = {
+	python: '.py',
+	r: '.R',
+	julia: '.jl',
+};
+
+/** The script extension for a notebook's language; Python when the language is unknown. */
+export function scriptExtension(language: string): string {
+	return SCRIPT_EXTENSIONS[language.toLowerCase()] ?? '.py';
+}
+
+/**
+ * `<name><ext>`, else `<name>_cells<ext>`, `<name>_cells2<ext>`… (ext from the notebook's
+ * language, `.py` by default) — never overwrites an existing file.
+ */
+export function scriptFileName(
+	notebookName: string,
+	existing: ReadonlySet<string>,
+	language = 'python',
+): string {
 	const base = notebookName.replace(/\.ipynb$/i, '');
+	const ext = scriptExtension(language);
 	// Windows file names are case-insensitive: "Model.py" blocks "model.py".
 	const lower = new Set([...existing].map((name) => name.toLowerCase()));
 	const taken = (name: string): boolean => lower.has(name.toLowerCase());
-	if (!taken(`${base}.py`)) return `${base}.py`;
-	if (!taken(`${base}_cells.py`)) return `${base}_cells.py`;
+	if (!taken(`${base}${ext}`)) return `${base}${ext}`;
+	if (!taken(`${base}_cells${ext}`)) return `${base}_cells${ext}`;
 	for (let n = 2; ; n++) {
-		const name = `${base}_cells${n}.py`;
+		const name = `${base}_cells${n}${ext}`;
 		if (!taken(name)) return name;
 	}
 }

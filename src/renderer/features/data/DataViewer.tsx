@@ -1,61 +1,44 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { SearchX, Table2 } from 'lucide-react';
-import { type JSX, useEffect, useMemo, useRef, useState } from 'react';
+import { type JSX, type KeyboardEvent, useEffect, useMemo, useRef } from 'react';
 
+import { getCommands, runCommand } from '../../app/commands/run';
 import { cn } from '../../lib/cn';
-import { call } from '../../lib/ipc';
+import { call, IpcCallError } from '../../lib/ipc';
+import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { toast } from '../../stores/toast-store';
 import { requestOpenFile } from '../../stores/workbench-store';
 import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
 import { ErrorState } from '../../ui/ErrorState';
-import { Kbd } from '../../ui/Kbd';
 import { Spinner } from '../../ui/Spinner';
 import { ColumnProfile } from './ColumnProfile';
+import { registerDataViewer } from './data-actions';
+import { fileName, initialColumnWidth, isTextFormat, nextSort } from './data-format';
 import {
-	fileName,
-	formatCount,
-	nextSort,
-	PAGE_SIZE,
-	type SortState,
-	toDelimited,
-} from './data-format';
+	changeFilter,
+	type DataViewPatch,
+	DEFAULT_VIEW,
+	useDataViewStore,
+} from './data-view-store';
 import { DataGrid } from './DataGrid';
+import { DataStatusBar } from './DataStatusBar';
 import { DataToolbar } from './DataToolbar';
-import { type CellRange, type GridSelection, rangeSize, selectionRange } from './grid-selection';
-import { fetchRows, useDataMeta } from './use-data-pages';
+import { type GridSelection, selectionRange } from './grid-selection';
+import { useDataMeta } from './use-data-pages';
+import { useTableCopy } from './use-table-copy';
 
-/** Clipboard exports beyond this would stall the UI and rarely paste anywhere useful. */
-const MAX_COPY_ROWS = 50_000;
+/** Errors an interpreter change can fix: none selected, or one without the needed packages. */
+const PYTHON_ERRORS = new Set(['DATA_NO_PYTHON', 'DATA_PYTHON_FAILED']);
 
 export function DataViewer({ path }: { path: string }): JSX.Element {
 	const client = useQueryClient();
-	const [filterInput, setFilterInput] = useState('');
-	const [filter, setFilter] = useState('');
-	const [sort, setSort] = useState<SortState | null>(null);
-	const [selection, setSelection] = useState<GridSelection | null>(null);
-	const [profileColumn, setProfileColumn] = useState<number | null>(null);
-	const [profileOpen, setProfileOpen] = useState(true);
-	const firstRowRef = useRef(0);
-	const [shownPath, setShownPath] = useState(path);
-
-	// A reused preview tab can switch files under us; view state belongs to the old file.
-	if (shownPath !== path) {
-		setShownPath(path);
-		setFilterInput('');
-		setFilter('');
-		setSort(null);
-		setSelection(null);
-		setProfileColumn(null);
-	}
-
-	useEffect(() => {
-		const timer = setTimeout(() => {
-			setFilter(filterInput);
-			setSelection(null);
-		}, 250);
-		return () => clearTimeout(timer);
-	}, [filterInput]);
+	const view = useDataViewStore((s) => s.views[path]) ?? DEFAULT_VIEW;
+	const { filterInput, filter, sort, selection, profileColumn, profileOpen } = view;
+	const update = (patch: DataViewPatch): void => useDataViewStore.getState().update(path, patch);
+	const visibleRowsRef = useRef({ top: 0, bottom: 0 });
+	const profileToggleRef = useRef<HTMLButtonElement>(null);
+	const filterRef = useRef<HTMLInputElement>(null);
 
 	const params = useMemo(() => ({ path, filter, sort }), [path, filter, sort]);
 	const meta = useDataMeta(params);
@@ -65,62 +48,111 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 		() => `${path}\u0000${columns.map((c) => c.name).join('\u0000')}`,
 		[path, columns],
 	);
+	// Widths set on this exact column set survive tab switches; a new schema starts afresh.
+	const savedWidths = view.widths;
+	const widths = useMemo(
+		() => (savedWidths?.key === gridKey ? savedWidths.values : columns.map(initialColumnWidth)),
+		[savedWidths, gridKey, columns],
+	);
+
+	const { copying, copy } = useTableCopy(params, columns);
 
 	const changeSelection = (next: GridSelection | null): void => {
-		setSelection(next);
-		if (next) setProfileColumn(next.focus.col);
-	};
-
-	const copyRange = async (
-		range: CellRange,
-		sep: ',' | '\t',
-		withHeader: boolean,
-	): Promise<void> => {
-		const bottom = Math.min(range.bottom, range.top + MAX_COPY_ROWS - 1);
-		try {
-			const rows = await fetchRows(client, params, range.top, bottom);
-			const body = rows.map((row) => row.slice(range.left, range.right + 1));
-			const header = columns.slice(range.left, range.right + 1).map((c) => c.name);
-			await navigator.clipboard.writeText(
-				toDelimited(withHeader ? [header, ...body] : body, sep),
-			);
-			const what = `${formatCount(body.length)} × ${formatCount(range.right - range.left + 1)}`;
-			if (bottom < range.bottom) {
-				toast.warn(`Copied the first ${formatCount(MAX_COPY_ROWS)} rows`, `${what} cells`);
-			} else {
-				toast.success(sep === ',' ? 'Copied as CSV' : 'Copied', `${what} cells`);
-			}
-		} catch (err) {
-			toast.error('Copy failed', err instanceof Error ? err.message : String(err));
-		}
+		update(next ? { selection: next, profileColumn: next.focus.col } : { selection: null });
 	};
 
 	const copyCsv = (): void => {
 		if (!data || data.totalRows === 0) return;
 		if (selection) {
-			void copyRange(selectionRange(selection), ',', true);
+			copy(selectionRange(selection), { csv: true, header: true });
 			return;
 		}
-		const top = Math.floor(firstRowRef.current / PAGE_SIZE) * PAGE_SIZE;
-		const bottom = Math.min(data.totalRows, top + PAGE_SIZE) - 1;
-		void copyRange({ top, bottom, left: 0, right: columns.length - 1 }, ',', true);
+		// No selection: copy exactly the rows on screen, every column.
+		const { top, bottom } = visibleRowsRef.current;
+		copy({ top, bottom, left: 0, right: columns.length - 1 }, { csv: true, header: true });
 	};
 
-	const reload = async (): Promise<void> => {
+	/**
+	 * Re-reads the file. `keepRows` refetches in the background with the current rows still on
+	 * screen (used when the file changes under us); otherwise the view restarts from a spinner.
+	 * Either way every cached page is dropped, so no page can come from an older version.
+	 */
+	const reload = async (keepRows = false): Promise<void> => {
 		try {
 			await call('data:evict', path);
-			await Promise.all([
-				client.resetQueries({ queryKey: ['data', 'page', path] }),
-				client.resetQueries({ queryKey: ['data', 'stats', path] }),
-			]);
+			const refresh = (queryKey: readonly unknown[]): Promise<void> =>
+				keepRows
+					? client.invalidateQueries({ queryKey })
+					: client.resetQueries({ queryKey });
+			await Promise.all([refresh(['data', 'page', path]), refresh(['data', 'stats', path])]);
 		} catch (err) {
 			toast.error('Reload failed', err instanceof Error ? err.message : String(err));
 		}
 	};
 
+	useAnvilEvent('fs:changed', ({ files }) => {
+		if (files.includes(path)) void reload(true);
+	});
+
+	// Parquet, feather and xlsx need a Python env with polars or pandas; let the user pick one
+	// right here, then try again with it.
+	const selectInterpreter = async (): Promise<void> => {
+		const command = getCommands().find((c) => c.id === 'python.selectEnv');
+		if (!command) return;
+		await runCommand(command);
+		await meta.refetch();
+	};
+
 	const openAsText = (): void => {
+		if (data && !isTextFormat(data.format)) {
+			toast.info(`${data.format.toUpperCase()} files are binary and can't be opened as text`);
+			return;
+		}
 		if (!requestOpenFile({ path, as: 'code' }))
 			toast.error('No editor is available to open this file');
+	};
+
+	const sortBySelection = (): void => {
+		if (!selection) {
+			toast.info('Select a cell in the column to sort by');
+			return;
+		}
+		const col = selection.focus.col;
+		// Rows reorder, so keep only the column selected: running it again flips the order.
+		update((v) => ({
+			sort: nextSort(v.sort, col),
+			selection: { anchor: { row: 0, col }, focus: { row: 0, col } },
+		}));
+	};
+
+	const focusFilter = (): void => {
+		filterRef.current?.focus();
+		filterRef.current?.select();
+	};
+
+	// Re-registered every render so palette commands always see the current state.
+	useEffect(() =>
+		registerDataViewer(path, {
+			focusFilter,
+			clearFilter: () => changeFilter(path, '', true),
+			copyCsv,
+			reload: () => void reload(),
+			toggleProfile: () => update((v) => ({ profileOpen: !v.profileOpen })),
+			openAsText,
+			clearSort: () => update({ sort: null, selection: null }),
+			sortBySelection,
+		}),
+	);
+
+	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+		if (
+			(event.ctrlKey || event.metaKey) &&
+			!event.shiftKey &&
+			event.key.toLowerCase() === 'f'
+		) {
+			event.preventDefault();
+			focusFilter();
+		}
 	};
 
 	let body: JSX.Element;
@@ -130,6 +162,18 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 				title={`Could not read ${fileName(path)}`}
 				message={meta.error.message}
 				onRetry={() => void meta.refetch()}
+				action={
+					meta.error instanceof IpcCallError &&
+					PYTHON_ERRORS.has(meta.error.code) && (
+						<Button
+							size='sm'
+							variant='primary'
+							onClick={() => void selectInterpreter()}
+						>
+							Select interpreter
+						</Button>
+					)
+				}
 			/>
 		);
 	} else if (!data) {
@@ -158,7 +202,7 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 				title='No matching rows'
 				description={`No cell contains “${filter}”.`}
 				action={
-					<Button size='sm' onClick={() => setFilterInput('')}>
+					<Button size='sm' onClick={() => changeFilter(path, '', true)}>
 						Clear filter
 					</Button>
 				}
@@ -179,34 +223,42 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 				totalRows={data.totalRows}
 				selection={selection}
 				onSelectionChange={changeSelection}
-				onSort={(column) => {
-					setSort((current) => nextSort(current, column));
-					setSelection(null);
-				}}
-				onCopy={(range) => void copyRange(range, '\t', false)}
-				firstRowRef={firstRowRef}
+				widths={widths}
+				onResize={(column, width) =>
+					update({
+						widths: {
+							key: gridKey,
+							values: widths.map((w, i) => (i === column ? width : w)),
+						},
+					})
+				}
+				onSort={(column) =>
+					update((v) => ({ sort: nextSort(v.sort, column), selection: null }))
+				}
+				onCopy={copy}
+				visibleRowsRef={visibleRowsRef}
 			/>
 		);
 	}
 
-	const range = selection ? selectionRange(selection) : null;
-	const size = range ? rangeSize(range) : null;
-	const sortedBy = sort ? columns[sort.column]?.name : undefined;
-
 	return (
-		<div className='flex h-full min-h-0 flex-col text-13'>
+		<div className='flex h-full min-h-0 flex-col text-13' onKeyDown={onKeyDown}>
 			<DataToolbar
 				path={path}
 				meta={data}
 				busy={meta.isFetching && data !== undefined}
 				filter={filterInput}
-				onFilterChange={setFilterInput}
+				onFilterChange={(value) => changeFilter(path, value)}
+				onFilterClear={() => changeFilter(path, '', true)}
 				onOpenAsText={openAsText}
 				onCopyCsv={copyCsv}
-				copyLabel={selection ? 'Copy selection as CSV' : 'Copy current page as CSV'}
+				copying={copying}
+				copyLabel={selection ? 'Copy selection as CSV' : 'Copy visible rows as CSV'}
 				onReload={() => void reload()}
 				profileOpen={profileOpen}
-				onToggleProfile={() => setProfileOpen((open) => !open)}
+				onToggleProfile={() => update((v) => ({ profileOpen: !v.profileOpen }))}
+				profileToggleRef={profileToggleRef}
+				filterRef={filterRef}
 			/>
 			<div className='flex min-h-0 flex-1'>
 				<div
@@ -222,34 +274,16 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 						path={path}
 						index={profileColumn}
 						column={profileColumn === null ? undefined : columns[profileColumn]}
-						onClose={() => setProfileOpen(false)}
+						truncated={data.truncated}
+						onClose={() => {
+							update({ profileOpen: false });
+							// The close button unmounts with the panel; don't drop focus to <body>.
+							profileToggleRef.current?.focus();
+						}}
 					/>
 				)}
 			</div>
-			<div className='flex h-6 shrink-0 items-center gap-3 border-t border-glass-edge px-3 text-11 text-fg-2'>
-				<span className='num'>
-					{range && size
-						? size.rows === 1 && size.cols === 1
-							? `R${formatCount(range.top + 1)} · ${columns[range.left]?.name ?? ''}`
-							: `${formatCount(size.rows)} × ${formatCount(size.cols)} selected`
-						: 'No selection'}
-				</span>
-				{sortedBy && (
-					<span className='num'>
-						sorted by <span className='text-accent'>{sortedBy}</span>{' '}
-						{sort?.desc ? '↓' : '↑'}
-					</span>
-				)}
-				<span className='flex-1' />
-				<span className='hidden items-center gap-1 md:flex'>
-					<Kbd keys='Ctrl+C' /> copy
-					<span className='mx-1'>·</span>
-					<Kbd keys='Shift' />
-					+click range
-					<span className='mx-1'>·</span>
-					<Kbd keys='Ctrl+A' /> all
-				</span>
-			</div>
+			<DataStatusBar columns={columns} selection={selection} sort={sort} />
 		</div>
 	);
 }

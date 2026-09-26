@@ -137,3 +137,11 @@ Short ADRs: the context, what was decided, and what it costs.
 **Decision.** The TypeScript server always uses the TypeScript Anvil ships. "Use Workspace TypeScript (trust this folder)" in the palette switches one folder to its own version (stored per folder in settings); "Use Bundled TypeScript" switches back. The status bar tooltip says which version is running and when a workspace version is available.
 
 **Consequences.** Projects that rely on their own TypeScript version or tsserver plugins need one explicit opt-in per folder. Nothing in an untrusted folder runs just by opening it.
+
+## ADR-015: The data viewer works in a worker thread
+
+**Context.** The data viewer parses up to 200 MB of CSV/JSON and filters, sorts and profiles up to a million rows. Done inside IPC handlers, that ran on Electron's main process, so opening a big file, typing a filter or clicking a column header froze windows, menus, terminals and every other IPC call for seconds.
+
+**Decision.** The data feature keeps its tables in a `node:worker_threads` worker (`features/data/worker.ts`, bundled by electron-vite's `?modulePath` import). The main thread only validates the request (workspace, path guard, format, which Python) and forwards it; `DataWorkerClient` matches replies to requests, turns error codes back into `AnvilError`s, and restarts the worker on the next call if it dies. The worker file is unpacked from `app.asar` so Node can always load it.
+
+**Consequences.** The UI stays responsive whatever the file size, and a worker crash (for example out of memory) fails only the pending data requests. Requests are copied between threads (structured clone), which is cheap for pages and stats but means the worker must stay free of Electron imports: it only uses Node built-ins and pure modules.

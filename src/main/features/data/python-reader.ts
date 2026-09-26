@@ -1,9 +1,8 @@
-import { execFile } from 'node:child_process';
+import { execFile, type ExecFileException } from 'node:child_process';
 
 import type { ColumnType } from '@shared/ipc/channels/data';
 
 import { AnvilError } from '../../core/errors';
-import { activatedEnv } from '../python/interpreter';
 import { buildTable, type Cell, type Table } from './table';
 
 /**
@@ -15,7 +14,8 @@ import json, sys
 path, limit = sys.argv[1], int(sys.argv[2])
 ext = path.rsplit('.', 1)[-1].lower()
 def cell(v):
-    if v is None:
+    # pandas.NA / NaT: NA's truth value raises in the v != v test below.
+    if v is None or type(v).__name__ in ('NAType', 'NaTType'):
         return None
     try:
         if v != v:
@@ -57,22 +57,41 @@ except ImportError:
 
 export function mapDtype(dtype: string): ColumnType {
 	const d = dtype.toLowerCase();
-	if (/^(u?int|int)\d*/.test(d) || d.startsWith('uint')) return 'int';
+	// Anchored: pandas 'interval[int64, right]' must not count as an integer column.
+	if (/^u?int\d*$/.test(d)) return 'int';
 	if (d.startsWith('float') || d.startsWith('decimal')) return 'float';
 	if (d.startsWith('bool')) return 'bool';
 	if (d.startsWith('date') || d.startsWith('datetime') || d.includes('timestamp')) return 'date';
 	return 'string';
 }
 
-export function readWithPython(python: string, absPath: string, limit: number): Promise<Table> {
+/** `env` is the interpreter's activated environment (see `activatedEnv`). */
+const TIMEOUT_MS = 120_000;
+
+/** Why the reader failed, in words: stderr is empty when the process was killed or never ran. */
+export function pythonFailure(error: ExecFileException, stderr: string): string {
+	if (error.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER')
+		return 'The file is too large to preview';
+	if (error.code === 'ENOENT') return 'Python interpreter not found. Select another one.';
+	if (error.killed || error.signal) return `Reading timed out after ${TIMEOUT_MS / 1000} s`;
+	const last = stderr.trim().split(/\r?\n/).at(-1);
+	return `Python could not read the file: ${last || error.message}`;
+}
+
+export function readWithPython(
+	python: string,
+	env: NodeJS.ProcessEnv,
+	absPath: string,
+	limit: number,
+): Promise<Table> {
 	return new Promise((resolve, reject) => {
 		execFile(
 			python,
 			['-c', SCRIPT, absPath, String(limit)],
 			{
-				env: activatedEnv(python),
+				env,
 				windowsHide: true,
-				timeout: 120_000,
+				timeout: TIMEOUT_MS,
 				maxBuffer: 512 * 1024 * 1024,
 			},
 			(error, stdout, stderr) => {
@@ -84,7 +103,7 @@ export function readWithPython(python: string, absPath: string, limit: number): 
 							'DATA_PYTHON_FAILED',
 							missing
 								? `Reading this file needs ${missing[1]} in the selected Python env (uv add polars, or pip install pandas pyarrow).`
-								: `Python could not read the file: ${stderr.trim().split(/\r?\n/).at(-1) ?? error.message}`,
+								: pythonFailure(error, stderr),
 						),
 					);
 					return;
