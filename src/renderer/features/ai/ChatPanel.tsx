@@ -21,6 +21,7 @@ import { cn } from '../../lib/cn';
 import { call } from '../../lib/ipc';
 import { useUiStore } from '../../stores/ui-store';
 import { Button } from '../../ui/Button';
+import { ErrorState } from '../../ui/ErrorState';
 import { FileBadge } from '../../ui/FileBadge';
 import { IconButton } from '../../ui/IconButton';
 import { checkLookahead, explainCode, reviewCode, writeTests } from './actions';
@@ -59,7 +60,7 @@ function trigger(text: string): { kind: '@' | '/'; query: string } | null {
 }
 
 export function ChatPanel(): JSX.Element {
-	const { settings, keys } = useAiSettings();
+	const { settings, keys, error: loadError, retry } = useAiSettings();
 	const { info } = useWorkspace();
 	const { messages, activeRequest, attached, detach, send, stop, clear } = useChat();
 	const [text, setText] = useState('');
@@ -99,9 +100,20 @@ export function ChatPanel(): JSX.Element {
 		if (focusTick > 0) inputRef.current?.focus();
 	}, [focusTick]);
 
-	if (!settings) return <div className='shimmer h-full' />;
+	// Wait for both: treating "keys still loading" as "no key" flashed the Add key banner.
+	if (!settings || !keys) {
+		return loadError ? (
+			<ErrorState
+				title='Could not load AI settings'
+				message={loadError.message}
+				onRetry={retry}
+			/>
+		) : (
+			<div className='shimmer h-full' />
+		);
+	}
 	const model = settings.chat;
-	const hasKey = keys?.[model.provider] ?? false;
+	const hasKey = keys[model.provider];
 
 	const choose = (index: number): void => {
 		const s = suggestions[index];

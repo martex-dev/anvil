@@ -45,7 +45,11 @@ export const SUGGESTED_MODELS: Array<AiModelRef & { note: string; completion?: b
 
 export function useAiSettings(): {
 	settings: AiSettings | undefined;
+	/** undefined while loading (or failed): not the same as "no key". */
 	keys: Record<AiProvider, boolean> | undefined;
+	/** Why settings or keys could not be loaded, if they couldn't. */
+	error: Error | null;
+	retry: () => void;
 } {
 	const client = useQueryClient();
 	const settings = useQuery({ queryKey: AI_SETTINGS_KEY, queryFn: () => call('ai:settings') });
@@ -54,7 +58,15 @@ export function useAiSettings(): {
 		'secrets:changed',
 		() => void client.invalidateQueries({ queryKey: AI_KEYS_KEY }),
 	);
-	return { settings: settings.data, keys: keys.data };
+	return {
+		settings: settings.data,
+		keys: keys.data,
+		error: settings.error ?? keys.error,
+		retry: () => {
+			if (settings.isError) void settings.refetch();
+			if (keys.isError) void keys.refetch();
+		},
+	};
 }
 
 export async function getAiSettings(): Promise<AiSettings> {
