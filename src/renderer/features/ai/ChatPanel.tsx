@@ -63,7 +63,8 @@ export function ChatPanel(): JSX.Element {
 	const { settings, keys, error: loadError, retry } = useAiSettings();
 	const { info } = useWorkspace();
 	const { messages, activeRequest, attached, detach, send, stop, clear } = useChat();
-	const [text, setText] = useState('');
+	const text = useChat((s) => s.draft);
+	const setText = useChat((s) => s.setDraft);
 	const [pick, setPick] = useState(0);
 	// Escape hides the popup for the text it was pressed on; typing brings it back.
 	const [dismissedAt, setDismissedAt] = useState<string | null>(null);
@@ -244,7 +245,7 @@ export function ChatPanel(): JSX.Element {
 						variant='ghost'
 						icon={<AtSign size={11} />}
 						onClick={() => {
-							setText((t) => `${t}${t && !t.endsWith(' ') ? ' ' : ''}@`);
+							setText(`${text}${text && !text.endsWith(' ') ? ' ' : ''}@`);
 							inputRef.current?.focus();
 						}}
 					>

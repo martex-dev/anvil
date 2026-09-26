@@ -12,3 +12,10 @@ describe('chat send', () => {
 		expect(useChat.getState().send('   ', model)).toBe(false);
 	});
 });
+
+describe('chat draft', () => {
+	it('keeps the unsent message in the store, outside the panel component', () => {
+		useChat.getState().setDraft('half a question');
+		expect(useChat.getState().draft).toBe('half a question');
+	});
+});

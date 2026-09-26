@@ -26,6 +26,9 @@ interface ChatState {
 	activeRequest: string | null;
 	/** Context chips waiting to go out with the next message. */
 	attached: AiContext[];
+	/** The unsent message. Lives here so closing the panel (or zen mode) doesn't lose it. */
+	draft: string;
+	setDraft: (text: string) => void;
 	attach: (item: AiContext) => void;
 	detach: (index: number) => void;
 	/** Starts a reply; false (nothing sent) while another reply is streaming or text is empty. */
@@ -68,6 +71,8 @@ export const useChat = create<ChatState>((set, get) => ({
 	messages: load(),
 	activeRequest: null,
 	attached: [],
+	draft: '',
+	setDraft: (draft) => set({ draft }),
 	attach: (item) =>
 		set((s) => ({
 			// One item per kind+label: re-attaching the same file refreshes it.
