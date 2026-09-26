@@ -46,15 +46,16 @@ npx tsx scripts/skin-shots.mts <demo-folder> <out-dir> [skin:palette,...] [--ext
 
 Run lint, typecheck, unit and e2e tests before every commit.
 
-## 5. Design system: "cyber glass"
+## 5. Design system: skins
 
-- Near-black background with an ambient glow + drifting grid (`.ambient`); floating panes are `.glass` (blur + translucency + a neon hairline edge). Overlays are `.glass-strong`.
-- **Themes** (ADR-011): each theme is one `[data-theme='id']` block in `themes.css` defining the full palette (surfaces, text, semantic, `--theme-accent(-2)`, `--syn-*`), plus an entry in `theme-list.ts`; `themes.test.ts` keeps them in sync and checks contrast. Derived tokens (`--accent-soft`, glows) are recomputed per `[data-theme]` scope in `tokens.css`, so a nested `data-theme` (preview cards) shows that theme.
-- One accent (`--accent`) plus a partner hue (`--accent-2`): the theme's own by default, or a preset / custom color via `<html data-accent>`. The syntax theme uses the `--syn-*` tokens; Monaco and xterm rebuild on the `anvil:appearance` event.
-- Type: Geist Sans for UI (13px base); the code font is a setting (nine bundled, `--font-code`); numbers use `.num`, micro-labels mono uppercase `.hud`.
-- **No raw colors outside `themes.css` and `tokens.css`.** Use Tailwind token classes or `var(--token)`; Monaco and xterm resolve tokens via `resolveToken`.
-- Every view has designed loading, empty and error states. Everything is reachable from the palette. Visible focus rings; respect reduced motion.
-- Performance: no `backdrop-filter` under Monaco or xterm. `Settings → Glass: off` must stay fully usable.
+- Anvil has **skins** (ADR-014): whole looks that differ in layout, chrome, fonts, icons, shape and effects, each with 4+ color variants. Cyber Glass is the default. Everything about writing one is in `docs/SKINS.md`.
+- A skin is a folder `src/renderer/skins/<id>/` (manifest.ts, palettes.css, skin.css, optional icons.tsx / chrome.tsx / preview.webp), discovered by glob. Never add a skin to a shared list.
+- Palettes: one `[data-theme='id']` block each with every required variable (plus optional `--skin-*` extras); `skins/palettes.test.ts` enforces it and checks contrast. Derived tokens (`--accent-soft`, glows) are recomputed per `[data-theme]` scope in `tokens.css`.
+- Shared chrome carries `data-part` hooks; skins restyle through them (scoped to `html[data-skin='id']`) or replace chrome through `SkinChrome` slots. Shape (`--r-*`), fonts (`--font-ui/-display/-code`), density (`--spacing`) and effects (`data-fx`) are variables and attributes on `<html>`.
+- `resolveLook(settings)` is the single place that turns settings into skin + palette + fonts + layout; `applyAppearance` writes it to `<html>` and `useLook()` reads it (previews included). Monaco and xterm rebuild on the `anvil:appearance` event.
+- **No raw colors outside palettes.css files and `tokens.css`.** Use Tailwind token classes, `var(--token)` or `color-mix`.
+- Every view has designed loading, empty and error states. Everything is reachable from the palette. Visible focus rings; respect reduced motion (it also calms skin effects).
+- Performance: no `backdrop-filter` under Monaco or xterm; skin effects animate transform/opacity only and switch off with `data-fx='off'`.
 
 ## 6. Code style
 
