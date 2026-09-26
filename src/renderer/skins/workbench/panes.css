@@ -1,0 +1,216 @@
+/*
+ * Workbench 95: the workbench is an MDI desktop. Every pane is a child window with a raised
+ * frame and a caption strip (grey while inactive, the title gradient once focus is inside), and
+ * its content sits in a sunken field.
+ */
+
+html[data-skin='workbench'] [data-part='shell'] {
+	background: var(--skin-face);
+}
+
+/* The desktop behind the child windows, sunk into the application frame. */
+html[data-skin='workbench'] [data-part='workbench'] {
+	margin: 0 4px;
+	padding: 6px;
+	background: var(--skin-desktop);
+	box-shadow: var(--wb-sunken);
+}
+
+html[data-skin='workbench'] .glass {
+	background: var(--skin-face);
+	backdrop-filter: none;
+	border: 0;
+	border-radius: 0;
+	box-shadow: var(--wb-window);
+	padding: 3px;
+}
+html[data-skin='workbench'] .pane-focus:focus-within {
+	box-shadow: var(--wb-window);
+}
+html[data-skin='workbench'] .glass::before {
+	content: none;
+}
+html[data-skin='workbench'] .brackets-frame {
+	display: none;
+}
+
+/* ---- Caption strips -------------------------------------------------------------------- */
+
+html[data-skin='workbench']
+	:is([data-part='editor-group'], [data-part='panel'], [data-part='chat'])::before,
+html[data-skin='workbench'] [data-part='sidebar'] > [data-part='pane-header'] {
+	position: relative;
+	inset: auto;
+	display: flex;
+	flex: none;
+	align-items: center;
+	height: 18px;
+	margin: 0 0 2px;
+	padding: 0 58px 0 4px;
+	border: 0;
+	border-radius: 0;
+	background: var(--wb-title-off);
+	color: var(--skin-title-off-text);
+	font: 700 12px/18px var(--font-display);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	opacity: 1;
+	z-index: auto;
+	-webkit-mask: none;
+	mask: none;
+}
+html[data-skin='workbench']
+	:is([data-part='editor-group'], [data-part='panel'], [data-part='chat']):focus-within::before,
+html[data-skin='workbench'] [data-part='sidebar']:focus-within > [data-part='pane-header'] {
+	background: var(--wb-title);
+	color: var(--skin-title-text);
+}
+/* Like an MDI program, the front document window stays active while focus is in the menus. */
+html[data-skin='workbench']
+	[data-part='workbench']:not(:focus-within)
+	[data-part='editor-group'][data-focused='true']::before {
+	background: var(--wb-title);
+	color: var(--skin-title-text);
+}
+
+html[data-skin='workbench'] [data-part='editor-group']::before {
+	content: attr(aria-label);
+}
+html[data-skin='workbench'] [data-part='chat']::before {
+	content: 'Assistant';
+}
+html[data-skin='workbench'] [data-part='panel']::before {
+	content: 'Terminal';
+}
+html[data-skin='workbench']
+	[data-part='panel']:has([role='tab']:last-child[aria-selected='true'])::before {
+	content: 'Problems';
+}
+
+html[data-skin='workbench'] [data-part='sidebar'] [data-part='pane-index'],
+html[data-skin='workbench'] [data-part='sidebar'] [data-part='pane-rule'] {
+	display: none;
+}
+html[data-skin='workbench'] [data-part='sidebar'] [data-part='pane-title'] {
+	font: inherit;
+	color: inherit;
+	letter-spacing: 0;
+	text-transform: none;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/*
+ * Decorative caption buttons [_][□][x], painted as one background: bevel lines repeat every
+ * 17px, glyphs are single-color rectangles. Pointer events pass straight through.
+ */
+html[data-skin='workbench'] {
+	--wb-caption:
+		linear-gradient(var(--text-0) 0 0) 4px 9px / 6px 2px no-repeat,
+		linear-gradient(var(--text-0) 0 0) 20px 2px / 9px 2px no-repeat,
+		linear-gradient(var(--text-0) 0 0) 20px 2px / 1px 8px no-repeat,
+		linear-gradient(var(--text-0) 0 0) 28px 2px / 1px 8px no-repeat,
+		linear-gradient(var(--text-0) 0 0) 20px 9px / 9px 1px no-repeat,
+		linear-gradient(var(--text-0) 0 0) 38px 3px / 2px 1px no-repeat,
+		linear-gradient(var(--text-0) 0 0) 44px 3px / 2px 1px no-repeat,
+		linear-gradient(var(--text-0) 0 0) 39px 4px / 2px 1px no-repeat,
+		linear-gradient(var(--text-0) 0 0) 43px 4px / 2px 1px no-repeat,
+		linear-gradient(var(--text-0) 0 0) 40px 5px / 4px 1px no-repeat,
+		linear-gradient(var(--text-0) 0 0) 41px 6px / 2px 1px no-repeat,
+		linear-gradient(var(--text-0) 0 0) 40px 7px / 4px 1px no-repeat,
+		linear-gradient(var(--text-0) 0 0) 39px 8px / 2px 1px no-repeat,
+		linear-gradient(var(--text-0) 0 0) 43px 8px / 2px 1px no-repeat,
+		linear-gradient(var(--text-0) 0 0) 38px 9px / 2px 1px no-repeat,
+		linear-gradient(var(--text-0) 0 0) 44px 9px / 2px 1px no-repeat,
+		linear-gradient(90deg, var(--skin-bevel-dark) 0 16px, transparent 0) 0 13px / 17px 1px
+			repeat-x,
+		linear-gradient(90deg, transparent 15px, var(--skin-bevel-dark) 0 16px, transparent 0) 0 0 /
+			17px 14px repeat-x,
+		linear-gradient(90deg, var(--skin-bevel-light) 0 15px, transparent 0) 0 0 / 17px 1px
+			repeat-x,
+		linear-gradient(90deg, var(--skin-bevel-light) 0 1px, transparent 0) 0 0 / 17px 13px
+			repeat-x,
+		linear-gradient(90deg, transparent 1px, var(--skin-bevel-shadow) 0 15px, transparent 0) 0
+			12px / 17px 1px repeat-x,
+		linear-gradient(90deg, transparent 14px, var(--skin-bevel-shadow) 0 15px, transparent 0) 0
+			1px / 17px 12px repeat-x,
+		linear-gradient(90deg, var(--skin-face) 0 16px, transparent 0) 0 0 / 17px 14px repeat-x;
+}
+
+html[data-skin='workbench']
+	:is([data-part='editor-group'], [data-part='panel'], [data-part='chat'])::after,
+html[data-skin='workbench'] [data-part='sidebar'] > [data-part='pane-header']::after {
+	content: '';
+	position: absolute;
+	top: 5px;
+	right: 5px;
+	width: 50px;
+	height: 14px;
+	background: var(--wb-caption);
+	pointer-events: none;
+	z-index: 2;
+}
+html[data-skin='workbench'] [data-part='sidebar'] > [data-part='pane-header']::after {
+	top: 2px;
+	right: 2px;
+}
+html[data-skin='workbench'][data-fx='off']
+	:is([data-part='editor-group'], [data-part='panel'], [data-part='chat'])::after,
+html[data-skin='workbench'][data-fx='off']
+	[data-part='sidebar']
+	> [data-part='pane-header']::after {
+	content: none;
+}
+html[data-skin='workbench'][data-fx='off']
+	:is([data-part='editor-group'], [data-part='panel'], [data-part='chat'])::before,
+html[data-skin='workbench'][data-fx='off'] [data-part='sidebar'] > [data-part='pane-header'] {
+	padding-right: 4px;
+}
+
+/* ---- Sunken fields --------------------------------------------------------------------- */
+
+html[data-skin='workbench'] [data-part='sidebar'] > [data-part='pane-body'] {
+	position: relative;
+	padding: 2px;
+	background: var(--skin-field);
+	color: var(--skin-field-text);
+	box-shadow: var(--wb-sunken);
+}
+
+/* Editor and terminal hosts are absolutely placed, so their bevel is drawn over them. */
+html[data-skin='workbench'] [data-part='editor-surface']::after,
+html[data-skin='workbench'] [data-part='panel'] > [data-part='pane-body']::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	box-shadow: var(--wb-sunken);
+	pointer-events: none;
+	z-index: 20;
+}
+html[data-skin='workbench'] [data-part='panel'] > [data-part='pane-body'] {
+	background: var(--skin-field);
+	color: var(--skin-field-text);
+}
+html[data-skin='workbench'] [data-part='panel'] > [data-part='pane-body'] > .absolute {
+	inset: 2px 2px 2px 4px;
+}
+
+/* ---- Splitters: the desktop gap, with a checkered drag bar ------------------------------- */
+
+html[data-skin='workbench'] [data-part='splitter-handle'] {
+	border-radius: 0;
+	background: var(--wb-dither);
+	background-image: repeating-conic-gradient(var(--skin-bevel-dark) 0 25%, transparent 0 50%);
+	background-size: 2px 2px;
+}
+html[data-skin='workbench'] [data-part='splitter'][data-axis='x'] [data-part='splitter-handle'] {
+	inset: 0;
+	width: auto;
+	transform: none;
+}
+html[data-skin='workbench'] [data-part='splitter'][data-axis='y'] [data-part='splitter-handle'] {
+	inset: 0;
+	height: auto;
+	transform: none;
+}
