@@ -9,7 +9,7 @@ import { LANGUAGE_LABEL, type LspState, useLspStatus } from './lsp-status';
 
 const DOT: Record<LspState, string> = {
 	idle: 'bg-border-strong',
-	starting: 'bg-warn animate-pulse motion-reduce:animate-none',
+	starting: 'bg-warn pulse-dot',
 	ready: 'bg-up',
 	error: 'bg-down',
 };
