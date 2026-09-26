@@ -1,5 +1,5 @@
 import { ChevronRight, Hash } from 'lucide-react';
-import { type JSX, useMemo } from 'react';
+import { Fragment, type JSX, useMemo } from 'react';
 
 import type { Tab } from '../../stores/tabs-store';
 import { outlineFor, symbolPath } from '../outline/outline';
@@ -52,31 +52,60 @@ export function Breadcrumbs({ tab, group }: { tab: Tab; group: number }): JSX.El
 	}, [outline, cursorLine, path]);
 
 	if (!tab.path) return null;
-	const parts = isScratch(tab.path) ? ['Scratchpad'] : tab.path.split('/');
+	const label = isScratch(tab.path) ? 'Scratchpad' : tab.path;
+	const parts = label.split('/');
 	return (
 		<div className='flex h-6 shrink-0 items-center gap-0.5 overflow-hidden px-3 font-mono text-11 whitespace-nowrap text-fg-2'>
-			{parts.map((part, i) => (
-				<span key={`${part}-${i}`} className='flex items-center gap-0.5'>
-					{i > 0 && <ChevronRight size={10} className='opacity-50' />}
-					<span
-						className={i === parts.length - 1 && inside.length === 0 ? 'text-fg-1' : ''}
-					>
-						{part}
-					</span>
+			{/* The path gives way first, eliding its leading folders (rtl overflow) so the file
+			    name, symbols and cell badge stay readable; the tooltip has the whole path. */}
+			<span dir='rtl' title={label} className='min-w-0 truncate text-left'>
+				<span dir='ltr'>
+					{parts.map((part, i) => (
+						<Fragment key={`${part}-${i}`}>
+							{i > 0 && (
+								<ChevronRight
+									size={10}
+									aria-hidden
+									className='mx-0.5 inline align-middle opacity-50'
+								/>
+							)}
+							<span
+								className={
+									i === parts.length - 1 && inside.length === 0 ? 'text-fg-1' : ''
+								}
+							>
+								{part}
+							</span>
+						</Fragment>
+					))}
 				</span>
-			))}
-			{inside.map((s, i) => (
-				<span key={`${s.name}-${s.line}`} className='flex items-center gap-0.5'>
-					<ChevronRight size={10} className='opacity-50' />
-					<span className='text-10 text-accent-2'>{KIND_TAG[s.kind] ?? '·'}</span>
-					<span className={i === inside.length - 1 ? 'text-fg-0' : ''}>{s.name}</span>
+			</span>
+			{inside.length > 0 && (
+				<span
+					title={inside.map((s) => s.name).join(' › ')}
+					className='flex shrink-0 items-center gap-0.5'
+				>
+					{inside.map((s, i) => (
+						<span key={`${s.name}-${s.line}`} className='flex items-center gap-0.5'>
+							<ChevronRight size={10} aria-hidden className='opacity-50' />
+							<span className='text-10 text-accent-2'>{KIND_TAG[s.kind] ?? '·'}</span>
+							<span className={i === inside.length - 1 ? 'text-fg-0' : ''}>
+								{s.name}
+							</span>
+						</span>
+					))}
 				</span>
-			))}
+			)}
 			{cell && (
-				<span className='ml-auto flex items-center gap-1 rounded-sm bg-accent-faint px-1.5 text-accent'>
-					<Hash size={10} />
+				<span
+					title={`Cell ${cell.index} of ${cell.total}${cell.title ? `: ${cell.title}` : ''}`}
+					className='ml-auto flex shrink-0 items-center gap-1 rounded-sm bg-accent-faint px-1.5 text-accent'
+				>
+					<Hash size={10} aria-hidden />
 					cell {cell.index}/{cell.total}
-					{cell.title && <span className='text-fg-1'>· {cell.title}</span>}
+					{cell.title && (
+						<span className='max-w-40 truncate text-fg-1'>· {cell.title}</span>
+					)}
 				</span>
 			)}
 		</div>
