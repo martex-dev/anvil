@@ -1,11 +1,4 @@
-import {
-	ArrowDown,
-	ArrowUp,
-	GitBranch,
-	GitPullRequestArrow,
-	RefreshCw,
-	TriangleAlert,
-} from 'lucide-react';
+import { ArrowDown, ArrowUp, CloudUpload, GitBranch, RefreshCw, TriangleAlert } from 'lucide-react';
 import { type JSX, useState } from 'react';
 
 import type { GitChange } from '@shared/ipc/channels/git';
@@ -162,8 +155,10 @@ export function GitPanel(): JSX.Element {
 					icon={
 						actions.pushing ? (
 							<Spinner size={12} label='Pushing' />
+						) : status.tracking ? (
+							<ArrowUp size={13} />
 						) : (
-							<GitPullRequestArrow size={13} />
+							<CloudUpload size={13} />
 						)
 					}
 					disabled={actions.busy}
