@@ -97,6 +97,19 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 		}
 	};
 
+	const onTreeKey = treeKeyHandler({
+		rows: tree.rows,
+		focused,
+		setFocused,
+		toggle: tree.toggle,
+		open: openEntry,
+		rename: setRenaming,
+		remove: setConfirmDelete,
+	});
+	// A keyboard-opened menu fires `contextmenu` on the tree itself, like a right-click on its
+	// empty area; the key that opened it tells the two apart.
+	const menuFromKeyboard = useRef(false);
+
 	const menuItems = explorerMenuItems({
 		target: menuTarget,
 		startCreate,
@@ -123,22 +136,29 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 					aria-label='Files'
 					tabIndex={0}
 					className='min-h-full py-1 outline-none focus-visible:shadow-[inset_0_0_0_1px_var(--accent)]'
+					onPointerDown={() => {
+						menuFromKeyboard.current = false;
+					}}
 					onContextMenu={(e) => {
+						// Shift+F10 / the Menu key target the focused tree, so act on its focused row.
+						if (menuFromKeyboard.current) {
+							menuFromKeyboard.current = false;
+							setMenuTarget(
+								focusedEntry?.kind === 'entry' ? focusedEntry.entry : null,
+							);
+							return;
+						}
 						// Entry rows set their own target. Anything else (empty space, a loading or
 						// error row, an inline input) has none, not the previously right-clicked one.
 						const onRow =
 							e.target instanceof Element && e.target.closest('[role="treeitem"]');
 						if (!onRow) setMenuTarget(null);
 					}}
-					onKeyDown={treeKeyHandler({
-						rows: tree.rows,
-						focused,
-						setFocused,
-						toggle: tree.toggle,
-						open: openEntry,
-						rename: setRenaming,
-						remove: setConfirmDelete,
-					})}
+					onKeyDown={(e) => {
+						menuFromKeyboard.current =
+							e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey);
+						onTreeKey(e);
+					}}
 				>
 					{tree.rows.map((row) => {
 						if (row.kind === 'input') {
