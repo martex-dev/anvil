@@ -20,8 +20,18 @@ const QUERY_ERROR =
 /** The query's own fault (bad regex or glob) as a user-facing error; null for other rg errors. */
 export function queryError(stderr: string): AnvilError | null {
 	if (!QUERY_ERROR.test(stderr)) return null;
-	const message = stderr.split('\n').find((l) => l.trim()) ?? 'ripgrep failed';
-	return new AnvilError('SEARCH_BAD_QUERY', message.replace(/^rg: /, ''));
+	// A regex error spans lines: "regex parse error:", the pattern, a caret, then "error: why".
+	const lines = stderr
+		.split('\n')
+		.map((l) => l.trim())
+		.filter(Boolean);
+	const first = (lines[0] ?? 'ripgrep failed').replace(/^rg: /, '');
+	const reason = lines
+		.find((l) => l.startsWith('error:'))
+		?.slice('error:'.length)
+		.trim();
+	const message = reason ? `${first.replace(/:$/, '')}: ${reason}` : first;
+	return new AnvilError('SEARCH_BAD_QUERY', message);
 }
 
 /**

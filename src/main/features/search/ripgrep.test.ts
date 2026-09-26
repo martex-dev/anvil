@@ -95,6 +95,7 @@ describe('Ripgrep (real binary)', () => {
 	it('reports an invalid regex as a readable error', async () => {
 		await expect(rg.search(root, { query: '(unclosed', regex: true })).rejects.toMatchObject({
 			code: 'SEARCH_BAD_QUERY',
+			message: 'regex parse error: unclosed group',
 		});
 	});
 });
