@@ -47,6 +47,17 @@ function clamp(value: number, max: number): number {
 	return Math.min(Math.max(0, value), Math.max(0, max));
 }
 
+const NAV_KEYS = new Set([
+	'ArrowUp',
+	'ArrowDown',
+	'ArrowLeft',
+	'ArrowRight',
+	'PageUp',
+	'PageDown',
+	'Home',
+	'End',
+]);
+
 /**
  * Spreadsheet-style keyboard navigation. Returns null for keys it doesn't handle so the caller
  * can let them through. Shift extends the range from the anchor instead of moving it.
@@ -57,7 +68,14 @@ export function moveSelection(
 	bounds: GridBounds,
 ): GridSelection | null {
 	if (bounds.rows === 0 || bounds.cols === 0) return null;
-	const from = selection?.focus ?? { row: 0, col: 0 };
+	if (!selection) {
+		// Nothing selected yet: the first navigation key lands on the first cell rather than
+		// moving past it, so ArrowDown after tabbing in doesn't skip row 1.
+		if (!NAV_KEYS.has(event.key)) return null;
+		const first = { row: 0, col: 0 };
+		return { anchor: first, focus: first };
+	}
+	const from = selection.focus;
 	const lastRow = bounds.rows - 1;
 	const lastCol = bounds.cols - 1;
 	let { row, col } = from;
@@ -92,7 +110,7 @@ export function moveSelection(
 			return null;
 	}
 	const focus = { row: clamp(row, lastRow), col: clamp(col, lastCol) };
-	if (event.shiftKey && selection) return { anchor: selection.anchor, focus };
+	if (event.shiftKey) return { anchor: selection.anchor, focus };
 	return { anchor: focus, focus };
 }
 

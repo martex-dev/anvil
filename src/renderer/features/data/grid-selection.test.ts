@@ -37,7 +37,10 @@ describe('moveSelection', () => {
 	});
 
 	it('starts at the first cell when nothing is selected', () => {
-		expect(moveSelection(null, key('ArrowRight'), bounds)).toEqual(at(0, 1));
+		expect(moveSelection(null, key('ArrowRight'), bounds)).toEqual(at(0, 0));
+		expect(moveSelection(null, key('ArrowDown'), bounds)).toEqual(at(0, 0));
+		expect(moveSelection(null, key('End', { shiftKey: true }), bounds)).toEqual(at(0, 0));
+		expect(moveSelection(null, key('a'), bounds)).toBeNull();
 	});
 
 	it('pages, jumps and extends with shift', () => {
