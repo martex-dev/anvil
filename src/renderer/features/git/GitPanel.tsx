@@ -1,4 +1,11 @@
-import { ArrowDown, ArrowUp, GitBranch, GitPullRequestArrow, RefreshCw } from 'lucide-react';
+import {
+	ArrowDown,
+	ArrowUp,
+	GitBranch,
+	GitPullRequestArrow,
+	RefreshCw,
+	TriangleAlert,
+} from 'lucide-react';
 import type { JSX } from 'react';
 
 import type { GitChange } from '@shared/ipc/channels/git';
@@ -8,6 +15,7 @@ import { call } from '../../lib/ipc';
 import { getLoadedMonaco } from '../../lib/monaco/load';
 import { useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
+import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
 import { ErrorState } from '../../ui/ErrorState';
 import { IconButton } from '../../ui/IconButton';
@@ -84,7 +92,10 @@ export function GitPanel(): JSX.Element {
 			</div>
 		);
 	}
-	if (error) return <ErrorState title='Git failed' message={error.message} onRetry={refetch} />;
+	// Only a failure with nothing to show replaces the panel. A failed poll after a good one (a
+	// terminal git holding the index lock) keeps the last status, and the unsent commit message.
+	if (error && !status)
+		return <ErrorState title='Git failed' message={error.message} onRetry={refetch} />;
 	if (!status?.isRepo) {
 		return (
 			<EmptyState
@@ -138,6 +149,20 @@ export function GitPanel(): JSX.Element {
 					onClick={refetch}
 				/>
 			</div>
+			{error && (
+				<div
+					role='status'
+					className='flex shrink-0 items-center gap-1.5 border-b border-glass-edge py-0.5 pr-1 pl-2 text-11 text-warn'
+				>
+					<TriangleAlert size={12} className='shrink-0' />
+					<span className='min-w-0 flex-1 truncate' title={error.message}>
+						Couldn&rsquo;t refresh: {error.message}
+					</span>
+					<Button variant='ghost' size='sm' onClick={refetch}>
+						Retry
+					</Button>
+				</div>
+			)}
 			<CommitBox
 				root={info.root}
 				branch={status.branch}
