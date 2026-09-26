@@ -1,8 +1,9 @@
 import type { JSX } from 'react';
 
-import { EDITOR_FONTS, type EditorFontId, type Settings } from '@shared/settings';
+import { EDITOR_FONTS, type Settings } from '@shared/settings';
 
 import { repaintShield } from '../../features/editor/extras/shield';
+import { resolveLook } from '../../skins/look';
 import { Select } from '../../ui/Select';
 import { SettingRow } from './SettingRow';
 import { SettingSegmented } from './SettingSegmented';
@@ -18,21 +19,26 @@ export function EditorSettings({
 	s: Settings;
 	update: (p: Partial<Settings>) => void;
 }): JSX.Element {
-	const font = EDITOR_FONTS.find((f) => f.id === s.editorFont);
+	const look = resolveLook(s);
+	const font = EDITOR_FONTS.find((f) => f.id === look.codeFontId);
+	const skinFont = EDITOR_FONTS.find((f) => f.id === look.skin.fonts.code)?.name ?? '';
 	return (
 		<div className='divide-y divide-glass-edge'>
 			<SettingRow
 				label='Font'
-				description='All bundled: no install needed. Shown here in the font itself.'
+				description='All bundled: no install needed. Any font works with any skin.'
 			>
 				<Select
 					aria-label='Editor font'
 					value={s.editorFont}
-					onValueChange={(v) => update({ editorFont: v as EditorFontId })}
-					options={EDITOR_FONTS.map((f) => ({
-						value: f.id,
-						label: f.ligatures ? f.name : `${f.name} (no ligatures)`,
-					}))}
+					onValueChange={(v) => update({ editorFont: v as Settings['editorFont'] })}
+					options={[
+						{ value: 'skin', label: `Skin default (${skinFont})` },
+						...EDITOR_FONTS.map((f) => ({
+							value: f.id,
+							label: f.ligatures ? f.name : `${f.name} (no ligatures)`,
+						})),
+					]}
 					className='w-52'
 				/>
 			</SettingRow>

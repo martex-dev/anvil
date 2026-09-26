@@ -1,14 +1,35 @@
 import type { JSX } from 'react';
 
+import { UI_FONTS } from '@shared/fonts';
 import type { Settings } from '@shared/settings';
 
+import { SkinGallery } from '../../features/themes/SkinGallery';
 import { ThemeGallery } from '../../features/themes/ThemeGallery';
-import { themeById } from '../../styles/theme-list';
+import { palettePatch, resolveLook, uiFontPatch } from '../../skins/look';
+import { Select } from '../../ui/Select';
 import { AccentPicker } from './AccentPicker';
 import { SettingRow } from './SettingRow';
 import { SettingSegmented } from './SettingSegmented';
 import { SettingStepper } from './SettingStepper';
 import { SettingToggle } from './SettingToggle';
+
+function Section({
+	title,
+	hint,
+	children,
+}: {
+	title: string;
+	hint: string;
+	children: JSX.Element;
+}): JSX.Element {
+	return (
+		<div className='py-3'>
+			<p className='text-13 text-fg-0'>{title}</p>
+			<p className='text-12 text-fg-2'>{hint}</p>
+			{children}
+		</div>
+	);
+}
 
 export function AppearanceSettings({
 	s,
@@ -17,37 +38,98 @@ export function AppearanceSettings({
 	s: Settings;
 	update: (p: Partial<Settings>) => void;
 }): JSX.Element {
+	const look = resolveLook(s);
+	const { skin } = look;
 	return (
 		<div className='divide-y divide-glass-edge'>
-			<div className='py-3'>
-				<p className='text-13 text-fg-0'>Color theme</p>
-				<p className='text-12 text-fg-2'>
-					{themeById(s.theme).description}. Ctrl+Alt+T picks with a live preview.
-				</p>
-				<ThemeGallery value={s.theme} onChange={(theme) => update({ theme })} />
-			</div>
+			<Section
+				title='Skin'
+				hint='A whole different program: layout, chrome, fonts and icons. Ctrl+Alt+Y previews them live.'
+			>
+				<SkinGallery value={skin.id} onChange={(id) => update({ skin: id })} />
+			</Section>
+			<Section
+				title={`${skin.name} colors`}
+				hint={`${look.palette.description}. Ctrl+Alt+T flips through them live.`}
+			>
+				<ThemeGallery
+					palettes={skin.palettes}
+					value={look.palette.id}
+					onChange={(id) => update(palettePatch(s, id))}
+				/>
+			</Section>
 			<SettingRow
 				label='Accent'
-				description='The neon that drives focus, cursor and highlights: the theme’s own, a preset, or any color.'
+				description='The color that drives focus, cursor and highlights: the variant’s own, a preset, or any color.'
 			>
 				<AccentPicker s={s} update={update} />
 			</SettingRow>
 			<SettingRow
-				label='Glass'
-				description='Blur and translucency on the panes. "Off" is fastest on integrated GPUs and battery.'
+				label='Interface font'
+				description={`The fonts ${skin.name} is designed for.`}
 			>
-				<SettingSegmented
-					value={s.glass}
-					options={['full', 'subtle', 'off'] as const}
-					onChange={(glass) => update({ glass })}
+				<Select
+					aria-label='Interface font'
+					value={look.uiFontId}
+					onValueChange={(id) => update(uiFontPatch(s, id))}
+					options={skin.fonts.ui.map((id) => ({
+						value: id,
+						label: UI_FONTS.find((f) => f.id === id)?.name ?? id,
+					}))}
+					className='w-52'
 				/>
 			</SettingRow>
-			<SettingToggle
-				label='Ambient background'
-				description='The glow and drifting grid behind the glass.'
-				value={s.ambient}
-				onChange={(ambient) => update({ ambient })}
-			/>
+			<SettingRow label='Density' description='Spacing across the whole interface.'>
+				<SettingSegmented
+					value={s.density}
+					options={['compact', 'cozy', 'roomy'] as const}
+					onChange={(density) => update({ density })}
+				/>
+			</SettingRow>
+			<SettingRow
+				label='Effects'
+				description='Scanlines, glows, sweeps and grain. "Off" is calmest and cheapest.'
+			>
+				<SettingSegmented
+					value={s.fx}
+					options={['full', 'subtle', 'off'] as const}
+					onChange={(fx) => update({ fx })}
+				/>
+			</SettingRow>
+			<SettingRow
+				label='Side bar'
+				description={
+					skin.layout.sidebar === 'drawer'
+						? `${skin.name} slides the side bar in as a drawer.`
+						: 'Which side the side bar sits on.'
+				}
+			>
+				<SettingSegmented
+					value={s.sidebarSide}
+					options={['skin', 'left', 'right'] as const}
+					onChange={(sidebarSide) => update({ sidebarSide })}
+				/>
+			</SettingRow>
+			{skin.id === 'cyber' && (
+				<>
+					<SettingRow
+						label='Glass'
+						description='Blur and translucency on the panes. "Off" is fastest on integrated GPUs and battery.'
+					>
+						<SettingSegmented
+							value={s.glass}
+							options={['full', 'subtle', 'off'] as const}
+							onChange={(glass) => update({ glass })}
+						/>
+					</SettingRow>
+					<SettingToggle
+						label='Ambient background'
+						description='The glow and drifting grid behind the glass.'
+						value={s.ambient}
+						onChange={(ambient) => update({ ambient })}
+					/>
+				</>
+			)}
 			<SettingToggle
 				label='Tab tint'
 				description='Tabs tinted by file type, with a red dot on files that have errors.'
@@ -56,7 +138,7 @@ export function AppearanceSettings({
 			/>
 			<SettingToggle
 				label='Reduce motion'
-				description='Turns off animations and smooth scrolling.'
+				description='Turns off animations and smooth scrolling (and calms every skin’s effects).'
 				value={s.reduceMotion}
 				onChange={(reduceMotion) => update({ reduceMotion })}
 			/>
