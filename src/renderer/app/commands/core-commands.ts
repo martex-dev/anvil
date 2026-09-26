@@ -191,6 +191,7 @@ export const CORE_COMMANDS: Command[] = [
 		title: 'Toggle Full Screen',
 		category: 'View',
 		shortcut: 'F11',
+		allowInOverlay: true,
 		icon: Maximize,
 		run: async () => {
 			await call('app:toggleFullScreen');

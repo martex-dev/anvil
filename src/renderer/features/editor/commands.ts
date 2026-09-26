@@ -136,6 +136,7 @@ export const EDITOR_COMMANDS: Command[] = [
 		title: 'Next Tab',
 		category: 'Go',
 		shortcut: 'Ctrl+PageDown',
+		repeatable: true,
 		run: () => cycleTab(1),
 	},
 	{
@@ -143,6 +144,7 @@ export const EDITOR_COMMANDS: Command[] = [
 		title: 'Previous Tab',
 		category: 'Go',
 		shortcut: 'Ctrl+PageUp',
+		repeatable: true,
 		run: () => cycleTab(-1),
 	},
 	{
@@ -230,6 +232,7 @@ export const EDITOR_COMMANDS: Command[] = [
 		title: 'Editor Font Bigger',
 		category: 'View',
 		shortcut: 'Ctrl+=',
+		repeatable: true,
 		icon: ZoomIn,
 		run: () =>
 			void updateSettings({ editorFontSize: Math.min(24, getSettings().editorFontSize + 1) }),
@@ -239,6 +242,7 @@ export const EDITOR_COMMANDS: Command[] = [
 		title: 'Editor Font Smaller',
 		category: 'View',
 		shortcut: 'Ctrl+-',
+		repeatable: true,
 		icon: ZoomOut,
 		run: () =>
 			void updateSettings({ editorFontSize: Math.max(10, getSettings().editorFontSize - 1) }),

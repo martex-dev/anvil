@@ -1,7 +1,25 @@
 import { useEffect } from 'react';
 
 import { isBindable, matchesShortcut } from '../../lib/shortcuts';
+import { useOverlayStore } from '../../stores/overlay-store';
 import { getCommands, runCommand } from './run';
+import type { Command } from './types';
+
+/**
+ * What a matched global shortcut does: `run` it, `swallow` the key (a held-down toggle must not
+ * flicker or close tab after tab), or `pass` it on untouched to the open dialog or picker, so
+ * Ctrl+W doesn't close the tab behind Settings and Ctrl+P doesn't stack a second modal.
+ */
+export function shortcutAction(
+	event: Pick<KeyboardEvent, 'repeat' | 'isComposing'>,
+	command: Pick<Command, 'allowInOverlay' | 'repeatable'>,
+	overlayOpen: boolean,
+): 'run' | 'swallow' | 'pass' {
+	if (event.isComposing) return 'pass';
+	if (overlayOpen && !command.allowInOverlay) return 'pass';
+	if (event.repeat && !command.repeatable) return 'swallow';
+	return 'run';
+}
 
 /**
  * Binds every global command's shortcut. Capture phase, so the editor and terminal can't
@@ -20,9 +38,12 @@ export function useGlobalShortcuts(): void {
 					matchesShortcut(event, c.shortcut),
 			);
 			if (!command) return;
+			const overlayOpen = useOverlayStore.getState().open.size > 0;
+			const action = shortcutAction(event, command, overlayOpen);
+			if (action === 'pass') return;
 			event.preventDefault();
 			event.stopPropagation();
-			void runCommand(command);
+			if (action === 'run') void runCommand(command);
 		};
 		window.addEventListener('keydown', onKeyDown, { capture: true });
 		return () => window.removeEventListener('keydown', onKeyDown, { capture: true });

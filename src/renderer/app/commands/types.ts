@@ -28,6 +28,13 @@ export interface Command {
 	scope?: 'global' | 'editor';
 	/** Editor-scoped commands only fire for this Monaco language (e.g. Shift+Enter in Python). */
 	editorLanguage?: string;
+	/**
+	 * Global shortcuts are ignored while a dialog, picker or menu is open (the key goes to it
+	 * instead); window-level commands like full screen set this to keep working there.
+	 */
+	allowInOverlay?: boolean;
+	/** Holding the shortcut repeats the command (next tab, font size); toggles must not. */
+	repeatable?: boolean;
 	keywords?: string[];
 	icon?: LucideIcon;
 	run(): void | Promise<void>;
