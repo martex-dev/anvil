@@ -62,7 +62,14 @@ function CodeBlock({
 					variant='ghost'
 					icon={<Copy size={11} />}
 					onClick={() =>
-						void navigator.clipboard.writeText(code).then(() => toast.success('Copied'))
+						void navigator.clipboard.writeText(code).then(
+							() => toast.success('Copied'),
+							(error: unknown) =>
+								toast.error(
+									'Could not copy',
+									error instanceof Error ? error.message : undefined,
+								),
+						)
 					}
 				>
 					Copy
