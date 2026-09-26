@@ -67,12 +67,13 @@ jobs:
         shell: bash
         run: |
           released=$(git ls-remote --tags --refs origin 'v*' | sed 's#.*refs/tags/v##' | grep -vx "$VERSION" || true)
-          previous=$(printf '%s\n' "$released" | sort -V | tail -n 1)
-          # The notes are every CHANGELOG.md section newer than the last release, so a release that
-          # bundles several versions lists all of them.
-          awk -v v="$VERSION" -v p="$previous" '
-            index($0, "## [" v "]") == 1 { f = 1 }
-            p != "" && index($0, "## [" p "]") == 1 { exit }
+          # The notes are this version's CHANGELOG.md section and every one after it up to the first
+          # version already released, so a release that bundles several versions lists all of them.
+          awk -v v="$VERSION" -v done="$(echo $released)" '
+            BEGIN { n = split(done, list, " "); for (i = 1; i <= n; i++) seen[list[i]] = 1 }
+            /^## \[/ { ver = substr($0, 5, index($0, "]") - 5) }
+            /^## \[/ && ver == v { f = 1 }
+            /^## \[/ && f && ver != v && (ver in seen) { exit }
             f' CHANGELOG.md > notes.md || true
           [ -s notes.md ] || echo "See the README for what's new." > notes.md
           # Installed copies update to the release marked Latest: an older version published late

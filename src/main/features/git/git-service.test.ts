@@ -171,11 +171,16 @@ describe('GitService', { timeout: 30_000 }, () => {
 		writeFileSync(join(repo, 'first.txt'), 'x');
 		run('add', 'first.txt');
 		run('commit', '-q', '-m', 'first');
-		const paths = Array.from({ length: 800 }, (_, i) => `research-file-${i}.txt`);
+		// Long names cross the command-line budget with few files: 800 short ones made real git on
+		// Windows runners take over 30 s.
+		const paths = Array.from(
+			{ length: 200 },
+			(_, i) => `research-notes-with-a-rather-long-descriptive-name-${i}.txt`,
+		);
 		for (const p of paths) writeFileSync(join(repo, p), p);
 		expect(batchPaths(paths).length).toBeGreaterThan(1);
 		await git.stage(paths);
-		expect((await git.status()).staged).toHaveLength(800);
+		expect((await git.status()).staged).toHaveLength(200);
 		await git.unstage(paths);
 		expect((await git.status()).staged).toEqual([]);
 	});
