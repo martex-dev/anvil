@@ -20,6 +20,7 @@ import {
 	parentOf,
 	type PendingCreate,
 	siblingNames,
+	treeItemId,
 } from './tree-model';
 import { TreeRowView } from './TreeRowView';
 import { TreeStatusRow } from './TreeStatusRow';
@@ -158,6 +159,12 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 					ref={containerRef}
 					role='tree'
 					aria-label='Files'
+					// DOM focus stays on the tree; this tells screen readers which row is current.
+					aria-activedescendant={
+						focusedPath && focusedPath !== renaming
+							? treeItemId(focusedPath)
+							: undefined
+					}
 					tabIndex={0}
 					className='min-h-full py-1 outline-none focus-visible:shadow-[inset_0_0_0_1px_var(--accent)]'
 					onPointerDown={() => {

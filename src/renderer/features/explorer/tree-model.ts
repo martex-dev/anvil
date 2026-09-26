@@ -104,3 +104,8 @@ export function newNameProblem(name: string, siblings: readonly string[]): strin
 		(siblings.some((s) => s.toLowerCase() === lower) ? `"${name}" already exists` : null)
 	);
 }
+
+/** DOM id of a tree row, so the tree can point `aria-activedescendant` at the focused one. */
+export function treeItemId(path: string): string {
+	return `tree-${encodeURIComponent(path)}`;
+}

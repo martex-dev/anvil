@@ -12,6 +12,7 @@ import {
 	newNameProblem,
 	parentOf,
 	siblingNames,
+	treeItemId,
 } from './tree-model';
 
 const e = (path: string, kind: FsEntry['kind'] = 'file'): FsEntry => ({
@@ -156,5 +157,12 @@ describe('folder links', () => {
 			'pkg',
 			'pkg/mod.py',
 		]);
+	});
+});
+
+describe('treeItemId', () => {
+	it('gives each path a distinct id without spaces', () => {
+		expect(treeItemId('My Data/a b.csv')).toBe('tree-My%20Data%2Fa%20b.csv');
+		expect(treeItemId('a/b')).not.toBe(treeItemId('a%2Fb'));
 	});
 });

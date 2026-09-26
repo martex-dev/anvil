@@ -5,7 +5,7 @@ import type { FsEntry } from '@shared/ipc/channels/fs';
 
 import { cn } from '../../lib/cn';
 import { EntryIcon } from './EntryIcon';
-import { isFolder } from './tree-model';
+import { isFolder, treeItemId } from './tree-model';
 
 const IGNORED = new Set([
 	'node_modules',
@@ -43,6 +43,7 @@ export function TreeRowView({
 	return (
 		<div
 			role='treeitem'
+			id={treeItemId(entry.path)}
 			aria-level={depth + 1}
 			aria-expanded={isDir ? expanded : undefined}
 			aria-selected={focused}
