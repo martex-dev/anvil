@@ -96,7 +96,7 @@ Short ADRs: the context, what was decided, and what it costs.
 
 **Decision.** Nine fonts ship with the app through `@fontsource` packages (JetBrains Mono, Fira Code, Cascadia Code, Geist Mono, Monaspace Neon, Maple Mono, Victor Mono, Iosevka, IBM Plex Mono). Only the Latin 400/700 and italic subsets are used, declared in `styles/fonts.css` as woff2 only (the packages' own stylesheets also pull in `.woff` fallbacks that Chromium never needs). They are dev dependencies because Vite copies the files into the build.
 
-**Consequences.** About 3.7 MB more in the installer (3 MB of it is Iosevka, which has an unusually large glyph set), with no network access and no install step. Fonts that aren't selected are never loaded.
+**Consequences.** About 3.7 MB more in the installer (3 MB of it is Iosevka, which has an unusually large glyph set), with no network access and no install step. Fonts that aren't selected are never loaded. The skins (ADR-014) added 21 more display and UI families; all fonts together are about 4.6 MB of woff2.
 
 ## ADR-013: The scratchpad holds its own model reference
 
@@ -105,3 +105,27 @@ Short ADRs: the context, what was decided, and what it costs.
 **Decision.** `openScratch` takes a reference through `ITextModelService` and keeps it until the tab closes. Closing flushes the text to local storage first.
 
 **Consequences.** The scratchpad lives exactly as long as its tab. Any future in-memory buffer (untitled files, AI previews that are real editors) needs the same treatment.
+
+## ADR-014: Skins, not just themes
+
+**Context.** Color themes only recolor. The goal is several looks that each feel like a different program: a terminal app, a brutalist poster, a trading terminal, a 1995 desktop, a starship HUD, a writing app, a Y2K candy app, next to Cyber Glass.
+
+**Decision.** A skin is a folder with a data-only manifest (palettes, fonts, layout), its palettes, a scoped stylesheet, and optional icon set and replacement chrome, all discovered with `import.meta.glob`. The shell reads the layout (views switcher left, right, on top or as a hover rail; side bar left, right or as a drawer; status bar top or bottom; pane gap; centered editor column) and lets a skin replace the title bar, window buttons, views switcher, status bar, an extra top and bottom bar, the backdrop and an overlay. Everything else is shared components with `data-part` hooks, restyled by the skin's CSS. Radius, fonts, density and effects are variables. Palettes stay per skin; the user also picks the interface font, code font, density, effects level and side bar side. Palette ids are global so the flat palette list keeps working for code that only needs light/dark.
+
+**Consequences.** Skins can be built in parallel without touching each other or shared files. Shared components must keep their `data-part` hooks stable: they are a public contract. Adding a font for a skin still needs a dependency (and `scripts/gen_fonts.py`).
+
+## ADR-015: Frameless window with skin-drawn buttons
+
+**Context.** The native title bar overlay (Windows' own minimize/maximize/close) can only be recolored, which breaks the illusion in skins like Workbench 95 or Y2K Chrome.
+
+**Decision.** The window is frameless; minimize, maximize and close are IPC channels and the window pushes its maximized/focused state. Each skin draws the buttons (the shared `WindowControls` by default).
+
+**Consequences.** Windows 11's snap-layout flyout on hovering maximize is gone; drag-to-edge snapping and Win+arrow still work.
+
+## ADR-016: Rebuilt history
+
+**Context.** The first releases landed as five large commits, which says little about how the app is put together.
+
+**Decision.** The history was rebuilt into small commits that add the code in dependency order (each commit's imports resolve), with the release tags moved to the equivalent commits and the tree of every tagged commit byte-identical to the original. Commit dates were not backdated.
+
+**Consequences.** The public history was force-pushed once. Some intermediate commits are mid-refactor states; the tagged ones build.
