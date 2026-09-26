@@ -50,6 +50,13 @@ function Preview({ proposal }: { proposal: Proposal }): JSX.Element {
 		[original, proposal, mode],
 	);
 
+	// Built once per proposal (Preview is keyed on it); toggling the mode only swaps the
+	// text in its models, so the diff keeps its scroll position instead of flashing blank.
+	const initial = useRef({ original, proposed });
+	const modelsRef = useRef<{
+		left: Monaco.editor.ITextModel;
+		right: Monaco.editor.ITextModel;
+	} | null>(null);
 	useEffect(() => {
 		const monaco = getLoadedMonaco();
 		if (!monaco || !hostRef.current) return;
@@ -63,15 +70,24 @@ function Preview({ proposal }: { proposal: Proposal }): JSX.Element {
 			contextmenu: false,
 			hideUnchangedRegions: { enabled: true },
 		});
-		const left = monaco.editor.createModel(original, proposal.language);
-		const right = monaco.editor.createModel(proposed, proposal.language);
+		const left = monaco.editor.createModel(initial.current.original, proposal.language);
+		const right = monaco.editor.createModel(initial.current.proposed, proposal.language);
 		diff.setModel({ original: left, modified: right });
+		modelsRef.current = { left, right };
 		return () => {
+			modelsRef.current = null;
 			diff.dispose();
 			left.dispose();
 			right.dispose();
 		};
-	}, [original, proposed, proposal.language]);
+	}, [proposal.language]);
+
+	useEffect(() => {
+		const models = modelsRef.current;
+		if (!models) return;
+		if (models.left.getValue() !== original) models.left.setValue(original);
+		if (models.right.getValue() !== proposed) models.right.setValue(proposed);
+	}, [original, proposed]);
 
 	const accept = (): void => {
 		const model = findModel(proposal.path);
