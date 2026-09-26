@@ -169,7 +169,9 @@ export const CORE_COMMANDS: Command[] = [
 		category: 'View',
 		shortcut: 'F11',
 		icon: Maximize,
-		run: () => void call('app:toggleFullScreen'),
+		run: async () => {
+			await call('app:toggleFullScreen');
+		},
 	},
 	{
 		id: 'view.focusGroup1',
@@ -240,19 +242,25 @@ export const CORE_COMMANDS: Command[] = [
 		title: 'Reload Window',
 		category: 'Anvil',
 		icon: RefreshCw,
-		run: () => void call('app:reloadWindow'),
+		run: async () => {
+			await call('app:reloadWindow');
+		},
 	},
 	{
 		id: 'anvil.devtools',
 		title: 'Toggle Developer Tools',
 		category: 'Anvil',
-		run: () => void call('app:toggleDevTools'),
+		run: async () => {
+			await call('app:toggleDevTools');
+		},
 	},
 	{
 		id: 'anvil.logs',
 		title: 'Open Log Folder',
 		category: 'Anvil',
-		run: () => void call('app:openLogs'),
+		run: async () => {
+			await call('app:openLogs');
+		},
 	},
 	{
 		id: 'anvil.checkUpdates',
