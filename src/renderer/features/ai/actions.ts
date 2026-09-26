@@ -11,6 +11,7 @@ import { getAiSettings } from './ai-settings';
 import { useChatFocus } from './chat-focus';
 import { useChat } from './chat-store';
 import {
+	type ActiveEditor,
 	activeEditor,
 	fileContext,
 	problemsContext,
@@ -32,6 +33,25 @@ export async function askChat(prompt: string, context: AiContext[]): Promise<voi
 	}
 	for (const c of context) chat.attach(c);
 	chat.send(prompt, model);
+}
+
+/** Selects whole lines, so an inline edit rewrites them instead of inserting at the cursor. */
+function selectLines(ed: ActiveEditor, start: number, end: number): void {
+	ed.editor.setSelection({
+		startLineNumber: start,
+		startColumn: 1,
+		endLineNumber: end,
+		endColumn: ed.model.getLineMaxColumn(end),
+	});
+}
+
+/** Selects the innermost function or class under the cursor; false when there is none. */
+function selectSymbolAtCursor(ed: ActiveEditor): boolean {
+	const line = ed.editor.getPosition()?.lineNumber ?? 1;
+	const inner = symbolPath(outlineFor(ed.language, ed.model.getLinesContent()), line).at(-1);
+	if (!inner) return false;
+	selectLines(ed, inner.line, inner.end);
+	return true;
 }
 
 /** File + selection (or the function under the cursor) as context. */
@@ -124,6 +144,8 @@ export async function fixProblemsHere(): Promise<void> {
 		toast.info('No problems here', 'Nothing flagged on these lines.');
 		return;
 	}
+	// Rewrite the flagged line; with nothing selected the edit would insert a copy instead.
+	if (!ed.selection) selectLines(ed, line, line);
 	startInlineEdit(
 		'Fix these problems: ' +
 			problems.text
@@ -157,18 +179,8 @@ export async function askAiAboutProblem(p: Problem): Promise<void> {
 export function addDocstring(): void {
 	const ed = activeEditor();
 	if (!ed) return;
-	if (!ed.selection) {
-		// Select the function under the cursor so the edit covers it whole.
-		const line = ed.editor.getPosition()?.lineNumber ?? 1;
-		const inner = symbolPath(outlineFor(ed.language, ed.model.getLinesContent()), line).at(-1);
-		if (inner)
-			ed.editor.setSelection({
-				startLineNumber: inner.line,
-				startColumn: 1,
-				endLineNumber: inner.end,
-				endColumn: ed.model.getLineMaxColumn(inner.end),
-			});
-	}
+	// Select the function under the cursor so the edit covers it whole.
+	if (!ed.selection) selectSymbolAtCursor(ed);
 	startInlineEdit(
 		ed.language === 'python'
 			? 'Add a concise Google-style docstring (Args, Returns, Raises; units for financial quantities). Change nothing else.'
@@ -177,6 +189,19 @@ export function addDocstring(): void {
 }
 
 export function vectorize(): void {
+	const ed = activeEditor();
+	if (!ed) {
+		toast.info('Open a file first');
+		return;
+	}
+	// Rewrite the function under the cursor; with nothing selected the edit would insert a copy.
+	if (!ed.selection && !selectSymbolAtCursor(ed)) {
+		toast.info(
+			'Select the code to vectorize',
+			'Put the cursor inside a function, or select the loop to rewrite.',
+		);
+		return;
+	}
 	startInlineEdit(
 		'Rewrite this to be vectorised (NumPy / pandas / polars) with identical results, including NaN handling. No Python loops over rows.',
 	);
