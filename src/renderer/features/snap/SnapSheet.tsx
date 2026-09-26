@@ -1,6 +1,6 @@
 import { Aperture, Copy, Download, X } from 'lucide-react';
 import { Dialog as RadixDialog } from 'radix-ui';
-import { type JSX, type KeyboardEvent, useCallback, useMemo, useState } from 'react';
+import { type JSX, type KeyboardEvent, useCallback, useMemo, useRef, useState } from 'react';
 
 import { useSettings } from '../../app/hooks/use-settings';
 import { getLoadedMonaco } from '../../lib/monaco/load';
@@ -9,6 +9,7 @@ import { useRegisterOverlay } from '../../stores/overlay-store';
 import { toast } from '../../stores/toast-store';
 import { Button } from '../../ui/Button';
 import { Kbd } from '../../ui/Kbd';
+import { Spinner } from '../../ui/Spinner';
 import { backgroundById } from './backgrounds';
 import type { RenderSnapOptions } from './render';
 import { snapFileName } from './snap-layout';
@@ -62,8 +63,13 @@ export function SnapSheet({ request }: SnapSheetProps): JSX.Element {
 		saveSnapOptions(next);
 	};
 
+	// The ref guards synchronously (a double click lands before the state re-renders).
+	const [copying, setCopying] = useState(false);
+	const copyingRef = useRef(false);
 	const copy = useCallback(async (): Promise<void> => {
-		if (!image) return;
+		if (!image || copyingRef.current) return;
+		copyingRef.current = true;
+		setCopying(true);
 		try {
 			await navigator.clipboard.write([new ClipboardItem({ 'image/png': image.blob })]);
 			toast.success('Snap copied');
@@ -72,6 +78,9 @@ export function SnapSheet({ request }: SnapSheetProps): JSX.Element {
 				'Could not copy the snap',
 				err instanceof Error ? err.message : String(err),
 			);
+		} finally {
+			copyingRef.current = false;
+			setCopying(false);
 		}
 	}, [image]);
 
@@ -91,6 +100,8 @@ export function SnapSheet({ request }: SnapSheetProps): JSX.Element {
 		const isCopy = matchesShortcut(event, 'Ctrl+C');
 		if (!isCopy || window.getSelection()?.toString()) return;
 		event.preventDefault();
+		// Holding Ctrl+C auto-repeats keydown; copy once per press.
+		if (event.repeat) return;
 		void copy();
 	};
 
@@ -163,7 +174,15 @@ export function SnapSheet({ request }: SnapSheetProps): JSX.Element {
 						</Button>
 						<Button
 							variant='primary'
-							icon={<Copy size={13} />}
+							// Busy without `loading`: that disables the button and would drop its focus.
+							icon={
+								copying ? (
+									<Spinner size={12} label='Copying snap' />
+								) : (
+									<Copy size={13} />
+								)
+							}
+							aria-busy={copying || undefined}
 							onClick={() => void copy()}
 							disabled={!image}
 						>
