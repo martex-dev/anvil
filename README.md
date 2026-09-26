@@ -79,40 +79,66 @@ General-purpose editors treat a backtest like any other script. Anvil is tuned f
 
 ![Toolbox and the magenta accent](docs/screenshots/toolbox-magenta.png)
 
-## Design: "cyber glass", in 16 themes
+## Eight skins: eight different programs
 
-Floating panes of frosted glass over a deep-space background with a slow drifting grid, neon hairline edges, and one accent color driving focus, cursor and highlights. Labels use monospace HUD type, and file types are shown as colored badges.
+A skin isn't a color theme. Each one changes the **layout, chrome, fonts, icons, shapes and effects**, so Anvil can look like a completely different program, and each skin has **4 to 16 color variants** of its own. `Ctrl+Alt+Y` switches skins with a live preview as you arrow through them; `Ctrl+Alt+T` flips through the current skin's variants.
 
-**16 themes** recolor everything (chrome, glass, editor, terminal, even Code Snap): Cyber Glass, Synthwave '84, Tokyo Night, Dracula, Catppuccin Mocha, Nord, Gruvbox, Rosé Pine, One Dark Pro, Monokai Pro, Solarized, Phosphor (green CRT), Terminal Amber, Abyss, plus Paper and Catppuccin Latte for daylight. `Ctrl+Alt+T` previews them live as you arrow through the list. The accent follows the theme, or pick a preset or any color. The code font is yours too: JetBrains Mono, Fira Code, Cascadia Code, Geist Mono, Monaspace Neon, Maple Mono, Victor Mono, Iosevka or IBM Plex Mono, all bundled. Add line height, cursor style, a neon cursor, rainbow indentation and tabs tinted by file type (with a red dot when a file has errors).
+![All eight skins](docs/screenshots/skins.jpg)
 
-![Six of the sixteen themes](docs/screenshots/themes.png)
+| Skin             | What it is                                                                                                                                                                                                                                                     |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Cyber Glass**  | The original: frosted glass panes over deep space, an aurora and a neon floor grid, a rotating neon edge on the pane you're in. 16 variants, from Synthwave to Tokyo Night, Dracula and Catppuccin.                                                            |
+| **Mainframe**    | A text-mode terminal program: box-drawn panes (`┌─[ EXPLORER ]──`), a tmux window list, a vim status line with a live mode block, a Midnight Commander F-key bar and a CRT overlay. Green and amber phosphor, IBM 3270, DEC white, and greenbar printer paper. |
+| **Concrete**     | A Swiss/brutalist poster: a huge ANVIL wordmark on an ink band, giant 01–09 numerals down the right edge, 3px rules, hard offset shadows and a LIVE ticker. Poster, Riso, Mint, Blueprint and Night.                                                           |
+| **Cockpit**      | A Bloomberg-style trading terminal: an `ANVIL PROFESSIONAL` bar, a `<GO>` command line, F-key view tabs, inverted data-tile headers and a status tape. Amber, Refinitiv, Floor, Carbon and Daylight.                                                           |
+| **Workbench 95** | A 1995 desktop program: navy caption bars, bevelled child windows on a teal desktop, a pixel-art toolbar, a keyboard menu bar, and a taskbar with Start. Classic, Storm, Rose, Plum and Hot Dog Stand.                                                         |
+| **Holo HUD**     | A starship interface: chamfered panes with corner brackets, `ANVIL//CORE`, hexagonal nav keys, power and threat meters, a mission clock and a targeting ring behind everything. Cyan, Red Alert, Gold, Ultraviolet and Arctic.                                 |
+| **Zen Paper**    | A calm writing app: textured paper, serif type, code centered in a column, a slide-in drawer, a hover table of contents and a small-caps colophon for a status bar. Paper, Sepia, Sakura, Ink and Forest.                                                      |
+| **Y2K Chrome**   | Glossy 2000s candy: a brushed-chrome title bar, jelly orb window buttons, Aqua pill tabs, bubble buttons and a pastel vaporwave sky. Bubblegum, Aqua, Chrome, Midnight and Lime.                                                                               |
 
-![Theme gallery in Settings](docs/screenshots/theme-gallery.png)
+Inside any skin you choose the color variant, the accent (the variant's own, a preset, or any color), the interface font (each skin offers the fonts it was designed for), the code font (12 bundled: JetBrains Mono, Fira Code, Cascadia Code, Geist Mono, Monaspace Neon, Maple Mono, Victor Mono, Iosevka, IBM Plex Mono, Space Mono, Share Tech Mono, VT323), density (compact / cozy / roomy), effects (full / subtle / off: scanlines, glows, sweeps and grain calm down or disappear) and which side the side bar sits on. Plus line height, cursor style, a neon cursor, rainbow indentation and tabs tinted by file type.
+
+<details>
+<summary>Each skin at full size</summary>
+
+![Cyber Glass](docs/screenshots/skins/cyber.jpg)
+![Mainframe](docs/screenshots/skins/mainframe.jpg)
+![Concrete](docs/screenshots/skins/concrete.jpg)
+![Cockpit](docs/screenshots/skins/cockpit.jpg)
+![Workbench 95](docs/screenshots/skins/workbench.jpg)
+![Holo HUD](docs/screenshots/skins/holo.jpg)
+![Zen Paper](docs/screenshots/skins/zen.jpg)
+![Y2K Chrome](docs/screenshots/skins/y2k.jpg)
+
+</details>
+
+Skins live in their own folders and are discovered automatically; [docs/SKINS.md](docs/SKINS.md) explains how to write one.
 
 It's also quick. The installed app reaches an interactive workbench in about **0.4 s**, and the UI process idles at about **110 MB**; the rest is Electron's usual main and GPU processes. Monaco (~10 MB), the viewers and the chat panel load the first time you use them. Measure it yourself with `npx tsx scripts/measure.mts`.
 
-The glass is optional. **Settings → Appearance → Glass: subtle / off** turns the blur down or makes every surface solid, for integrated GPUs and battery. The editor itself never renders over a blur: the code sits on a near-opaque plate, so text stays crisp and scrolling stays cheap.
+Effects are optional. **Settings → Appearance → Effects: subtle / off** (and Glass for Cyber Glass) calms every skin down, for integrated GPUs and battery. The editor itself never renders over a blur, so text stays crisp and scrolling stays cheap.
 
 ![Code Snap](docs/screenshots/code-snap.png)
 
 ## Keyboard
 
-| Keys                        | Action                              | Keys                  | Action                      |
-| --------------------------- | ----------------------------------- | --------------------- | --------------------------- |
-| `Ctrl+P`                    | Quick Open (`>` `@` `:`)            | `Ctrl+Shift+P` / `F1` | Command palette             |
-| `F5`                        | Run Python file                     | `Ctrl+Enter`          | Run `# %%` cell             |
-| `Shift+Enter`               | Run cell and advance                | `F9`                  | Run selection / line        |
-| `Ctrl+I`                    | Edit with AI (inline)               | `Ctrl+L`              | Ask AI (attaches selection) |
-| `Ctrl+Alt+.`                | Fix problems here with AI           | `Ctrl+Alt+F`          | Format with ruff            |
-| `Ctrl+\`                    | Split editor                        | `Ctrl+B` / `Ctrl+J`   | Side bar / panel            |
-| ``Ctrl+` ``                 | Terminal                            | `Ctrl+Alt+B`          | AI panel                    |
-| `Ctrl+Alt+K` / `Ctrl+Alt+L` | Toggle / next bookmark              | `Ctrl+Alt+Z`          | Zen mode                    |
-| `Ctrl+Alt+T`                | Color theme (live preview)          | `Ctrl+Alt+P`          | Scratchpad                  |
-| `Ctrl+Alt+X`                | Transform selection                 | `Ctrl+Alt+=`          | Evaluate math               |
-| `Ctrl+Alt+V`                | Clipboard history                   | `Ctrl+Alt+I`          | Insert UUID / timestamp     |
-| `Ctrl+Alt+C`                | Code Snap                           | `Ctrl+Alt+D`          | Spotlight                   |
-| `Alt+←` / `Alt+→`           | Back / forward                      | `Alt+Z`               | Word wrap                   |
-| `Ctrl+Shift+E F G D X`      | Explorer, Search, Git, Run, Toolbox | `Ctrl+Alt+/`          | All shortcuts               |
+| Keys                        | Action                              | Keys                  | Action                       |
+| --------------------------- | ----------------------------------- | --------------------- | ---------------------------- |
+| `Ctrl+P`                    | Quick Open (`>` `@` `:`)            | `Ctrl+Shift+P` / `F1` | Command palette              |
+| `F5`                        | Run Python file                     | `Ctrl+Enter`          | Run `# %%` cell              |
+| `Shift+Enter`               | Run cell and advance                | `F9`                  | Run selection / line         |
+| `Ctrl+I`                    | Edit with AI (inline)               | `Ctrl+L`              | Ask AI (attaches selection)  |
+| `Ctrl+Alt+.`                | Fix problems here with AI           | `Ctrl+Alt+F`          | Format with ruff             |
+| `Ctrl+\`                    | Split editor                        | `Ctrl+B` / `Ctrl+J`   | Side bar / panel             |
+| ``Ctrl+` ``                 | Terminal                            | `Ctrl+Alt+B`          | AI panel                     |
+| `Ctrl+Alt+K` / `Ctrl+Alt+L` | Toggle / next bookmark              | `Ctrl+Alt+S`          | Save all                     |
+| `Ctrl+Alt+Y`                | Skin (live preview)                 | `Ctrl+Alt+T`          | Color variant (live preview) |
+| `Ctrl+Alt+P`                | Scratchpad                          | `Ctrl+Alt+Z`          | Zen mode                     |
+| `Ctrl+Alt+X`                | Transform selection                 | `Ctrl+Alt+=`          | Evaluate math                |
+| `Ctrl+Alt+V`                | Clipboard history                   | `Ctrl+Alt+I`          | Insert UUID / timestamp      |
+| `Ctrl+Alt+C`                | Code Snap                           | `Ctrl+Alt+D`          | Spotlight                    |
+| `Alt+←` / `Alt+→`           | Back / forward                      | `Alt+Z`               | Word wrap                    |
+| `Ctrl+Shift+E F G D X`      | Explorer, Search, Git, Run, Toolbox | `Ctrl+Alt+/`          | All shortcuts                |
 
 ## Install
 
