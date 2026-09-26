@@ -23,13 +23,16 @@ const refresh = (): void => {
 	invalidateGitLines();
 };
 
+/** Resolves to whether the operation succeeded; failures are toasted, never thrown. */
 const runGit =
-	(label: string, op: () => Promise<{ summary: string }>) => async (): Promise<void> => {
+	(label: string, op: () => Promise<{ summary: string }>) => async (): Promise<boolean> => {
 		try {
 			const { summary } = await op();
 			toast.success(label, summary);
+			return true;
 		} catch (error) {
 			toast.error(`${label} failed`, error instanceof Error ? error.message : undefined);
+			return false;
 		} finally {
 			refresh();
 		}
@@ -114,14 +117,18 @@ export const GIT_COMMANDS: Command[] = [
 		title: 'Pull',
 		category: 'Git',
 		icon: ArrowDown,
-		run: runGit('Pulled', () => call('git:pull')),
+		run: async () => {
+			await runGit('Pulled', () => call('git:pull'))();
+		},
 	},
 	{
 		id: 'git.push',
 		title: 'Push',
 		category: 'Git',
 		icon: ArrowUp,
-		run: runGit('Pushed', () => call('git:push')),
+		run: async () => {
+			await runGit('Pushed', () => call('git:push'))();
+		},
 	},
 	{
 		id: 'git.sync',
@@ -129,8 +136,9 @@ export const GIT_COMMANDS: Command[] = [
 		category: 'Git',
 		icon: ArrowDownUp,
 		run: async () => {
-			await runGit('Pulled', () => call('git:pull'))();
-			await runGit('Pushed', () => call('git:push'))();
+			// A failed pull (conflicts, divergence) must be resolved before anything is pushed.
+			if (await runGit('Pulled', () => call('git:pull'))())
+				await runGit('Pushed', () => call('git:push'))();
 		},
 	},
 	{ id: 'git.log', title: 'Show Recent Commits', category: 'Git', icon: History, run: showLog },
