@@ -52,15 +52,16 @@ export async function streamOnce(options: {
 	onPartial?: (text: string) => void;
 	signal?: AbortSignal;
 }): Promise<string> {
+	const { signal } = options;
 	const settings = await getAiSettings();
+	// Cancelled while the settings loaded: never send it, or the provider runs (and bills) it.
+	if (signal?.aborted) throw new Error('Cancelled');
 	const requestId = crypto.randomUUID();
 	const done = new Promise<string>((resolve, reject) => {
 		pending.set(requestId, { text: '', onPartial: options.onPartial, resolve, reject });
 	});
-	options.signal?.addEventListener(
-		'abort',
-		() => void call('ai:cancel', requestId).catch(() => undefined),
-	);
+	const onAbort = (): void => void call('ai:cancel', requestId).catch(() => undefined);
+	signal?.addEventListener('abort', onAbort, { once: true });
 	try {
 		await call('ai:send', {
 			requestId,
@@ -72,5 +73,9 @@ export async function streamOnce(options: {
 	} catch (error) {
 		routeError(requestId, error instanceof Error ? error.message : String(error));
 	}
-	return done;
+	try {
+		return await done;
+	} finally {
+		signal?.removeEventListener('abort', onAbort);
+	}
 }
