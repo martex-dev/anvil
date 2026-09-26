@@ -35,6 +35,17 @@ jobs:
           npm run typecheck
           npm test
 
+      # electron-builder uploads its files in parallel, and each upload creates the release if
+      # it's missing. Two of them racing made two releases for v0.1.0 and lost files, so the
+      # release is created first.
+      - name: Create the release
+        shell: bash
+        run: |
+          gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 ||
+            gh release create "$GITHUB_REF_NAME" --verify-tag --title "Anvil ${GITHUB_REF_NAME#v}" --notes "See the README for what's new."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build and publish
         run: |
           npm run build
