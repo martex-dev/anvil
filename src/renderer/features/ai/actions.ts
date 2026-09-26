@@ -23,11 +23,15 @@ import { streamOnce } from './requests';
 /** Opens the AI panel and sends a prompt with the given context attached. */
 export async function askChat(prompt: string, context: AiContext[]): Promise<void> {
 	useLayoutStore.getState().toggleAi(true);
-	const chat = useChat.getState();
-	for (const c of context) chat.attach(c);
 	const { chat: model } = await getAiSettings();
-	if (!chat.send(prompt, model))
+	const chat = useChat.getState();
+	// Check before attaching: chips left behind would go out with the next, unrelated message.
+	if (chat.activeRequest) {
 		toast.info('A reply is still streaming', 'Wait for it or press Stop, then try again.');
+		return;
+	}
+	for (const c of context) chat.attach(c);
+	chat.send(prompt, model);
 }
 
 /** File + selection (or the function under the cursor) as context. */
