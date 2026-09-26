@@ -191,3 +191,35 @@ html[data-skin='concrete'] .cc-winctl > button[data-action='close']:hover {
 	background: var(--text-0);
 	color: var(--skin-close);
 }
+
+/* Narrow windows: the band sheds its captions before anything clips. The window boxes never
+ * shrink; the running head gives way first. */
+html[data-skin='concrete'] .cc-title > :not(.cc-head) {
+	flex-shrink: 0;
+}
+html[data-skin='concrete'] .cc-menus {
+	flex-shrink: 1;
+	min-width: 0;
+	overflow: hidden;
+}
+@media (max-width: 1440px) {
+	html[data-skin='concrete'] .cc-brand-cap,
+	html[data-skin='concrete'] .cc-find-text {
+		display: none;
+	}
+	html[data-skin='concrete'] .cc-find {
+		width: auto;
+	}
+}
+@media (max-width: 1200px) {
+	html[data-skin='concrete'] .cc-actions [data-python-env] {
+		display: none;
+	}
+	html[data-skin='concrete'] .cc-menu-trigger {
+		padding: 0 6px;
+		letter-spacing: 0.04em;
+	}
+	html[data-skin='concrete'] .cc-brand-word {
+		font-size: 26px;
+	}
+}

@@ -124,3 +124,9 @@ html[data-skin='concrete'] button[data-part='status-item']:hover * {
 		opacity: 0;
 	}
 }
+
+@media (max-width: 1500px) {
+	html[data-skin='concrete'] .cc-ticker {
+		display: none;
+	}
+}
