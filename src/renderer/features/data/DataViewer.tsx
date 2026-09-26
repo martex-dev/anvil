@@ -2,8 +2,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { SearchX, Table2 } from 'lucide-react';
 import { type JSX, type KeyboardEvent, useEffect, useMemo, useRef } from 'react';
 
+import { getCommands, runCommand } from '../../app/commands/run';
 import { cn } from '../../lib/cn';
-import { call } from '../../lib/ipc';
+import { call, IpcCallError } from '../../lib/ipc';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { toast } from '../../stores/toast-store';
 import { requestOpenFile } from '../../stores/workbench-store';
@@ -26,6 +27,9 @@ import { DataToolbar } from './DataToolbar';
 import { type GridSelection, selectionRange } from './grid-selection';
 import { useDataMeta } from './use-data-pages';
 import { useTableCopy } from './use-table-copy';
+
+/** Errors an interpreter change can fix: none selected, or one without the needed packages. */
+const PYTHON_ERRORS = new Set(['DATA_NO_PYTHON', 'DATA_PYTHON_FAILED']);
 
 export function DataViewer({ path }: { path: string }): JSX.Element {
 	const client = useQueryClient();
@@ -90,6 +94,15 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 		if (files.includes(path)) void reload(true);
 	});
 
+	// Parquet, feather and xlsx need a Python env with polars or pandas; let the user pick one
+	// right here, then try again with it.
+	const selectInterpreter = async (): Promise<void> => {
+		const command = getCommands().find((c) => c.id === 'python.selectEnv');
+		if (!command) return;
+		await runCommand(command);
+		await meta.refetch();
+	};
+
 	const openAsText = (): void => {
 		if (data && !isTextFormat(data.format)) {
 			toast.info(`${data.format.toUpperCase()} files are binary and can't be opened as text`);
@@ -135,6 +148,18 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 				title={`Could not read ${fileName(path)}`}
 				message={meta.error.message}
 				onRetry={() => void meta.refetch()}
+				action={
+					meta.error instanceof IpcCallError &&
+					PYTHON_ERRORS.has(meta.error.code) && (
+						<Button
+							size='sm'
+							variant='primary'
+							onClick={() => void selectInterpreter()}
+						>
+							Select interpreter
+						</Button>
+					)
+				}
 			/>
 		);
 	} else if (!data) {
