@@ -59,9 +59,10 @@ export const terminalFeature: MainFeature = {
 		ctx.ipc.handle(
 			'terminal:open',
 			async ({ sessionId, preset, cols, rows, initialCommand }) => {
-				const fresh = !live.has(sessionId);
-				if (fresh) await startSession(sessionId, preset, cols, rows);
-				else live.resize(sessionId, cols, rows);
+				const fresh = await live.ensure(sessionId, () =>
+					startSession(sessionId, preset, cols, rows),
+				);
+				if (!fresh) live.resize(sessionId, cols, rows);
 				// Only into a session this call started: reattaching (a font-size change or StrictMode
 				// remounts the pane) must not run the file or task again.
 				// ConPTY buffers input typed before the shell's first prompt, so this is safe to send now.
@@ -79,7 +80,10 @@ export const terminalFeature: MainFeature = {
 		ctx.ipc.handle('terminal:write', async ({ sessionId, data, restart }) => {
 			const s = live.get(sessionId);
 			// Run / REPL / task commands restart a shell that has exited instead of vanishing.
-			if (restart && s && !s.pty) await startSession(sessionId, s.preset, s.cols, s.rows);
+			if (restart && s)
+				await live.relaunch(sessionId, () =>
+					startSession(sessionId, s.preset, s.cols, s.rows),
+				);
 			return live.write(sessionId, data);
 		});
 		ctx.ipc.handle('terminal:resize', ({ sessionId, cols, rows }) =>
@@ -87,8 +91,8 @@ export const terminalFeature: MainFeature = {
 		);
 		ctx.ipc.handle('terminal:restart', async ({ sessionId, cols, rows }) => {
 			const s = live.get(sessionId);
-			if (!s || s.pty) return;
-			await startSession(sessionId, s.preset, cols, rows);
+			if (!s) return;
+			await live.relaunch(sessionId, () => startSession(sessionId, s.preset, cols, rows));
 		});
 		ctx.ipc.handle('terminal:kill', (sessionId) => live.kill(sessionId));
 

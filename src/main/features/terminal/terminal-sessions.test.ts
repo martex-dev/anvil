@@ -105,6 +105,60 @@ describe('TerminalSessions', () => {
 		expect(sessions.get('s1')?.backlog).toContain('first');
 	});
 
+	it('starts a session once when two opens race', async () => {
+		let release = (): void => undefined;
+		const gate = new Promise<void>((r) => (release = r));
+		const launch = vi.fn(async () => {
+			await gate;
+			sessions.start('s1', 'powershell', spec, 'C:/p', 80, 24);
+		});
+		const first = sessions.ensure('s1', launch);
+		const second = sessions.ensure('s1', launch);
+		release();
+		expect(await first).toBe(true);
+		expect(await second).toBe(false);
+		expect(launch).toHaveBeenCalledTimes(1);
+		expect(ptys).toHaveLength(1);
+		expect(await sessions.ensure('s1', launch)).toBe(false);
+	});
+
+	it('kills a session closed while it was still starting', async () => {
+		let release = (): void => undefined;
+		const gate = new Promise<void>((r) => (release = r));
+		const started = sessions.ensure('s1', async () => {
+			await gate;
+			sessions.start('s1', 'powershell', spec, 'C:/p', 80, 24);
+		});
+		sessions.kill('s1');
+		release();
+		await started;
+		expect(ptys[0]?.killed).toBe(true);
+		expect(sessions.has('s1')).toBe(false);
+	});
+
+	it('relaunches only an exited session', async () => {
+		const launch = vi.fn(async () => {
+			sessions.start('s1', 'powershell', spec, 'C:/p', 80, 24);
+		});
+		await sessions.ensure('s1', launch);
+		expect(await sessions.relaunch('s1', launch)).toBe(false);
+		ptys[0]?.exitWith(0);
+		expect(await sessions.relaunch('s1', launch)).toBe(true);
+		expect(ptys).toHaveLength(2);
+	});
+
+	it('kills a still-running process instead of orphaning it on a second start', () => {
+		sessions.start('s1', 'powershell', spec, 'C:/p', 80, 24);
+		sessions.start('s1', 'powershell', spec, 'C:/p', 80, 24);
+		expect(ptys[0]?.killed).toBe(true);
+		// Late output from the replaced process is ignored.
+		ptys[0]?.emit('stale');
+		ptys[1]?.emit('fresh');
+		vi.advanceTimersByTime(10);
+		expect(onData).toHaveBeenCalledWith('s1', 'fresh');
+		expect(onData).not.toHaveBeenCalledWith('s1', expect.stringContaining('stale'));
+	});
+
 	it('kill ends the process and forgets the session', () => {
 		sessions.start('s1', 'powershell', spec, 'C:/p', 80, 24);
 		sessions.kill('s1');

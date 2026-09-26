@@ -42,6 +42,9 @@ const FLUSH_MS = 8;
 
 export class TerminalSessions {
 	private readonly sessions = new Map<string, Session>();
+	/** Starts in flight (launching awaits `which`, IPython checks…) and kills made meanwhile. */
+	private readonly starting = new Map<string, Promise<void>>();
+	private readonly cancelled = new Set<string>();
 
 	constructor(
 		private readonly spawn: SpawnPty,
@@ -54,6 +57,43 @@ export class TerminalSessions {
 
 	get(id: string): Readonly<Session> | undefined {
 		return this.sessions.get(id);
+	}
+
+	/**
+	 * Runs `launch` (which ends in start()) unless the session exists or is already starting; a
+	 * concurrent caller (StrictMode mounts the pane twice) waits for that start instead of
+	 * spawning a second shell. True only for the call that started it, so an initial command is
+	 * typed exactly once.
+	 */
+	ensure(id: string, launch: () => Promise<void>): Promise<boolean> {
+		return this.startOnce(id, () => !this.sessions.has(id), launch);
+	}
+
+	/** Starts an exited session again; no-op while it runs or is already starting. */
+	relaunch(id: string, launch: () => Promise<void>): Promise<boolean> {
+		return this.startOnce(id, () => this.sessions.get(id)?.pty === null, launch);
+	}
+
+	private async startOnce(
+		id: string,
+		needed: () => boolean,
+		launch: () => Promise<void>,
+	): Promise<boolean> {
+		const inflight = this.starting.get(id);
+		if (inflight) {
+			await inflight;
+			return false;
+		}
+		if (!needed()) return false;
+		const run = launch().finally(() => this.starting.delete(id));
+		this.starting.set(id, run);
+		try {
+			await run;
+		} finally {
+			// Closed (or the app quit) while it was starting: don't leave that shell running.
+			if (this.cancelled.delete(id)) this.kill(id);
+		}
+		return true;
 	}
 
 	start(
@@ -80,9 +120,15 @@ export class TerminalSessions {
 		this.sessions.set(id, session);
 		session.cols = cols;
 		session.rows = rows;
+		// Never orphan a live process: kill() only knows about session.pty.
+		const previous = session.pty;
+		session.pty = null;
+		previous?.kill();
 		const pty = this.spawn(spec, { cwd, cols, rows });
 		session.pty = pty;
-		pty.onData((data) => this.push(session, data));
+		pty.onData((data) => {
+			if (session.pty === pty) this.push(session, data);
+		});
 		pty.onExit(({ exitCode }) => {
 			if (session.pty !== pty) return;
 			this.flush(session);
@@ -112,6 +158,7 @@ export class TerminalSessions {
 	}
 
 	kill(id: string): void {
+		if (this.starting.has(id)) this.cancelled.add(id);
 		const session = this.sessions.get(id);
 		if (!session) return;
 		this.sessions.delete(id);
