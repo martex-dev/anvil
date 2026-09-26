@@ -95,8 +95,10 @@ export const GridRow = memo(function GridRow({
 		>
 			{items}
 			<div
+				data-gutter={index}
+				title='Select row (Shift+click to extend)'
 				className={cn(
-					'num sticky left-0 z-10 flex h-full items-center justify-end border-r border-glass-edge bg-bg-1 pr-2 text-11',
+					'num sticky left-0 z-10 cursor-default flex h-full items-center justify-end border-r border-glass-edge bg-bg-1 pr-2 text-11',
 					inSelection ? 'text-accent' : 'text-fg-2',
 				)}
 				style={{ width: gutter }}

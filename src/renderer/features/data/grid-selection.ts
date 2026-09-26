@@ -95,3 +95,34 @@ export function moveSelection(
 	if (event.shiftKey && selection) return { anchor: selection.anchor, focus };
 	return { anchor: focus, focus };
 }
+
+export function rangeContains(range: CellRange, pos: CellPos): boolean {
+	return (
+		pos.row >= range.top &&
+		pos.row <= range.bottom &&
+		pos.col >= range.left &&
+		pos.col <= range.right
+	);
+}
+
+/**
+ * A row-number click selects the whole row, like a spreadsheet. With `extendFrom` (Shift, or a
+ * drag down the gutter) the rows between the existing anchor and this one are selected.
+ */
+export function rowSelection(
+	row: number,
+	cols: number,
+	extendFrom: GridSelection | null = null,
+): GridSelection {
+	const lastCol = Math.max(0, cols - 1);
+	return {
+		anchor: { row: extendFrom ? extendFrom.anchor.row : row, col: 0 },
+		focus: { row, col: lastCol },
+	};
+}
+
+/** How a copy is written: tab-separated without a header unless asked otherwise. */
+export interface CopyOptions {
+	csv?: boolean;
+	header?: boolean;
+}

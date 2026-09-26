@@ -184,7 +184,9 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 					setSort((current) => nextSort(current, column));
 					setSelection(null);
 				}}
-				onCopy={(range) => void copyRange(range, '\t', false)}
+				onCopy={(range, options) =>
+					void copyRange(range, options?.csv ? ',' : '\t', options?.header ?? false)
+				}
 				firstRowRef={firstRowRef}
 			/>
 		);

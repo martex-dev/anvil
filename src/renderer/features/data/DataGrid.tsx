@@ -1,7 +1,6 @@
 import {
 	type JSX,
 	type KeyboardEvent,
-	type MouseEvent,
 	type RefObject,
 	useEffect,
 	useLayoutEffect,
@@ -12,6 +11,7 @@ import {
 
 import type { DataColumn } from '@shared/ipc/channels/data';
 
+import { AppContextMenu } from '../../ui/ContextMenu';
 import {
 	columnOffsets,
 	computeWindow,
@@ -25,6 +25,7 @@ import {
 import {
 	type CellPos,
 	type CellRange,
+	type CopyOptions,
 	type GridSelection,
 	moveSelection,
 	selectionRange,
@@ -32,6 +33,7 @@ import {
 import { GridHeader } from './GridHeader';
 import { GridRow } from './GridRow';
 import { type DataParams, useRowPages } from './use-data-pages';
+import { gridMenuItems, useGridMouse } from './use-grid-mouse';
 
 interface DataGridProps {
 	params: DataParams;
@@ -40,21 +42,14 @@ interface DataGridProps {
 	selection: GridSelection | null;
 	onSelectionChange: (selection: GridSelection | null) => void;
 	onSort: (column: number) => void;
-	onCopy: (range: CellRange) => void;
+	/** Tab-separated by default; the context menu can ask for CSV and/or a header row. */
+	onCopy: (range: CellRange, options?: CopyOptions) => void;
 	/** Written with the first visible row so "Copy as CSV" can export the current page. */
 	firstRowRef: RefObject<number>;
 }
 
 /** Horizontal overscan so fast sideways scrolling doesn't reveal blank columns. */
 const COLUMN_OVERSCAN_PX = 240;
-
-function cellAt(event: MouseEvent): CellPos | null {
-	const target = event.target instanceof HTMLElement ? event.target.closest('[data-col]') : null;
-	if (!(target instanceof HTMLElement)) return null;
-	const row = Number(target.dataset.row);
-	const col = Number(target.dataset.col);
-	return Number.isInteger(row) && Number.isInteger(col) ? { row, col } : null;
-}
 
 export function DataGrid({
 	params,
@@ -67,7 +62,6 @@ export function DataGrid({
 	firstRowRef,
 }: DataGridProps): JSX.Element {
 	const scrollRef = useRef<HTMLDivElement>(null);
-	const dragging = useRef(false);
 	const [scroll, setScroll] = useState({ top: 0, left: 0 });
 	const [size, setSize] = useState({ width: 0, height: 0 });
 	const [widths, setWidths] = useState(() => columns.map(initialColumnWidth));
@@ -153,32 +147,12 @@ export function DataGrid({
 		reveal(next.focus);
 	};
 
-	const onMouseDown = (event: MouseEvent<HTMLDivElement>): void => {
-		if (event.button !== 0) return;
-		const pos = cellAt(event);
-		if (!pos) return;
-		dragging.current = true;
-		if (event.shiftKey && selection) {
-			// Stops the browser from starting a text selection between the two clicks.
-			event.preventDefault();
-			scrollRef.current?.focus({ preventScroll: true });
-			onSelectionChange({ anchor: selection.anchor, focus: pos });
-		} else {
-			onSelectionChange({ anchor: pos, focus: pos });
-		}
-	};
-
-	const onMouseMove = (event: MouseEvent<HTMLDivElement>): void => {
-		if (!dragging.current) return;
-		if ((event.buttons & 1) === 0) {
-			dragging.current = false;
-			return;
-		}
-		const pos = cellAt(event);
-		if (!pos || !selection) return;
-		if (pos.row === selection.focus.row && pos.col === selection.focus.col) return;
-		onSelectionChange({ anchor: selection.anchor, focus: pos });
-	};
+	const mouse = useGridMouse({
+		selection,
+		columnCount: columns.length,
+		onSelectionChange,
+		focusGrid: () => scrollRef.current?.focus({ preventScroll: true }),
+	});
 
 	const rows: JSX.Element[] = [];
 	for (let r = win.start; r < win.end; r++) {
@@ -222,45 +196,49 @@ export function DataGrid({
 	}
 
 	return (
-		<div
-			ref={scrollRef}
-			role='grid'
-			aria-rowcount={totalRows + 1}
-			aria-colcount={columns.length}
-			aria-multiselectable
-			aria-label='Data table'
-			tabIndex={0}
-			onScroll={(e) =>
-				setScroll({ top: e.currentTarget.scrollTop, left: e.currentTarget.scrollLeft })
-			}
-			onKeyDown={onKeyDown}
-			onMouseDown={onMouseDown}
-			onMouseMove={onMouseMove}
-			onMouseUp={() => (dragging.current = false)}
-			className='relative min-h-0 flex-1 overflow-auto focus-visible:-outline-offset-1'
+		<AppContextMenu
+			items={gridMenuItems(range, totalRows, columns.length, onCopy, onSelectionChange)}
 		>
 			<div
-				className='relative'
-				style={{ width: contentWidth, height: HEADER_HEIGHT + win.height }}
+				ref={scrollRef}
+				role='grid'
+				aria-rowcount={totalRows + 1}
+				aria-colcount={columns.length}
+				aria-multiselectable
+				aria-label='Data table'
+				tabIndex={0}
+				onScroll={(e) =>
+					setScroll({ top: e.currentTarget.scrollTop, left: e.currentTarget.scrollLeft })
+				}
+				onKeyDown={onKeyDown}
+				onMouseDown={mouse.onMouseDown}
+				onMouseMove={mouse.onMouseMove}
+				onMouseUp={mouse.onMouseUp}
+				className='relative min-h-0 flex-1 overflow-auto focus-visible:-outline-offset-1'
 			>
-				<GridHeader
-					columns={columns}
-					offsets={offsets}
-					gutter={gutter}
-					width={contentWidth}
-					colStart={cols.start}
-					colEnd={cols.end}
-					sort={params.sort}
-					selLeft={range ? range.left : -1}
-					selRight={range ? range.right : -1}
-					onSort={onSort}
-					onResize={(column, width) =>
-						setWidths((prev) => prev.map((w, i) => (i === column ? width : w)))
-					}
-				/>
-				{rows}
-				{overlay}
+				<div
+					className='relative'
+					style={{ width: contentWidth, height: HEADER_HEIGHT + win.height }}
+				>
+					<GridHeader
+						columns={columns}
+						offsets={offsets}
+						gutter={gutter}
+						width={contentWidth}
+						colStart={cols.start}
+						colEnd={cols.end}
+						sort={params.sort}
+						selLeft={range ? range.left : -1}
+						selRight={range ? range.right : -1}
+						onSort={onSort}
+						onResize={(column, width) =>
+							setWidths((prev) => prev.map((w, i) => (i === column ? width : w)))
+						}
+					/>
+					{rows}
+					{overlay}
+				</div>
 			</div>
-		</div>
+		</AppContextMenu>
 	);
 }
