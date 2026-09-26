@@ -48,7 +48,10 @@ export function parseMatch(event: RgMatch): { path: string; match: SearchMatch }
 	const indent = text.length - text.trimStart().length;
 	if (indent > 0) {
 		text = text.slice(indent);
-		ranges = ranges.map(([a, b]) => [Math.max(0, a - indent), b - indent] as [number, number]);
+		// A match inside the indentation (a search for tabs or `^\s+`) has nothing left to show.
+		ranges = ranges
+			.map(([a, b]) => [Math.max(0, a - indent), Math.max(0, b - indent)] as [number, number])
+			.filter(([a, b]) => a < b);
 	}
 	return {
 		path: path.text.replace(/\\/g, '/').replace(/^\.\//, ''),

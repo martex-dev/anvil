@@ -24,6 +24,15 @@ describe('parseMatch', () => {
 		});
 	});
 
+	it('drops highlight ranges that fall inside the stripped indentation', () => {
+		// `^\s+` on "\t\tx = 1": the whole match is indentation; the column still points at it.
+		const inside = parseMatch(JSON.parse(match('a.py', '\t\tx = 1\n', 1, [[0, 2]])));
+		expect(inside?.match).toEqual({ line: 1, column: 1, text: 'x = 1', ranges: [] });
+		// A match spanning the indentation and the code keeps only its visible part.
+		const spanning = parseMatch(JSON.parse(match('a.py', '  xy\n', 1, [[1, 3]])));
+		expect(spanning?.match.ranges).toEqual([[0, 1]]);
+	});
+
 	it('windows very long lines around the first match', () => {
 		const long = `${'a'.repeat(1000)}NEEDLE${'b'.repeat(1000)}`;
 		const parsed = parseMatch(JSON.parse(match('min.js', long, 1, [[1000, 1006]])));
