@@ -164,7 +164,7 @@ export function closeTab(group: number, id: string): void {
 	if (tab.kind === 'code' && tab.path && !shownElsewhere) {
 		const file = useEditorStore.getState().files.find((f) => f.path === tab.path);
 		if (file?.dirty) {
-			useEditorStore.getState().setClosing(tab.path);
+			useEditorStore.getState().queueClose(tab.path);
 			return;
 		}
 		tabs.close(group, id);

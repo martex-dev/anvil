@@ -21,6 +21,7 @@ vi.mock('./file-ops', () => ({
 const {
 	canOpenAsTable,
 	closeAllTabs,
+	closeOtherTabs,
 	openPath,
 	openUnloadedFiles,
 	remembersRecent,
@@ -88,6 +89,35 @@ describe('opening to the side', () => {
 			tabIds: ['markdown:README.md'],
 			active: 'markdown:README.md',
 		});
+	});
+});
+
+describe('closing several dirty tabs', () => {
+	beforeEach(() => {
+		closeAllTabs();
+		useEditorStore.getState().reset();
+	});
+
+	it('asks about each of them', async () => {
+		for (const path of ['a.py', 'b.py', 'c.py']) {
+			await openPath('C:/proj', { path });
+			useEditorStore.getState().add({
+				path,
+				name: path,
+				state: 'ready',
+				dirty: true,
+				mtimeMs: 0,
+				changedOnDisk: false,
+			});
+		}
+		closeOtherTabs(0, 'code:a.py');
+		expect(useEditorStore.getState().closing).toEqual(['b.py', 'c.py']);
+		// Both stay open until each is answered.
+		expect(useTabsStore.getState().groups[0]?.tabIds).toEqual([
+			'code:a.py',
+			'code:b.py',
+			'code:c.py',
+		]);
 	});
 });
 

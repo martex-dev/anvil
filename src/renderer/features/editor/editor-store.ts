@@ -67,8 +67,11 @@ interface EditorState {
 	conflicts: string[];
 	/** Position to scroll to once the file's model is shown. */
 	reveal: RevealRequest | null;
-	/** Dirty file whose close is waiting for Save / Don't Save / Cancel. */
-	closing: string | null;
+	/**
+	 * Dirty files whose close waits for Save / Don't Save / Cancel, asked one after another
+	 * (Close All / Close Others can hit several).
+	 */
+	closing: string[];
 	/** Bumped (debounced) when the focused editor's text changes; views like Outline follow it. */
 	contentVersion: number;
 	bumpContent: () => void;
@@ -81,7 +84,9 @@ interface EditorState {
 	queueConflict: (path: string) => void;
 	dropConflict: (path: string) => void;
 	setReveal: (reveal: RevealRequest | null) => void;
-	setClosing: (path: string | null) => void;
+	queueClose: (path: string) => void;
+	dropClose: (path: string) => void;
+	clearClosing: () => void;
 	reset: () => void;
 }
 
@@ -92,7 +97,7 @@ export const useEditorStore = create<EditorState>((set) => ({
 	groupLines: {},
 	conflicts: [],
 	reveal: null,
-	closing: null,
+	closing: [],
 	contentVersion: 0,
 	bumpContent: () => set((s) => ({ contentVersion: s.contentVersion + 1 })),
 	// `active` follows the tab in front (EditorBridge): a file that loads in the background, or a
@@ -104,6 +109,7 @@ export const useEditorStore = create<EditorState>((set) => ({
 		set((s) => ({
 			files: s.files.filter((f) => f.path !== path),
 			conflicts: s.conflicts.filter((p) => p !== path),
+			closing: s.closing.filter((p) => p !== path),
 			// The tabs store picks the next tab (and EditorBridge mirrors it); never point at a
 			// buffer that no longer exists.
 			active: s.active === path ? null : s.active,
@@ -124,7 +130,10 @@ export const useEditorStore = create<EditorState>((set) => ({
 		set((s) => (s.conflicts.includes(path) ? s : { conflicts: [...s.conflicts, path] })),
 	dropConflict: (path) => set((s) => ({ conflicts: s.conflicts.filter((p) => p !== path) })),
 	setReveal: (reveal) => set({ reveal }),
-	setClosing: (closing) => set({ closing }),
+	queueClose: (path) =>
+		set((s) => (s.closing.includes(path) ? s : { closing: [...s.closing, path] })),
+	dropClose: (path) => set((s) => ({ closing: s.closing.filter((p) => p !== path) })),
+	clearClosing: () => set({ closing: [] }),
 	reset: () =>
 		set({
 			files: [],
@@ -133,7 +142,7 @@ export const useEditorStore = create<EditorState>((set) => ({
 			groupLines: {},
 			conflicts: [],
 			reveal: null,
-			closing: null,
+			closing: [],
 		}),
 }));
 
