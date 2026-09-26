@@ -26,7 +26,8 @@ export async function askChat(prompt: string, context: AiContext[]): Promise<voi
 	const chat = useChat.getState();
 	for (const c of context) chat.attach(c);
 	const { chat: model } = await getAiSettings();
-	chat.send(prompt, model);
+	if (!chat.send(prompt, model))
+		toast.info('A reply is still streaming', 'Wait for it or press Stop, then try again.');
 }
 
 /** File + selection (or the function under the cursor) as context. */

@@ -127,8 +127,8 @@ export function ChatPanel(): JSX.Element {
 		void attachPath(s.id);
 	};
 	const submit = (): void => {
-		if (!text.trim() || !hasKey) return;
-		send(text, model);
+		// Keep the draft when nothing went out (a reply is still streaming).
+		if (!text.trim() || !hasKey || !send(text, model)) return;
 		setText('');
 		jumpToLatest();
 	};

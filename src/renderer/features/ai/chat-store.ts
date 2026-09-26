@@ -28,7 +28,8 @@ interface ChatState {
 	attached: AiContext[];
 	attach: (item: AiContext) => void;
 	detach: (index: number) => void;
-	send: (text: string, model: AiModelRef) => void;
+	/** Starts a reply; false (nothing sent) while another reply is streaming or text is empty. */
+	send: (text: string, model: AiModelRef) => boolean;
 	stop: () => void;
 	clear: () => void;
 	onDelta: (requestId: string, text: string) => void;
@@ -77,7 +78,7 @@ export const useChat = create<ChatState>((set, get) => ({
 		})),
 	detach: (index) => set((s) => ({ attached: s.attached.filter((_, i) => i !== index) })),
 	send: (text, model) => {
-		if (get().activeRequest || !text.trim()) return;
+		if (get().activeRequest || !text.trim()) return false;
 		const requestId = crypto.randomUUID();
 		const context = get().attached;
 		const user: ChatMessage = {
@@ -108,6 +109,7 @@ export const useChat = create<ChatState>((set, get) => ({
 			(error: unknown) =>
 				get().onError(requestId, error instanceof Error ? error.message : String(error)),
 		);
+		return true;
 	},
 	stop: () => {
 		const id = get().activeRequest;
