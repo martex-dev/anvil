@@ -36,7 +36,8 @@ import { useStickToBottom } from './use-stick-to-bottom';
 export function ChatPanel(): JSX.Element {
 	const { settings, keys, error: loadError, retry } = useAiSettings();
 	const { info } = useWorkspace();
-	const { messages, activeRequest, attached, detach, send, retry, stop, clear } = useChat();
+	const { messages, activeRequest, attached, detach, send, stop, clear } = useChat();
+	const retryReply = useChat((s) => s.retry);
 	const text = useChat((s) => s.draft);
 	const setText = useChat((s) => s.setDraft);
 	const [pick, setPick] = useState(0);
@@ -199,7 +200,7 @@ export function ChatPanel(): JSX.Element {
 									m.error && i === messages.length - 1 && !activeRequest
 										? () => {
 												// The Retry button disappears: keep focus in the chat.
-												if (retry(m.id, model)) jumpToLatest();
+												if (retryReply(m.id, model)) jumpToLatest();
 												inputRef.current?.focus();
 											}
 										: undefined
