@@ -1,0 +1,124 @@
+/*
+ * Zen Paper editor: code set in a centered column like a book's text block. Tabs are serif
+ * words over a hairline, the active one underscored in the seal color; the breadcrumb is an
+ * italic running line above the text.
+ */
+
+/* The text block's margins, shared by the tabs, the breadcrumb and the code. */
+html[data-skin='zen'] [data-part='editor-group'] {
+	--zn-margin: max(12px, calc((100% - var(--editor-column)) / 2));
+}
+
+html[data-skin='zen'] [data-part='tabbar'] {
+	position: relative;
+	height: 42px;
+	padding-inline: var(--zn-margin);
+	border-bottom: 0;
+}
+html[data-skin='zen'] [data-part='tabbar']::after {
+	content: '';
+	position: absolute;
+	left: var(--zn-margin);
+	right: var(--zn-margin);
+	bottom: 0;
+	height: 1px;
+	background: var(--zn-rule-soft);
+	pointer-events: none;
+}
+/* Tabs that aren't in front recede until you come looking for them. */
+html[data-skin='zen'] [data-part='tabbar'] [role='tablist'] {
+	gap: 2px;
+}
+html[data-skin='zen'] [data-part='tab'] {
+	padding-left: 10px;
+	font-size: 14px;
+	color: var(--text-2);
+	background: none !important;
+	transition: color var(--dur-fast) var(--ease-out);
+}
+html[data-skin='zen'] [data-part='tab']:first-child {
+	padding-left: 2px;
+}
+html[data-skin='zen'] [data-part='tab']:hover {
+	color: var(--text-0);
+}
+html[data-skin='zen'] [data-part='tab'][data-active='true'] {
+	color: var(--text-0);
+	font-style: italic;
+}
+html[data-skin='zen'] [data-part='tab']:focus-visible {
+	box-shadow: none;
+	text-decoration: underline 1px var(--zn-rule);
+	text-underline-offset: 6px;
+}
+/* The fine rule under the tab in front (drawn by the shared tab as a bar on top). */
+html[data-skin='zen'] [data-part='tab'][data-active='true'] > span.top-0 {
+	top: auto;
+	bottom: 0;
+	left: 10px;
+	right: 26px;
+	height: 1px;
+	border-radius: 0;
+	background: var(--accent) !important;
+	background-image: none !important;
+	box-shadow: none;
+	z-index: 1;
+}
+html[data-skin='zen'] [data-part='tab']:first-child[data-active='true'] > span.top-0 {
+	left: 2px;
+}
+html[data-skin='zen'] [data-part='tab'][data-active='true'] > span.top-0.bg-border-strong {
+	background: var(--text-2) !important;
+}
+/* No type badges, tint lines or dividers: the name is enough. */
+html[data-skin='zen'] [data-part='tab'] > span.font-mono,
+html[data-skin='zen'] [data-part='tab'] > span.rotate-45,
+html[data-skin='zen'] [data-part='tab'] > span.bottom-0,
+html[data-skin='zen'] [data-part='tab'] > span.right-0 {
+	display: none;
+}
+html[data-skin='zen'] [data-part='tab'] > button {
+	color: var(--text-2);
+	background: none;
+}
+html[data-skin='zen'] [data-part='tab'] > button:hover {
+	color: var(--accent);
+	background: none;
+}
+html[data-skin='zen'] [data-part='tab'] > button svg {
+	width: 11px;
+	height: 11px;
+}
+html[data-skin='zen'] [data-part='tabbar'] > div:last-child button {
+	background: none;
+	color: var(--text-2);
+}
+html[data-skin='zen'] [data-part='tabbar'] > div:last-child button:hover {
+	color: var(--text-0);
+}
+
+/* Breadcrumb: an italic running line aligned with the text block. */
+html[data-skin='zen'] [data-part='tabbar'] + div:not([data-part]) {
+	height: 30px;
+	padding-inline: var(--zn-margin);
+	font-family: var(--font-ui);
+	font-size: 12.5px;
+	font-style: italic;
+	color: var(--text-2);
+}
+html[data-skin='zen'] [data-part='tabbar'] + div:not([data-part]) svg {
+	opacity: 0.4;
+}
+html[data-skin='zen'] [data-part='tabbar'] + div:not([data-part]) > span.ml-auto {
+	background: none;
+	font-style: normal;
+	font-variant-caps: all-small-caps;
+	letter-spacing: 0.08em;
+	font-size: 13px;
+}
+
+/* The empty page: no glowing mark, just the list of keys. */
+html[data-skin='zen'] [data-part='editor-surface'] .size-28,
+html[data-skin='zen'] [data-part='editor-surface'] .size-10.rotate-45 {
+	display: none;
+}
