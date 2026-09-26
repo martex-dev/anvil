@@ -280,3 +280,24 @@ html[data-skin='zen'] [data-part='statusbar'] .zn-errors {
 html[data-skin='zen'][data-fx='full'] [data-part='statusbar'] .zn-busy {
 	animation: pulse-dot 1.8s ease-in-out infinite;
 }
+
+/* Narrow windows: the margins never run into the colophon; minor phrases give way first. */
+html[data-skin='zen'] [data-part='statusbar'] > [data-zen='margin'] {
+	overflow: hidden;
+	white-space: nowrap;
+}
+@media (max-width: 1440px) {
+	html[data-skin='zen'] [data-part='statusbar'] [data-lsp-status] {
+		display: none;
+	}
+}
+@media (max-width: 1280px) {
+	html[data-skin='zen'] [data-part='statusbar'] :is([data-python-env], .zn-lang) {
+		display: none;
+	}
+}
+@media (max-width: 1000px) {
+	html[data-skin='zen'] [data-part='statusbar'] .zn-words {
+		display: none;
+	}
+}

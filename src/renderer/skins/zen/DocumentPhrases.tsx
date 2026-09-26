@@ -26,7 +26,9 @@ export function DocumentPhrases(): JSX.Element {
 			{name && <ColophonItem className='zn-doc'>{name}</ColophonItem>}
 			{cursor && (
 				<>
-					<ColophonItem title='Language'>{cursor.language}</ColophonItem>
+					<ColophonItem title='Language' className='zn-lang'>
+						{cursor.language}
+					</ColophonItem>
 					<ColophonItem onClick={() => runCommandById('go.line')} title='Go to line'>
 						ln <span className='zn-num'>{n(cursor.line)}</span>, col{' '}
 						<span className='zn-num'>{cursor.column}</span>
@@ -41,7 +43,7 @@ export function DocumentPhrases(): JSX.Element {
 				</>
 			)}
 			{words !== null && (
-				<ColophonItem title='Words in this document'>
+				<ColophonItem title='Words in this document' className='zn-words'>
 					<span className='zn-num'>{n(words)}</span> {words === 1 ? 'word' : 'words'}
 				</ColophonItem>
 			)}
