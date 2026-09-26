@@ -8,7 +8,7 @@ import { toast } from '../../stores/toast-store';
 import { activeEditor, fileContext, problemsContext } from './editor-context';
 import { bindInlineEditKeys } from './inline-edit-keys';
 import { appliedRange, currentRange, trackRange } from './inline-range';
-import { extractCode, lineCount } from './inline-text';
+import { extractCode, lineCount, withCursor } from './inline-text';
 import { streamOnce } from './requests';
 
 export type InlinePhase = 'prompt' | 'generating' | 'review';
@@ -218,8 +218,7 @@ export async function submitInlineEdit(instruction: string): Promise<void> {
 				lineNumber: s.range.startLineNumber,
 				column: s.range.startColumn,
 			});
-			const text = s.model.getValue();
-			file.text = `${text.slice(0, offset)}<CURSOR/>${text.slice(offset)}`.slice(0, 200_000);
+			file.text = withCursor(s.model.getValue(), offset);
 		}
 		context.push(file);
 		const problems = monaco
