@@ -30,6 +30,20 @@ General-purpose editors treat a backtest like any other script. Anvil is tuned f
 - **Quick Open** (`Ctrl+P`) with fuzzy matching; `>` commands, `@` symbols, `:` line.
 - **51 snippets** for quant and ML work: Sharpe, Sortino, drawdown, Kelly, Black–Scholes + greeks, implied vol, purged K-fold, triple-barrier labels, vectorised backtest, ccxt pagination, PyTorch loops, Optuna, polars/DuckDB. Type the prefix or browse the Snippets view.
 
+### Small things that save minutes
+
+- **Scratchpad** (`Ctrl+Alt+P`): a buffer that persists between sessions and never touches your project. `# %%` cells run in the REPL like any file.
+- **Transform selection** (`Ctrl+Alt+X`): 46 transforms, previewed on your own text. Case (snake, camel, Pascal, kebab, CONSTANT, dot, Title…), lines (sort A→Z, numeric or by length, reverse, shuffle, unique, number, to a Python list), clean (trim, dedent, tabs ↔ spaces), encode/decode (base64, URL, JSON string, HTML entities, hex, unicode) and code (f-string, `print()` the variables, `key: value` lines to a dict, sort imports).
+- **Evaluate math** (`Ctrl+Alt+=`): select `price = 1.5k`, `qty = 20`, `price * qty * 2%` and get `600` in place. Suffixes (`k`, `m`, `b`), percentages, variables, `sqrt`, `ln`, `exp`, `mean`, `std`, `round` and friends.
+- **Clipboard history** (`Ctrl+Alt+V`): your last 30 copies from the editor, terminal and chat, searchable. Memory only, never written to disk.
+- **Insert** (`Ctrl+Alt+I`): UUID, nano ID, ISO / unix timestamps, random hex, lorem ipsum.
+- **Code Snap** (`Ctrl+Alt+C`): a styled PNG of the selection or file, with eight backgrounds, window chrome, line numbers, padding and font size, ready to copy or save.
+- **Back / forward** (`Alt+←` / `Alt+→`) through the places you jumped from.
+- **Spotlight** (`Ctrl+Alt+D`) dims everything except the current cell, function or paragraph.
+- **Error lens** writes errors and warnings at the end of their line. **TODO / FIXME / HACK / NOTE** get their own colors. **Color swatches** with a picker appear next to `#hex`, `rgb()` and `hsl()` in any file.
+- **Clickable tracebacks**: `File "…", line 42` and `src/a.py:12:5` in the terminal open the file at that line.
+- **Compare** a file with the clipboard or with another file. **Trim trailing whitespace** and **final newline** on save. `Alt+Z` word wrap, change language mode, convert indentation. The status bar counts selected lines and words, and the palette lists what you ran recently first.
+
 ### Python and data
 
 - **Interpreter picker**: finds `.venv`/`venv`, uv, conda and system Pythons. The language server, run commands and REPL all follow it.
@@ -65,15 +79,21 @@ General-purpose editors treat a backtest like any other script. Anvil is tuned f
 
 ![Toolbox and the magenta accent](docs/screenshots/toolbox-magenta.png)
 
-## Design: "cyber glass"
+## Design: "cyber glass", in 16 themes
 
-Floating panes of frosted glass over a deep-space background with a slow drifting grid, neon hairline edges, and one accent color driving focus, cursor and highlights (cyan, magenta, lime, violet or amber). The syntax theme is custom ("Anvil Neon"). Labels use monospace HUD type, and file types are shown as colored badges.
+Floating panes of frosted glass over a deep-space background with a slow drifting grid, neon hairline edges, and one accent color driving focus, cursor and highlights. Labels use monospace HUD type, and file types are shown as colored badges.
+
+**16 themes** recolor everything (chrome, glass, editor, terminal, even Code Snap): Cyber Glass, Synthwave '84, Tokyo Night, Dracula, Catppuccin Mocha, Nord, Gruvbox, Rosé Pine, One Dark Pro, Monokai Pro, Solarized, Phosphor (green CRT), Terminal Amber, Abyss, plus Paper and Catppuccin Latte for daylight. `Ctrl+Alt+T` previews them live as you arrow through the list. The accent follows the theme, or pick a preset or any color. The code font is yours too: JetBrains Mono, Fira Code, Cascadia Code, Geist Mono, Monaspace Neon, Maple Mono, Victor Mono, Iosevka or IBM Plex Mono, all bundled. Add line height, cursor style, a neon cursor, rainbow indentation and tabs tinted by file type (with a red dot when a file has errors).
+
+![Six of the sixteen themes](docs/screenshots/themes.png)
+
+![Theme gallery in Settings](docs/screenshots/theme-gallery.png)
 
 It's also quick. The installed app reaches an interactive workbench in about **0.4 s**, and the UI process idles at about **110 MB**; the rest is Electron's usual main and GPU processes. Monaco (~10 MB), the viewers and the chat panel load the first time you use them. Measure it yourself with `npx tsx scripts/measure.mts`.
 
 The glass is optional. **Settings → Appearance → Glass: subtle / off** turns the blur down or makes every surface solid, for integrated GPUs and battery. The editor itself never renders over a blur: the code sits on a near-opaque plate, so text stays crisp and scrolling stays cheap.
 
-![Command palette](docs/screenshots/palette.png)
+![Code Snap](docs/screenshots/code-snap.png)
 
 ## Keyboard
 
@@ -87,6 +107,11 @@ The glass is optional. **Settings → Appearance → Glass: subtle / off** turns
 | `Ctrl+\`                    | Split editor                        | `Ctrl+B` / `Ctrl+J`   | Side bar / panel            |
 | ``Ctrl+` ``                 | Terminal                            | `Ctrl+Alt+B`          | AI panel                    |
 | `Ctrl+Alt+K` / `Ctrl+Alt+L` | Toggle / next bookmark              | `Ctrl+Alt+Z`          | Zen mode                    |
+| `Ctrl+Alt+T`                | Color theme (live preview)          | `Ctrl+Alt+P`          | Scratchpad                  |
+| `Ctrl+Alt+X`                | Transform selection                 | `Ctrl+Alt+=`          | Evaluate math               |
+| `Ctrl+Alt+V`                | Clipboard history                   | `Ctrl+Alt+I`          | Insert UUID / timestamp     |
+| `Ctrl+Alt+C`                | Code Snap                           | `Ctrl+Alt+D`          | Spotlight                   |
+| `Alt+←` / `Alt+→`           | Back / forward                      | `Alt+Z`               | Word wrap                   |
 | `Ctrl+Shift+E F G D X`      | Explorer, Search, Git, Run, Toolbox | `Ctrl+Alt+/`          | All shortcuts               |
 
 ## Install
