@@ -41,8 +41,11 @@ jobs:
       - name: Create the release
         shell: bash
         run: |
+          # The notes are this version's section of CHANGELOG.md, up to the next "## " heading.
+          awk -v v="${GITHUB_REF_NAME#v}" 'index($0, "## [" v "]") == 1 { f = 1; next } /^## / { if (f) exit } f' CHANGELOG.md > notes.md || true
+          [ -s notes.md ] || echo "See the README for what's new." > notes.md
           gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 ||
-            gh release create "$GITHUB_REF_NAME" --verify-tag --title "Anvil ${GITHUB_REF_NAME#v}" --notes "See the README for what's new."
+            gh release create "$GITHUB_REF_NAME" --verify-tag --title "Anvil ${GITHUB_REF_NAME#v}" --notes-file notes.md
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
