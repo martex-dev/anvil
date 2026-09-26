@@ -119,6 +119,7 @@ export async function runSelection(): Promise<void> {
 /** Kills the REPL (and its namespace) and starts a clean one. */
 export async function restartRepl(): Promise<void> {
 	const repl = findRoleTab('repl');
-	if (repl) closeTerminal(repl.id);
+	// The new REPL takes the tab's place; don't pull focus into a neighbour meanwhile.
+	if (repl) closeTerminal(repl.id, false);
 	await sendToRepl('print("REPL ready")');
 }

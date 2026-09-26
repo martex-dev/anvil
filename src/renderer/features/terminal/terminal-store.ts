@@ -123,14 +123,29 @@ export function newTerminal(preset: TerminalPresetId, title?: string): void {
 export function focusTerminal(id: string): void {
 	useLayoutStore.getState().showPanel('terminal');
 	useTerminalStore.getState().setActive(id);
-	// After the panel and tab have rendered visible: a hidden textarea can't take focus.
+	requestTerminalFocus(id);
+}
+
+/** Moves keyboard focus into a session's xterm once its pane has rendered visible. */
+function requestTerminalFocus(id: string): void {
+	// After the panel and tab have rendered: a hidden textarea can't take focus. A pane that
+	// isn't open yet focuses itself when its session opens.
 	requestAnimationFrame(() =>
 		window.dispatchEvent(new CustomEvent(FOCUS_TERMINAL_EVENT, { detail: id })),
 	);
 }
 
-export function closeTerminal(id: string): void {
+/**
+ * Closes a tab and kills its session. When it was the active tab, the tab that takes its place
+ * gets keyboard focus (unless `focusNext` is false: a replacement is about to be opened).
+ */
+export function closeTerminal(id: string, focusNext = true): void {
+	const wasActive = useTerminalStore.getState().active === id;
 	useTerminalStore.getState().close(id);
+	const next = useTerminalStore.getState().active;
+	const { panelOpen, panelTab } = useLayoutStore.getState();
+	if (focusNext && wasActive && next && panelOpen && panelTab === 'terminal')
+		requestTerminalFocus(next);
 	call('terminal:kill', id).catch((e: unknown) => {
 		// The tab is gone either way, but its process may still be running.
 		rlog.warn('terminal', 'kill failed', e);

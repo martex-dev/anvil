@@ -8,8 +8,9 @@ vi.mock('../../stores/toast-store', () => ({
 }));
 
 const { queryClient } = await import('../../lib/query-client');
-const { markAttached, runInTerminal, unmarkAttached, useTerminalStore } =
+const { closeTerminal, markAttached, runInTerminal, unmarkAttached, useTerminalStore } =
 	await import('./terminal-store');
+const { useLayoutStore } = await import('../../stores/layout-store');
 
 const run = (command: string): Promise<void> =>
 	runInTerminal({ role: 'run', preset: 'powershell', title: 'run', command });
@@ -62,5 +63,22 @@ describe('runInTerminal', () => {
 		expect(tab?.initialCommand).toBe('python a.py');
 		expect(useTerminalStore.getState().active).toBe('anvil-restored');
 		expect(call).not.toHaveBeenCalled();
+	});
+});
+
+describe('closeTerminal', () => {
+	it('hands keyboard focus to the tab that replaces the active one', () => {
+		const frames: Array<() => void> = [];
+		const focused: unknown[] = [];
+		vi.stubGlobal('requestAnimationFrame', (f: () => void) => frames.push(f));
+		vi.stubGlobal('window', { dispatchEvent: (e: CustomEvent) => focused.push(e.detail) });
+		useLayoutStore.setState({ panelOpen: true, panelTab: 'terminal' });
+		const a = { id: 'anvil-aaaa-1111', preset: 'powershell' as const, title: 'pwsh 1' };
+		const b = { id: 'anvil-bbbb-2222', preset: 'powershell' as const, title: 'pwsh 2' };
+		useTerminalStore.setState({ tabs: [a, b], active: a.id });
+		closeTerminal(a.id);
+		for (const f of frames) f();
+		expect(focused).toEqual([b.id]);
+		vi.unstubAllGlobals();
 	});
 });
