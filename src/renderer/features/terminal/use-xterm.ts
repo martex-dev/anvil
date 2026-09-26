@@ -3,7 +3,7 @@ import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { Terminal } from '@xterm/xterm';
-import { type RefObject, useEffect, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 
 import type { TerminalPresetId } from '@shared/ipc/channels/terminal';
 
@@ -51,6 +51,8 @@ export function useXterm(
 	// `enabled` only gates the start: an opened session stays attached even if a later presets
 	// refetch fails or reports the profile unavailable (disposing would blank a live shell).
 	const attach = enabled || status !== 'starting';
+	// The live terminal, for settings applied without re-creating it (font size).
+	const viewRef = useRef<{ term: Terminal; refit: () => void } | null>(null);
 
 	useEffect(() => {
 		const host = hostRef.current;
@@ -86,6 +88,19 @@ export function useXterm(
 			}),
 		);
 		term.open(host);
+		let resizeTimer: ReturnType<typeof setTimeout> | undefined;
+		// Fits xterm to its host and tells the pty the new size (debounced while dragging).
+		const refit = (): void => {
+			if (host.clientWidth === 0 || host.clientHeight === 0) return;
+			fit.fit();
+			clearTimeout(resizeTimer);
+			resizeTimer = setTimeout(() => {
+				call('terminal:resize', { sessionId, cols: term.cols, rows: term.rows }).catch(
+					(e: unknown) => rlog.warn('terminal', 'resize failed', e),
+				);
+			}, 60);
+		};
+		viewRef.current = { term, refit };
 		// Theme / accent switches recolor running terminals without restarting them.
 		const recolor = (): void => {
 			term.options.theme = buildXtermTheme();
@@ -187,17 +202,7 @@ export function useXterm(
 			);
 		});
 
-		let resizeTimer: ReturnType<typeof setTimeout> | undefined;
-		const observer = new ResizeObserver(() => {
-			if (host.clientWidth === 0 || host.clientHeight === 0) return;
-			fit.fit();
-			clearTimeout(resizeTimer);
-			resizeTimer = setTimeout(() => {
-				void call('terminal:resize', { sessionId, cols: term.cols, rows: term.rows }).catch(
-					() => undefined,
-				);
-			}, 60);
-		});
+		const observer = new ResizeObserver(refit);
 		observer.observe(host);
 		if (host.clientWidth > 0) fit.fit();
 
@@ -231,6 +236,7 @@ export function useXterm(
 		window.addEventListener(FOCUS_TERMINAL_EVENT, focusRequested);
 
 		return () => {
+			viewRef.current = null;
 			unmarkAttached(sessionId);
 			window.removeEventListener(FOCUS_TERMINAL_EVENT, focusRequested);
 			window.removeEventListener('anvil:appearance', recolor);
@@ -243,9 +249,17 @@ export function useXterm(
 			unsubscribeExit();
 			term.dispose();
 		};
-		// initialCommand/focus/onOpen only matter for the first open of a session.
+		// initialCommand/focus/onOpen only matter for the first open of a session; fontSize is
+		// applied in place below (re-creating xterm would lose scrollback and garble TUIs).
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [hostRef, sessionId, preset, fontSize, attach, attempt]);
+	}, [hostRef, sessionId, preset, attach, attempt]);
+
+	useEffect(() => {
+		const view = viewRef.current;
+		if (!view || view.term.options.fontSize === fontSize) return;
+		view.term.options.fontSize = fontSize;
+		view.refit();
+	}, [fontSize]);
 
 	const retry = (): void => {
 		setError(null);

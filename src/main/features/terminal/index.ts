@@ -63,7 +63,7 @@ export const terminalFeature: MainFeature = {
 					startSession(sessionId, preset, cols, rows),
 				);
 				if (!fresh) live.resize(sessionId, cols, rows);
-				// Only into a session this call started: reattaching (a font-size change or StrictMode
+				// Only into a session this call started: reattaching (a reloaded window or StrictMode
 				// remounts the pane) must not run the file or task again.
 				// ConPTY buffers input typed before the shell's first prompt, so this is safe to send now.
 				if (initialCommand && fresh) live.write(sessionId, `${initialCommand}\r`);
