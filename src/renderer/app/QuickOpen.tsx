@@ -12,8 +12,8 @@ import { useAnvilEvent } from '../lib/use-anvil-event';
 import { useRegisterOverlay } from '../stores/overlay-store';
 import { useUiStore } from '../stores/ui-store';
 import { FileBadge } from '../ui/FileBadge';
-import { Kbd } from '../ui/Kbd';
-import { getCommands, runCommand } from './commands/run';
+import { CommandItem } from './CommandItem';
+import { getCommands } from './commands/run';
 import { fuzzyFilter } from './fuzzy';
 import { useWorkspace } from './hooks/use-workspace';
 import {
@@ -234,22 +234,12 @@ export function QuickOpen(): JSX.Element {
 							)}
 							{mode === 'commands' &&
 								getCommands().map((c) => (
-									<Command.Item
+									<CommandItem
 										key={c.id}
-										value={`${c.category} ${c.title}`}
-										keywords={c.keywords ?? []}
-										onSelect={() => {
-											close();
-											setTimeout(() => void runCommand(c), 0);
-										}}
-										className={itemClass}
-									>
-										<span className='flex-1 truncate'>
-											<span className='text-fg-2'>{c.category}: </span>
-											{c.title}
-										</span>
-										{c.shortcut && <Kbd keys={c.shortcut} />}
-									</Command.Item>
+										command={c}
+										value={`${c.category} ${c.title} ${c.id}`}
+										onPick={close}
+									/>
 								))}
 							{mode === 'symbols' && symbols.length > 0 && (
 								<Command.Empty className='px-3 py-6 text-center text-13 text-fg-2'>
