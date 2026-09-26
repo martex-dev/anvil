@@ -5,7 +5,8 @@ import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { gitEnv, GitService } from './git-service';
+import { batchPaths, gitEnv, isMissingPathError, isUnbornHead } from './git-process';
+import { GitService, pullSummary } from './git-service';
 
 // Integration test against the real system git in a throwaway repository.
 let repo: string;
@@ -31,6 +32,20 @@ describe('GitService', { timeout: 30_000 }, () => {
 			expect(status.isRepo).toBe(false);
 		} finally {
 			rmSync(plain, { recursive: true, force: true });
+		}
+	});
+
+	it('notices `git init` and a deleted .git without a folder switch', async () => {
+		const plain = mkdtempSync(join(tmpdir(), 'anvil-plain-'));
+		try {
+			const git = new GitService(() => plain);
+			expect((await git.status()).isRepo).toBe(false);
+			execFileSync('git', ['init', '-q'], { cwd: plain });
+			expect((await git.status()).isRepo).toBe(true);
+			rmSync(join(plain, '.git'), { recursive: true, force: true });
+			expect((await git.status()).isRepo).toBe(false);
+		} finally {
+			rmSync(plain, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 		}
 	});
 
@@ -82,6 +97,21 @@ describe('GitService', { timeout: 30_000 }, () => {
 		});
 	});
 
+	it('fully unstages a rename when given both paths', async () => {
+		const git = new GitService(() => repo);
+		writeFileSync(join(repo, 'old.txt'), 'same\n');
+		await git.stage(['old.txt']);
+		await git.commit('add old');
+		run('mv', 'old.txt', 'new.txt');
+		await git.unstage(['new.txt', 'old.txt']);
+		const status = await git.status();
+		expect(status.staged).toEqual([]);
+		expect(status.unstaged.map((c) => `${c.path}:${c.kind}`).sort()).toEqual([
+			'new.txt:untracked',
+			'old.txt:deleted',
+		]);
+	});
+
 	it('refuses to commit with nothing staged and rejects paths outside the repo', async () => {
 		const git = new GitService(() => repo);
 		await expect(git.commit('empty')).rejects.toMatchObject({ code: 'GIT_NOTHING_STAGED' });
@@ -93,10 +123,120 @@ describe('GitService', { timeout: 30_000 }, () => {
 	it('maps paths when the open folder is a subfolder of the repo', async () => {
 		mkdirSync(join(repo, 'app'));
 		writeFileSync(join(repo, 'app', 'b.ts'), 'x');
+		writeFileSync(join(repo, 'app', '..env.bak'), 'z');
 		writeFileSync(join(repo, 'root.md'), 'y');
 		const status = await new GitService(() => join(repo, 'app')).status();
 		const byPath = Object.fromEntries(status.unstaged.map((c) => [c.path, c.workspacePath]));
-		expect(byPath).toEqual({ 'app/b.ts': 'b.ts', 'root.md': null });
+		expect(byPath).toEqual({
+			'app/..env.bak': '..env.bak',
+			'app/b.ts': 'b.ts',
+			'root.md': null,
+		});
+	});
+
+	it('blames and reads HEAD by workspace path when the open folder is a subfolder', async () => {
+		mkdirSync(join(repo, 'app'));
+		writeFileSync(join(repo, 'app', 'b.ts'), 'sub\n');
+		// Same name at the repo root: must not be picked instead.
+		writeFileSync(join(repo, 'b.ts'), 'root\n');
+		run('add', '.');
+		run('commit', '-q', '-m', 'files');
+		const git = new GitService(() => join(repo, 'app'));
+		expect(await git.headContent('b.ts')).toBe('sub\n');
+		const blame = await git.blame('b.ts', 1);
+		expect(blame).toMatchObject({ author: 'Anvil Test', summary: 'files' });
+		await expect(git.headContent('../b.ts')).rejects.toMatchObject({
+			code: 'FS_OUTSIDE_WORKSPACE',
+		});
+	});
+
+	it('keeps git messages untranslated but preserves the character set', () => {
+		expect(
+			gitEnv({
+				LANG: 'de_DE.UTF-8',
+				LANGUAGE: 'de',
+				LC_ALL: 'de_DE.UTF-8',
+				LC_MESSAGES: 'de_DE.UTF-8',
+			}),
+		).toEqual({
+			LANG: 'de_DE.UTF-8',
+			LC_CTYPE: 'de_DE.UTF-8',
+			LC_MESSAGES: 'C',
+			GIT_TERMINAL_PROMPT: '0',
+		});
+	});
+
+	it('stages and unstages many files across several command lines', async () => {
+		const git = new GitService(() => repo);
+		writeFileSync(join(repo, 'first.txt'), 'x');
+		run('add', 'first.txt');
+		run('commit', '-q', '-m', 'first');
+		const paths = Array.from({ length: 800 }, (_, i) => `research-file-${i}.txt`);
+		for (const p of paths) writeFileSync(join(repo, p), p);
+		expect(batchPaths(paths).length).toBeGreaterThan(1);
+		await git.stage(paths);
+		expect((await git.status()).staged).toHaveLength(800);
+		await git.unstage(paths);
+		expect((await git.status()).staged).toEqual([]);
+	});
+
+	it('batches paths under the command-line budget without dropping any', () => {
+		const paths = Array.from({ length: 1000 }, (_, i) => `some/long/folder/name/file-${i}.py`);
+		const batches = batchPaths(paths, 8_000);
+		expect(batches.length).toBeGreaterThan(1);
+		expect(batches.flat()).toEqual(paths);
+		for (const b of batches) expect(b.join(' ').length).toBeLessThanOrEqual(8_000);
+		expect(batchPaths([])).toEqual([]);
+		// A single path longer than the budget still gets its own batch.
+		expect(batchPaths(['x'.repeat(50)], 10)).toEqual([['x'.repeat(50)]]);
+	});
+
+	it('treats a missing side as empty but surfaces real git failures', async () => {
+		const git = new GitService(() => repo);
+		// No commits yet: HEAD does not resolve.
+		writeFileSync(join(repo, 'new.txt'), 'n\n');
+		await git.stage(['new.txt']);
+		expect(await git.diff('new.txt', true)).toMatchObject({ original: '', modified: 'n\n' });
+		expect(await git.headContent('new.txt')).toBeNull();
+		expect(await git.blame('new.txt', 1)).toBeNull();
+		await git.commit('first');
+		writeFileSync(join(repo, 'untracked.txt'), 'u\n');
+		expect(await git.headContent('untracked.txt')).toBeNull();
+		expect(await git.blame('untracked.txt', 1)).toBeNull();
+		expect(await git.blame('new.txt', 5)).toBeNull();
+
+		expect(isMissingPathError(new Error("fatal: path 'a' does not exist in 'HEAD'"))).toBe(
+			true,
+		);
+		expect(isMissingPathError(new Error('spawn git ENOENT'))).toBe(false);
+		expect(isMissingPathError(new Error('fatal: bad object HEAD'))).toBe(false);
+	});
+
+	it('lists no commits for an unborn branch but reports other log failures', async () => {
+		const git = new GitService(() => repo);
+		expect(await git.log(10)).toEqual([]);
+		writeFileSync(join(repo, 'a.txt'), 'a\n');
+		await git.stage(['a.txt']);
+		await git.commit('first');
+		expect((await git.log(10)).map((c) => c.message)).toEqual(['first']);
+
+		expect(
+			isUnbornHead(
+				new Error("fatal: your current branch 'main' does not have any commits yet"),
+			),
+		).toBe(true);
+		expect(isUnbornHead(new Error("fatal: bad default revision 'HEAD'"))).toBe(true);
+		expect(isUnbornHead(new Error('fatal: unable to read tree'))).toBe(false);
+	});
+
+	it('summarizes a pull without claiming changes that did not happen', () => {
+		expect(pullSummary({ changes: 0, insertions: 0, deletions: 0 })).toBe('Already up to date');
+		expect(pullSummary({ changes: 1, insertions: 2, deletions: 0 })).toBe(
+			'1 file changed, +2 −0',
+		);
+		expect(pullSummary({ changes: 3, insertions: 5, deletions: 4 })).toBe(
+			'3 files changed, +5 −4',
+		);
 	});
 
 	it('passes git only an allowlisted environment', () => {
@@ -104,6 +244,9 @@ describe('GitService', { timeout: 30_000 }, () => {
 			Path: 'C:/bin',
 			USERPROFILE: 'C:/Users/marto',
 			GCM_INTERACTIVE: 'auto',
+			GIT_SSH: 'C:/Program Files/PuTTY/plink.exe',
+			GIT_SSH_COMMAND: 'ssh -i ~/.ssh/work',
+			XDG_CONFIG_HOME: '/home/marto/.config',
 			GIT_ASKPASS: 'C:/other-app/askpass.exe',
 			VSCODE_GIT_IPC_HANDLE: 'pipe',
 			EDITOR: 'code --wait',
@@ -113,6 +256,10 @@ describe('GitService', { timeout: 30_000 }, () => {
 			Path: 'C:/bin',
 			USERPROFILE: 'C:/Users/marto',
 			GCM_INTERACTIVE: 'auto',
+			GIT_SSH: 'C:/Program Files/PuTTY/plink.exe',
+			GIT_SSH_COMMAND: 'ssh -i ~/.ssh/work',
+			XDG_CONFIG_HOME: '/home/marto/.config',
+			LC_MESSAGES: 'C',
 			GIT_TERMINAL_PROMPT: '0',
 		});
 	});

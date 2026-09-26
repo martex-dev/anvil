@@ -6,9 +6,9 @@ import { useWorkspace } from '../../app/hooks/use-workspace';
 import { call } from '../../lib/ipc';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { toast } from '../../stores/toast-store';
-import { invalidateGitLines } from '../editor/extras/git-lines';
+import { GIT_MUTATION_KEY, GIT_STATUS_KEY, refreshGit, runRemote, useGitRemote } from './git-ops';
 
-export const GIT_STATUS_KEY = ['git', 'status'] as const;
+export { GIT_STATUS_KEY } from './git-ops';
 
 /**
  * Repository status. Refreshed after Anvil's own git operations, on file changes, and by a
@@ -18,7 +18,8 @@ export function useGitStatus(): {
 	status: GitStatus | undefined;
 	isLoading: boolean;
 	error: Error | null;
-	refetch: () => void;
+	/** Resolves once the refetch has settled (it never rejects; failures land in `error`). */
+	refetch: () => Promise<void>;
 } {
 	const client = useQueryClient();
 	const { info } = useWorkspace();
@@ -36,7 +37,7 @@ export function useGitStatus(): {
 		status: query.data,
 		isLoading: query.isLoading,
 		error: query.error,
-		refetch: () => void query.refetch(),
+		refetch: () => query.refetch().then(() => undefined),
 	};
 }
 
@@ -46,26 +47,31 @@ export function useGitActions(): {
 	commit: (message: string) => Promise<boolean>;
 	pull: () => void;
 	push: () => void;
+	/** Per-operation progress, for a spinner on the button that started it. */
+	pulling: boolean;
+	pushing: boolean;
 	busy: boolean;
 } {
-	const client = useQueryClient();
-	const done = (): void => {
-		void client.invalidateQueries({ queryKey: GIT_STATUS_KEY });
-		invalidateGitLines();
-	};
+	// Returned so a mutation stays pending until the status has refreshed: the lists never
+	// show a stale row as actionable, and focus can be restored against the new rows.
+	const done = refreshGit;
+	const running = useGitRemote((s) => s.running);
 	const fail = (what: string) => (error: Error) => toast.error(`${what} failed`, error.message);
 
 	const stage = useMutation({
+		mutationKey: [...GIT_MUTATION_KEY, 'stage'],
 		mutationFn: (p: string[]) => call('git:stage', p),
 		onSettled: done,
 		onError: fail('Stage'),
 	});
 	const unstage = useMutation({
+		mutationKey: [...GIT_MUTATION_KEY, 'unstage'],
 		mutationFn: (p: string[]) => call('git:unstage', p),
 		onSettled: done,
 		onError: fail('Unstage'),
 	});
 	const commit = useMutation({
+		mutationKey: [...GIT_MUTATION_KEY, 'commit'],
 		mutationFn: async (message: string) => {
 			// Secret shield: never let an API key, private key or seed phrase into history.
 			const findings = await call('git:scanStaged');
@@ -87,18 +93,6 @@ export function useGitActions(): {
 		onSettled: done,
 		onError: fail('Commit'),
 	});
-	const pull = useMutation({
-		mutationFn: () => call('git:pull'),
-		onSuccess: ({ summary }) => toast.success('Pulled', summary),
-		onSettled: done,
-		onError: fail('Pull'),
-	});
-	const push = useMutation({
-		mutationFn: () => call('git:push'),
-		onSuccess: ({ summary }) => toast.success('Pushed', summary),
-		onSettled: done,
-		onError: fail('Push'),
-	});
 
 	return {
 		stage: stage.mutate,
@@ -108,8 +102,12 @@ export function useGitActions(): {
 				.mutateAsync(message)
 				.then(() => true)
 				.catch(() => false),
-		pull: () => pull.mutate(),
-		push: () => push.mutate(),
-		busy: [stage, unstage, commit, pull, push].some((m) => m.isPending),
+		// Shared with the palette's Pull/Push, which may already be running one; the buttons
+		// have their own spinner, so no progress toast.
+		pull: () => void runRemote('pull', { announce: false }),
+		push: () => void runRemote('push', { announce: false }),
+		pulling: running === 'pull',
+		pushing: running === 'push',
+		busy: running !== null || [stage, unstage, commit].some((m) => m.isPending),
 	};
 }

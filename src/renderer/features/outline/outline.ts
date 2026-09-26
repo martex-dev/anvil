@@ -28,11 +28,49 @@ const indentOf = (line: string): number => {
 	return n;
 };
 
+type Triple = '"""' | "'''";
+
+/**
+ * Which triple-quoted string is still open at the end of `text`, given the one open at its
+ * start. Skips one-line strings and comments so their quotes don't count.
+ */
+function openTriple(text: string, open: Triple | null): Triple | null {
+	let state = open;
+	let i = 0;
+	while (i < text.length) {
+		const ch = text[i];
+		if (state) {
+			if (ch === '\\') i += 2;
+			else if (text.startsWith(state, i)) {
+				state = null;
+				i += 3;
+			} else i++;
+			continue;
+		}
+		const triple = text.startsWith('"""', i) ? '"""' : text.startsWith("'''", i) ? "'''" : null;
+		if (triple) {
+			state = triple;
+			i += 3;
+		} else if (ch === '#') break;
+		else if (ch === '"' || ch === "'") {
+			i++;
+			while (i < text.length && text[i] !== ch) i += text[i] === '\\' ? 2 : 1;
+			i++;
+		} else i++;
+	}
+	return state;
+}
+
 function python(lines: readonly string[]): OutlineSymbol[] {
 	const out: OutlineSymbol[] = [];
 	const stack: Array<{ indent: number; symbol: OutlineSymbol }> = [];
+	let triple: Triple | null = null;
 	lines.forEach((text, i) => {
 		const line = i + 1;
+		// Docstring prose ("class of instruments…") and example code are not symbols.
+		const inString = triple !== null;
+		triple = openTriple(text, triple);
+		if (inString) return;
 		const cell = /^\s*#\s*%%(.*)$/.exec(text);
 		if (cell) {
 			out.push({

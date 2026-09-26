@@ -11,7 +11,7 @@ import { cleanWhitespace, formatPython } from './format';
 import { isScratch } from './scratchpad';
 
 // Callers import the editor's buffer API from here; the pieces live in smaller modules.
-export { getModel, getViewState, saveViewState } from './buffers';
+export { getModel, getViewState, languageOverride, saveViewState } from './buffers';
 export { formatPython } from './format';
 export { isScratch, openScratch, SCRATCH_PATH } from './scratchpad';
 

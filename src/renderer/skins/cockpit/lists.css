@@ -10,6 +10,13 @@ html[data-skin='cockpit'] [role='treeitem'][aria-selected='true'] {
 	background: color-mix(in oklab, var(--accent) 18%, transparent);
 	color: var(--text-0);
 }
+/* The row rule is a box-shadow, which would hide the focus glow of rows that take keyboard focus
+   themselves (outline, problems): layer the glow back on top of the rule. */
+html[data-skin='cockpit'] [role='treeitem']:focus-visible {
+	box-shadow:
+		var(--glow),
+		inset 0 -1px 0 color-mix(in oklab, var(--border) 55%, transparent);
+}
 html[data-skin='cockpit'] [role='treeitem'] > .accent-line {
 	inset-block: 0;
 	width: 3px;

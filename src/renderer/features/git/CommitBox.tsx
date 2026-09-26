@@ -1,43 +1,82 @@
 import { Check, Sparkles } from 'lucide-react';
-import { type JSX, useState } from 'react';
+import { type JSX, useEffect, useRef, useState } from 'react';
 
 import { toast } from '../../stores/toast-store';
 import { Button } from '../../ui/Button';
+import { Dialog } from '../../ui/Dialog';
 import { IconButton } from '../../ui/IconButton';
 import { Kbd } from '../../ui/Kbd';
 import { generateCommitMessage } from '../ai/actions';
+import { useCommitDrafts } from './commit-draft-store';
+import { useCommitFocus } from './commit-focus';
 
 interface CommitBoxProps {
+	/** Workspace root; the unsent message is kept per folder. */
+	root: string;
 	branch: string | null;
 	stagedCount: number;
 	busy: boolean;
 	onCommit: (message: string) => Promise<boolean>;
 }
 
-export function CommitBox({ branch, stagedCount, busy, onCommit }: CommitBoxProps): JSX.Element {
-	const [message, setMessage] = useState('');
-	const [writing, setWriting] = useState(false);
+export function CommitBox({
+	root,
+	branch,
+	stagedCount,
+	busy,
+	onCommit,
+}: CommitBoxProps): JSX.Element {
+	const message = useCommitDrafts((s) => s.drafts[root] ?? '');
+	const setDraft = useCommitDrafts((s) => s.setDraft);
+	const setMessage = (text: string): void => setDraft(root, text);
+	const writing = useCommitDrafts((s) => s.writingRoot === root);
+	const setWritingRoot = useCommitDrafts((s) => s.setWritingRoot);
+	const [confirmReplace, setConfirmReplace] = useState(false);
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const commitRef = useRef<HTMLButtonElement>(null);
+
+	// "Git: Commit…" asks for the message box; take a request made before this box mounted too.
+	useEffect(() => {
+		const take = (): void => {
+			if (useCommitFocus.getState().consume()) textareaRef.current?.focus();
+		};
+		take();
+		return useCommitFocus.subscribe(take);
+	}, []);
+
 	const generate = (): void => {
-		if (stagedCount === 0) {
-			toast.info('Stage changes first', 'The message is written from what is staged.');
-			return;
-		}
-		setWriting(true);
-		void generateCommitMessage((partial) => setMessage(partial))
+		setWritingRoot(root);
+		void generateCommitMessage((partial) => setDraft(root, partial))
 			.catch((error: unknown) =>
 				toast.error(
 					'Could not write a message',
 					error instanceof Error ? error.message : undefined,
 				),
 			)
-			.finally(() => setWriting(false));
+			.finally(() => setWritingRoot(null));
 	};
-	const canCommit = message.trim().length > 0 && stagedCount > 0 && !busy;
+	const requestGenerate = (): void => {
+		if (stagedCount === 0) {
+			toast.info('Stage changes first', 'The message is written from what is staged.');
+			return;
+		}
+		// Never silently throw away a message the user wrote.
+		if (message.trim()) setConfirmReplace(true);
+		else generate();
+	};
+	// Not while the AI is still streaming: that would commit a half-written message.
+	const canCommit = message.trim().length > 0 && stagedCount > 0 && !busy && !writing;
 
 	const submit = (): void => {
 		if (!canCommit) return;
 		void onCommit(message.trim()).then((ok) => {
 			if (ok) setMessage('');
+			// The Commit button is disabled while committing (and stays so once the message is
+			// cleared), which drops focus to <body>. Hand it back to the message box, unless the
+			// user has already moved on to something else.
+			const active = document.activeElement;
+			if (!active || active === document.body || active === commitRef.current)
+				textareaRef.current?.focus();
 		});
 	};
 
@@ -45,7 +84,11 @@ export function CommitBox({ branch, stagedCount, busy, onCommit }: CommitBoxProp
 		<div className='flex flex-col gap-1.5 p-2'>
 			<div className='relative'>
 				<textarea
+					ref={textareaRef}
 					value={message}
+					// The stream replaces the text on every chunk; typing now would be erased.
+					readOnly={writing}
+					aria-busy={writing || undefined}
 					onChange={(e) => setMessage(e.target.value)}
 					onKeyDown={(e) => {
 						if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -66,11 +109,12 @@ export function CommitBox({ branch, stagedCount, busy, onCommit }: CommitBoxProp
 					label='Write the message with AI (from staged changes)'
 					icon={<Sparkles size={12} className='text-accent-2' />}
 					disabled={writing}
-					onClick={generate}
+					onClick={requestGenerate}
 					className='absolute top-1 right-1'
 				/>
 			</div>
 			<Button
+				ref={commitRef}
 				variant='primary'
 				size='sm'
 				icon={<Check size={12} />}
@@ -82,6 +126,30 @@ export function CommitBox({ branch, stagedCount, busy, onCommit }: CommitBoxProp
 				Commit{stagedCount > 0 ? ` ${stagedCount} file${stagedCount === 1 ? '' : 's'}` : ''}
 				<Kbd keys='Ctrl+Enter' className='ml-1 opacity-70' />
 			</Button>
+			<Dialog
+				open={confirmReplace}
+				onOpenChange={setConfirmReplace}
+				title='Replace your commit message?'
+				description='The AI writes a new message from the staged changes; the one you typed is replaced.'
+				width='sm'
+				footer={
+					<>
+						<Button variant='ghost' onClick={() => setConfirmReplace(false)}>
+							Keep mine
+						</Button>
+						<Button
+							variant='primary'
+							autoFocus
+							onClick={() => {
+								setConfirmReplace(false);
+								generate();
+							}}
+						>
+							Replace
+						</Button>
+					</>
+				}
+			/>
 		</div>
 	);
 }

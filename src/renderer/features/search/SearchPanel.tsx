@@ -3,6 +3,7 @@ import { type JSX, type ReactNode, useEffect, useMemo, useRef, useState } from '
 
 import { useWorkspace } from '../../app/hooks/use-workspace';
 import { cn } from '../../lib/cn';
+import { focusedEditor } from '../../lib/monaco/editors';
 import { EmptyState } from '../../ui/EmptyState';
 import { Input } from '../../ui/Input';
 import { Spinner } from '../../ui/Spinner';
@@ -16,11 +17,14 @@ function Toggle({
 	label,
 	pressed,
 	onClick,
+	dot = false,
 	children,
 }: {
 	label: string;
 	pressed: boolean;
 	onClick: () => void;
+	/** Marks a setting that is in effect although its toggle is off (hidden glob filters). */
+	dot?: boolean;
 	children: ReactNode;
 }): JSX.Element {
 	return (
@@ -31,7 +35,8 @@ function Toggle({
 				aria-pressed={pressed}
 				onClick={onClick}
 				className={cn(
-					'flex size-5 items-center justify-center rounded-sm',
+					'relative flex size-5 items-center justify-center rounded-sm',
+					'transition-[background-color,color] transition-fast',
 					'focus-visible:shadow-glow focus-visible:outline-none',
 					pressed
 						? 'bg-accent-soft text-accent'
@@ -39,6 +44,12 @@ function Toggle({
 				)}
 			>
 				{children}
+				{dot && (
+					<span
+						aria-hidden
+						className='absolute top-0.5 right-0.5 size-1 rounded-full bg-accent'
+					/>
+				)}
 			</button>
 		</Tooltip>
 	);
@@ -57,6 +68,7 @@ export function SearchPanel(): JSX.Element {
 	const wholeWord = params['wholeWord'] === true;
 	const include = str(params['include']);
 	const exclude = str(params['exclude']);
+	const filtered = Boolean(include || exclude);
 	const [showGlobs, setShowGlobs] = useState(Boolean(include || exclude));
 	const inputRef = useRef<HTMLInputElement>(null);
 	const focusTick = useSearchFocus((s) => s.tick);
@@ -82,7 +94,12 @@ export function SearchPanel(): JSX.Element {
 		() => ({ query, regex, caseSensitive, wholeWord, include, exclude }),
 		[query, regex, caseSensitive, wholeWord, include, exclude],
 	);
-	const { result, isFetching, error } = useFileSearch(info.root, search);
+	const { result, isFetching, isPlaceholderData, error, refetch } = useFileSearch(
+		info.root,
+		search,
+	);
+	// Dim the previous query's results while the new one runs, so counts aren't misread.
+	const stale = isPlaceholderData && 'opacity-60';
 
 	if (!info.root) {
 		return (
@@ -104,7 +121,19 @@ export function SearchPanel(): JSX.Element {
 						placeholder='Search'
 						value={text}
 						onChange={(e) => setText(e.target.value)}
-						onKeyDown={(e) => e.key === 'Enter' && setQuery(text)}
+						onKeyDown={(e) => {
+							if (e.key === 'Enter') {
+								// The same query is cached for a few seconds; Enter means "search again".
+								if (text === query) refetch();
+								else setQuery(text);
+							} else if (e.key === 'Escape') {
+								e.preventDefault();
+								if (text) {
+									setText('');
+									setQuery('');
+								} else focusedEditor()?.focus();
+							}
+						}}
 						leading={isFetching ? <Spinner size={12} /> : <Search size={12} />}
 						className='flex-1'
 						spellCheck={false}
@@ -131,8 +160,13 @@ export function SearchPanel(): JSX.Element {
 						<Regex size={14} />
 					</Toggle>
 					<Toggle
-						label='Files to include / exclude'
+						label={
+							filtered && !showGlobs
+								? 'Files to include / exclude (filters active)'
+								: 'Files to include / exclude'
+						}
 						pressed={showGlobs}
+						dot={filtered && !showGlobs}
 						onClick={() => setShowGlobs(!showGlobs)}
 					>
 						<SlidersHorizontal size={13} />
@@ -171,15 +205,33 @@ export function SearchPanel(): JSX.Element {
 				</p>
 			) : result && query ? (
 				<>
-					<p className='num px-3 py-1 text-11 text-fg-2' data-search-summary>
+					<p
+						className={cn(
+							'num px-3 py-1 text-11 text-fg-2 transition-opacity transition-fast',
+							stale,
+						)}
+						data-search-summary
+					>
 						{result.matchCount === 0
 							? 'No results'
 							: `${result.matchCount} result${result.matchCount === 1 ? '' : 's'} in ${result.files.length} file${result.files.length === 1 ? '' : 's'}`}
-						{result.truncated && ' (stopped at the limit; narrow the search)'} ·{' '}
-						{result.durationMs} ms
+						{result.timedOut
+							? ' (stopped after 20 s; narrow the search)'
+							: result.truncated && ' (stopped at the limit; narrow the search)'}
+						{filtered && ' · filtered by include/exclude'} · {result.durationMs} ms
 					</p>
-					<SearchResults files={result.files} />
+					<SearchResults
+						// A new query starts with every file expanded.
+						key={query}
+						files={result.files}
+						className={cn('transition-opacity transition-fast', stale)}
+					/>
 				</>
+			) : query.trim() && isFetching ? (
+				<p className='flex items-center gap-2 px-3 py-2 text-12 text-fg-2'>
+					<Spinner size={12} label='Searching' />
+					Searching…
+				</p>
 			) : (
 				<p className='px-3 py-2 text-12 text-fg-2'>
 					Type to search. .gitignore and folders like node_modules are skipped.

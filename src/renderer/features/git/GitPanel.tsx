@@ -1,34 +1,36 @@
-import { ArrowDown, ArrowUp, GitBranch, GitPullRequestArrow, RefreshCw } from 'lucide-react';
-import type { JSX } from 'react';
+import { ArrowDown, ArrowUp, CloudUpload, GitBranch, RefreshCw, TriangleAlert } from 'lucide-react';
+import { type JSX, useState } from 'react';
 
 import type { GitChange } from '@shared/ipc/channels/git';
 
 import { useWorkspace } from '../../app/hooks/use-workspace';
 import { call } from '../../lib/ipc';
+import { getLoadedMonaco } from '../../lib/monaco/load';
 import { useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
+import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
 import { ErrorState } from '../../ui/ErrorState';
 import { IconButton } from '../../ui/IconButton';
 import { Spinner } from '../../ui/Spinner';
+import { getModel, languageOverride } from '../editor/file-ops';
 import { ChangeList } from './ChangeList';
 import { CommitBox } from './CommitBox';
+import { languageForFile } from './diff-language';
 import { useGitActions, useGitStatus } from './use-git';
 
-const LANG_BY_EXT: Record<string, string> = {
-	py: 'python',
-	ts: 'typescript',
-	tsx: 'typescript',
-	js: 'javascript',
-	json: 'json',
-	md: 'markdown',
-	toml: 'ini',
-	yml: 'yaml',
-	yaml: 'yaml',
-	css: 'css',
-	html: 'html',
-	sql: 'sql',
-};
+/**
+ * Diff highlighting: the open buffer's language (what the editor shows), else the editor's own
+ * cousins for grammar-less files, else Monaco's registry by file name.
+ */
+function diffLanguage(name: string, workspacePath: string | null): string | null {
+	const open = workspacePath ? getModel(workspacePath) : null;
+	if (open) return open.getLanguageId();
+	return (
+		languageOverride(name) ??
+		languageForFile(name, getLoadedMonaco()?.languages.getLanguages() ?? null)
+	);
+}
 
 /** Opens a git change as a diff tab (HEAD/index vs working tree). */
 export async function openDiff(change: GitChange, staged: boolean): Promise<void> {
@@ -43,7 +45,6 @@ export async function openDiff(change: GitChange, staged: boolean): Promise<void
 			toast.info('Binary file', `${name} can't be shown as a text diff.`);
 			return;
 		}
-		const ext = name.split('.').at(-1)?.toLowerCase() ?? '';
 		useTabsStore.getState().open({
 			id: `diff:git:${staged ? 'staged' : 'wt'}:${change.path}`,
 			kind: 'diff',
@@ -54,7 +55,7 @@ export async function openDiff(change: GitChange, staged: boolean): Promise<void
 				title: `${change.path} · ${staged ? 'HEAD ↔ index' : 'index ↔ working tree'}`,
 				original: d.original,
 				modified: d.modified,
-				language: LANG_BY_EXT[ext] ?? null,
+				language: diffLanguage(name, change.workspacePath),
 				path: change.workspacePath,
 			},
 		});
@@ -67,6 +68,12 @@ export function GitPanel(): JSX.Element {
 	const { info } = useWorkspace();
 	const { status, isLoading, error, refetch } = useGitStatus();
 	const actions = useGitActions();
+	// Only a refresh the user asked for shows a spinner; the 5 s poll would make it flicker.
+	const [refreshing, setRefreshing] = useState(false);
+	const refresh = (): void => {
+		setRefreshing(true);
+		void refetch().finally(() => setRefreshing(false));
+	};
 
 	if (!info.root) {
 		return (
@@ -84,7 +91,10 @@ export function GitPanel(): JSX.Element {
 			</div>
 		);
 	}
-	if (error) return <ErrorState title='Git failed' message={error.message} onRetry={refetch} />;
+	// Only a failure with nothing to show replaces the panel. A failed poll after a good one (a
+	// terminal git holding the index lock) keeps the last status, and the unsent commit message.
+	if (error && !status)
+		return <ErrorState title='Git failed' message={error.message} onRetry={refresh} />;
 	if (!status?.isRepo) {
 		return (
 			<EmptyState
@@ -119,26 +129,71 @@ export function GitPanel(): JSX.Element {
 				)}
 				<IconButton
 					size='sm'
-					label='Pull'
-					icon={<ArrowDown size={13} />}
-					disabled={actions.busy}
+					label={
+						actions.pulling
+							? 'Pulling…'
+							: status.tracking
+								? 'Pull'
+								: 'Pull (no upstream: publish the branch first)'
+					}
+					icon={
+						actions.pulling ? (
+							<Spinner size={12} label='Pulling' />
+						) : (
+							<ArrowDown size={13} />
+						)
+					}
+					// Without an upstream, git pull can only fail with "no tracking information".
+					disabled={actions.busy || !status.tracking}
 					onClick={actions.pull}
 				/>
 				<IconButton
 					size='sm'
-					label={status.tracking ? 'Push' : 'Publish Branch'}
-					icon={<GitPullRequestArrow size={13} />}
+					label={
+						actions.pushing ? 'Pushing…' : status.tracking ? 'Push' : 'Publish Branch'
+					}
+					icon={
+						actions.pushing ? (
+							<Spinner size={12} label='Pushing' />
+						) : status.tracking ? (
+							<ArrowUp size={13} />
+						) : (
+							<CloudUpload size={13} />
+						)
+					}
 					disabled={actions.busy}
 					onClick={actions.push}
 				/>
 				<IconButton
 					size='sm'
-					label='Refresh'
-					icon={<RefreshCw size={13} />}
-					onClick={refetch}
+					label={refreshing ? 'Refreshing…' : 'Refresh'}
+					icon={
+						refreshing ? (
+							<Spinner size={12} label='Refreshing' />
+						) : (
+							<RefreshCw size={13} />
+						)
+					}
+					aria-busy={refreshing || undefined}
+					onClick={refresh}
 				/>
 			</div>
+			{error && (
+				<div
+					role='status'
+					className='flex shrink-0 items-center gap-1.5 border-b border-glass-edge py-0.5 pr-1 pl-2 text-11 text-warn'
+				>
+					<TriangleAlert size={12} className='shrink-0' />
+					<span className='min-w-0 flex-1 truncate' title={error.message}>
+						Couldn&rsquo;t refresh: {error.message}
+					</span>
+					<Button variant='ghost' size='sm' loading={refreshing} onClick={refresh}>
+						Retry
+					</Button>
+				</div>
+			)}
 			<CommitBox
+				root={info.root}
 				branch={status.branch}
 				stagedCount={status.staged.length}
 				busy={actions.busy}
