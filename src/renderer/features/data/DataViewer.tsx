@@ -4,6 +4,7 @@ import { type JSX, type KeyboardEvent, useEffect, useMemo, useRef, useState } fr
 
 import { cn } from '../../lib/cn';
 import { call } from '../../lib/ipc';
+import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { toast } from '../../stores/toast-store';
 import { requestOpenFile } from '../../stores/workbench-store';
 import { Button } from '../../ui/Button';
@@ -110,17 +111,27 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 		void copyRange({ top, bottom, left: 0, right: columns.length - 1 }, ',', true);
 	};
 
-	const reload = async (): Promise<void> => {
+	/**
+	 * Re-reads the file. `keepRows` refetches in the background with the current rows still on
+	 * screen (used when the file changes under us); otherwise the view restarts from a spinner.
+	 * Either way every cached page is dropped, so no page can come from an older version.
+	 */
+	const reload = async (keepRows = false): Promise<void> => {
 		try {
 			await call('data:evict', path);
-			await Promise.all([
-				client.resetQueries({ queryKey: ['data', 'page', path] }),
-				client.resetQueries({ queryKey: ['data', 'stats', path] }),
-			]);
+			const refresh = (queryKey: readonly unknown[]): Promise<void> =>
+				keepRows
+					? client.invalidateQueries({ queryKey })
+					: client.resetQueries({ queryKey });
+			await Promise.all([refresh(['data', 'page', path]), refresh(['data', 'stats', path])]);
 		} catch (err) {
 			toast.error('Reload failed', err instanceof Error ? err.message : String(err));
 		}
 	};
+
+	useAnvilEvent('fs:changed', ({ files }) => {
+		if (files.includes(path)) void reload(true);
+	});
 
 	const openAsText = (): void => {
 		if (data && !isTextFormat(data.format)) {
