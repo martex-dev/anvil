@@ -3,6 +3,7 @@ import { CornerDownLeft } from 'lucide-react';
 import type { JSX, ReactNode } from 'react';
 import { create } from 'zustand';
 
+import { cn } from '../lib/cn';
 import { useRegisterOverlay } from '../stores/overlay-store';
 import { Kbd } from './Kbd';
 import { Spinner } from './Spinner';
@@ -24,6 +25,8 @@ interface PickRequest {
 	items: PickItem[] | Promise<PickItem[]>;
 	/** Offer "create <typed text>" (e.g. a new branch) when nothing matches exactly. */
 	allowCustom?: { label: (text: string) => string };
+	/** Called as the highlighted item changes (live previews); `null` when nothing is. */
+	onActive?: (id: string | null) => void;
 	resolve: (value: string | null) => void;
 }
 
@@ -31,9 +34,25 @@ interface QuickPickState {
 	request: PickRequest | null;
 	items: PickItem[] | null;
 	query: string;
+	/** cmdk value of the highlighted item (controlled, so highlight changes are observable). */
+	active: string;
 }
 
-const useQuickPickStore = create<QuickPickState>(() => ({ request: null, items: null, query: '' }));
+const useQuickPickStore = create<QuickPickState>(() => ({
+	request: null,
+	items: null,
+	query: '',
+	active: '',
+}));
+
+const itemValue = (item: PickItem): string =>
+	`${item.label} ${item.description ?? ''} ${item.id}`.trim();
+
+/** Start on the current item (the theme you're on, the active env) rather than the first. */
+function initialActive(items: PickItem[]): string {
+	const current = items.find((i) => i.current);
+	return current ? itemValue(current) : '';
+}
 
 /** Shows a searchable list and resolves with the picked id (or typed text), null if dismissed. */
 export function quickPick(options: Omit<PickRequest, 'resolve'>): Promise<string | null> {
@@ -43,10 +62,13 @@ export function quickPick(options: Omit<PickRequest, 'resolve'>): Promise<string
 			request: { ...options, resolve },
 			items: Array.isArray(options.items) ? options.items : null,
 			query: '',
+			active: Array.isArray(options.items) ? initialActive(options.items) : '',
 		});
 		if (!Array.isArray(options.items)) {
 			options.items
-				.then((items) => useQuickPickStore.setState({ items }))
+				.then((items) =>
+					useQuickPickStore.setState({ items, active: initialActive(items) }),
+				)
 				.catch(() => useQuickPickStore.setState({ items: [] }));
 		}
 	});
@@ -54,12 +76,12 @@ export function quickPick(options: Omit<PickRequest, 'resolve'>): Promise<string
 
 function close(value: string | null): void {
 	const req = useQuickPickStore.getState().request;
-	useQuickPickStore.setState({ request: null, items: null, query: '' });
+	useQuickPickStore.setState({ request: null, items: null, query: '', active: '' });
 	req?.resolve(value);
 }
 
 export function QuickPickHost(): JSX.Element {
-	const { request, items, query } = useQuickPickStore();
+	const { request, items, query, active } = useQuickPickStore();
 	useRegisterOverlay(request !== null);
 	const custom =
 		request?.allowCustom && query.trim() && !items?.some((i) => i.label === query.trim());
@@ -69,7 +91,16 @@ export function QuickPickHost(): JSX.Element {
 			onOpenChange={(open) => !open && close(null)}
 			label={request?.title ?? 'Pick'}
 			loop
-			overlayClassName='fixed inset-0 z-40 bg-scrim'
+			value={active}
+			onValueChange={(v) => {
+				useQuickPickStore.setState({ active: v });
+				request?.onActive?.(items?.find((i) => itemValue(i) === v)?.id ?? null);
+			}}
+			// Live previews need to be seen: no dimming backdrop for those pickers.
+			overlayClassName={cn(
+				'fixed inset-0 z-40',
+				request?.onActive ? 'bg-transparent' : 'bg-scrim',
+			)}
 			contentClassName='glass-strong animate-in fixed top-[10vh] left-1/2 z-50 w-[min(620px,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-xl'
 		>
 			<div className='flex items-center gap-2 border-b border-glass-edge px-3'>
@@ -98,7 +129,7 @@ export function QuickPickHost(): JSX.Element {
 				{items?.map((item) => (
 					<Command.Item
 						key={item.id}
-						value={`${item.label} ${item.description ?? ''} ${item.id}`}
+						value={itemValue(item)}
 						keywords={item.keywords ?? []}
 						onSelect={() => close(item.id)}
 						className='group flex min-h-9 cursor-default items-center gap-2.5 rounded-md px-2 py-1 text-13 text-fg-1 data-[selected=true]:bg-accent-faint data-[selected=true]:text-fg-0'
