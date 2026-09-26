@@ -4,7 +4,9 @@ import type { JSX, ReactNode } from 'react';
 import { create } from 'zustand';
 
 import { cn } from '../lib/cn';
+import { rlog } from '../lib/log';
 import { useRegisterOverlay } from '../stores/overlay-store';
+import { ErrorState } from './ErrorState';
 import { Kbd } from './Kbd';
 import { Spinner } from './Spinner';
 
@@ -36,13 +38,16 @@ interface QuickPickState {
 	query: string;
 	/** cmdk value of the highlighted item (controlled, so highlight changes are observable). */
 	active: string;
+	/** Why async items failed to load; shown instead of "Nothing matches". */
+	error: string | null;
 }
 
-const useQuickPickStore = create<QuickPickState>(() => ({
+export const useQuickPickStore = create<QuickPickState>(() => ({
 	request: null,
 	items: null,
 	query: '',
 	active: '',
+	error: null,
 }));
 
 const itemValue = (item: PickItem): string =>
@@ -58,30 +63,38 @@ function initialActive(items: PickItem[]): string {
 export function quickPick(options: Omit<PickRequest, 'resolve'>): Promise<string | null> {
 	useQuickPickStore.getState().request?.resolve(null);
 	return new Promise((resolve) => {
+		const request: PickRequest = { ...options, resolve };
 		useQuickPickStore.setState({
-			request: { ...options, resolve },
+			request,
 			items: Array.isArray(options.items) ? options.items : null,
 			query: '',
 			active: Array.isArray(options.items) ? initialActive(options.items) : '',
+			error: null,
 		});
-		if (!Array.isArray(options.items)) {
-			options.items
-				.then((items) =>
-					useQuickPickStore.setState({ items, active: initialActive(items) }),
-				)
-				.catch(() => useQuickPickStore.setState({ items: [] }));
-		}
+		if (Array.isArray(options.items)) return;
+		// A slow load must not fill a picker opened after it (picking would apply the wrong value).
+		const current = (): boolean => useQuickPickStore.getState().request === request;
+		options.items
+			.then((items) => {
+				if (current()) useQuickPickStore.setState({ items, active: initialActive(items) });
+			})
+			.catch((error: unknown) => {
+				rlog.error('ui', `quick pick '${options.title}' failed to load`, error);
+				if (!current()) return;
+				const message = error instanceof Error ? error.message : String(error);
+				useQuickPickStore.setState({ items: [], error: message });
+			});
 	});
 }
 
 function close(value: string | null): void {
 	const req = useQuickPickStore.getState().request;
-	useQuickPickStore.setState({ request: null, items: null, query: '', active: '' });
+	useQuickPickStore.setState({ request: null, items: null, query: '', active: '', error: null });
 	req?.resolve(value);
 }
 
 export function QuickPickHost(): JSX.Element {
-	const { request, items, query, active } = useQuickPickStore();
+	const { request, items, query, active, error } = useQuickPickStore();
 	useRegisterOverlay(request !== null);
 	const custom =
 		request?.allowCustom && query.trim() && !items?.some((i) => i.label === query.trim());
@@ -121,6 +134,12 @@ export function QuickPickHost(): JSX.Element {
 							<Spinner />
 						</div>
 					</Command.Loading>
+				) : error !== null ? (
+					<ErrorState
+						title={`Couldn't load ${request?.title.toLowerCase() ?? 'the list'}`}
+						message={error}
+						className='h-auto min-h-0 py-6'
+					/>
 				) : (
 					<Command.Empty className='px-3 py-6 text-center text-13 text-fg-2'>
 						Nothing matches.
