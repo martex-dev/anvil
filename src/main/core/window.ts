@@ -1,15 +1,18 @@
 import { join } from 'node:path';
 
-import { app, BrowserWindow, Menu } from 'electron';
+import { app, BrowserWindow, dialog, Menu } from 'electron';
+import log from 'electron-log/main';
 
 import { APP_NAME, WINDOW_CHROME } from '@shared/constants';
 import { type WindowChrome, WindowChromeSchema } from '@shared/ipc/channels/app';
 
 import { APP_ORIGIN } from './app-protocol';
+import { errorMessage } from './errors';
 import { lockWindowNavigation } from './security';
 import type { SettingsStore } from './store/json-store';
 
 const CHROME_KEY = 'window:chrome';
+const SHOW_FALLBACK_MS = 8_000;
 const DEFAULT_CHROME: WindowChrome = {
 	background: WINDOW_CHROME.background,
 	symbol: WINDOW_CHROME.symbol,
@@ -64,7 +67,20 @@ export function createMainWindow(chrome: WindowChrome = DEFAULT_CHROME): Browser
 	});
 
 	lockWindowNavigation(win);
-	win.once('ready-to-show', () => win.show());
+	// If ready-to-show never fires (renderer stuck), still show the window rather than leave an
+	// invisible process behind.
+	const showFallback = setTimeout(() => {
+		if (!win.isDestroyed() && !win.isVisible()) {
+			log.warn('[window] ready-to-show did not fire; showing the window anyway');
+			win.show();
+		}
+	}, SHOW_FALLBACK_MS);
+	win.once('ready-to-show', () => {
+		clearTimeout(showFallback);
+		win.show();
+	});
+	win.once('closed', () => clearTimeout(showFallback));
+	watchRenderer(win);
 
 	const devUrl = process.env['ELECTRON_RENDERER_URL'];
 
@@ -75,7 +91,41 @@ export function createMainWindow(chrome: WindowChrome = DEFAULT_CHROME): Browser
 		});
 	}
 
-	void win.loadURL(devUrl ?? `${APP_ORIGIN}/index.html`);
+	win.loadURL(devUrl ?? `${APP_ORIGIN}/index.html`).catch((error: unknown) => {
+		log.error('[window] loading the interface failed', error);
+		if (win.isDestroyed()) return;
+		win.show();
+		dialog.showErrorBox('Anvil could not load its interface', errorMessage(error));
+	});
 
 	return win;
+}
+
+/** A crashed or killed renderer leaves a blank window: log why and offer a reload. */
+function watchRenderer(win: BrowserWindow): void {
+	win.webContents.on('render-process-gone', (_event, details) => {
+		log.error('[window] renderer process gone', {
+			reason: details.reason,
+			exitCode: details.exitCode,
+		});
+		if (details.reason === 'clean-exit' || win.isDestroyed()) return;
+		void dialog
+			.showMessageBox(win, {
+				type: 'error',
+				title: APP_NAME,
+				message: 'The Anvil window stopped working',
+				detail: `Reason: ${details.reason}. Reloading restores the interface; unsaved editor changes in this window are lost.`,
+				buttons: ['Reload', 'Close'],
+				defaultId: 0,
+				cancelId: 1,
+			})
+			.then(({ response }) => {
+				if (win.isDestroyed()) return;
+				if (response === 0) win.webContents.reload();
+				else win.close();
+			})
+			.catch((error: unknown) => log.error('[window] crash dialog failed', error));
+	});
+	win.on('unresponsive', () => log.warn('[window] renderer is not responding'));
+	win.on('responsive', () => log.info('[window] renderer is responding again'));
 }
