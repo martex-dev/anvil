@@ -1,0 +1,142 @@
+/*
+ * The bubble launcher (views switcher) and the floating status pill. Both reuse the shared
+ * components; this sheet turns them into a glass tube of jelly bubbles and a glossy capsule.
+ */
+
+/* ---- Launcher: a clear tube holding big round bubbles --------------------------------- */
+
+html[data-skin='y2k'] .glass[data-part='activity'] {
+	width: 62px;
+	padding: 10px 0;
+	gap: 9px;
+	border-radius: 999px;
+	border: 1px solid var(--skin-gloss-soft);
+	background: linear-gradient(
+		90deg,
+		color-mix(in oklab, var(--skin-gloss) 30%, transparent) 0%,
+		color-mix(in oklab, var(--skin-gloss) 62%, transparent) 30%,
+		color-mix(in oklab, var(--skin-gloss) 18%, transparent) 70%,
+		color-mix(in oklab, var(--skin-gloss) 42%, transparent) 100%
+	);
+	box-shadow:
+		inset 0 0 0 1px color-mix(in oklab, var(--skin-rim) 40%, transparent),
+		0 14px 30px -14px var(--skin-shadow);
+}
+
+html[data-skin='y2k'] [data-part='activity-item'] {
+	width: 44px;
+	height: 44px;
+	border-radius: 50%;
+	color: var(--text-1);
+	background-image: var(--yk-pearl);
+	border: 1px solid var(--skin-rim);
+	box-shadow:
+		inset 0 -3px 6px color-mix(in oklab, var(--accent-2) 20%, transparent),
+		0 4px 8px -3px var(--skin-shadow);
+	transition:
+		transform var(--dur-base) var(--ease-out),
+		color var(--dur-fast) var(--ease-out);
+}
+html[data-skin='y2k'] [data-part='activity-item']::after {
+	content: '';
+	position: absolute;
+	top: 2px;
+	left: 7px;
+	right: 7px;
+	height: 44%;
+	border-radius: 999px;
+	background: var(--yk-band);
+	pointer-events: none;
+}
+html[data-skin='y2k'] [data-part='activity-item']:hover {
+	color: var(--text-0);
+	background-color: transparent;
+	transform: translateY(-1px) scale(1.06);
+}
+html[data-skin='y2k'] [data-part='activity-item'][data-active='true'] {
+	color: var(--on-accent);
+	background-image: var(--yk-jelly);
+	border-color: color-mix(in oklab, var(--accent) 65%, var(--skin-ink));
+	box-shadow:
+		inset 0 -3px 6px color-mix(in oklab, var(--skin-gloss) 35%, transparent),
+		0 5px 12px -3px color-mix(in oklab, var(--accent) 65%, transparent);
+}
+html[data-skin='y2k'] [data-part='activity-item'][data-active='true'] .skin-icon {
+	filter: drop-shadow(0 1px 0 color-mix(in oklab, var(--skin-ink) 30%, transparent));
+}
+html[data-skin='y2k'] [data-part='activity-marker'] {
+	display: none;
+}
+html[data-skin='y2k'] [data-part='activity-badge'] {
+	top: -2px;
+	right: -3px;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 4px;
+	font-size: 10px;
+	border: 1.5px solid var(--bg-1);
+	background-image: var(--yk-band), var(--yk-jelly);
+	background-size:
+		calc(100% - 4px) 50%,
+		100% 100%,
+		100% 100%;
+	background-position:
+		50% 1px,
+		0 0,
+		0 0;
+	background-repeat: no-repeat;
+	box-shadow: 0 2px 4px -1px color-mix(in oklab, var(--accent) 60%, transparent);
+	z-index: 1;
+}
+
+/* ---- Status pill: a glossy capsule floating above the bottom edge --------------------- */
+
+html[data-skin='y2k'] [data-part='statusbar'] {
+	height: 32px;
+	margin: 0 12px 10px;
+	padding: 0 6px;
+	gap: 3px;
+	align-items: center;
+	border: 1px solid var(--skin-rim);
+	border-radius: 999px;
+	backdrop-filter: none;
+	color: var(--text-1);
+	font-size: 11.5px;
+	background-image: var(--yk-band), var(--yk-pearl);
+	background-size:
+		calc(100% - 28px) 46%,
+		100% 100%,
+		100% 100%;
+	background-position:
+		50% 2px,
+		0 0,
+		0 0;
+	background-repeat: no-repeat;
+	box-shadow:
+		inset 0 -2px 4px color-mix(in oklab, var(--accent-2) 14%, transparent),
+		0 10px 22px -12px var(--skin-shadow);
+}
+
+/* Every clickable segment is a little bubble of its own. */
+html[data-skin='y2k'] [data-part='status-item'] {
+	height: 22px;
+	padding: 0 8px;
+	border-radius: 999px;
+}
+html[data-skin='y2k'] button[data-part='status-item'],
+html[data-skin='y2k'] [data-part='statusbar'] > button {
+	background: color-mix(in oklab, var(--bg-1) 70%, transparent);
+	box-shadow:
+		inset 0 0 0 1px color-mix(in oklab, var(--skin-rim) 70%, transparent),
+		0 1px 0 var(--skin-gloss);
+}
+html[data-skin='y2k'] button[data-part='status-item']:hover,
+html[data-skin='y2k'] [data-part='statusbar'] > button:hover {
+	background: var(--accent-soft);
+	color: var(--text-0);
+}
+html[data-skin='y2k'] [data-part='statusbar'] > button {
+	height: 22px;
+	border-radius: 999px;
+	padding: 0 8px;
+}
