@@ -58,7 +58,8 @@ export function CopyValue({
 				className={cn(
 					'selectable min-w-0 flex-1 text-12 text-fg-0',
 					mono && 'num',
-					multiline ? 'break-all whitespace-pre-wrap' : 'truncate',
+					// JSON output is tab-indented; the browser default of 8 columns is too wide here.
+					multiline ? '[tab-size:2] break-all whitespace-pre-wrap' : 'truncate',
 				)}
 			>
 				{display ?? value}
