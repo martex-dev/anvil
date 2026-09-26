@@ -1,7 +1,7 @@
 import { Eye, X } from 'lucide-react';
-import { type JSX, useState } from 'react';
+import { type JSX, useEffect, useRef, useState } from 'react';
 
-import { useSettings } from '../../app/hooks/use-settings';
+import { getSettings, useSettings } from '../../app/hooks/use-settings';
 import { cn } from '../../lib/cn';
 import { type Tab, useTabsStore } from '../../stores/tabs-store';
 import { AppContextMenu } from '../../ui/ContextMenu';
@@ -45,9 +45,25 @@ export function TabView({
 		tab.path ? st.items.some((p) => p.path === tab.path && p.severity === 'error') : false,
 	);
 
+	// Keep the active tab on screen in an overflowing strip (Ctrl+PageDown, Quick Open, go to
+	// definition), without animating when motion is reduced.
+	const tabRef = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		if (!active) return;
+		const still =
+			getSettings().reduceMotion ||
+			window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		tabRef.current?.scrollIntoView({
+			block: 'nearest',
+			inline: 'nearest',
+			behavior: still ? 'auto' : 'smooth',
+		});
+	}, [active]);
+
 	return (
 		<AppContextMenu items={tabMenuItems(tab, group, changed)}>
 			<div
+				ref={tabRef}
 				role='tab'
 				data-tab-id={tab.id}
 				aria-selected={active}
