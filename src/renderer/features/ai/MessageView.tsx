@@ -8,6 +8,7 @@ import { Button } from '../../ui/Button';
 import { openApply } from './ApplyDialog';
 import { openChatLink } from './chat-links';
 import type { ChatMessage } from './chat-store';
+import { formatReplyTime } from './chat-time';
 import { activeEditor } from './editor-context';
 import { splitFences } from './fences';
 
@@ -207,12 +208,26 @@ export function MessageView({
 					model’s token limit. Ask it to continue.
 				</p>
 			)}
+			{message.stopped && !message.error && (
+				<p className='mt-1 flex items-start gap-1 text-12 text-warn'>
+					<AlertTriangle size={12} className='mt-0.5 shrink-0' /> Stopped before the reply
+					finished. It may be incomplete.
+				</p>
+			)}
 			{!message.streaming && !message.error && (
 				<p className={cn('num mt-1 text-10 text-fg-2')}>
 					{message.model?.model}
 					{message.usage?.outputTokens
 						? ` · ${message.usage.inputTokens ?? '?'} in / ${message.usage.outputTokens} out`
 						: ''}
+					{message.at !== undefined && (
+						<>
+							{' · '}
+							<time dateTime={new Date(message.at).toISOString()}>
+								{formatReplyTime(message.at)}
+							</time>
+						</>
+					)}
 				</p>
 			)}
 		</div>

@@ -17,6 +17,8 @@ export interface ChatMessage {
 	usage?: { inputTokens: number | null; outputTokens: number | null };
 	/** Cut off at the model's output-token limit. */
 	truncated?: boolean;
+	/** Ended before the model finished: Stop, clearing the chat, or a restart mid-reply. */
+	stopped?: boolean;
 	/** Epoch ms, for the timestamp under a reply. */
 	at?: number;
 }
@@ -58,6 +60,11 @@ interface ChatState {
 const HISTORY = 40;
 const KEY = 'anvil.chat';
 
+/** A reply that will get no more text; one without any says so as its error. */
+function stoppedReply(m: ChatMessage): ChatMessage {
+	return { ...m, streaming: false, stopped: true, ...(m.content ? {} : { error: 'Stopped' }) };
+}
+
 function load(): ChatMessage[] {
 	try {
 		const raw = JSON.parse(localStorage.getItem(KEY) ?? '[]') as unknown;
@@ -69,7 +76,8 @@ function load(): ChatMessage[] {
 							typeof m.content === 'string' &&
 							(m.role === 'user' || m.role === 'assistant'),
 					)
-					.map((m) => ({ ...m, streaming: false }))
+					// A reply still streaming when the app closed never finished.
+					.map((m) => (m.streaming ? stoppedReply(m) : m))
 			: [];
 	} catch {
 		return [];
@@ -170,11 +178,7 @@ export const useChat = create<ChatState>((set, get) => {
 			set((s) => ({
 				messages: [
 					// The reply that was streaming was cancelled by clear().
-					...messages.map((m) =>
-						m.streaming
-							? { ...m, streaming: false, ...(m.content ? {} : { error: 'Stopped' }) }
-							: m,
-					),
+					...messages.map((m) => (m.streaming ? stoppedReply(m) : m)),
 					...s.messages,
 				],
 			})),
@@ -188,15 +192,16 @@ export const useChat = create<ChatState>((set, get) => {
 			set((s) => ({
 				activeRequest: s.activeRequest === requestId ? null : s.activeRequest,
 				messages: s.messages.map((m) =>
-					m.id === requestId
-						? {
-								...m,
-								streaming: false,
-								usage,
-								...(truncated ? { truncated } : {}),
-								...(cancelled && !m.content ? { error: 'Stopped' } : {}),
-							}
-						: m,
+					m.id !== requestId
+						? m
+						: cancelled
+							? stoppedReply({ ...m, usage })
+							: {
+									...m,
+									streaming: false,
+									usage,
+									...(truncated ? { truncated } : {}),
+								},
 				),
 			})),
 		onError: (requestId, message) =>

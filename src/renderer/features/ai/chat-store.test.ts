@@ -94,3 +94,28 @@ describe('chat retry', () => {
 		expect(useChat.getState().retry('a1', model)).toBe(false);
 	});
 });
+
+describe('chat stop', () => {
+	it('marks a reply stopped part-way as stopped, keeping its text', () => {
+		useChat.setState({
+			activeRequest: 'r1',
+			messages: [{ id: 'r1', role: 'assistant', content: 'half an', streaming: true }],
+		});
+		useChat.getState().onDone('r1', { inputTokens: 1, outputTokens: 2 }, true);
+		expect(useChat.getState().messages[0]).toMatchObject({
+			content: 'half an',
+			streaming: false,
+			stopped: true,
+		});
+		expect(useChat.getState().messages[0]?.error).toBeUndefined();
+	});
+
+	it('does not mark a reply that finished normally', () => {
+		useChat.setState({
+			activeRequest: 'r2',
+			messages: [{ id: 'r2', role: 'assistant', content: 'done', streaming: true }],
+		});
+		useChat.getState().onDone('r2', { inputTokens: 1, outputTokens: 2 }, false);
+		expect(useChat.getState().messages[0]?.stopped).toBeUndefined();
+	});
+});
