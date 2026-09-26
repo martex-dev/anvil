@@ -193,6 +193,7 @@ export function TabBar({ group, focused }: { group: Group; focused: boolean }): 
 			<div
 				role='tablist'
 				aria-label='Open editors'
+				data-group={group.id}
 				className='flex min-w-0 flex-1 items-stretch overflow-x-auto overflow-y-hidden [scrollbar-width:thin]'
 				onWheel={(e) => {
 					e.currentTarget.scrollLeft += e.deltaY;

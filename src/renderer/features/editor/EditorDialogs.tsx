@@ -1,10 +1,10 @@
-import type { JSX } from 'react';
+import { type JSX, useRef } from 'react';
 
 import { Button } from '../../ui/Button';
 import { Dialog } from '../../ui/Dialog';
 import { useEditorStore } from './editor-store';
 import { reloadFromDisk, saveFile } from './file-ops';
-import { finishClose } from './open';
+import { finishClose, refocusGroup } from './open';
 
 export function EditorDialogs(): JSX.Element {
 	const closing = useEditorStore((s) => s.closing);
@@ -13,6 +13,8 @@ export function EditorDialogs(): JSX.Element {
 	const conflict = useEditorStore((s) => s.conflict);
 	const setConflict = useEditorStore((s) => s.setConflict);
 	const name = (path: string | null): string => path?.split('/').at(-1) ?? '';
+	// Set when "Don't Save" removes the tab: Radix would return focus to its (gone) close button.
+	const tabRemoved = useRef(false);
 
 	return (
 		<>
@@ -22,6 +24,12 @@ export function EditorDialogs(): JSX.Element {
 				title={`Save changes to ${name(closing)}?`}
 				description='Your changes will be lost if you close without saving.'
 				width='sm'
+				onCloseAutoFocus={(event) => {
+					if (!tabRemoved.current) return;
+					tabRemoved.current = false;
+					event.preventDefault();
+					refocusGroup();
+				}}
 				footer={
 					<>
 						<Button variant='ghost' onClick={onCloseDone}>
@@ -30,7 +38,10 @@ export function EditorDialogs(): JSX.Element {
 						<Button
 							variant='danger'
 							onClick={() => {
-								if (closing) finishClose(closing);
+								if (closing) {
+									finishClose(closing);
+									tabRemoved.current = true;
+								}
 								onCloseDone();
 							}}
 						>
@@ -42,7 +53,13 @@ export function EditorDialogs(): JSX.Element {
 							onClick={() => {
 								const path = closing;
 								onCloseDone();
-								if (path) void saveFile(path).then((ok) => ok && finishClose(path));
+								if (!path) return;
+								void saveFile(path).then((ok) => {
+									if (!ok) return;
+									// Focus went back to the tab while saving; closing it now drops it.
+									finishClose(path);
+									refocusGroup(true);
+								});
 							}}
 						>
 							Save

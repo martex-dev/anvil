@@ -1,6 +1,7 @@
 import { getSettings } from '../../app/hooks/use-settings';
 import { call } from '../../lib/ipc';
 import { rlog } from '../../lib/log';
+import { focusedEditor } from '../../lib/monaco/editors';
 import { loadMonaco } from '../../lib/monaco/load';
 import type { MonacoApi } from '../../lib/monaco/setup';
 import { codeTabId, type Tab, type TabKind, useTabsStore } from '../../stores/tabs-store';
@@ -181,6 +182,30 @@ export function finishClose(path: string): void {
 		if (g.tabIds.includes(id)) useTabsStore.getState().close(g.id, id);
 	}
 	closeFile(path);
+}
+
+/**
+ * Puts keyboard focus back into the focused group after one of its tabs closed (the element
+ * that had focus, e.g. the tab's close button, is gone): its editor, else its active tab.
+ * Deferred so React has swapped the next file in first. With `onlyIfLost`, focus that is still
+ * somewhere real (the user moved on) is left alone.
+ */
+export function refocusGroup(onlyIfLost = false): void {
+	setTimeout(() => {
+		const current = document.activeElement;
+		if (onlyIfLost && current && current !== document.body) return;
+		const editor = focusedEditor();
+		if (editor) {
+			editor.focus();
+			return;
+		}
+		const { focused } = useTabsStore.getState();
+		document
+			.querySelector<HTMLElement>(
+				`[role='tablist'][data-group='${focused}'] [role='tab'][aria-selected='true']`,
+			)
+			?.focus();
+	}, 0);
 }
 
 export function closeOtherTabs(group: number, keep: string): void {
