@@ -6,9 +6,9 @@ import type { AiContext } from '@shared/ipc/channels/ai';
 import { getLoadedMonaco } from '../../lib/monaco/load';
 import { toast } from '../../stores/toast-store';
 import { activeEditor, fileContext, problemsContext } from './editor-context';
-import { splitFences } from './fences';
 import { bindInlineEditKeys } from './inline-edit-keys';
 import { appliedRange, currentRange, trackRange } from './inline-range';
+import { extractCode, lineCount } from './inline-text';
 import { streamOnce } from './requests';
 
 export type InlinePhase = 'prompt' | 'generating' | 'review';
@@ -184,15 +184,6 @@ export function startInlineEdit(preset = ''): void {
 	});
 }
 
-function extractCode(reply: string): string {
-	const code = splitFences(reply).find((s) => s.kind === 'code');
-	return code && code.kind === 'code' ? code.code : reply.trim();
-}
-
-function lineCount(text: string): number {
-	return text ? text.split('\n').length : 0;
-}
-
 /** Moves the session onto where its code is now; false (error shown) if it was deleted. */
 function refreshRange(s: Session): boolean {
 	const range = currentRange(s.tracker, s.model, s.range);
@@ -262,9 +253,17 @@ export async function submitInlineEdit(instruction: string): Promise<void> {
 			onPartial: (text) => useInlineEdit.setState({ partial: text }),
 		});
 		if (session !== s) return;
+		let code = extractCode(reply);
+		// A refusal or empty reply would otherwise replace the selection with nothing.
+		if (!code.trim()) {
+			useInlineEdit.setState({
+				phase: 'prompt',
+				error: 'The model returned no code. Try rephrasing the instruction.',
+			});
+			return;
+		}
 		// Edits made while it generated moved the code: replace it where it is now.
 		if (!refreshRange(s)) return;
-		let code = extractCode(reply);
 		if (!insert && s.original.endsWith('\n') === false && code.endsWith('\n'))
 			code = code.replace(/\n+$/, '');
 		s.ownEdit = true;

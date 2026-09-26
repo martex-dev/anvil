@@ -154,4 +154,17 @@ describe('inline edit', () => {
 		// The view is gone with the editor: nothing is removed from it or focused.
 		expect(editor.viewCalls).toEqual([]);
 	});
+
+	it('leaves the selection alone when the model returns no code', async () => {
+		const m = open('def f():\n    return 1\n', range(1, 1, 2, 5));
+		streamOnce.mockResolvedValue('   \n');
+
+		await submitInlineEdit('rewrite');
+
+		expect(m.text()).toBe('def f():\n    return 1\n');
+		expect(useInlineEdit.getState()).toMatchObject({
+			phase: 'prompt',
+			error: 'The model returned no code. Try rephrasing the instruction.',
+		});
+	});
 });
