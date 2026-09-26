@@ -45,13 +45,13 @@ export function TabView({
 	);
 
 	return (
-		<AppContextMenu items={tabMenuItems(tab, group)}>
+		<AppContextMenu items={tabMenuItems(tab, group, changed)}>
 			<div
 				role='tab'
 				data-tab-id={tab.id}
 				aria-selected={active}
 				tabIndex={active ? 0 : -1}
-				title={tab.path ?? label}
+				title={changed ? `${tab.path ?? label} (changed on disk)` : (tab.path ?? label)}
 				draggable
 				onDragStart={(e) =>
 					e.dataTransfer.setData(TAB_MIME, JSON.stringify({ id: tab.id, group }))
@@ -157,6 +157,7 @@ export function TabView({
 				<span className={cn('truncate', tab.preview && 'italic', changed && 'text-warn')}>
 					{label}
 				</span>
+				{changed && <span className='sr-only'>(changed on disk)</span>}
 				<button
 					type='button'
 					aria-label={dirty ? `Close ${label} (unsaved)` : `Close ${label}`}

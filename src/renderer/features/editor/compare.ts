@@ -76,6 +76,30 @@ export async function compareWithSelected(path: string): Promise<void> {
 	}
 }
 
+/** What changed on disk under an open buffer: the disk version against yours (unsaved edits). */
+export async function compareWithDisk(path: string): Promise<void> {
+	const model = getModel(path);
+	if (!model) return;
+	try {
+		const file = await call('fs:readFile', path);
+		if (file.binary || file.tooLarge) {
+			toast.warn('Cannot compare', `${path} is ${file.binary ? 'binary' : 'too large'} now.`);
+			return;
+		}
+		openDiffTab(
+			`diff:disk:${path}`,
+			`${baseName(path)} (disk ↔ yours)`,
+			`${path}: on disk ↔ your unsaved version`,
+			file.content,
+			model.getValue(),
+			model.getLanguageId(),
+			path,
+		);
+	} catch (error) {
+		toast.error('Compare failed', error instanceof Error ? error.message : undefined);
+	}
+}
+
 /** The clipboard against the selection (or the whole file): "what did I just paste over?". */
 export async function compareWithClipboard(): Promise<void> {
 	const editor = focusedEditor();

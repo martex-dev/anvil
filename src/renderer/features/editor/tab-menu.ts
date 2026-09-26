@@ -1,12 +1,20 @@
 import type { Tab } from '../../stores/tabs-store';
 import { useTabsStore } from '../../stores/tabs-store';
 import type { MenuItem } from '../../ui/ContextMenu';
-import { isScratch } from './file-ops';
+import { compareWithDisk } from './compare';
+import { isScratch, reloadFromDisk } from './file-ops';
 import { closeOtherTabs, closeTab } from './open';
 import { copyPath, revealInExplorer } from './tab-actions';
 
-/** The right-click menu of a tab in `group`. File actions only for tabs backed by a real file. */
-export function tabMenuItems(tab: Tab, group: number): Array<MenuItem | 'separator'> {
+/**
+ * The right-click menu of a tab in `group`. File actions only for tabs backed by a real file;
+ * `changed` (its buffer is dirty and the file changed on disk) adds ways to resolve that.
+ */
+export function tabMenuItems(
+	tab: Tab,
+	group: number,
+	changed = false,
+): Array<MenuItem | 'separator'> {
 	const path = tab.path && !isScratch(tab.path) ? tab.path : null;
 	const items: Array<MenuItem | 'separator'> = [
 		{ label: 'Close', shortcut: 'Ctrl+W', onSelect: () => closeTab(group, tab.id) },
@@ -24,6 +32,13 @@ export function tabMenuItems(tab: Tab, group: number): Array<MenuItem | 'separat
 	if (!path) return items;
 	return [
 		...items,
+		...(changed && tab.kind === 'code'
+			? [
+					'separator' as const,
+					{ label: 'Compare with Disk', onSelect: () => void compareWithDisk(path) },
+					{ label: 'Reload from Disk', onSelect: () => void reloadFromDisk(path) },
+				]
+			: []),
 		'separator',
 		{ label: 'Copy Path', onSelect: () => void copyPath(path, true) },
 		{ label: 'Copy Relative Path', onSelect: () => void copyPath(path, false) },

@@ -15,9 +15,13 @@ vi.mock('../../lib/ipc', () => ({
 const writeText = vi.fn((_text: string) => Promise.resolve());
 vi.stubGlobal('navigator', { clipboard: { writeText: (text: string) => writeText(text) } });
 vi.mock('./open', () => ({ closeTab: vi.fn(), closeOtherTabs: vi.fn() }));
+const reloadFromDisk = vi.fn((_path: string) => Promise.resolve());
+const compareWithDisk = vi.fn((_path: string) => Promise.resolve());
 vi.mock('./file-ops', () => ({
 	isScratch: (path: string | null | undefined) => path === '__scratch__',
+	reloadFromDisk: (path: string) => reloadFromDisk(path),
 }));
+vi.mock('./compare', () => ({ compareWithDisk: (path: string) => compareWithDisk(path) }));
 
 const { tabMenuItems } = await import('./tab-menu');
 
@@ -29,8 +33,10 @@ const code = (path: string, extra: Partial<Tab> = {}): Tab => ({
 	...extra,
 });
 
-function item(tab: Tab, label: string): MenuItem | undefined {
-	return tabMenuItems(tab, 0).find((i): i is MenuItem => i !== 'separator' && i.label === label);
+function item(tab: Tab, label: string, changed = false): MenuItem | undefined {
+	return tabMenuItems(tab, 0, changed).find(
+		(i): i is MenuItem => i !== 'separator' && i.label === label,
+	);
 }
 
 describe('tab context menu', () => {
@@ -93,5 +99,14 @@ describe('tab context menu', () => {
 		item(tab, 'Keep Open')?.onSelect();
 		expect(useTabsStore.getState().tabs[tab.id]?.preview).toBe(false);
 		expect(item(code('src/bot.py'), 'Keep Open')).toBeUndefined();
+	});
+
+	it('offers to reload or compare a file that changed on disk', () => {
+		const tab = code('src/bot.py');
+		expect(item(tab, 'Reload from Disk')).toBeUndefined();
+		item(tab, 'Reload from Disk', true)?.onSelect();
+		item(tab, 'Compare with Disk', true)?.onSelect();
+		expect(reloadFromDisk).toHaveBeenCalledWith('src/bot.py');
+		expect(compareWithDisk).toHaveBeenCalledWith('src/bot.py');
 	});
 });
