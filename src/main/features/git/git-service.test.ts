@@ -108,10 +108,15 @@ describe('GitService', { timeout: 30_000 }, () => {
 	it('maps paths when the open folder is a subfolder of the repo', async () => {
 		mkdirSync(join(repo, 'app'));
 		writeFileSync(join(repo, 'app', 'b.ts'), 'x');
+		writeFileSync(join(repo, 'app', '..env.bak'), 'z');
 		writeFileSync(join(repo, 'root.md'), 'y');
 		const status = await new GitService(() => join(repo, 'app')).status();
 		const byPath = Object.fromEntries(status.unstaged.map((c) => [c.path, c.workspacePath]));
-		expect(byPath).toEqual({ 'app/b.ts': 'b.ts', 'root.md': null });
+		expect(byPath).toEqual({
+			'app/..env.bak': '..env.bak',
+			'app/b.ts': 'b.ts',
+			'root.md': null,
+		});
 	});
 
 	it('blames and reads HEAD by workspace path when the open folder is a subfolder', async () => {

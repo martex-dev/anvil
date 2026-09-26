@@ -81,7 +81,9 @@ export class GitService {
 		const realWorkspace = realpathSync.native(workspace);
 		const toWorkspacePath = (repoPath: string): string | null => {
 			const rel = relative(realWorkspace, join(root, repoPath));
-			return rel.startsWith('..') || isAbsolute(rel) ? null : rel.split(sep).join('/');
+			// Not startsWith('..'): '..env.bak' is a file inside the folder.
+			const outside = rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel);
+			return outside ? null : rel.split(sep).join('/');
 		};
 		return {
 			isRepo: true,
