@@ -1,0 +1,126 @@
+/*
+ * Concrete status strip: printed under the title band. A LIVE tag, a ticker of headline facts
+ * and the shared status items set as ruled uppercase segments.
+ */
+
+/* ---- Status strip ---------------------------------------------------------------------- */
+
+html[data-skin='concrete'] .cc-status {
+	display: flex;
+	align-items: stretch;
+	height: 30px;
+	border-top: var(--cc-rule) solid var(--accent);
+	font-size: 11px;
+}
+html[data-skin='concrete'] .cc-status-tag {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	gap: 6px;
+	padding: 0 10px 0 12px;
+	background: var(--accent);
+	color: var(--on-accent);
+	font-family: var(--font-display);
+	font-size: 12px;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+html[data-skin='concrete'] .cc-status-tag::before {
+	content: '';
+	width: 8px;
+	height: 8px;
+	background: currentColor;
+}
+html[data-skin='concrete'][data-fx='full'] .cc-status-tag::before {
+	animation: cc-blink 1.2s steps(1, end) infinite;
+}
+
+html[data-skin='concrete'] .cc-ticker {
+	position: relative;
+	flex: 0 1 clamp(120px, 24vw, 380px);
+	min-width: 0;
+	overflow: hidden;
+	border-right: var(--cc-rule) solid var(--text-2);
+}
+html[data-skin='concrete'] .cc-ticker-track {
+	display: flex;
+	width: max-content;
+	height: 100%;
+}
+html[data-skin='concrete'][data-fx='full'] .cc-ticker-track {
+	animation: cc-marquee 48s linear infinite;
+}
+html[data-skin='concrete'] .cc-ticker-line {
+	display: flex;
+	align-items: center;
+}
+html[data-skin='concrete'] .cc-ticker-fact {
+	padding: 0 0 0 12px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	white-space: nowrap;
+	color: var(--text-0);
+}
+html[data-skin='concrete'] .cc-ticker-fact::after {
+	content: '';
+	display: inline-block;
+	width: 6px;
+	height: 6px;
+	margin-left: 12px;
+	vertical-align: 1px;
+	background: var(--cc-accent-text);
+}
+
+html[data-skin='concrete'] [data-part='statusbar'] {
+	flex: 1 1 0;
+	min-width: 0;
+	height: 100%;
+	gap: 0;
+	padding: 0;
+	overflow: hidden;
+	border: 0;
+	background: transparent;
+	backdrop-filter: none;
+	color: var(--text-1);
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+html[data-skin='concrete'] [data-part='status-item'] {
+	padding: 0 10px;
+	border-right: var(--cc-rule) solid var(--text-2);
+}
+html[data-skin='concrete'] [data-part='statusbar'] > span.flex-1 + [data-part='status-item'],
+html[data-skin='concrete'] [data-part='statusbar'] > span.flex-1 + * {
+	border-left: var(--cc-rule) solid var(--text-2);
+}
+html[data-skin='concrete'] [data-part='statusbar'] > :last-child {
+	border-right: 0;
+}
+html[data-skin='concrete'] button[data-part='status-item']:hover {
+	background: var(--text-0);
+	color: var(--skin-band);
+}
+html[data-skin='concrete'] button[data-part='status-item']:hover * {
+	color: inherit;
+}
+
+@keyframes cc-marquee {
+	from {
+		transform: translateX(0);
+	}
+	to {
+		transform: translateX(-50%);
+	}
+}
+@keyframes cc-blink {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0;
+	}
+}
