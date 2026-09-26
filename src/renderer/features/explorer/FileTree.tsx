@@ -25,7 +25,7 @@ import {
 import { TreeRowView } from './TreeRowView';
 import { TreeStatusRow } from './TreeStatusRow';
 import { useFileTree } from './use-file-tree';
-import { treeKeyHandler } from './use-tree-keyboard';
+import { createTypeAhead, treeKeyHandler } from './use-tree-keyboard';
 
 export type { FileTreeHandle } from './explorer-tree-registry';
 
@@ -122,6 +122,7 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 		}
 	};
 
+	const [typeAhead] = useState(() => createTypeAhead());
 	const onTreeKey = treeKeyHandler({
 		rows: tree.rows,
 		focused,
@@ -130,6 +131,7 @@ export function FileTree({ root, handleRef }: FileTreeProps): JSX.Element {
 		open: openEntry,
 		rename: setRenaming,
 		remove: setConfirmDelete,
+		typeAhead,
 	});
 	// A keyboard-opened menu fires `contextmenu` on the tree itself, like a right-click on its
 	// empty area; the key that opened it tells the two apart.
