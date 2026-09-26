@@ -11,20 +11,7 @@ import { ErrorState } from '../../ui/ErrorState';
 import { FileBadge } from '../../ui/FileBadge';
 import { IconButton } from '../../ui/IconButton';
 import { Spinner } from '../../ui/Spinner';
-
-const TAGS = ['TODO', 'FIXME', 'HACK', 'XXX', 'BUG', 'NOTE'] as const;
-type Tag = (typeof TAGS)[number];
-const COLOR: Record<Tag, string> = {
-	TODO: '--info',
-	FIXME: '--down',
-	BUG: '--down',
-	HACK: '--warn',
-	XXX: '--warn',
-	NOTE: '--text-2',
-};
-
-// Only comment-style markers: `# TODO`, `// FIXME:`, `-- NOTE` — not the word in prose or code.
-const PATTERN = String.raw`(#|//|--|/\*|\*|<!--)\s*(TODO|FIXME|HACK|XXX|BUG|NOTE)\b`;
+import { COLOR, parseTodos, PATTERN, type Tag, TAGS } from './todo-model';
 
 /** Every TODO / FIXME / HACK in the folder, via ripgrep. */
 export function TodoView(): JSX.Element {
@@ -36,25 +23,7 @@ export function TodoView(): JSX.Element {
 		enabled: Boolean(info.root),
 		staleTime: 30_000,
 	});
-	const items = useMemo(
-		() =>
-			(q.data?.files ?? []).flatMap((f) =>
-				f.matches.map((m) => {
-					const tag = (TAGS.find((t) => m.text.includes(t)) ?? 'TODO') as Tag;
-					const after = m.text
-						.slice(m.text.indexOf(tag) + tag.length)
-						.replace(/^[\s:()\w-]*?[:)]?\s*/, '');
-					return {
-						path: f.path,
-						line: m.line,
-						column: m.column,
-						tag,
-						text: after.trim() || m.text.trim(),
-					};
-				}),
-			),
-		[q.data],
-	);
+	const items = useMemo(() => parseTodos(q.data?.files ?? []), [q.data]);
 	const counts = useMemo(() => {
 		const c = new Map<Tag, number>();
 		for (const i of items) c.set(i.tag, (c.get(i.tag) ?? 0) + 1);
