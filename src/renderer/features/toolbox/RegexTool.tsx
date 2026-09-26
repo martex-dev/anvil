@@ -1,11 +1,12 @@
-import { type JSX, useMemo, useState } from 'react';
+import { type JSX, useState } from 'react';
 
 import { Input } from '../../ui/Input';
 import { CopyValue } from './CopyValue';
 import { Field } from './Field';
 import { TextArea } from './TextArea';
 import { ToolError } from './ToolError';
-import { MAX_REGEX_MATCHES, testRegex } from './tools';
+import { MAX_REGEX_MATCHES } from './tools';
+import { useRegexTest } from './use-regex-test';
 
 // Rendering thousands of rows would stall typing; the count still reports the full total.
 const MAX_SHOWN = 200;
@@ -14,10 +15,8 @@ export function RegexTool(): JSX.Element {
 	const [pattern, setPattern] = useState('');
 	const [flags, setFlags] = useState('g');
 	const [text, setText] = useState('');
-	const result = useMemo(
-		() => (pattern === '' ? null : testRegex(pattern, flags, text)),
-		[pattern, flags, text],
-	);
+	const { outcome, pending } = useRegexTest(pattern, flags, text);
+	const result = outcome?.kind === 'result' ? outcome.result : null;
 	const count = result?.matches.length ?? 0;
 
 	return (
@@ -55,9 +54,13 @@ export function RegexTool(): JSX.Element {
 					onChange={(e) => setText(e.target.value)}
 				/>
 			</Field>
+			{outcome?.kind === 'timeout' && (
+				<ToolError message='Pattern took too long (catastrophic backtracking?). Try removing nested quantifiers like (a+)+.' />
+			)}
+			{outcome?.kind === 'crashed' && <ToolError message={outcome.message} />}
 			{result?.error && <ToolError message={result.error} />}
 			{result && !result.error && (
-				<div className='flex flex-col gap-1'>
+				<div className='flex flex-col gap-1' aria-busy={pending}>
 					<span className='hud'>
 						{count === 0
 							? 'No matches'
