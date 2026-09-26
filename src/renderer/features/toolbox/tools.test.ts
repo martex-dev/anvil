@@ -49,6 +49,11 @@ describe('convertTimestamp', () => {
 		expect(iso.detectedUnit).toBe('date');
 		expect(iso.unixSeconds).toBe(1_704_067_200);
 		expect(convertTimestamp('Tue, 14 Nov 2023 22:13:20 GMT').unixSeconds).toBe(T);
+		expect(convertTimestamp('2023-11-14 22:13:20Z').unixSeconds).toBe(T);
+		expect(convertTimestamp('14 November 2023 22:13:20 UTC').unixSeconds).toBe(T);
+		for (const date of ['2024-01', '2024-01-15', '2024/01/15', '01/15/2024', 'Jan 15, 2024']) {
+			expect(convertTimestamp(date).detectedUnit).toBe('date');
+		}
 	});
 
 	it('describes time relative to now', () => {
@@ -68,6 +73,10 @@ describe('convertTimestamp', () => {
 	it('rejects garbage and out-of-range input', () => {
 		expect(() => convertTimestamp('')).toThrow(/Enter a unix timestamp/);
 		expect(() => convertTimestamp('not a date')).toThrow(/Could not parse/);
+		// V8's Date.parse reads each of these as a date; they must not get a 'date string' badge.
+		for (const junk of ['hello 1', 'foo 12', 'abc 2024', 'x-1', 'nov']) {
+			expect(() => convertTimestamp(junk)).toThrow(/Could not parse/);
+		}
 		expect(() => convertTimestamp('99999999999999999999999')).toThrow(/outside/);
 	});
 });
