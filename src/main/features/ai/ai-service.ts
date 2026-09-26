@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 
 import type { AiContext, AiMessage, AiMode, AiModelRef, AiProvider } from '@shared/ipc/channels/ai';
 
+import { AnvilError } from '../../core/errors';
 import { buildCompletionRequest, type CompletionInput, parseCompletion } from './completion';
 import { buildSystem } from './prompt';
 import { buildRequest, parseEvent } from './providers';
@@ -134,14 +135,22 @@ export class AiService {
 		}
 	}
 
-	/** Ghost text. Resolves '' when cancelled (the user kept typing) or when there's no key. */
+	/**
+	 * Ghost text. Resolves '' when cancelled (the user kept typing). A missing key or a timeout
+	 * throws, so the status bar can show why suggestions never appear.
+	 */
 	async complete(
 		requestId: string,
 		{ provider, model }: AiModelRef,
 		input: CompletionInput,
 	): Promise<string> {
 		const key = this.key(provider);
-		if (key === null) return '';
+		if (key === null) {
+			throw new AnvilError(
+				'AI_NO_KEY',
+				`No ${provider} API key for autocomplete. Add it in Settings → Keys.`,
+			);
+		}
 		const request = buildCompletionRequest(
 			provider,
 			model,
@@ -151,7 +160,11 @@ export class AiService {
 		);
 		const controller = new AbortController();
 		this.running.set(requestId, controller);
-		const timer = setTimeout(() => controller.abort(), COMPLETION_TIMEOUT_MS);
+		let timedOut = false;
+		const timer = setTimeout(() => {
+			timedOut = true;
+			controller.abort();
+		}, COMPLETION_TIMEOUT_MS);
 		try {
 			const response = await fetch(this.url(request.url), {
 				method: 'POST',
@@ -162,6 +175,13 @@ export class AiService {
 			if (!response.ok) throw new Error(await describeHttpError(provider, response));
 			return parseCompletion(provider, await response.json());
 		} catch (error) {
+			if (timedOut) {
+				throw new AnvilError(
+					'AI_COMPLETE_TIMEOUT',
+					`${provider} autocomplete did not answer within ${COMPLETION_TIMEOUT_MS / 1000} s.`,
+					error,
+				);
+			}
 			if (controller.signal.aborted) return '';
 			throw new Error(unreachable(provider, error), { cause: error });
 		} finally {

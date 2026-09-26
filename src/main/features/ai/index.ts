@@ -58,6 +58,7 @@ export const aiFeature: MainFeature = {
 				return { text: await ai.complete(requestId, settings().completion, input) };
 			} catch (error) {
 				// Surface it (the status bar shows the reason) but never as an unhandled crash.
+				if (error instanceof AnvilError) throw error;
 				throw new AnvilError(
 					'AI_COMPLETE_FAILED',
 					error instanceof Error ? error.message : String(error),
