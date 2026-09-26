@@ -1,14 +1,13 @@
 import { type JSX, useEffect, useState } from 'react';
 
+import { everySecond } from '../../lib/every-second';
 import { StatusSeg } from './StatusSeg';
 
 /** tmux's clock block: date and local time in reverse video, UTC in the tooltip. */
 export function StatusClock(): JSX.Element {
 	const [now, setNow] = useState(() => new Date());
-	useEffect(() => {
-		const id = setInterval(() => setNow(new Date()), 1000);
-		return () => clearInterval(id);
-	}, []);
+	// Aligned to the second, so it changes together with the system clock.
+	useEffect(() => everySecond(setNow), []);
 	const date = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
 	return (
 		<StatusSeg
