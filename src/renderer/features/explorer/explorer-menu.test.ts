@@ -98,6 +98,63 @@ describe('explorer menu: reveal', () => {
 	});
 });
 
+describe('explorer menu: entry actions', () => {
+	const actions = {
+		openToSide: vi.fn(),
+		openInTerminal: vi.fn(),
+		runPython: vi.fn(),
+		cut: vi.fn(),
+		copy: vi.fn(),
+		paste: vi.fn(),
+		canPaste: false,
+		duplicate: vi.fn(),
+	};
+	const folder: FsEntry = { ...file, name: 'src', path: 'src', kind: 'dir' };
+	const labels = (target: FsEntry | null, canPaste = false): string[] =>
+		explorerMenuItems({
+			target,
+			startCreate: vi.fn(),
+			rename: vi.fn(),
+			remove: vi.fn(),
+			actions: { ...actions, canPaste },
+		}).flatMap((i) => (i === 'separator' ? [] : [i.label]));
+	const pick = (target: FsEntry | null, label: string, canPaste = false): MenuItem => {
+		const found = explorerMenuItems({
+			target,
+			startCreate: vi.fn(),
+			rename: vi.fn(),
+			remove: vi.fn(),
+			actions: { ...actions, canPaste },
+		}).find((i): i is MenuItem => i !== 'separator' && i.label === label);
+		if (!found) throw new Error(`No menu item "${label}"`);
+		return found;
+	};
+
+	it('offers Open to the Side and Run only where they apply', () => {
+		expect(labels(file)).toEqual(
+			expect.arrayContaining(['Open to the Side', 'Run Python File']),
+		);
+		expect(labels(folder)).not.toContain('Open to the Side');
+		expect(labels({ ...file, name: 'a.csv', path: 'a.csv' })).not.toContain('Run Python File');
+	});
+
+	it('opens a terminal in the folder, or next to the file', () => {
+		pick(folder, 'Open in Terminal').onSelect();
+		pick(file, 'Open in Terminal').onSelect();
+		pick(null, 'Open in Terminal').onSelect();
+		expect(actions.openInTerminal.mock.calls).toEqual([['src'], ['src'], ['']]);
+	});
+
+	it('pastes into the folder under the pointer, only when something is held', () => {
+		expect(pick(file, 'Paste').disabled).toBe(true);
+		pick(file, 'Paste', true).onSelect();
+		expect(actions.paste).toHaveBeenCalledWith('src');
+		pick(file, 'Duplicate').onSelect();
+		expect(actions.duplicate).toHaveBeenCalledWith('src/a.py');
+		expect(pick(null, 'Cut').disabled).toBe(true);
+	});
+});
+
 describe('explorer menu: compare', () => {
 	it('enables Compare with Selected only for a different file', () => {
 		const other: FsEntry = { ...file, name: 'b.py', path: 'src/b.py' };

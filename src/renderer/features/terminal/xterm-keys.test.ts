@@ -26,6 +26,12 @@ describe('terminalKeyAction', () => {
 		expect(terminalKeyAction(key('c', 'KeyC'), false)).toBe('xterm');
 	});
 
+	it('opens find on Ctrl+F by key position, leaving Ctrl+Shift+F to the app', () => {
+		expect(terminalKeyAction(key('f', 'KeyF'), false)).toBe('find');
+		expect(terminalKeyAction(key('а', 'KeyF'), false)).toBe('find');
+		expect(terminalKeyAction(key('F', 'KeyF', { shift: true }), false)).toBe('xterm');
+	});
+
 	it('pastes natively on Ctrl+V only', () => {
 		expect(terminalKeyAction(key('v', 'KeyV'), false)).toBe('native-paste');
 		expect(terminalKeyAction(key('V', 'KeyV', { shift: true }), false)).toBe('xterm');

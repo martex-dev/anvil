@@ -44,6 +44,11 @@ export const terminalChannels = defineChannels({
 			/** Typed into the shell once it starts (Run file, tasks). */
 			initialCommand: z.string().max(10_000).optional(),
 			role: Role.optional(),
+			/**
+			 * Workspace-relative folder a new session starts in (Open in Terminal); the folder
+			 * root when absent. Ignored when attaching to a live session.
+			 */
+			cwd: z.string().max(4096).optional(),
 		}),
 		output: z.object({
 			sessionId: z.string(),

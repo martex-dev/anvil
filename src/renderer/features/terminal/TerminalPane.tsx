@@ -10,7 +10,9 @@ import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
 import { ErrorState } from '../../ui/ErrorState';
 import { Spinner } from '../../ui/Spinner';
+import { useTerminalFind } from './terminal-registry';
 import { closeTerminal, type TermTab, useTerminalStore } from './terminal-store';
+import { TerminalFind } from './TerminalFind';
 import { useXterm } from './use-xterm';
 
 export const PRESETS_KEY = ['terminal', 'presets'] as const;
@@ -36,6 +38,7 @@ export function TerminalPane({ tab, visible }: { tab: TermTab; visible: boolean 
 	const info = presets.data?.find((p) => p.id === tab.preset);
 	const { settings } = useSettings();
 	const hostRef = useRef<HTMLDivElement>(null);
+	const findOpen = useTerminalFind((s) => s.open === tab.id);
 	// Read when the session opens (it may be set after mount, by a Run on a restored tab); main
 	// types it only into a session that this open started.
 	const initial = tab.initialCommand;
@@ -46,6 +49,7 @@ export function TerminalPane({ tab, visible }: { tab: TermTab; visible: boolean 
 		enabled: info?.available ?? false,
 		initialCommand: initial,
 		role: tab.role,
+		cwd: tab.cwd,
 		focus: visible && !initial,
 		// The REPL is IPython or plain Python depending on the env: take main's name for it.
 		onOpen: tab.preset === 'repl' ? ({ title }) => renameTab(tab.id, title) : undefined,
@@ -150,6 +154,7 @@ export function TerminalPane({ tab, visible }: { tab: TermTab; visible: boolean 
 			data-terminal-status={status}
 		>
 			<div ref={hostRef} className='h-full w-full' />
+			{findOpen && status !== 'starting' && <TerminalFind sessionId={tab.id} />}
 			{status === 'starting' && (
 				<div className='absolute inset-0 flex items-center justify-center'>
 					<Spinner label='Starting terminal' />

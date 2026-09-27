@@ -1,10 +1,11 @@
 import { useQueries, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { FsEntry } from '@shared/ipc/channels/fs';
 
 import { fsKeys } from '../../app/hooks/use-fs-invalidation';
 import { call } from '../../lib/ipc';
+import { loadExpanded, saveExpanded } from './expanded-persist';
 import { buildRows, type DirState, type PendingCreate, type TreeRow } from './tree-model';
 
 export interface FileTree {
@@ -35,7 +36,9 @@ function pickListing(results: UseQueryResult<FsEntry[]>[]): Listing[] {
 
 /** Lazily lists the root and every expanded folder, and flattens them into rows. */
 export function useFileTree(root: string, pending: PendingCreate | null): FileTree {
-	const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+	// FileTree is keyed by root, so this reads the right folder's saved state on every switch.
+	const [expanded, setExpanded] = useState<Set<string>>(() => loadExpanded(root));
+	useEffect(() => saveExpanded(root, expanded), [root, expanded]);
 	const dirs = useMemo(() => ['', ...expanded], [expanded]);
 
 	const client = useQueryClient();

@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -9,6 +9,7 @@ import { parseDotEnv } from '@shared/dotenv';
 import type { TerminalPresetId } from '@shared/ipc/channels/terminal';
 
 import type { MainFeature } from '../../core/features';
+import { assertRealInside, toAbsolute } from '../../core/workspace/fs-guard';
 import { activatedEnv, interpreter } from '../python/interpreter';
 import { launchSpec, listPresets } from './presets';
 import { type SpawnPty, TerminalSessions } from './terminal-sessions';
@@ -63,6 +64,18 @@ export const terminalFeature: MainFeature = {
 				ctx.emit('terminal:exit', { sessionId, exitCode, ...(reason ? { reason } : {}) }),
 		});
 		const cwd = (): string => ctx.workspace.root() ?? homedir();
+		// Folders sessions were opened in (Open in Terminal), workspace-relative, so a restart
+		// starts there again, inside whatever folder is open by then.
+		const dirs = new Map<string, string>();
+		const cwdFor = (sessionId: string): string => {
+			const root = ctx.workspace.root();
+			const rel = dirs.get(sessionId);
+			if (!root || !rel) return cwd();
+			// The same guard as file I/O: never a folder outside the workspace, even via a link.
+			const abs = toAbsolute(root, rel);
+			assertRealInside(root, abs);
+			return existsSync(abs) ? abs : root;
+		};
 		const python = (): string | null => interpreter.resolve(ctx.workspace.root());
 
 		const startSession = async (
@@ -75,8 +88,9 @@ export const terminalFeature: MainFeature = {
 			const py = python();
 			const ipython = preset === 'repl' && py ? await hasIPython(py) : false;
 			const spec = await launchSpec(preset, py, ipython, readDotEnv(ctx.workspace.root()));
-			live.start(sessionId, preset, spec, cwd(), cols, rows, { role, python: py });
-			ctx.log.info('terminal started', { preset, cwd: cwd() });
+			const dir = cwdFor(sessionId);
+			live.start(sessionId, preset, spec, dir, cols, rows, { role, python: py });
+			ctx.log.info('terminal started', { preset, cwd: dir });
 		};
 
 		// Every shell's cwd is the old folder (Windows then won't let it be renamed or deleted)
@@ -91,7 +105,8 @@ export const terminalFeature: MainFeature = {
 		ctx.ipc.handle('terminal:presets', () => listPresets(python()));
 		ctx.ipc.handle(
 			'terminal:open',
-			async ({ sessionId, preset, cols, rows, initialCommand, role }) => {
+			async ({ sessionId, preset, cols, rows, initialCommand, role, cwd: dir }) => {
+				if (dir && !live.has(sessionId)) dirs.set(sessionId, dir);
 				const fresh = await live.ensure(sessionId, () =>
 					startSession(sessionId, preset, cols, rows, role ?? null),
 				);
@@ -148,7 +163,10 @@ export const terminalFeature: MainFeature = {
 				startSession(sessionId, s.preset, cols, rows, s.role),
 			);
 		});
-		ctx.ipc.handle('terminal:kill', (sessionId) => live.kill(sessionId));
+		ctx.ipc.handle('terminal:kill', (sessionId) => {
+			dirs.delete(sessionId);
+			return live.kill(sessionId);
+		});
 
 		// Quitting must not leave shells running.
 		ctx.onDispose(() => live.killAll());

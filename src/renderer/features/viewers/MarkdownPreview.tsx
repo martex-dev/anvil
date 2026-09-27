@@ -1,10 +1,10 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { FilePenLine, FileText, RotateCw } from 'lucide-react';
 import { type JSX, useEffect, useState } from 'react';
 
-import { touchesFile } from '../../lib/fs-batch';
+import { fsKeys } from '../../app/hooks/use-fs-invalidation';
+import { useWorkspace } from '../../app/hooks/use-workspace';
 import { call } from '../../lib/ipc';
-import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { requestOpenFile } from '../../stores/workbench-store';
 import { EmptyState } from '../../ui/EmptyState';
 import { ErrorState } from '../../ui/ErrorState';
@@ -54,20 +54,17 @@ function wordCount(text: string): number {
 
 export function MarkdownPreview({ path }: { path: string }): JSX.Element {
 	const live = useLiveBuffer(path);
-	const client = useQueryClient();
-	const diskKey = ['fs-text', path];
+	const root = useWorkspace().info.root ?? '';
+	// Under the folder's file key: another project's README never shows this one's, and the
+	// shell's fs:changed handler invalidates it. That also happens while the editor buffer is
+	// shown (the query is disabled then), so closing the editor re-reads the saved file instead
+	// of showing the pre-edit cache.
 	const disk = useQuery({
-		queryKey: diskKey,
+		queryKey: [...fsKeys.file(root, path), 'markdown'],
 		queryFn: () => call('fs:readFile', path),
 		enabled: live === null,
 	});
 	const { refetch } = disk;
-
-	// Invalidate even while the editor buffer is shown: the disabled query is then marked stale,
-	// so closing the editor re-reads the saved file instead of showing the pre-edit cache.
-	useAnvilEvent('fs:changed', (batch) => {
-		if (touchesFile(batch, path)) void client.invalidateQueries({ queryKey: diskKey });
-	});
 
 	const editSource = (): void => {
 		requestOpenFile({ path, as: 'code' });

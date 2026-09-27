@@ -3,6 +3,7 @@ import { ListTodo, RefreshCw } from 'lucide-react';
 import { type JSX, useMemo, useState } from 'react';
 
 import { useWorkspace } from '../../app/hooks/use-workspace';
+import { useSideViewVisible } from '../../app/side-view-visible';
 import { cn } from '../../lib/cn';
 import { call } from '../../lib/ipc';
 import { useFsRefresh } from '../../lib/use-fs-refresh';
@@ -18,10 +19,13 @@ import { COLOR, parseTodos, PATTERN, type Tag, TAGS } from './todo-model';
 export function TodoView(): JSX.Element {
 	const { info } = useWorkspace();
 	const [only, setOnly] = useState<Tag | null>(null);
+	const visible = useSideViewVisible();
 	const q = useQuery({
 		queryKey: ['todos', info.root],
 		queryFn: () => call('search:todos', { query: PATTERN, regex: true, caseSensitive: true }),
-		enabled: Boolean(info.root),
+		// Paused while the view is hidden: each refresh is a folder-wide ripgrep. Coming back
+		// refetches if files changed meanwhile (the invalidation below marks it stale).
+		enabled: Boolean(info.root) && visible,
 		staleTime: 30_000,
 	});
 	// Adding or resolving a TODO shows up without a manual rescan.

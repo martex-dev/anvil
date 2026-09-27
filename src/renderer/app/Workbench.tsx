@@ -6,6 +6,7 @@ import {
 	Suspense,
 	useEffect,
 	useRef,
+	useState,
 } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -33,22 +34,40 @@ const resize: ReturnType<typeof useLayoutStore.getState>['resize'] = (patch) =>
  * (a store update per pointermove) re-renders only the resized wrapper. Their children are
  * elements created by the parent, which React skips when the wrapper re-renders.
  */
-function SideWidth({ children }: { children: ReactNode }): JSX.Element {
+function SideWidth({ open, children }: { open: boolean; children: ReactNode }): JSX.Element {
 	const width = useLayoutStore((s) => s.sideWidth);
+	// display:none inline, so no skin rule on the slot can show a closed side bar.
 	return (
-		<div data-part='sidebar-slot' className='min-w-0 shrink-0' style={{ width }}>
+		<div
+			data-part='sidebar-slot'
+			className='min-w-0 shrink-0'
+			style={{ width, display: open ? undefined : 'none' }}
+		>
 			{children}
 		</div>
 	);
 }
 
-function PanelHeight({ children }: { children: ReactNode }): JSX.Element {
+/**
+ * The bottom panel's slot. A closed panel stays mounted, out of the flow and invisible at its
+ * last size: unmounting disposed every xterm, and on reopen the replayed backlog garbled TUIs
+ * like Claude Code and lost the scroll position. `display: none` would zero the size and make
+ * xterm refit to nothing; `inert` keeps focus and clicks out of it.
+ */
+function PanelHeight({ shown, children }: { shown: boolean; children: ReactNode }): JSX.Element {
 	const maximized = useLayoutStore((s) => s.panelMaximized);
 	const height = useLayoutStore((s) => s.panelHeight);
+	const fill = shown && maximized;
 	return (
 		<div
-			className={maximized ? 'min-h-0 flex-1' : 'shrink-0'}
-			style={maximized ? undefined : { height }}
+			data-part='panel-slot'
+			data-hidden={!shown || undefined}
+			inert={!shown}
+			className={cn(
+				fill ? 'min-h-0 flex-1' : 'shrink-0',
+				!shown && 'pointer-events-none invisible absolute inset-x-0 bottom-0',
+			)}
+			style={fill ? undefined : { height }}
 		>
 			{children}
 		</div>
@@ -69,7 +88,13 @@ function AiWidth({ children }: { children: ReactNode }): JSX.Element {
 	);
 }
 
-function SidePane({ side }: { side: 'left' | 'right' }): JSX.Element {
+/**
+ * The docked side bar. Once shown it stays mounted while closed (Ctrl+B), like the views inside
+ * it, so the explorer's open folders or a half-written commit message survive.
+ */
+function SidePane({ side, open }: { side: 'left' | 'right'; open: boolean }): JSX.Element | null {
+	const [shown, setShown] = useState(open);
+	if (open && !shown) setShown(true);
 	const start = useRef(0);
 	const sign = side === 'left' ? 1 : -1;
 	const splitter = (
@@ -82,13 +107,14 @@ function SidePane({ side }: { side: 'left' | 'right' }): JSX.Element {
 			onReset={() => resize({ sideWidth: 272 })}
 		/>
 	);
+	if (!shown) return null;
 	return (
 		<>
-			{side === 'right' && splitter}
-			<SideWidth>
+			{open && side === 'right' && splitter}
+			<SideWidth open={open}>
 				<SideBar />
 			</SideWidth>
-			{side === 'left' && splitter}
+			{open && side === 'left' && splitter}
 		</>
 	);
 }
@@ -103,8 +129,12 @@ function EditorColumn(): JSX.Element {
 	);
 	const start = useRef(0);
 	const showPanel = panelOpen && !zen;
+	// Mounted the first time it is shown, then kept (see PanelHeight): a panel that starts closed
+	// must not boot its restored terminals behind the user's back.
+	const [panelMounted, setPanelMounted] = useState(showPanel);
+	if (showPanel && !panelMounted) setPanelMounted(true);
 	return (
-		<div data-part='editor-column' className='flex min-w-0 flex-1 flex-col'>
+		<div data-part='editor-column' className='relative flex min-w-0 flex-1 flex-col'>
 			{/* Hidden, not unmounted, while the panel is maximized: unmounting would dispose and
 			    rebuild every Monaco editor on each maximize/restore. */}
 			<div className={showPanel && panelMaximized ? 'hidden' : 'min-h-0 flex-1'}>
@@ -112,24 +142,22 @@ function EditorColumn(): JSX.Element {
 					<EditorArea />
 				</ErrorBoundary>
 			</div>
-			{showPanel && (
-				<>
-					{!panelMaximized && (
-						<PaneSplitter
-							pane='panelHeight'
-							axis='y'
-							label='Resize panel'
-							onStart={() => (start.current = useLayoutStore.getState().panelHeight)}
-							onDrag={(d) => resize({ panelHeight: start.current - d })}
-							onReset={() => resize({ panelHeight: 240 })}
-						/>
-					)}
-					<PanelHeight>
-						<ErrorBoundary name='Panel' className='glass'>
-							<BottomPanel />
-						</ErrorBoundary>
-					</PanelHeight>
-				</>
+			{showPanel && !panelMaximized && (
+				<PaneSplitter
+					pane='panelHeight'
+					axis='y'
+					label='Resize panel'
+					onStart={() => (start.current = useLayoutStore.getState().panelHeight)}
+					onDrag={(d) => resize({ panelHeight: start.current - d })}
+					onReset={() => resize({ panelHeight: 240 })}
+				/>
+			)}
+			{panelMounted && (
+				<PanelHeight shown={showPanel}>
+					<ErrorBoundary name='Panel' className='glass'>
+						<BottomPanel />
+					</ErrorBoundary>
+				</PanelHeight>
 			)}
 		</div>
 	);
@@ -196,10 +224,10 @@ export function Workbench({ Activity }: { Activity: ComponentType }): JSX.Elemen
 				</>
 			)}
 			{!zen && layout.activity === 'rail' && <ActivityRail Bar={Activity} />}
-			{docked && showSide && layout.sidebar === 'left' && <SidePane side='left' />}
+			{docked && layout.sidebar === 'left' && <SidePane side='left' open={showSide} />}
 			<EditorColumn />
 			{aiOpen && !zen && <ChatPane />}
-			{docked && showSide && layout.sidebar === 'right' && <SidePane side='right' />}
+			{docked && layout.sidebar === 'right' && <SidePane side='right' open={showSide} />}
 			{!zen && layout.activity === 'right' && (
 				<>
 					{gap}

@@ -78,7 +78,7 @@ export function ExplorerPanel(): JSX.Element {
 					onClick={closeFolder}
 				/>
 			</div>
-			<div className='min-h-0 flex-1 overflow-auto'>
+			<div data-scroll-container className='min-h-0 flex-1 overflow-auto'>
 				{/* Keyed by root: a different folder gets a fresh tree state. */}
 				<FileTree key={info.root} root={info.root} handleRef={treeRef} />
 			</div>

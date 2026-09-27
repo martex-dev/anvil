@@ -134,6 +134,15 @@ describe('newNameProblem', () => {
 	it('flags an existing sibling, ignoring case', () => {
 		expect(newNameProblem('A.PY', ['a.py'])).toBe('"A.PY" already exists');
 	});
+
+	it('accepts a nested path for new items and checks every part', () => {
+		expect(newNameProblem('models/lstm/net.py', ['models'], true)).toBeNull();
+		expect(newNameProblem('models\\net.py', [], true)).toBeNull();
+		expect(newNameProblem('a//b.py', [], true)).toMatch(/empty/);
+		expect(newNameProblem('a/con/b.py', [], true)).toMatch(/reserved/);
+		// Renames stay single names.
+		expect(newNameProblem('a/b.py', [])).toMatch(/characters/);
+	});
 });
 
 describe('folder links', () => {
