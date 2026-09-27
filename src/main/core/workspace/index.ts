@@ -24,7 +24,9 @@ export function createWorkspace(
 	settings: SettingsStore,
 	hooks: WorkspaceHooks = {},
 ): WorkspaceServices {
-	const workspace = new WorkspaceService(settings);
+	const workspace = new WorkspaceService(settings, (error) =>
+		log.scope('workspace').error('a folder change listener failed', error),
+	);
 	const fs = new FsService({
 		getRoot: () => workspace.getRoot(),
 		trash: (abs) => shell.trashItem(abs),

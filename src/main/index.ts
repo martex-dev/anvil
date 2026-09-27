@@ -100,6 +100,9 @@ async function start(): Promise<void> {
 		},
 	});
 	watcher = ws.watcher;
+	// Before the features start, so they see the folder from the first call.
+	const restored = await ws.workspace.restore();
+	if (restored === 'timeout') log.warn('[workspace] last folder did not answer; not reopened');
 
 	const started = await startFeatures(
 		[
