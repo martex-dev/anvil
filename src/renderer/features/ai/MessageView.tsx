@@ -108,7 +108,8 @@ function CodeBlock({
 }
 
 function Prose({ text }: { text: string }): JSX.Element {
-	const html = useMemo(() => renderMarkdown(text), [text]);
+	// Replies can carry prompt-injected image URLs that leak data when fetched: links only.
+	const html = useMemo(() => renderMarkdown(text, { remoteImages: false }), [text]);
 	return (
 		<div
 			className='md-preview selectable text-13'
