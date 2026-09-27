@@ -3,6 +3,8 @@ import { dirname, join, relative, sep } from 'node:path';
 
 import { type FSWatcher, watch } from 'chokidar';
 
+import { SAVE_TEMP_SUFFIX } from './atomic-write';
+
 /** Heavy or generated folders that would flood the watcher and the tree, at any depth. */
 const ALWAYS_IGNORED = new Set([
 	'node_modules',
@@ -44,6 +46,8 @@ export function isIgnoredPath(
 ): boolean {
 	const rel = relative(root, abs);
 	if (!rel || rel.startsWith('..')) return false;
+	// A save's temp file lives for milliseconds; reporting it would only flicker the tree.
+	if (rel.endsWith(SAVE_TEMP_SUFFIX)) return true;
 	const parts = rel.split(sep);
 	if (buildDirs.has(parts[0] ?? '')) return true;
 	return parts.some((part) => ALWAYS_IGNORED.has(part));

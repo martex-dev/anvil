@@ -161,3 +161,11 @@ Short ADRs: the context, what was decided, and what it costs.
 **Decision.** The installer includes `resources/installer/installer.nsh`, which writes, per user (HKCU): an "Open with Anvil" verb on folders, on a folder's background and on every file, an `Anvil.File` ProgID, and that ProgID under `OpenWithProgids` for `.py`, `.ipynb`, `.csv` and `.parquet` (plus `Applications\Anvil.exe\SupportedTypes`). Every command is `Anvil.exe "<path>"`. The background verb passes `"%V\."` because `%V` is `C:\` at a drive root, and `"C:\"` would reach Anvil as `C:"`. The uninstaller removes the entries, except during an update.
 
 **Consequences.** Anvil shows up in the context menu and the "Open with" list, and never changes which program a double-click starts; users who want Anvil as the default pick it once in Windows' own dialog. A path from the folder background ends in `\.`, so the receiving side must resolve it (`path.resolve`).
+
+## ADR-022: Saves replace the file, with in-place fallbacks
+
+**Context.** A save truncated the file and wrote it in place, so a crash, a `taskkill` or a power cut mid-save left a half-written file, possibly the only copy of a research script.
+
+**Decision.** `writeFileAtomic` (`core/workspace/atomic-write.ts`) writes a hidden sibling `.<name>.<random>.anvil-save`, flushes it to disk, and renames it over the target, keeping the permission bits. On Windows an antivirus scanner or the indexer often holds a just-written file for a moment, so a rename failing with EPERM, EBUSY or EACCES is retried with backoff (about 0.8 s in total) and then the file is written in place, as before, rather than failing the save. A hard-linked file (uv and pnpm install those) is always written in place so its other names see the change. A symlinked file is saved at its target. A read-only file is refused, since a rename would quietly replace it on Linux and macOS. The watcher ignores the temp files.
+
+**Consequences.** A save is all-or-nothing except in the fallback cases. Replacing the file gives it the folder's default ACL on Windows, so a file with its own hand-set ACL loses it. A temp file can be left behind only if Anvil dies between writing it and renaming it; it is hidden and harmless.

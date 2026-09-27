@@ -5,6 +5,7 @@ import { basename, dirname, extname, join } from 'node:path';
 import type { FileContent, FsEntry, FsStat, TextEncoding } from '@shared/ipc/channels/fs';
 
 import { AnvilError } from '../errors';
+import { writeFileAtomic } from './atomic-write';
 import { mapFsError } from './fs-errors';
 import { assertRealInside, toAbsolute, toRelative, validateName } from './fs-guard';
 import { decodeText, encodeText } from './text-codec';
@@ -171,7 +172,7 @@ export class FsService {
 					);
 				}
 			}
-			await writeFile(abs, encodeText(content, encoding, bom, rel));
+			await writeFileAtomic(abs, encodeText(content, encoding, bom, rel));
 			return { mtimeMs: (await stat(abs)).mtimeMs };
 		} catch (error) {
 			throw mapFsError(error, rel, 'save');

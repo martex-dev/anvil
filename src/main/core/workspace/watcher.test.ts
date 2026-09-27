@@ -4,6 +4,7 @@ import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { SAVE_TEMP_SUFFIX } from './atomic-write';
 import { buildOutputDirs, describeWatchError, isIgnoredPath } from './watcher';
 
 const errno = (code: string): Error =>
@@ -33,6 +34,14 @@ describe('isIgnoredPath', () => {
 		expect(isIgnoredPath(root, join(root, 'node_modules'), dirs)).toBe(true);
 		expect(isIgnoredPath(root, join(root, 'pkg', '.venv', 'lib'), dirs)).toBe(true);
 		expect(isIgnoredPath(root, root, dirs)).toBe(false);
+	});
+
+	it('skips the temp files an atomic save writes', () => {
+		const dirs = buildOutputDirs(root);
+		expect(
+			isIgnoredPath(root, join(root, 'src', `.a.py.1f2e3d4c${SAVE_TEMP_SUFFIX}`), dirs),
+		).toBe(true);
+		expect(isIgnoredPath(root, join(root, 'src', 'a.py'), dirs)).toBe(false);
 	});
 
 	it('watches out/, dist/ and build/ in a plain data folder', () => {
