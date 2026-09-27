@@ -29,6 +29,23 @@ describe('globalCommandFor', () => {
 	it('still captures other app shortcuts in the terminal', () => {
 		expect(globalCommandFor(ctrl('P', true), commands, true)?.id).toBe('palette');
 	});
+
+	it('hands a key to the command whose context holds, and back when it ends', () => {
+		const withDebug: Command[] = [
+			{ id: 'python.runFile', title: 'Run', category: 'Python', shortcut: 'F5', run },
+			{
+				id: 'debug.continue',
+				title: 'Continue',
+				category: 'Run',
+				shortcut: 'F5',
+				when: 'debugging',
+				run,
+			},
+		];
+		const f5 = { key: 'F5', ctrlKey: false, shiftKey: false, altKey: false };
+		expect(globalCommandFor(f5, withDebug, false, () => false)?.id).toBe('python.runFile');
+		expect(globalCommandFor(f5, withDebug, false, () => true)?.id).toBe('debug.continue');
+	});
 });
 
 const key = { repeat: false, isComposing: false };

@@ -2,27 +2,32 @@ import { useEffect } from 'react';
 
 import { isAltGraph, isBindable, matchesShortcut } from '../../lib/shortcuts';
 import { useOverlayStore } from '../../stores/overlay-store';
-import { getCommands, runCommand } from './run';
+import { getCommands, isContextActive, runCommand } from './run';
 import type { Command } from './types';
 
 type KeyEventLike = Parameters<typeof matchesShortcut>[0];
 
-/** The global command bound to this key, if any, given whether the terminal has focus. */
+/**
+ * The global command bound to this key, if any, given whether the terminal has focus. A command
+ * whose context (`when`) holds wins over the key's usual owner; one whose context doesn't is
+ * skipped.
+ */
 export function globalCommandFor(
 	event: KeyEventLike,
 	commands: readonly Command[],
 	inTerminal: boolean,
+	active: (context: NonNullable<Command['when']>) => boolean = isContextActive,
 ): Command | null {
-	return (
-		commands.find(
-			(c) =>
-				(c.scope ?? 'global') === 'global' &&
-				!(inTerminal && c.terminalKeepsKey) &&
-				c.shortcut &&
-				isBindable(c.shortcut) &&
-				matchesShortcut(event, c.shortcut),
-		) ?? null
+	const matches = commands.filter(
+		(c) =>
+			(c.scope ?? 'global') === 'global' &&
+			!(inTerminal && c.terminalKeepsKey) &&
+			c.shortcut &&
+			isBindable(c.shortcut) &&
+			matchesShortcut(event, c.shortcut) &&
+			(!c.when || active(c.when)),
 	);
+	return matches.find((c) => c.when) ?? matches[0] ?? null;
 }
 
 /**
