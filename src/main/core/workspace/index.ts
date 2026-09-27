@@ -7,6 +7,7 @@ import { AnvilError } from '../errors';
 import { emitEvent, router } from '../ipc';
 import type { SettingsStore } from '../store/json-store';
 import { FsService } from './fs-service';
+import { copyItem, moveItem } from './fs-transfer';
 import { readLargeText } from './large-text';
 import { describeWatchError, WorkspaceWatcher } from './watcher';
 import { WorkspaceService } from './workspace-service';
@@ -111,6 +112,13 @@ export function createWorkspace(
 		absolute ? fs.absolute(path) : path.split('/').join(sep),
 	);
 	router.handle('fs:readLargeText', (rel) => readLargeText(requireRoot(workspace), rel));
+	const transfer = { trash: (abs: string) => shell.trashItem(abs) };
+	router.handle('fs:move', ({ path, targetDir, overwrite }) =>
+		moveItem(transfer, requireRoot(workspace), path, targetDir, overwrite ?? false),
+	);
+	router.handle('fs:copy', ({ path, targetDir }) =>
+		copyItem(transfer, requireRoot(workspace), path, targetDir),
+	);
 
 	return { workspace, fs, watcher };
 }

@@ -89,6 +89,23 @@ export const fsChannels = defineChannels({
 	 * cap instead of the editor's 5 MB, with `tooLarge` set beyond it.
 	 */
 	'fs:readLargeText': { input: RelPathSchema.min(1), output: FileContentSchema },
+	/**
+	 * Moves a file or folder into another folder of the workspace. Fails with FS_EXISTS on a
+	 * name clash unless `overwrite` (the replaced item goes to the Recycle Bin).
+	 */
+	'fs:move': {
+		input: z.object({
+			path: RelPathSchema.min(1),
+			targetDir: RelPathSchema,
+			overwrite: z.boolean().optional(),
+		}),
+		output: FsEntrySchema,
+	},
+	/** Copies a file or folder (recursively) into a folder; a clash is named "<name> copy". */
+	'fs:copy': {
+		input: z.object({ path: RelPathSchema.min(1), targetDir: RelPathSchema }),
+		output: FsEntrySchema,
+	},
 });
 
 export const fsEvents = {
