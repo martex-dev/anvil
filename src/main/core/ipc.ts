@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron';
+import { app, BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron';
 import log from 'electron-log/main';
 import type { z } from 'zod';
 
@@ -11,8 +11,8 @@ import {
 } from '@shared/ipc/contract';
 import { err } from '@shared/ipc/result';
 
-import { APP_ORIGIN } from './app-protocol';
 import { IpcRouter } from './ipc-router';
+import { devRendererUrl, isTrustedRendererUrl } from './renderer-origin';
 
 export const router = new IpcRouter(ipcContract, {
 	error: (message, meta) => log.error(message, meta),
@@ -24,9 +24,7 @@ export const router = new IpcRouter(ipcContract, {
 function isTrustedSender(event: IpcMainInvokeEvent): boolean {
 	const url = event.senderFrame?.url;
 	if (!url) return false;
-	const devUrl = process.env['ELECTRON_RENDERER_URL'];
-	if (devUrl && url.startsWith(devUrl)) return true;
-	return url.startsWith(`${APP_ORIGIN}/`);
+	return isTrustedRendererUrl(url, devRendererUrl(app.isPackaged));
 }
 
 export function attachIpc(): void {

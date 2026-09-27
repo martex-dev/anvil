@@ -8,6 +8,7 @@ import { type WindowChrome, WindowChromeSchema } from '@shared/ipc/channels/app'
 
 import { APP_ORIGIN } from './app-protocol';
 import { errorMessage } from './errors';
+import { devRendererUrl } from './renderer-origin';
 import { lockWindowNavigation } from './security';
 import type { SettingsStore } from './store/json-store';
 import { readWindowState, trackWindowState } from './window-state';
@@ -80,7 +81,7 @@ export function createMainWindow(store: SettingsStore): BrowserWindow {
 	win.once('closed', () => clearTimeout(showFallback));
 	watchRenderer(win);
 
-	const devUrl = process.env['ELECTRON_RENDERER_URL'];
+	const devUrl = devRendererUrl(app.isPackaged);
 
 	// With the menu gone, keep devtools reachable in development only.
 	if (devUrl) {
