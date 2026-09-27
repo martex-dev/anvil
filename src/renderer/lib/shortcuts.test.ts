@@ -32,8 +32,12 @@ describe('shortcuts', () => {
 	});
 
 	it('falls back to the physical key for punctuation', () => {
-		expect(matchesShortcut(ev('~', { ctrl: true }, 'Backquote'), 'Ctrl+`')).toBe(true);
-		expect(matchesShortcut(ev('|', { ctrl: true }, 'Backslash'), 'Ctrl+\\')).toBe(true);
+		// Russian prints ё and Swiss § on the ` key; German's is a dead key.
+		expect(matchesShortcut(ev('ё', { ctrl: true }, 'Backquote'), 'Ctrl+`')).toBe(true);
+		expect(matchesShortcut(ev('§', { ctrl: true }, 'Backquote'), 'Ctrl+`')).toBe(true);
+		expect(matchesShortcut(ev('Dead', { ctrl: true }, 'Backquote'), 'Ctrl+`')).toBe(true);
+		// An ASCII symbol is taken at face value: German # on the US \ key is not Ctrl+\.
+		expect(matchesShortcut(ev('#', { ctrl: true }, 'Backslash'), 'Ctrl+\\')).toBe(false);
 		expect(
 			matchesShortcut(ev('!', { ctrl: true, shift: true }, 'Digit1'), 'Ctrl+Shift+1'),
 		).toBe(true);
