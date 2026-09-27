@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { encodeMessage, MessageDecoder } from './framing';
 
-describe('LSP framing', () => {
+describe('Content-Length framing', () => {
 	it('round-trips messages split at arbitrary byte boundaries', () => {
 		const a = { jsonrpc: '2.0', id: 1, method: 'initialize', params: { text: 'café ✓' } };
 		const b = { jsonrpc: '2.0', method: 'initialized', params: {} };
@@ -29,5 +29,15 @@ describe('LSP framing', () => {
 		expect(() => new MessageDecoder().push(Buffer.from('X-Nope: 1\r\n\r\n{}'))).toThrow(
 			/Content-Length/,
 		);
+	});
+
+	it('decodes DAP messages (no jsonrpc field) that share a chunk with a partial one', () => {
+		const event = { seq: 3, type: 'event', event: 'stopped', body: { threadId: 1 } };
+		const request = { seq: 4, type: 'request', command: 'runInTerminal', arguments: {} };
+		const bytes = Buffer.concat([encodeMessage(event), encodeMessage(request)]);
+		const decoder = new MessageDecoder();
+		const cut = encodeMessage(event).length + 5;
+		expect(decoder.push(bytes.subarray(0, cut))).toEqual([event]);
+		expect(decoder.push(bytes.subarray(cut))).toEqual([request]);
 	});
 });

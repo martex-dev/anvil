@@ -10,6 +10,7 @@ const GLYPHS: Record<ChromeIconName, string> = {
 	git: '±',
 	run: '▶',
 	tests: '√',
+	debug: '¤',
 	outline: '§',
 	todos: '!',
 	history: '↺',

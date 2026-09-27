@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 
 import { isAltGraph, isBindable, type KeyLike, shortcutMatchRank } from '../../lib/shortcuts';
 import { useOverlayStore } from '../../stores/overlay-store';
-import { getCommands, runCommand } from './run';
+import { getCommands, isContextActive, runCommand } from './run';
 import type { Command } from './types';
 
 /**
@@ -54,7 +54,8 @@ export interface ShortcutContext {
 
 /** Whether a matched command may take the key where focus is. */
 function allowedIn(command: Command, ctx: ShortcutContext): boolean {
-	if (ctx.inTerminal) return TERMINAL_SHORTCUTS.has(command.id);
+	// Debug keys (F5, F10, F11…) must work while the program runs in the terminal, as in VS Code.
+	if (ctx.inTerminal) return TERMINAL_SHORTCUTS.has(command.id) || command.when !== undefined;
 	if (ctx.inChatInput && CHAT_INPUT_KEEPS.has(command.id)) return false;
 	if ((ctx.inTextField || ctx.inChatInput) && TEXT_FIELD_KEEPS.has(command.id)) return false;
 	return true;
@@ -63,21 +64,28 @@ function allowedIn(command: Command, ctx: ShortcutContext): boolean {
 /**
  * The global command bound to this key, if any. The best match wins, so a layout where the
  * printed and physical keys disagree (German's - sits on the US / key) runs one command, not two.
+ * A command whose context (`when`, e.g. debugging) holds wins over the key's usual owner; one
+ * whose context doesn't is skipped.
  */
 export function globalCommandFor(
 	event: KeyLike,
 	commands: readonly Command[],
 	ctx: ShortcutContext = {},
+	active: (context: NonNullable<Command['when']>) => boolean = isContextActive,
 ): Command | null {
 	if (isAltGraph(event)) return null;
 	let best: Command | null = null;
-	let bestRank = 0;
+	let bestScore = 0;
 	for (const c of commands) {
 		if ((c.scope ?? 'global') !== 'global' || !c.shortcut || !isBindable(c.shortcut)) continue;
+		if (c.when && !active(c.when)) continue;
 		const rank = shortcutMatchRank(event, c.shortcut);
-		if (rank > bestRank) {
+		if (rank === 0) continue;
+		// Same match quality: the command whose context holds takes the key.
+		const score = rank * 2 + (c.when ? 1 : 0);
+		if (score > bestScore) {
 			best = c;
-			bestRank = rank;
+			bestScore = score;
 		}
 	}
 	return best && allowedIn(best, ctx) ? best : null;

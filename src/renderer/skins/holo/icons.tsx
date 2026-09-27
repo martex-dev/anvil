@@ -10,6 +10,10 @@ const GLYPHS: Record<ChromeIconName, [string, GlyphFrame]> = {
 	git: ['M9 7.6v8.8M15 9.4v1.4l-6 3.6M7.8 17.6h2.4v-2.4H7.8ZM13.8 9.4h2.4V7H13.8Z', 'hex'],
 	run: ['M9.5 7.5v9l7-4.5Z', 'hex'],
 	tests: ['M10 7.5h4M11 7.5v3.2L8 16.5h8l-3-5.8V7.5M9.2 14h5.6', 'hex'],
+	debug: [
+		'M9.5 9.5h5v5a2.5 2.5 0 0 1-5 0ZM10.5 9.5a1.5 1.5 0 0 1 3 0M7.5 11.5h2M14.5 11.5h2M7.5 14.5h2M14.5 14.5h2',
+		'hex',
+	],
 	outline: ['M7.5 8h1.5M11 8h5.5M9.5 12H11M13 12h3.5M11.5 16H13M15 16h1.5', 'hex'],
 	todos: ['M7.5 8.4l1.4 1.4 2.4-2.6M13 8.8h3.5M7.5 13.5h3v3h-3ZM13 15h3.5', 'hex'],
 	history: ['M12 7.2a4.8 4.8 0 1 0 4.8 4.8M16.8 12V8.6M12 9.5V12l2 1.5', 'hex'],

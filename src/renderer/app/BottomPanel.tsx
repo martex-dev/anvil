@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, Maximize2, Minimize2, Plus, RotateCw, SquareTerminal, X } from 'lucide-react';
 import { DropdownMenu } from 'radix-ui';
-import { type JSX, useState } from 'react';
+import { type JSX, lazy, Suspense, useState } from 'react';
 
 import { useProblems } from '../features/problems/problems-store';
 import { ProblemsView } from '../features/problems/ProblemsView';
@@ -10,7 +10,7 @@ import { PRESETS_KEY, TerminalPane } from '../features/terminal/TerminalPane';
 import { cn } from '../lib/cn';
 import { call } from '../lib/ipc';
 import { handleTabKeys } from '../lib/roving';
-import { type PanelTab, useLayoutStore } from '../stores/layout-store';
+import { PANEL_TABS, type PanelTab, useLayoutStore } from '../stores/layout-store';
 import { useRegisterOverlay } from '../stores/overlay-store';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
@@ -98,7 +98,10 @@ function PresetMenu(): JSX.Element {
 	);
 }
 
-const PANEL_TABS: readonly PanelTab[] = ['terminal', 'problems'];
+const DebugConsole = lazy(() =>
+	import('../features/debug/DebugConsole').then((m) => ({ default: m.DebugConsole })),
+);
+
 const PANEL_CONTENT_ID = 'bottom-panel-content';
 const tabId = (tab: PanelTab): string => `bottom-panel-tab-${tab}`;
 const selectPanelTab = (index: number): void => {
@@ -173,6 +176,7 @@ export function BottomPanel(): JSX.Element {
 				<div role='tablist' aria-label='Panel' className='flex h-full items-center'>
 					<TabButton tab='terminal' label='Terminal' />
 					<TabButton tab='problems' label='Problems' count={problems} />
+					<TabButton tab='debug' label='Debug Console' />
 				</div>
 				{tab === 'terminal' && <TerminalTabs />}
 				{tab !== 'terminal' && <span className='flex-1' />}
@@ -212,6 +216,11 @@ export function BottomPanel(): JSX.Element {
 				className='relative min-h-0 flex-1'
 			>
 				{tab === 'problems' && <ProblemsView />}
+				{tab === 'debug' && (
+					<Suspense fallback={<Spinner />}>
+						<DebugConsole />
+					</Suspense>
+				)}
 				{terms.length === 0 && tab === 'terminal' && (
 					<EmptyState
 						icon={<SquareTerminal size={22} />}

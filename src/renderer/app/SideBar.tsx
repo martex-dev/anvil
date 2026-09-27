@@ -14,6 +14,9 @@ const RunView = lazy(() =>
 const TestsView = lazy(() =>
 	import('../features/tests/TestsView').then((m) => ({ default: m.TestsView })),
 );
+const DebugView = lazy(() =>
+	import('../features/debug/DebugView').then((m) => ({ default: m.DebugView })),
+);
 const OutlineView = lazy(() =>
 	import('../features/outline/OutlineView').then((m) => ({ default: m.OutlineView })),
 );
@@ -42,6 +45,8 @@ function View({ view }: { view: SideView }): JSX.Element {
 			return <RunView />;
 		case 'tests':
 			return <TestsView />;
+		case 'debug':
+			return <DebugView />;
 		case 'outline':
 			return <OutlineView />;
 		case 'todos':

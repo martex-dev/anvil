@@ -12,13 +12,19 @@ describe('command registry', { timeout: 30_000 }, () => {
 		const seen = new Map<string, string>();
 		for (const c of ALL_COMMANDS) {
 			if (!c.shortcut) continue;
-			const key = `${c.scope ?? 'global'}|${c.editorLanguage ?? '*'}|${c.shortcut.toLowerCase()}`;
+			const key = `${c.scope ?? 'global'}|${c.editorLanguage ?? '*'}|${c.when ?? '-'}|${c.shortcut.toLowerCase()}`;
 			expect(
 				seen.get(key),
 				`${c.id} and ${seen.get(key)} share ${c.shortcut}`,
 			).toBeUndefined();
 			seen.set(key, c.id);
 		}
+	});
+
+	it('gives context-bound keys only to global commands', async () => {
+		const { ALL_COMMANDS } = await import('./all');
+		for (const c of ALL_COMMANDS)
+			if (c.when) expect(c.scope ?? 'global', `${c.id} has a context`).toBe('global');
 	});
 
 	it('only binds bare keys that are function keys, or editor-scoped ones', async () => {

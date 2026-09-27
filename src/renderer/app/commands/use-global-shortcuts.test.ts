@@ -68,6 +68,28 @@ describe('globalCommandFor in the terminal', () => {
 	])('still runs %s', (id, event) => {
 		expect(globalCommandFor(event, commands, inTerminal)?.id).toBe(id);
 	});
+
+	it('hands a key to the command whose context holds, and back when it ends', () => {
+		const withDebug: Command[] = [
+			{ id: 'python.runFile', title: 'Run', category: 'Python', shortcut: 'F5', run },
+			{
+				id: 'debug.continue',
+				title: 'Continue',
+				category: 'Run',
+				shortcut: 'F5',
+				when: 'debugging',
+				run,
+			},
+		];
+		const f5 = { key: 'F5', ctrlKey: false, shiftKey: false, altKey: false };
+		expect(globalCommandFor(f5, withDebug, {}, () => false)?.id).toBe('python.runFile');
+		expect(globalCommandFor(f5, withDebug, {}, () => true)?.id).toBe('debug.continue');
+		// The program being debugged runs in the terminal; its debug keys still work there.
+		expect(globalCommandFor(f5, withDebug, { inTerminal: true }, () => true)?.id).toBe(
+			'debug.continue',
+		);
+		expect(globalCommandFor(f5, withDebug, { inTerminal: true }, () => false)).toBeNull();
+	});
 });
 
 describe('globalCommandFor in text fields', () => {

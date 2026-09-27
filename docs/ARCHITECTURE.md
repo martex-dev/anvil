@@ -6,19 +6,19 @@ Anvil is an Electron app with three layers. The rule that shapes everything: **t
 ┌──────────────────────── Renderer (React 19 + TS, sandboxed) ────────────────────────┐
 │ app/        workbench shell: title bar + menus, activity bar, side bar, editor area, │
 │             bottom panel, AI pane, status bar, palette, Quick Open, settings         │
-│ features/   editor · explorer · search · git · terminal · python · data · viewers   │
-│             ai · outline · todos · history · snippets · toolbox · problems · welcome │
+│ features/   editor · explorer · search · git · terminal · python · debug · data ·   │
+│             viewers · ai · outline · todos · history · snippets · toolbox · problems │
 │ stores/     Zustand: layout, tabs/groups, ui overlays, workbench bus                 │
 └──────────────────── window.anvil (preload: invoke + on, nothing else) ───────────────┘
                                   │  one IPC channel, zod-validated both ways
 ┌──────────────────────────────── Main process (Node) ────────────────────────────────┐
 │ core/       window + security, app:// protocol, IPC router, JSON settings store,     │
 │             secrets (safeStorage/DPAPI), workspace + fs guard + watcher, updater     │
-│ features/   ai · git · lsp · search · terminal · python · data · history · tasks ·   │
-│             templates · tests   (each: activate(ctx) → registers its IPC handlers)   │
+│ features/   ai · git · lsp · search · terminal · python · debug · data · history ·   │
+│             tasks · templates · tests   (each: activate(ctx) → registers IPC)        │
 └──────────────────────────────────────────────────────────────────────────────────────┘
           │ child processes                                       │ HTTPS
-   python / IPython · ruff · pip/uv · basedpyright ·        Anthropic · OpenAI · Gemini ·
+   python / IPython · debugpy · ruff · pip/uv · basedpyr. · Anthropic · OpenAI · Gemini ·
    typescript-language-server · ripgrep · git · shells      local Ollama
 ```
 
@@ -37,25 +37,26 @@ Main → renderer events (`fs:changed`, `ai:delta`, `terminal:data`…) are vali
 
 Each feature is a `MainFeature { id, activate(ctx) }`. The context gives it IPC registration, events, namespaced settings, secret _reads_ (main only), the workspace root and a private `userData/features/<id>` folder. Features don't import each other, with one deliberate exception: `python/interpreter.ts` is the shared "which Python" state that the terminal, LSP and data features all follow.
 
-| Feature              | What it does                                                                                                                                                                                                       |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ai`                 | Streams chat and inline-edit replies (SSE) from Anthropic, OpenAI, Gemini or Ollama. Ghost text is a separate one-shot request. Claude requests use prompt caching and server-side refusal fallbacks.              |
-| `lsp`                | Spawns basedpyright / typescript-language-server with Electron's own Node and relays JSON-RPC over IPC. Python's server gets the selected interpreter's environment.                                               |
-| `terminal`           | node-pty sessions with a scrollback backlog, so a reloaded window reattaches. Fixed presets only: the renderer never supplies a command line to spawn.                                                             |
-| `python`             | Finds interpreters (venv/uv/conda/system), lists packages, checks tools, formats with ruff, stages REPL cells, builds run commands.                                                                                |
-| `data`               | Parses CSV/TSV/JSON(L) in a worker thread (ADR-018). Parquet/Feather/Excel go through the user's Python (polars, then pandas). Results are cached; filter, sort, pages and column stats are served from the cache. |
-| `git`                | simple-git with an allowlisted environment: status, diff, stage, commit, branches, log, blame, HEAD content for gutter markers, and a secret scan of what's staged.                                                |
-| `history`            | A snapshot on every save (deduplicated, 50 per file, 30 days), used by the History view.                                                                                                                           |
-| `search`             | ripgrep: content search, plus the gitignore-aware file list for Quick Open.                                                                                                                                        |
-| `tasks`, `templates` | Detected runnable tasks, and the "new project" template writer.                                                                                                                                                    |
-| `tests`              | pytest discovery and runs with the selected interpreter (ADR-020). A small reporter plugin streams one JSON line per test; runs only accept node ids from the last discovery and are spawned without a shell.      |
+| Feature              | What it does                                                                                                                                                                                                                                                                                                                     |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ai`                 | Streams chat and inline-edit replies (SSE) from Anthropic, OpenAI, Gemini or Ollama. Ghost text is a separate one-shot request. Claude requests use prompt caching and server-side refusal fallbacks.                                                                                                                            |
+| `lsp`                | Spawns basedpyright / typescript-language-server with Electron's own Node and relays JSON-RPC over IPC. Python's server gets the selected interpreter's environment.                                                                                                                                                             |
+| `terminal`           | node-pty sessions with a scrollback backlog, so a reloaded window reattaches. Fixed presets only: the renderer never supplies a command line to spawn.                                                                                                                                                                           |
+| `debug`              | Runs `<selected python> -m debugpy.adapter` with the activated env and relays the Debug Adapter Protocol over IPC with the same framing as LSP (ADR-024). Main builds the launch configuration from a workspace file, a module name or a pytest node, so the renderer never names an executable or a program outside the folder. |
+| `python`             | Finds interpreters (venv/uv/conda/system), lists packages, checks tools, formats with ruff, stages REPL cells, builds run commands.                                                                                                                                                                                              |
+| `data`               | Parses CSV/TSV/JSON(L) in a worker thread (ADR-018). Parquet/Feather/Excel go through the user's Python (polars, then pandas). Results are cached; filter, sort, pages and column stats are served from the cache.                                                                                                               |
+| `git`                | simple-git with an allowlisted environment: status, diff, stage, commit, branches, log, blame, HEAD content for gutter markers, and a secret scan of what's staged.                                                                                                                                                              |
+| `history`            | A snapshot on every save (deduplicated, 50 per file, 30 days), used by the History view.                                                                                                                                                                                                                                         |
+| `search`             | ripgrep: content search, plus the gitignore-aware file list for Quick Open.                                                                                                                                                                                                                                                      |
+| `tasks`, `templates` | Detected runnable tasks, and the "new project" template writer.                                                                                                                                                                                                                                                                  |
+| `tests`              | pytest discovery and runs with the selected interpreter (ADR-020). A small reporter plugin streams one JSON line per test; runs only accept node ids from the last discovery and are spawned without a shell.                                                                                                                    |
 
 ## The renderer
 
 - **Workbench**: fixed regions instead of free docking. Activity bar, a resizable side bar, 1–2 editor groups over a resizable bottom panel, and a resizable AI pane. Sizes and open views persist through `ui:getState` / `ui:setState`.
 - **Tabs** (`stores/tabs-store.ts`): each tab has a kind (`code`, `data`, `image`, `notebook`, `markdown`, `diff`, `welcome`). Code tabs point at a text buffer (`features/editor/file-ops.ts`). One Monaco instance per group swaps models in and out, so undo history lives in the model and survives tab switches.
-- **Editor extras** attach to each Monaco instance: `# %%` cell decorations, the secret shield, git gutter + blame, bookmarks, and the test run lens (a code lens, so the glyph margin stays free for cells, bookmarks and breakpoints). Global providers are ghost text, snippets and problems tracking.
-- **Commands** (`app/commands/*`) are one list that drives the palette, the menu bar, global shortcuts, and Monaco actions for editor-scoped keys (`scope: 'editor'`, optionally limited to one language).
+- **Editor extras** attach to each Monaco instance: `# %%` cell decorations, the secret shield, git gutter + blame, bookmarks, breakpoints and the debugger's paused line, and the test run lens (a code lens, so the glyph margin stays free for cells, bookmarks and breakpoints). Global providers are ghost text, snippets and problems tracking.
+- **Commands** (`app/commands/*`) are one list that drives the palette, the menu bar, global shortcuts, and Monaco actions for editor-scoped keys (`scope: 'editor'`, optionally limited to one language). A global key can also belong to a command only while a context holds (`when: 'debugging'`: F5 continues a paused program, and runs the file otherwise).
 - **Monaco** is `@codingame/monaco-vscode-api`, i.e. VS Code's editor services. TextMate grammars come from VS Code's built-in extensions and are bundled locally; nothing loads from a CDN.
 
 ## Security baseline

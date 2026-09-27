@@ -1,5 +1,6 @@
 import {
 	Blocks,
+	Bug,
 	Files,
 	FlaskConical,
 	GitBranch,
@@ -27,6 +28,7 @@ export const VIEW_META: Record<SideView, { label: string; icon: LucideIcon; comm
 	git: { label: 'Source Control', icon: GitBranch, command: 'view.git' },
 	run: { label: 'Run & Python', icon: Play, command: 'view.run' },
 	tests: { label: 'Tests', icon: FlaskConical, command: 'view.tests' },
+	debug: { label: 'Debug', icon: Bug, command: 'view.debug' },
 	outline: { label: 'Outline & Bookmarks', icon: ListTree, command: 'view.outline' },
 	todos: { label: 'TODOs', icon: ListTodo, command: 'view.todos' },
 	history: { label: 'Local History', icon: History, command: 'view.history' },
@@ -41,6 +43,7 @@ export const VIEW_SHORT: Record<SideView, string> = {
 	git: 'Git',
 	run: 'Run',
 	tests: 'Tests',
+	debug: 'Debug',
 	outline: 'Outline',
 	todos: 'Todos',
 	history: 'History',

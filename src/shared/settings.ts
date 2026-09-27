@@ -99,6 +99,8 @@ export const SettingsSchema = z.object({
 	/** Copilot-style gray suggestions while typing. */
 	ghostText: z.boolean().default(true),
 	ghostDelayMs: z.number().int().min(100).max(2000).default(350),
+	/** The debugger steps through your code only, not the standard library or installed packages. */
+	debugJustMyCode: z.boolean().default(true),
 	/** Check the releases feed and download updates in the background (installed builds only). */
 	autoUpdate: z.boolean().default(true),
 });

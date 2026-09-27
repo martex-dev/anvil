@@ -3,6 +3,7 @@ import type { z } from 'zod';
 import { aiChannels, aiEvents } from './channels/ai';
 import { appChannels, appEvents } from './channels/app';
 import { dataChannels } from './channels/data';
+import { debugChannels, debugEvents } from './channels/debug';
 import { fsChannels, fsEvents } from './channels/fs';
 import { gitChannels, gitEvents } from './channels/git';
 import { lspChannels, lspEvents } from './channels/lsp';
@@ -35,6 +36,7 @@ export const ipcContract = {
 	...aiChannels,
 	...pythonChannels,
 	...dataChannels,
+	...debugChannels,
 	...toolsChannels,
 	...updateChannels,
 	...windowChannels,
@@ -53,6 +55,7 @@ export const eventContract = defineEvents({
 	...lspEvents,
 	...aiEvents,
 	...pythonEvents,
+	...debugEvents,
 	...updateEvents,
 	...windowEvents,
 	...testsEvents,

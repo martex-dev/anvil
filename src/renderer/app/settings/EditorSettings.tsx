@@ -207,6 +207,12 @@ export function EditorSettings({
 				onChange={(formatOnSave) => update({ formatOnSave })}
 			/>
 			<SettingToggle
+				label='Debug just my code'
+				description='The debugger steps through your files only, not the standard library or installed packages.'
+				value={s.debugJustMyCode}
+				onChange={(debugJustMyCode) => update({ debugJustMyCode })}
+			/>
+			<SettingToggle
 				label='Local history'
 				description='Snapshot every save (50 per file, 30 days) so you can roll back without git.'
 				value={s.localHistory}

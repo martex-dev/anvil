@@ -1,6 +1,7 @@
 import {
 	Blocks,
 	Bot,
+	Bug,
 	CircleAlert,
 	Columns2,
 	Copy,
@@ -38,6 +39,7 @@ const DEFAULT_ICONS: Record<ChromeIconName, LucideIcon> = {
 	git: GitBranch,
 	run: Play,
 	tests: FlaskConical,
+	debug: Bug,
 	outline: ListTree,
 	todos: ListTodo,
 	history: History,
