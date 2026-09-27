@@ -8,6 +8,7 @@ import { PYTHON_COMMANDS } from '../../features/python/commands';
 import { TERMINAL_COMMANDS } from '../../features/terminal/commands';
 import { APPEARANCE_COMMANDS } from '../../features/themes/commands';
 import { TOOLBOX_COMMANDS } from '../../features/toolbox/commands';
+import { BUILTIN_EDITOR_COMMANDS } from '../../features/tools/builtin-commands';
 import { TOOL_COMMANDS } from '../../features/tools/commands';
 import { VIEWER_COMMANDS } from '../../features/viewers/commands';
 import { CORE_COMMANDS } from './core-commands';
@@ -26,6 +27,7 @@ export const ALL_COMMANDS: readonly Command[] = [
 	...GIT_COMMANDS,
 	...TERMINAL_COMMANDS,
 	...TOOL_COMMANDS,
+	...BUILTIN_EDITOR_COMMANDS,
 	...APPEARANCE_COMMANDS,
 	...TOOLBOX_COMMANDS,
 	...LSP_COMMANDS,
