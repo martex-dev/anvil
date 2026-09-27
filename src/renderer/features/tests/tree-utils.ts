@@ -76,6 +76,58 @@ export function filterTree(nodes: readonly TestNode[], query: string): TestNode[
 	return out;
 }
 
+/** Files and classes start open; a parametrized function starts closed (its cases can be many). */
+export function openByDefault(node: TestNode): boolean {
+	return node.kind === 'file' || node.kind === 'class';
+}
+
+export interface TreeRow {
+	node: TestNode;
+	depth: number;
+	open: boolean;
+}
+
+/** The rows a tree shows, depth-first, skipping the children of closed nodes. */
+export function visibleRows(
+	nodes: readonly TestNode[],
+	isOpen: (node: TestNode) => boolean,
+	depth = 0,
+): TreeRow[] {
+	const rows: TreeRow[] = [];
+	for (const node of nodes) {
+		const open = node.children.length > 0 && isOpen(node);
+		rows.push({ node, depth, open });
+		if (open) rows.push(...visibleRows(node.children, isOpen, depth + 1));
+	}
+	return rows;
+}
+
+/**
+ * Files whose change can change what pytest collects: test modules (pytest's default names),
+ * conftest.py and pytest's config files. Other saves don't re-run discovery, which imports the
+ * whole test suite and can take seconds in an ML project.
+ */
+export function affectsTests(path: string): boolean {
+	const name = path.split(/[\\/]/).at(-1)?.toLowerCase() ?? '';
+	return (
+		/^test_.*\.py$/.test(name) ||
+		/_test\.py$/.test(name) ||
+		['conftest.py', 'pytest.ini', 'pyproject.toml', 'setup.cfg', 'tox.ini'].includes(name)
+	);
+}
+
+export function findNode(nodes: readonly TestNode[], id: string): TestNode | null {
+	for (const node of nodes) {
+		if (node.id === id) return node;
+		// Only descend where the id can be: children's ids start with their parent's.
+		if (id.startsWith(node.id)) {
+			const found = findNode(node.children, id);
+			if (found) return found;
+		}
+	}
+	return null;
+}
+
 /** Normalizes a path for comparison (Windows paths are case-insensitive, slashes vary). */
 export function samePath(a: string, b: string): boolean {
 	const norm = (p: string): string => p.replace(/\\/g, '/').toLowerCase();

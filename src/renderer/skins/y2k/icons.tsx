@@ -53,6 +53,16 @@ const DRAW: Record<ChromeIconName, JSX.Element> = {
 			<path d='M10 6h10M10 12h10M10 18h7' />
 		</>
 	),
+	tests: (
+		<>
+			<path d='M9 3.5h6' strokeWidth={2.4} />
+			<path
+				{...CANDY}
+				d='M10.5 3.5v5.2L5 18.3a1.6 1.6 0 0 0 1.4 2.2h11.2a1.6 1.6 0 0 0 1.4-2.2l-5.5-9.6V3.5'
+			/>
+			{shine('M8.8 15.6l1.8-3.2')}
+		</>
+	),
 	todos: (
 		<>
 			<rect {...CANDY} x='3.5' y='3.5' width='17' height='17' rx='5.5' />

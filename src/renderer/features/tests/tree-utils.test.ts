@@ -3,13 +3,17 @@ import { describe, expect, it } from 'vitest';
 import type { TestNode, TestResult } from '@shared/ipc/channels/tests';
 
 import {
+	affectsTests,
 	fileNode,
 	filterTree,
+	findNode,
 	leafIds,
 	lineTargets,
 	nodeAtLine,
+	openByDefault,
 	statusOf,
 	statusOfIds,
+	visibleRows,
 } from './tree-utils';
 
 function node(
@@ -97,6 +101,47 @@ describe('filterTree', () => {
 	it('returns everything for an empty query and nothing for a miss', () => {
 		expect(filterTree([file], '  ')).toEqual([file]);
 		expect(filterTree([file], 'zzz')).toEqual([]);
+	});
+});
+
+describe('visibleRows', () => {
+	it('opens files and classes by default and hides the cases of closed functions', () => {
+		expect(visibleRows([file], openByDefault).map((r) => [r.node.id, r.depth, r.open])).toEqual(
+			[
+				['t.py', 0, true],
+				['t.py::test_ok', 1, false],
+				['t.py::test_p', 1, false],
+				['t.py::TestA', 1, true],
+				['t.py::TestA::test_m', 2, false],
+			],
+		);
+	});
+
+	it('shows the cases of an opened function', () => {
+		const rows = visibleRows([file], (n) => openByDefault(n) || n.id === 't.py::test_p');
+		expect(rows.filter((r) => r.node.kind === 'case').map((r) => r.depth)).toEqual([2, 2]);
+	});
+});
+
+describe('affectsTests', () => {
+	it('matches test modules, conftest and pytest config only', () => {
+		for (const p of [
+			'tests/test_a.py',
+			'src\\pkg\\io_test.py',
+			'conftest.py',
+			'PYPROJECT.TOML',
+		])
+			expect(affectsTests(p), p).toBe(true);
+		for (const p of ['src/model.py', 'testing.py', 'tests/data.csv'])
+			expect(affectsTests(p), p).toBe(false);
+	});
+});
+
+describe('findNode', () => {
+	it('finds nodes at any depth by id', () => {
+		expect(findNode([file], 't.py::test_p[2]')?.kind).toBe('case');
+		expect(findNode([file], 't.py::TestA::test_m')?.line).toBe(21);
+		expect(findNode([file], 't.py::missing')).toBeNull();
 	});
 });
 
