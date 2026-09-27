@@ -13,7 +13,7 @@ import { REDUCED_MOTION_QUERY } from '../../lib/monaco/theme';
 import { setMonacoWorkspaceRoot } from '../../lib/monaco/workspace-root';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { focusedTab, type Tab, useTabsStore } from '../../stores/tabs-store';
-import { confirmLeave, useWorkbenchStore } from '../../stores/workbench-store';
+import { confirmLeave, takePendingOpen, useWorkbenchStore } from '../../stores/workbench-store';
 import { clearCompareSelection } from './compare';
 import { dirtyCount, useEditorStore } from './editor-store';
 import { setBookmarksRoot } from './extras/bookmarks';
@@ -63,6 +63,16 @@ function loadSession(root: string): Session | null {
 	} catch {
 		return null;
 	}
+}
+
+/** True while a folder's saved tabs are being reopened; a queued launch file waits for it. */
+let restoring = false;
+
+/** Opens the file queued by a launch ("Open with Anvil"), unless a restore will do it after. */
+function openPendingInto(root: string): void {
+	if (restoring) return;
+	const request = takePendingOpen();
+	if (request) void openPath(root, request);
 }
 
 /**
@@ -158,6 +168,7 @@ export function EditorBridge(): null {
 		}
 		// Switching folders again mid-restore stops this loop: its tabs belong to the old root.
 		let cancelled = false;
+		restoring = true;
 		void (async () => {
 			try {
 				for (const [gi, g] of session.groups.entries()) {
@@ -184,11 +195,26 @@ export function EditorBridge(): null {
 				if (first) useTabsStore.getState().focus(first.id);
 			} catch (error) {
 				rlog.warn('editor', 'session restore failed', error);
+			} finally {
+				if (!cancelled) {
+					restoring = false;
+					openPendingInto(root);
+				}
 			}
 		})();
 		return () => {
 			cancelled = true;
+			restoring = false;
 		};
+	}, [root]);
+
+	// A file queued by a launch opens as soon as no restore is in the way.
+	useEffect(() => {
+		if (!root) return;
+		openPendingInto(root);
+		return useWorkbenchStore.subscribe((s, prev) => {
+			if (s.pendingOpen && s.pendingOpen !== prev.pendingOpen) openPendingInto(root);
+		});
 	}, [root]);
 
 	useEffect(() => {

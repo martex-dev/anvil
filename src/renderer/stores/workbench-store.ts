@@ -49,6 +49,12 @@ interface WorkbenchState {
 	addLeaveGuard: (guard: LeaveGuard) => () => void;
 	requestReveal: (path: string) => void;
 	clearReveal: () => void;
+	/**
+	 * A file to open once the editor is ready for it: after a folder switch finished restoring
+	 * its tabs (a launch path, "Open with Anvil"). The editor takes it (takePendingOpen).
+	 */
+	pendingOpen: OpenFileRequest | null;
+	queueOpen: (request: OpenFileRequest | null) => void;
 }
 
 /** Never reset, so a request made after the last one was cleared still reads as new. */
@@ -75,7 +81,16 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
 	},
 	requestReveal: (path) => set({ reveal: { path, nonce: ++revealCount } }),
 	clearReveal: () => set({ reveal: null }),
+	pendingOpen: null,
+	queueOpen: (pendingOpen) => set({ pendingOpen }),
 }));
+
+/** The queued file to open, once; null when there's none. */
+export function takePendingOpen(): OpenFileRequest | null {
+	const request = useWorkbenchStore.getState().pendingOpen;
+	if (request) useWorkbenchStore.getState().queueOpen(null);
+	return request;
+}
 
 /** Returns false when no editor module is available to handle the request. */
 export function requestOpenFile(request: OpenFileRequest): boolean {
