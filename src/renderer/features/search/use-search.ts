@@ -3,6 +3,7 @@ import { create } from 'zustand';
 
 import type { SearchQuery, SearchResult } from '@shared/ipc/channels/search';
 
+import { useSideViewVisible } from '../../app/side-view-visible';
 import { call, IpcCallError } from '../../lib/ipc';
 import { useFsRefresh } from '../../lib/use-fs-refresh';
 import { useLayoutStore } from '../../stores/layout-store';
@@ -68,10 +69,13 @@ export function useFileSearch(
 	refetch: () => void;
 } {
 	const client = useQueryClient();
+	// Paused while the Search view is hidden (it stays mounted): each refresh is a folder-wide
+	// ripgrep. Coming back re-runs it if files changed meanwhile.
+	const visible = useSideViewVisible();
 	const q = useQuery({
 		queryKey: ['search', root, query],
 		queryFn: () => call('search:run', query),
-		enabled: root !== null && query.query.trim().length > 0,
+		enabled: root !== null && query.query.trim().length > 0 && visible,
 		// Keep showing the last results while the next query runs (no flicker while typing).
 		placeholderData: keepPreviousData,
 		staleTime: 5_000,
