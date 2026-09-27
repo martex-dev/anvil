@@ -8,7 +8,7 @@ import type { MonacoApi } from '../../lib/monaco/setup';
 import { toWorkspacePath } from '../../lib/monaco/workspace-root';
 import { queryClient } from '../../lib/query-client';
 import { AI_SETTINGS_KEY } from './ai-settings';
-import { useGhostStatus } from './ghost-status';
+import { beginGhostRequest, useGhostStatus } from './ghost-status';
 
 const PREFIX_CHARS = 6_000;
 const SUFFIX_CHARS = 2_000;
@@ -104,7 +104,7 @@ export function registerGhostText(monaco: MonacoApi): Monaco.IDisposable {
 				const cancel = token.onCancellationRequested(
 					() => void call('ai:cancel', requestId).catch(() => undefined),
 				);
-				useGhostStatus.getState().set({ busy: true });
+				const settle = beginGhostRequest();
 				try {
 					const { text } = await call('ai:complete', {
 						requestId,
@@ -119,13 +119,15 @@ export function registerGhostText(monaco: MonacoApi): Monaco.IDisposable {
 					last = { key, text: insert };
 					return { items: insert.trim() ? [{ insertText: insert, range }] : [] };
 				} catch (error) {
-					useGhostStatus
-						.getState()
-						.set({ error: error instanceof Error ? error.message : String(error) });
+					// A request cancelled by typing on is not a failure worth flagging.
+					if (!token.isCancellationRequested)
+						useGhostStatus
+							.getState()
+							.set({ error: error instanceof Error ? error.message : String(error) });
 					return { items: [] };
 				} finally {
 					cancel.dispose();
-					useGhostStatus.getState().set({ busy: false });
+					settle();
 				}
 			},
 			disposeInlineCompletions() {
