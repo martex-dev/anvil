@@ -143,12 +143,17 @@ export async function launchSpec(
 	preset: TerminalPresetId,
 	python: string | null,
 	ipython: boolean,
+	/** The workspace's `.env`, applied where your Python code runs (not to AI CLIs). */
+	dotEnv: Record<string, string> = {},
 ): Promise<LaunchSpec> {
 	const sh = await shell();
 	const noLogo = WIN ? ['-NoLogo'] : [];
 	const inherited = (): Record<string, string> => ({ ...clean(process.env), ...BASE_ENV });
-	const withPython = (): Record<string, string> =>
+	const activated = (): Record<string, string> =>
 		python ? { ...clean(activatedEnv(python)), ...BASE_ENV } : inherited();
+	// Run File, Run Cell, tasks and the env shell see the project's .env, like VS Code's
+	// python.envFile. The AI CLI presets below deliberately don't: they'd hand your keys to them.
+	const withPython = (): Record<string, string> => ({ ...activated(), ...dotEnv });
 	switch (preset) {
 		case 'powershell':
 			return {
@@ -182,7 +187,7 @@ export async function launchSpec(
 			const args = WIN
 				? [...noLogo, '-NoExit', '-Command', p.command]
 				: ['-c', `${p.command}; exec ${sh}`];
-			return { file: sh, args, env: withPython(), title: p.label };
+			return { file: sh, args, env: activated(), title: p.label };
 		}
 	}
 }

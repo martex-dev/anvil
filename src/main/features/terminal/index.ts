@@ -1,8 +1,11 @@
 import { execFile } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
+import { join } from 'node:path';
 
 import { spawn } from 'node-pty';
 
+import { parseDotEnv } from '@shared/dotenv';
 import type { TerminalPresetId } from '@shared/ipc/channels/terminal';
 
 import type { MainFeature } from '../../core/features';
@@ -32,6 +35,19 @@ function hasIPython(python: string): Promise<boolean> {
 	});
 }
 
+/**
+ * The workspace's `.env`, parsed, or nothing. Read at every spawn, so edits apply to the next
+ * run; a missing or unreadable file just means no extra variables.
+ */
+function readDotEnv(root: string | null): Record<string, string> {
+	if (!root) return {};
+	try {
+		return parseDotEnv(readFileSync(join(root, '.env'), 'utf8'), process.env);
+	} catch {
+		return {};
+	}
+}
+
 /** Same folder (case-insensitive on Windows); null is no folder. */
 function sameFolder(a: string | null, b: string | null): boolean {
 	if (a === null || b === null) return a === b;
@@ -58,7 +74,7 @@ export const terminalFeature: MainFeature = {
 		): Promise<void> => {
 			const py = python();
 			const ipython = preset === 'repl' && py ? await hasIPython(py) : false;
-			const spec = await launchSpec(preset, py, ipython);
+			const spec = await launchSpec(preset, py, ipython, readDotEnv(ctx.workspace.root()));
 			live.start(sessionId, preset, spec, cwd(), cols, rows, { role, python: py });
 			ctx.log.info('terminal started', { preset, cwd: cwd() });
 		};
