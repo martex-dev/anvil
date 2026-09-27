@@ -53,5 +53,32 @@ describe('terminal file links', () => {
 		expect(toRelative('./a/b.py', ROOT)).toBe('a/b.py');
 		expect(toRelative('..\\x.py', ROOT)).toBeNull();
 		expect(toRelative('c:/users/me/lab/X.py', ROOT)).toBe('X.py');
+		expect(toRelative('c:/users/me/lab/src/../X.py', ROOT)).toBe('X.py');
+	});
+
+	it('takes relative paths from the folder the terminal started in', () => {
+		expect(toRelative('bt.py', ROOT, 'strategies')).toBe('strategies/bt.py');
+		expect(toRelative('..\\data\\x.py', ROOT, 'strategies')).toBe('data/x.py');
+		expect(toRelative('../../x.py', ROOT, 'strategies')).toBeNull();
+		expect(findFileLinks('bt.py:3', ROOT, 'strategies')[0]?.path).toBe('strategies/bt.py');
+	});
+
+	it('does not link server addresses or version numbers', () => {
+		expect(findFileLinks('Uvicorn running on http://0.0.0.0:8000', ROOT)).toEqual([]);
+		expect(findFileLinks(' * Running on 127.0.0.1:5000', ROOT)).toEqual([]);
+		expect(findFileLinks('numpy 1.26.4:2', ROOT)).toEqual([]);
+	});
+
+	it('links traceback and colon paths under a user folder with a space', () => {
+		const root = 'C:\\Users\\PC Games\\lab';
+		const traceback = '  File "C:\\Users\\PC Games\\lab\\bt.py", line 42, in <module>';
+		expect(findFileLinks(traceback, root)[0]).toMatchObject({ path: 'bt.py', line: 42 });
+		const colon = 'C:\\Users\\PC Games\\lab\\src\\bt.py:42:7 error';
+		expect(findFileLinks(colon, root)[0]).toMatchObject({
+			start: 0,
+			path: 'src/bt.py',
+			line: 42,
+			column: 7,
+		});
 	});
 });

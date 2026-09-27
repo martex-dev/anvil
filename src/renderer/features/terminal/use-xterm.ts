@@ -9,11 +9,9 @@ import type { TerminalPresetId } from '@shared/ipc/channels/terminal';
 
 import { call } from '../../lib/ipc';
 import { rlog } from '../../lib/log';
-import { queryClient } from '../../lib/query-client';
 import { toast } from '../../stores/toast-store';
-import { requestOpenFile } from '../../stores/workbench-store';
 import { useClipboardHistory } from '../editor/extras/clipboard';
-import { findFileLinks } from './file-links';
+import { registerFileLinks } from './terminal-links';
 import { FOCUS_TERMINAL_EVENT, markAttached, unmarkAttached } from './terminal-store';
 import { terminalKeyAction } from './xterm-keys';
 import { buildXtermTheme } from './xterm-theme';
@@ -50,6 +48,8 @@ interface Options {
 	initialCommand?: string | undefined;
 	/** The tab's reusable role ('run', 'repl', 'task:…'), for main's restart decisions. */
 	role?: string | undefined;
+	/** Workspace-relative folder the session starts in ('' or absent: the folder root). */
+	cwd?: string | undefined;
 	/** Keep keyboard focus where it is (a command sent in the background). */
 	focus?: boolean;
 	/** Main's name for the session once it is open ('IPython' or 'Python REPL' for the REPL). */
@@ -62,7 +62,17 @@ interface Options {
  */
 export function useXterm(
 	hostRef: RefObject<HTMLDivElement | null>,
-	{ sessionId, preset, fontSize, enabled, initialCommand, role, focus = true, onOpen }: Options,
+	{
+		sessionId,
+		preset,
+		fontSize,
+		enabled,
+		initialCommand,
+		role,
+		cwd,
+		focus = true,
+		onOpen,
+	}: Options,
 ): { status: TerminalStatus; error: string | null; retry: () => void } {
 	const [status, setStatus] = useState<TerminalStatus>('starting');
 	const [error, setError] = useState<string | null>(null);
@@ -132,24 +142,8 @@ export function useXterm(
 			term.options.cursorBlink = !reducedMotion();
 		};
 		motion.addEventListener('change', updateBlink);
-		// Tracebacks and `file.py:12:5` references open the file at that line.
-		const links = term.registerLinkProvider({
-			provideLinks(y, callback) {
-				const root = queryClient.getQueryData<{ root: string | null }>(['workspace'])?.root;
-				const text = term.buffer.active.getLine(y - 1)?.translateToString(true) ?? '';
-				if (!root || !text) return callback(undefined);
-				callback(
-					findFileLinks(text, root).map((l) => ({
-						range: { start: { x: l.start + 1, y }, end: { x: l.end, y } },
-						text: text.slice(l.start, l.end),
-						decorations: { underline: true, pointerCursor: true },
-						activate: () => {
-							requestOpenFile({ path: l.path, line: l.line, column: l.column });
-						},
-					})),
-				);
-			},
-		});
+		// Tracebacks and `file.py:12:5` references open the file at that line (if it exists).
+		const links = registerFileLinks(term, () => cwd ?? '');
 		try {
 			// GPU rendering is much faster for heavy output; fall back to DOM if WebGL is unavailable.
 			const webgl = new WebglAddon();
