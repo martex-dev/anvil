@@ -103,8 +103,17 @@ export const gitChannels = defineChannels({
 	/** Which of these files still contain conflict markers (<<<<<<<, =======, >>>>>>>). */
 	'git:conflictMarkers': { input: RepoPaths.min(1).max(5000), output: z.array(z.string()) },
 	'git:commit': {
-		input: z.object({ message: z.string().trim().min(1).max(20_000) }),
+		input: z.object({
+			message: z.string().trim().min(1).max(20_000),
+			/** Replace the last commit (message and staged changes) instead of adding one. */
+			amend: z.boolean().optional(),
+		}),
 		output: z.object({ hash: z.string() }),
+	},
+	/** Full message of HEAD (to prefill an amend); null before the first commit. */
+	'git:lastCommitMessage': {
+		input: z.void(),
+		output: z.object({ message: z.string().nullable() }),
 	},
 	'git:pull': { input: z.void(), output: z.object({ summary: z.string() }) },
 	'git:push': { input: z.void(), output: z.object({ summary: z.string() }) },

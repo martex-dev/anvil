@@ -229,15 +229,28 @@ export class GitService {
 		return hits;
 	}
 
-	async commit(message: string): Promise<{ hash: string }> {
+	/**
+	 * Commits what is staged. `amend` replaces the last commit instead (its message, plus
+	 * anything staged now), so it needs no staged changes but does need a commit to amend.
+	 */
+	async commit(message: string, amend = false): Promise<{ hash: string }> {
 		const { root, g } = await this.requireRepo();
 		return queued(root, 'index', async () => {
-			const status = await g.status();
-			const anyStaged = status.files.some((f) => f.index !== ' ' && f.index !== '?');
-			if (!anyStaged)
-				throw new AnvilError('GIT_NOTHING_STAGED', 'Nothing is staged to commit');
+			if (amend) {
+				if (!(await hasHead(g)))
+					throw new AnvilError('GIT_NOTHING_TO_AMEND', 'There is no commit to amend yet');
+			} else {
+				const status = await g.status();
+				const anyStaged = status.files.some((f) => f.index !== ' ' && f.index !== '?');
+				if (!anyStaged)
+					throw new AnvilError('GIT_NOTHING_STAGED', 'Nothing is staged to commit');
+			}
 			// 'long': a pre-commit hook or a GPG passphrase prompt may take minutes.
-			const result = await git(root, 'long').commit(message);
+			const result = await git(root, 'long').commit(
+				message,
+				undefined,
+				amend ? { '--amend': null } : {},
+			);
 			if (!result.commit)
 				throw new AnvilError('GIT_COMMIT_FAILED', 'git did not create a commit');
 			return { hash: result.commit };
@@ -317,6 +330,13 @@ export class GitService {
 			if (isMissingPathError(error)) return null;
 			throw error;
 		}
+	}
+
+	/** HEAD's full message, to prefill an amend; null before the first commit. */
+	async lastCommitMessage(): Promise<string | null> {
+		const { g } = await this.requireRepo();
+		if (!(await hasHead(g))) return null;
+		return (await g.raw(['log', '-1', '--format=%B'])).trimEnd();
 	}
 
 	async scanStaged(): Promise<SecretFinding[]> {

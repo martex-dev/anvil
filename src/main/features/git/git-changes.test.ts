@@ -51,6 +51,26 @@ describe('GitService changes', { timeout: 30_000 }, () => {
 		});
 	});
 
+	it('amends the last commit with a new message and newly staged files', async () => {
+		const git = new GitService(() => repo.dir);
+		expect(await git.lastCommitMessage()).toBeNull();
+		await expect(git.commit('x', true)).rejects.toMatchObject({ code: 'GIT_NOTHING_TO_AMEND' });
+		repo.write('a.txt', 'a\n');
+		await git.stage(['a.txt']);
+		await git.commit('first\n\nbody line');
+		expect(await git.lastCommitMessage()).toBe('first\n\nbody line');
+		// Nothing staged: an amend still rewrites the message.
+		await git.commit('first, reworded', true);
+		repo.write('b.txt', 'b\n');
+		await git.stage(['b.txt']);
+		await git.commit('first, with b', true);
+		expect(repo.run('log', '--format=%s').trim().split('\n')).toEqual(['first, with b']);
+		expect(repo.run('show', '--name-only', '--format=').trim().split('\n')).toEqual([
+			'a.txt',
+			'b.txt',
+		]);
+	});
+
 	it('finds conflict markers left in a conflicted file', async () => {
 		repo.write('a.txt', 'base\n');
 		repo.commitAll('base');

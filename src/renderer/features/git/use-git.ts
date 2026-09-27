@@ -90,7 +90,7 @@ async function confirmConflictStage(
 export function useGitActions(status?: GitStatus): {
 	stage: (paths: string[]) => void;
 	unstage: (paths: string[]) => void;
-	commit: (message: string) => Promise<boolean>;
+	commit: (message: string, amend?: boolean) => Promise<boolean>;
 	pull: () => void;
 	push: () => void;
 	fetch: () => void;
@@ -121,7 +121,7 @@ export function useGitActions(status?: GitStatus): {
 	});
 	const commit = useMutation({
 		mutationKey: [...GIT_MUTATION_KEY, 'commit'],
-		mutationFn: async (message: string) => {
+		mutationFn: async ({ message, amend }: { message: string; amend: boolean }) => {
 			// Secret shield: never let an API key, private key or seed phrase into history.
 			const findings = await call('git:scanStaged');
 			const high = findings.filter((f) => f.severity === 'high');
@@ -136,9 +136,10 @@ export function useGitActions(status?: GitStatus): {
 					'Possible credential staged',
 					`${findings[0]?.kind} in ${findings[0]?.path}:${findings[0]?.line}`,
 				);
-			return call('git:commit', { message });
+			return call('git:commit', { message, amend });
 		},
-		onSuccess: ({ hash }) => toast.success('Committed', hash.slice(0, 7)),
+		onSuccess: ({ hash }, { amend }) =>
+			toast.success(amend ? 'Commit amended' : 'Committed', hash.slice(0, 7)),
 		onSettled: done,
 		onError: fail('Commit'),
 	});
@@ -149,9 +150,9 @@ export function useGitActions(status?: GitStatus): {
 				if (ok) stage.mutate(paths);
 			}),
 		unstage: unstage.mutate,
-		commit: (message) =>
+		commit: (message, amend = false) =>
 			commit
-				.mutateAsync(message)
+				.mutateAsync({ message, amend })
 				.then(() => true)
 				.catch(() => false),
 		// Shared with the palette's Pull/Push, which may already be running one; the buttons

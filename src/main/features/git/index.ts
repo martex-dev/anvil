@@ -33,7 +33,12 @@ export const gitFeature: MainFeature = {
 		ctx.ipc.handle('git:conflictMarkers', (paths) =>
 			run(() => service.conflictMarkers(paths), false),
 		);
-		ctx.ipc.handle('git:commit', ({ message }) => run(() => service.commit(message)));
+		ctx.ipc.handle('git:commit', ({ message, amend }) =>
+			run(() => service.commit(message, amend ?? false)),
+		);
+		ctx.ipc.handle('git:lastCommitMessage', () =>
+			run(async () => ({ message: await service.lastCommitMessage() }), false),
+		);
 		const repo = (): Promise<string> => service.repo();
 		ctx.ipc.handle('git:pull', () => run(async () => pull(await repo())));
 		ctx.ipc.handle('git:push', () => run(async () => push(await repo())));
