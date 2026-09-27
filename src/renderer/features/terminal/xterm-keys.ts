@@ -14,8 +14,9 @@ function letter(e: KeyInfo): string {
 
 /**
  * Ctrl+C (and Ctrl+Shift+C, the Windows Terminal habit) copies when text is selected; without a
- * selection Ctrl+C is SIGINT. Ctrl+V is left to the browser's native paste. Everything else,
- * including Ctrl+Shift+V (a global shortcut), goes to xterm as usual.
+ * selection Ctrl+C is SIGINT. Ctrl+V and Ctrl+Shift+V are left to the browser's native paste
+ * (global shortcuts don't take them while the terminal has focus). Everything else goes to
+ * xterm as usual.
  */
 export function terminalKeyAction(e: KeyInfo, hasSelection: boolean): TerminalKeyAction {
 	if (e.type !== 'keydown' || !e.ctrlKey || e.altKey) return 'xterm';

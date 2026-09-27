@@ -135,6 +135,12 @@ export function EditorSettings({
 				value={s.minimap}
 				onChange={(minimap) => update({ minimap })}
 			/>
+			<SettingToggle
+				label='Sticky scroll'
+				description='Keep the enclosing class and function headers pinned while you scroll.'
+				value={s.stickyScroll}
+				onChange={(stickyScroll) => update({ stickyScroll })}
+			/>
 			<SettingRow
 				label='Auto save'
 				description='After a delay: a moment after you stop typing. On focus change: when you switch files or leave the window.'

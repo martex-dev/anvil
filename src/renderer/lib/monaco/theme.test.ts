@@ -20,6 +20,7 @@ const prefs = (reduceMotion: boolean): EditorPrefs => ({
 	cursorStyle: 'line',
 	colorSwatches: true,
 	pythonTypeChecking: 'standard',
+	stickyScroll: true,
 });
 
 const motion = (reduceMotion: boolean): Record<string, unknown> => {

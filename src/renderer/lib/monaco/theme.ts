@@ -17,6 +17,7 @@ export type EditorPrefs = Pick<
 	| 'cursorStyle'
 	| 'colorSwatches'
 	| 'pythonTypeChecking'
+	| 'stickyScroll'
 >;
 
 export const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
@@ -233,7 +234,7 @@ export function buildUserConfiguration(prefs: EditorPrefs): string {
 		'editor.renderWhitespace': 'selection',
 		'editor.bracketPairColorization.enabled': true,
 		'editor.guides.bracketPairs': 'active',
-		'editor.stickyScroll.enabled': true,
+		'editor.stickyScroll.enabled': prefs.stickyScroll,
 		'editor.inlineSuggest.enabled': prefs.ghostText,
 		'editor.inlineSuggest.showToolbar': 'onHover',
 		'editor.suggest.preview': true,

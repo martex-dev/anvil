@@ -32,6 +32,8 @@ export const SettingsSchema = z.object({
 	tabSize: z.number().int().min(1).max(8).default(4),
 	wordWrap: z.boolean().default(false),
 	minimap: z.boolean().default(true),
+	/** The enclosing class / function headers stay pinned at the top while you scroll. */
+	stickyScroll: z.boolean().default(true),
 	formatOnSave: z.boolean().default(false),
 	/**
 	 * Save without Ctrl+S: a moment after you stop typing, or when focus leaves the file or the

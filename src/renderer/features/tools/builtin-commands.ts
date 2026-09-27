@@ -6,6 +6,7 @@ import {
 	Map as MapIcon,
 	MessageSquareCode,
 	PencilLine,
+	Pin,
 	UnfoldVertical,
 	WandSparkles,
 } from 'lucide-react';
@@ -108,5 +109,13 @@ export const BUILTIN_EDITOR_COMMANDS: Command[] = [
 		icon: MapIcon,
 		// A setting, not Monaco's own toggle: Settings shows it and it survives a restart.
 		run: () => updateSettings({ minimap: !getSettings().minimap }),
+	},
+	{
+		id: 'view.toggleStickyScroll',
+		title: 'Toggle Sticky Scroll',
+		category: 'View',
+		keywords: ['pinned', 'headers', 'breadcrumbs'],
+		icon: Pin,
+		run: () => updateSettings({ stickyScroll: !getSettings().stickyScroll }),
 	},
 ];
