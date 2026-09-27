@@ -10,20 +10,40 @@ export function attempt<T>(fn: () => T): Outcome<T> {
 }
 
 const THOUSANDS = /^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$/;
+const EU_THOUSANDS = /^[+-]?\d{1,3}(\.\d{3})+(,\d+)?$/;
+const DECIMAL_COMMA = /^[+-]?\d*,\d+$/;
 const DECIMAL = /^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i;
+
+/** Rewrites a comma-bearing number as a plain decimal, or null when it is malformed. */
+function normalizeCommas(text: string): string | null {
+	const lastComma = text.lastIndexOf(',');
+	const lastDot = text.lastIndexOf('.');
+	// "10,000.5": comma thousands, dot decimal.
+	if (lastDot > lastComma) return THOUSANDS.test(text) ? text.replace(/,/g, '') : null;
+	// "1.234,5": dot thousands, comma decimal (most of Europe).
+	if (lastDot >= 0) {
+		return EU_THOUSANDS.test(text) ? text.replace(/\./g, '').replace(',', '.') : null;
+	}
+	// "10,000" reads as thousands; a leading zero ("0,500") can't be, so it is a decimal.
+	if (THOUSANDS.test(text) && !/^[+-]?0/.test(text)) return text.replace(/,/g, '');
+	// "1,5", "0,25": a decimal comma, which would otherwise be 15 and 25.
+	return DECIMAL_COMMA.test(text) ? text.replace(',', '.') : null;
+}
 
 /**
  * Numeric parse for form fields: separators people paste ("10,000", "1_000", "10 000") are
- * ignored. A comma anywhere else (a decimal comma like "0,5") is NaN rather than silently read
- * as 5, and so is anything Number() accepts that isn't a plain decimal ("0x10", "Infinity").
- * Returns null for a blank field so callers can tell "not filled in" from "invalid".
+ * ignored, and a decimal comma ("1,5", "1.234,5") is read as one, never as a number ten times
+ * bigger. The one ambiguous form, a single comma before exactly three digits ("1,500"), reads
+ * as thousands. Anything else Number() accepts that isn't a plain decimal ("0x10", "Infinity")
+ * is NaN. Returns null for a blank field so callers can tell "not filled in" from "invalid".
  */
 export function parseNumber(text: string): number | null {
 	let clean = text.trim().replace(/[\s_]/g, '');
 	if (!clean) return null;
 	if (clean.includes(',')) {
-		if (!THOUSANDS.test(clean)) return NaN;
-		clean = clean.replace(/,/g, '');
+		const normalized = normalizeCommas(clean);
+		if (normalized === null) return NaN;
+		clean = normalized;
 	}
 	return DECIMAL.test(clean) ? Number(clean) : NaN;
 }
