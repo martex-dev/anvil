@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, sep } from 'node:path';
+import { join, relative, sep } from 'node:path';
 
 import { z } from 'zod';
 
@@ -87,6 +87,16 @@ export function stagedCode(code: string, line: number): string {
 
 export function cellCommand(n: number): string {
 	return `_cell(${n})`;
+}
+
+/**
+ * `ruff format` over stdin. The file is named absolutely: ruff finds its settings by walking up
+ * from --stdin-filename (nearest pyproject.toml / ruff.toml) and matches per-file settings against
+ * that path. --force-exclude makes ruff honour `exclude` for a file it is handed directly (it
+ * returns the text unchanged), as the VS Code extension does.
+ */
+export function ruffFormatArgs(absPath: string): string[] {
+	return ['format', '--force-exclude', '--stdin-filename', absPath, '-'];
 }
 
 export const pythonFeature: MainFeature = {
@@ -267,15 +277,13 @@ export const pythonFeature: MainFeature = {
 					)
 				: null;
 			const ruff = envRuff && existsSync(envRuff) ? envRuff : 'ruff';
-			// Run from the file's folder so ruff finds the project's pyproject/ruff.toml, and name
-			// the file absolutely: a root-relative name would resolve against that folder and
-			// misapply per-file settings and excludes.
+			// Run from the workspace root like VS Code's ruff does, so the fallback config and any
+			// relative path ruff prints resolve against the project rather than a subfolder.
 			const abs = root ? toAbsolute(root, path) : null;
-			const cwd = abs ? dirname(abs) : undefined;
 			return runRuffFormat({
 				ruff,
-				args: ['format', '--stdin-filename', abs ?? path, '-'],
-				cwd,
+				args: ruffFormatArgs(abs ?? path),
+				cwd: root ?? undefined,
 				env,
 				content,
 				onStdinError: (message) => ctx.log.warn('ruff stdin', { message }),
