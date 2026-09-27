@@ -5,6 +5,7 @@ import { getLoadedMonaco } from '../../lib/monaco/load';
 import { useLayoutStore } from '../../stores/layout-store';
 import { toast } from '../../stores/toast-store';
 import { requestOpenFile } from '../../stores/workbench-store';
+import { getModel } from '../editor/file-ops';
 import { outlineFor, symbolPath } from '../outline/outline';
 import type { Problem } from '../problems/problems-store';
 import { getAiSettings } from './ai-settings';
@@ -180,21 +181,36 @@ export async function fixProblemsHere(): Promise<void> {
 	);
 }
 
-export async function askAiAboutProblem(p: Problem): Promise<void> {
-	requestOpenFile({ path: p.path, line: p.line, column: p.column });
-	const content = await call('fs:readFile', p.path).catch((error: unknown) => {
+/**
+ * The text a problem was reported on: the open buffer when there is one, since the language
+ * server checks unsaved edits and the line numbers refer to them. Null (with a warning) when
+ * the file can't be read.
+ */
+async function problemFileText(path: string): Promise<string | null> {
+	const open = getModel(path);
+	if (open) return open.getValue();
+	try {
+		const file = await call('fs:readFile', path);
+		return file.binary || file.tooLarge ? null : file.content;
+	} catch (error) {
 		// Still ask about the problem, but say the model won't see the file.
 		toast.warn(
 			'Sent without the file',
-			`Could not read ${p.path}: ${error instanceof Error ? error.message : String(error)}`,
+			`Could not read ${path}: ${error instanceof Error ? error.message : String(error)}`,
 		);
 		return null;
-	});
+	}
+}
+
+export async function askAiAboutProblem(p: Problem): Promise<void> {
+	requestOpenFile({ path: p.path, line: p.line, column: p.column });
+	const text = await problemFileText(p.path);
 	const context: AiContext[] = [];
-	if (content && !content.binary && !content.tooLarge) {
-		const { text, truncated } = truncateForContext(content.content);
-		if (truncated) toast.info('Sent part of the file', `${p.path} is too long to send whole.`);
-		context.push({ kind: 'file', label: p.path, language: null, text });
+	if (text !== null) {
+		const cut = truncateForContext(text);
+		if (cut.truncated)
+			toast.info('Sent part of the file', `${p.path} is too long to send whole.`);
+		context.push({ kind: 'file', label: p.path, language: null, text: cut.text });
 	}
 	context.push({
 		kind: 'problems',
