@@ -1,10 +1,11 @@
 /**
- * LSP base protocol over stdio: `Content-Length: <bytes>\r\n\r\n<utf-8 JSON>`. Messages can
- * arrive split across chunks or several per chunk.
+ * The base protocol LSP and the Debug Adapter Protocol share over stdio:
+ * `Content-Length: <bytes>\r\n\r\n<utf-8 JSON>`. Messages can arrive split across chunks or
+ * several per chunk.
  */
 
 const SEPARATOR = Buffer.from('\r\n\r\n');
-// A language server sending more than this in one message is broken or hostile.
+// A language server or debug adapter sending more than this in one message is broken or hostile.
 const MAX_MESSAGE_BYTES = 64 * 1024 * 1024;
 
 export function encodeMessage(message: unknown): Buffer {
@@ -28,10 +29,10 @@ export class MessageDecoder {
 				this.buffer = this.buffer.subarray(end + SEPARATOR.length);
 				const length = /Content-Length:\s*(\d+)/i.exec(header)?.[1];
 				if (length === undefined)
-					throw new Error(`LSP header without Content-Length: ${header}`);
+					throw new Error(`Header without Content-Length: ${header}`);
 				this.expected = Number(length);
 				if (this.expected > MAX_MESSAGE_BYTES)
-					throw new Error(`LSP message too large: ${length} bytes`);
+					throw new Error(`Message too large: ${length} bytes`);
 			}
 			if (this.buffer.length < this.expected) break;
 			const body = this.buffer.subarray(0, this.expected).toString('utf8');
