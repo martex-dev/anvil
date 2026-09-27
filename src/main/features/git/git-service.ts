@@ -33,6 +33,8 @@ const NOT_A_REPO: GitStatus = {
 };
 
 const isBinary = (s: string): boolean => s.includes('\0');
+/** A line starting a conflict side (`<<<<<<< ours`), the divider, or the end (`>>>>>>> theirs`). */
+const CONFLICT_MARKER = /^(?:<{7}|>{7})(?: |\r?$)|^={7}\r?$/m;
 
 /** Git for the open folder, via the system git (simple-git). The repo root may be above it. */
 export class GitService {
@@ -174,6 +176,26 @@ export class GitService {
 				else await g.raw(['rm', '--cached', '-r', '-f', '-q', '--', ...batch]);
 			}
 		});
+	}
+
+	/**
+	 * Paths (of those given) whose working copy still has conflict markers. Staging a conflicted
+	 * file is how git marks it resolved, so a forgotten `<<<<<<<` would be committed as is.
+	 */
+	async conflictMarkers(paths: string[]): Promise<string[]> {
+		const root = await this.repo();
+		const hits: string[] = [];
+		for (const p of paths) {
+			const text = await readFile(toAbsolute(root, p), 'utf8').catch(
+				(error: NodeJS.ErrnoException) => {
+					// Deleted on one side of the conflict: nothing to scan.
+					if (error.code === 'ENOENT' || error.code === 'EISDIR') return '';
+					throw error;
+				},
+			);
+			if (CONFLICT_MARKER.test(text)) hits.push(p);
+		}
+		return hits;
 	}
 
 	async commit(message: string): Promise<{ hash: string }> {

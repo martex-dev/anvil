@@ -16,6 +16,7 @@ import { toast } from '../../stores/toast-store';
 import { quickPick } from '../../ui/QuickPick';
 import { useCommitFocus } from './commit-focus';
 import { refreshGit, runRemote } from './git-ops';
+import { openDiff } from './open-diff';
 
 async function switchBranch(): Promise<void> {
 	const picked = await quickPick({
@@ -93,7 +94,6 @@ async function diffActiveFile(): Promise<void> {
 		toast.info('No changes', `${tab.path} matches HEAD.`);
 		return;
 	}
-	const { openDiff } = await import('./GitPanel');
 	await openDiff(change, status.staged.includes(change));
 }
 

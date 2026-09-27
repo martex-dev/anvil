@@ -37,6 +37,11 @@ export const GitStatusSchema = z.object({
 export type GitStatus = z.infer<typeof GitStatusSchema>;
 
 const RepoPath = z.string().min(1).max(4096);
+/**
+ * Path lists go to git in command-line-sized batches, so Stage All on a fresh checkout with tens
+ * of thousands of files works.
+ */
+const RepoPaths = z.array(RepoPath).max(100_000);
 
 export const GitCommitSchema = z.object({
 	hash: z.string(),
@@ -69,8 +74,11 @@ export const gitChannels = defineChannels({
 			binary: z.boolean(),
 		}),
 	},
-	'git:stage': { input: z.array(RepoPath).min(1).max(5000), output: z.void() },
-	'git:unstage': { input: z.array(RepoPath).min(1).max(5000), output: z.void() },
+	'git:stage': { input: RepoPaths.min(1), output: z.void() },
+	/** Pass a staged rename's `from` too, or the old path's deletion stays staged. */
+	'git:unstage': { input: RepoPaths.min(1), output: z.void() },
+	/** Which of these files still contain conflict markers (<<<<<<<, =======, >>>>>>>). */
+	'git:conflictMarkers': { input: RepoPaths.min(1).max(5000), output: z.array(z.string()) },
 	'git:commit': {
 		input: z.object({ message: z.string().trim().min(1).max(20_000) }),
 		output: z.object({ hash: z.string() }),

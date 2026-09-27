@@ -6,7 +6,15 @@ import { useWorkspace } from '../../app/hooks/use-workspace';
 import { call } from '../../lib/ipc';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { toast } from '../../stores/toast-store';
-import { GIT_MUTATION_KEY, GIT_STATUS_KEY, refreshGit, runRemote, useGitRemote } from './git-ops';
+import { confirmGit } from './git-confirm';
+import {
+	GIT_MUTATION_KEY,
+	GIT_STATUS_KEY,
+	refreshGit,
+	runRemote,
+	useGitOps,
+	useGitRemote,
+} from './git-ops';
 
 export { GIT_STATUS_KEY } from './git-ops';
 
@@ -41,7 +49,43 @@ export function useGitStatus(): {
 	};
 }
 
-export function useGitActions(): {
+/**
+ * Asks before staging conflicted files that still contain conflict markers: staging is how git
+ * marks a conflict resolved, so a forgotten `<<<<<<<` would go into the commit as is. Resolves
+ * whether to go ahead.
+ */
+async function confirmConflictStage(
+	paths: string[],
+	status: GitStatus | undefined,
+): Promise<boolean> {
+	const wanted = new Set(paths);
+	const conflicted = (status?.unstaged ?? [])
+		.filter((c) => c.kind === 'conflicted' && wanted.has(c.path))
+		.map((c) => c.path);
+	if (conflicted.length === 0) return true;
+	let hits: string[];
+	try {
+		hits = await call('git:conflictMarkers', conflicted.slice(0, 5000));
+	} catch (error) {
+		toast.error(
+			'Could not check for conflict markers',
+			error instanceof Error ? error.message : undefined,
+		);
+		return false;
+	}
+	if (hits.length === 0) return true;
+	const names = hits
+		.slice(0, 3)
+		.map((p) => p.split('/').at(-1) ?? p)
+		.join(', ');
+	return confirmGit({
+		title: 'Stage files with conflict markers?',
+		description: `${names}${hits.length > 3 ? ` and ${hits.length - 3} more` : ''} still contain${hits.length === 1 ? 's' : ''} <<<<<<< / >>>>>>> markers. Staging marks the conflict as resolved.`,
+		confirmLabel: 'Stage Anyway',
+	});
+}
+
+export function useGitActions(status?: GitStatus): {
 	stage: (paths: string[]) => void;
 	unstage: (paths: string[]) => void;
 	commit: (message: string) => Promise<boolean>;
@@ -56,6 +100,7 @@ export function useGitActions(): {
 	// show a stale row as actionable, and focus can be restored against the new rows.
 	const done = refreshGit;
 	const running = useGitRemote((s) => s.running);
+	const ops = useGitOps((s) => s.count);
 	const fail = (what: string) => (error: Error) => toast.error(`${what} failed`, error.message);
 
 	const stage = useMutation({
@@ -95,7 +140,10 @@ export function useGitActions(): {
 	});
 
 	return {
-		stage: stage.mutate,
+		stage: (paths) =>
+			void confirmConflictStage(paths, status).then((ok) => {
+				if (ok) stage.mutate(paths);
+			}),
 		unstage: unstage.mutate,
 		commit: (message) =>
 			commit
@@ -108,6 +156,6 @@ export function useGitActions(): {
 		push: () => void runRemote('push', { announce: false }),
 		pulling: running === 'pull',
 		pushing: running === 'push',
-		busy: running !== null || [stage, unstage, commit].some((m) => m.isPending),
+		busy: running !== null || ops > 0 || [stage, unstage, commit].some((m) => m.isPending),
 	};
 }
