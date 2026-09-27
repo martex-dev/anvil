@@ -1,12 +1,20 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { detectTasks, justRecipes, makeTargets, tomlKeys, tomlSection } from './index';
+import {
+	detectTasks,
+	justRecipes,
+	makeTargets,
+	tomlKeys,
+	tomlSection,
+	tomlSubtables,
+} from './index';
 
 let dir: string;
+const readPyproject = (): string => readFileSync(join(dir, 'pyproject.toml'), 'utf8');
 beforeEach(() => {
 	dir = mkdtempSync(join(tmpdir(), 'anvil-tasks-'));
 });
@@ -21,6 +29,37 @@ describe('parsers', () => {
 			'fetch-data',
 		]);
 		expect(tomlSection(toml, 'missing')).toBeNull();
+	});
+
+	it('reads single-quoted keys and spaced or commented headers', () => {
+		const toml =
+			"[ project.scripts ] # entry points\n'my-app' = 'my_app:main'\nplain = 'x:y'\n";
+		expect(tomlKeys(tomlSection(toml, 'project.scripts') ?? '')).toEqual(['my-app', 'plain']);
+	});
+
+	it('finds poe tasks written inline and as subtables', () => {
+		writeFileSync(
+			join(dir, 'pyproject.toml'),
+			[
+				'[tool.poe.tasks]',
+				'lint = "ruff check ."',
+				"'fmt' = 'ruff format .'",
+				'[tool.poe.tasks.test]',
+				'cmd = "pytest"',
+				'help = "run tests"',
+				"[tool.poe.tasks.'build docs']",
+				'cmd = "mkdocs build"',
+			].join('\n'),
+		);
+		expect(tomlSubtables(readPyproject(), 'tool.poe.tasks')).toEqual(['test', 'build docs']);
+		const poe = detectTasks(dir).filter((t) => t.detail === 'poe task');
+		expect(poe.map((t) => t.command)).toEqual([
+			'poe lint',
+			'poe fmt',
+			'poe test',
+			// Quoted for the shell (PowerShell and POSIX quote this one the same way).
+			"poe 'build docs'",
+		]);
 	});
 
 	it('reads make targets and just recipes, not variables', () => {
