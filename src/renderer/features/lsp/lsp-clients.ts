@@ -5,6 +5,7 @@ import type { LspLanguage } from '@shared/ipc/channels/lsp';
 
 import { call } from '../../lib/ipc';
 import { rlog } from '../../lib/log';
+import { restartBudget } from './crash-restart';
 import { ipcTransports } from './ipc-transport';
 import { LANGUAGE_LABEL, useLspStatus } from './lsp-status';
 
@@ -90,16 +91,34 @@ async function start(language: LspLanguage): Promise<void> {
 				errorHandler: {
 					error: () => ({ action: ERROR_CONTINUE }),
 					closed: () => {
-						// The server died (crash, killed): report it; the user restarts from the status bar.
+						// The server died (crash, killed): start a fresh one after a short delay, a few
+						// times at most (see RestartBudget); then the user restarts from the status bar.
 						if (clients.get(language)?.session === info.session) {
 							clients.delete(language);
-							useLspStatus
-								.getState()
-								.set(language, 'error', 'The language server stopped');
+							const delay = restartBudget(language).next();
+							if (delay === null) {
+								useLspStatus
+									.getState()
+									.set(language, 'error', 'The language server keeps stopping');
+							} else {
+								useLspStatus
+									.getState()
+									.set(
+										language,
+										'starting',
+										'The language server stopped; restarting',
+									);
+								// A stop or restart meanwhile (folder switch) owns the language now.
+								setTimeout(() => {
+									if (current()) void ensureClient(language);
+								}, delay);
+							}
 							// Release the transport's IPC listeners. Deferred: disposing from inside the
 							// client's own close callback would re-enter it.
 							setTimeout(() => void shutdown(created, info.session), 0);
 						}
+						// Restarted by Anvil instead: a restart by the library would reuse this
+						// session, whose server process is gone.
 						return { action: CLOSE_DO_NOT_RESTART };
 					},
 				},
