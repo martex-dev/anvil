@@ -20,8 +20,6 @@ import {
 	truncateForContext,
 } from './editor-context';
 import { startInlineEdit } from './inline-edit';
-import { streamOnce } from './requests';
-import { maskSecrets } from './secret-filter';
 
 /** Opens the AI panel and sends a prompt with the given context attached. */
 export async function askChat(prompt: string, context: AiContext[]): Promise<void> {
@@ -258,26 +256,8 @@ export function vectorize(): void {
 	);
 }
 
-/** Writes a Conventional Commits message from what's staged, streaming into `onPartial`. */
-export async function generateCommitMessage(onPartial: (text: string) => void): Promise<string> {
-	const { diff, truncated } = await call('ai:gitDiff', { staged: true });
-	if (!diff.trim()) throw new Error('Nothing is staged');
-	const text = await streamOnce({
-		mode: 'commit',
-		messages: [{ role: 'user', content: 'Write the commit message for this staged diff.' }],
-		context: [
-			{
-				kind: 'diff',
-				label: truncated ? 'staged diff (truncated)' : 'staged diff',
-				language: 'diff',
-				// The message needs what changed, not a staged key's value.
-				text: maskSecrets(diff).text,
-			},
-		],
-		onPartial: (t) => onPartial(t.trim()),
-	});
-	return text.trim();
-}
+// The git panel imports these from here.
+export { cancelCommitMessage, generateCommitMessage } from './commit-message';
 
 export function focusChat(withSelection: boolean): void {
 	useLayoutStore.getState().toggleAi(true);
