@@ -15,6 +15,8 @@ export default tseslint.config(
 			'node_modules/**',
 			'playwright-report/**',
 			'test-results/**',
+			// Parallel agent checkouts; each is linted in its own worktree.
+			'.claude/**',
 		],
 	},
 	js.configs.recommended,
