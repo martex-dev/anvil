@@ -4,6 +4,7 @@ import { type JSX, useState } from 'react';
 
 import { useSettings } from '../../app/hooks/use-settings';
 import { useWorkspace } from '../../app/hooks/use-workspace';
+import { touchesFile } from '../../lib/fs-batch';
 import { call } from '../../lib/ipc';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { useNow } from '../../lib/use-now';
@@ -31,8 +32,8 @@ export function HistoryView(): JSX.Element {
 		queryFn: () => call('history:list', path ?? ''),
 		enabled: Boolean(path),
 	});
-	useAnvilEvent('fs:changed', ({ files }) => {
-		if (path && files.includes(path)) void q.refetch();
+	useAnvilEvent('fs:changed', (batch) => {
+		if (path && touchesFile(batch, path)) void q.refetch();
 	});
 	const [restore, setRestore] = useState<string | null>(null);
 	// Re-renders the relative times ("just now" → "1 min ago") while the view stays open.

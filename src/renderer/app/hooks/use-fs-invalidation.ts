@@ -26,7 +26,13 @@ export function useFsInvalidation(): void {
 	const client = useQueryClient();
 	useAnvilEvent('workspace:changed', (info) => client.setQueryData(WORKSPACE_KEY, info));
 	useAnvilEvent('fs:changed', (batch) => {
-		const { dirs, files } = batch;
+		const { dirs, files, overflow } = batch;
+		if (overflow) {
+			// A checkout or unzip too big to list: refetch whatever is on screen.
+			void client.invalidateQueries({ queryKey: fsKeys.all });
+			void client.invalidateQueries({ queryKey: ['tasks'] });
+			return;
+		}
 		// Watcher paths are relative to the current root; stale roots' queries are unobserved.
 		if (dirs.length > 0)
 			void client.invalidateQueries({ predicate: matches('list', new Set(dirs)) });
