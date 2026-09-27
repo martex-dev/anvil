@@ -96,3 +96,42 @@ describe('git.diffFile', () => {
 		expect(toastTitles()).toEqual(['Could not read git status']);
 	});
 });
+
+describe('git.fileHistory', () => {
+	beforeEach(() => {
+		call.mockReset();
+		quickPick.mockReset();
+		useToastStore.setState({ toasts: [] });
+		useTabsStore.getState().reset();
+	});
+
+	it('diffs the picked commit against its parent, at the old path of a rename', async () => {
+		useTabsStore
+			.getState()
+			.open({ id: codeTabId('src/b.py'), kind: 'code', path: 'src/b.py', title: 'b.py' });
+		const commit = {
+			hash: 'abcdef0123456789',
+			author: 'Marto',
+			date: 0,
+			refs: '',
+			message: 'rename a to b',
+			path: 'src/b.py',
+			from: 'src/a.py',
+		};
+		call.mockImplementation((channel: string, input: { path?: string; parent?: boolean }) => {
+			if (channel === 'git:log') return Promise.resolve([commit]);
+			if (channel === 'git:show')
+				return Promise.resolve({
+					content: input.parent ? `old ${input.path ?? ''}` : 'new',
+					binary: false,
+				});
+			return Promise.reject(new Error(channel));
+		});
+		quickPick.mockResolvedValue(commit.hash);
+		await run('git.fileHistory');
+		expect(call).toHaveBeenCalledWith('git:log', { limit: 200, path: 'src/b.py' });
+		const diffTab = Object.values(useTabsStore.getState().tabs).find((t) => t.kind === 'diff');
+		expect(diffTab?.diff).toMatchObject({ original: 'old src/a.py', modified: 'new' });
+		expect(diffTab?.title).toBe('b.py (abcdef0)');
+	});
+});

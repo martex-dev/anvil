@@ -118,9 +118,3 @@ export function isMissingPathError(error: unknown): boolean {
 export async function hasHead(g: SimpleGit): Promise<boolean> {
 	return (await g.raw(['rev-parse', '--verify', '-q', 'HEAD'])).trim() !== '';
 }
-
-/** `git log` in a repo without commits (older git says "bad default revision 'HEAD'"). */
-export function isUnbornHead(error: unknown): boolean {
-	const message = error instanceof Error ? error.message : String(error);
-	return /does not have any commits yet|bad default revision 'HEAD'/i.test(message);
-}

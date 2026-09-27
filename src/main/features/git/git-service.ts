@@ -4,23 +4,15 @@ import { isAbsolute, join, relative, sep } from 'node:path';
 
 import type { SimpleGit, StatusResult } from 'simple-git';
 
-import type { GitBlame, GitCommit, GitStatus } from '@shared/ipc/channels/git';
+import type { GitStatus } from '@shared/ipc/channels/git';
 import { scanUnifiedDiff, type SecretFinding } from '@shared/secret-scan';
 
 import { AnvilError } from '../../core/errors';
 import { toAbsolute } from '../../core/workspace/fs-guard';
-import {
-	batchPaths,
-	git,
-	hasHead,
-	isMissingPathError,
-	isNotARepo,
-	isUnbornHead,
-	queued,
-} from './git-process';
+import { isBinary, MAX_TEXT_BYTES as MAX_DIFF_BYTES } from './git-history';
+import { batchPaths, git, hasHead, isMissingPathError, isNotARepo, queued } from './git-process';
 import { mapStatus } from './status-map';
 
-const MAX_DIFF_BYTES = 5 * 1024 * 1024;
 const NOT_A_REPO: GitStatus = {
 	isRepo: false,
 	branch: null,
@@ -32,7 +24,6 @@ const NOT_A_REPO: GitStatus = {
 	unstaged: [],
 };
 
-const isBinary = (s: string): boolean => s.includes('\0');
 /** A line starting a conflict side (`<<<<<<< ours`), the divider, or the end (`>>>>>>> theirs`). */
 const CONFLICT_MARKER = /^(?:<{7}|>{7})(?: |\r?$)|^={7}\r?$/m;
 
@@ -51,7 +42,7 @@ export class GitService {
 			const top = (await git(workspace).revparse(['--show-toplevel'])).trim();
 			root = top ? join(top) : null;
 		} catch (error) {
-			// "Not a repo" is a normal state; anything else (git missing, blocked env…) is a real error.
+			// "Not a repo" is a normal state; anything else (git missing, blocked envâ€¦) is a real error.
 			if (!isNotARepo(error)) throw error;
 			root = null;
 		}
@@ -114,7 +105,7 @@ export class GitService {
 	}
 
 	/**
-	 * Both sides of a diff as text. Unstaged: index → working tree. Staged: HEAD → index.
+	 * Both sides of a diff as text. Unstaged: index â†’ working tree. Staged: HEAD â†’ index.
 	 * A missing side (new or deleted file) is an empty string.
 	 */
 	async diff(
@@ -257,79 +248,18 @@ export class GitService {
 		});
 	}
 
-	async log(limit: number): Promise<GitCommit[]> {
-		const { g } = await this.requireRepo();
-		try {
-			const out = await g.raw([
-				'log',
-				`-n${limit}`,
-				'--date=unix',
-				'--pretty=format:%H%x1f%an%x1f%ad%x1f%D%x1f%s%x1e',
-			]);
-			return out
-				.split('\x1e')
-				.map((r) => r.trim())
-				.filter(Boolean)
-				.map((r) => {
-					const [hash = '', author = '', date = '0', refs = '', message = ''] =
-						r.split('\x1f');
-					return { hash, author, date: Number(date) * 1000, refs, message };
-				});
-		} catch (error) {
-			// A repo without commits has no log; anything else is a real failure to report.
-			if (isUnbornHead(error)) return [];
-			throw error;
-		}
-	}
-
 	/**
-	 * Repo-relative path of a path relative to the open folder, which may be a subfolder of the
-	 * repo. Goes through the real workspace path: git reports long names, the folder may have
-	 * been opened via an 8.3 short name.
+	 * A path relative to the open folder (what editor tabs use) as the repo root plus the same
+	 * file relative to it; they differ when the folder is a subfolder of the repository. Goes
+	 * through the real workspace path: git reports long names, and the folder may have been
+	 * opened via an 8.3 short name (PCGAME~1). Null when there is no repository.
 	 */
-	private repoPathOfWorkspacePath(root: string, path: string): string {
+	async locate(workspacePath: string): Promise<{ root: string; repoPath: string } | null> {
 		const workspace = this.getWorkspaceRoot();
-		if (!workspace) throw new AnvilError('GIT_NOT_A_REPO', 'No folder is open');
-		const abs = toAbsolute(realpathSync.native(workspace), path);
-		return relative(root, abs).split(sep).join('/');
-	}
-
-	/** `path` is relative to the open folder (the editor's view), not to the repo root. */
-	async blame(path: string, line: number): Promise<GitBlame | null> {
-		const { root, g } = await this.requireRepo();
-		const repoPath = this.repoPathOfWorkspacePath(root, path);
-		let out: string;
-		try {
-			out = await g.raw(['blame', '--porcelain', '-L', `${line},${line}`, '--', repoPath]);
-		} catch (error) {
-			// Untracked file, no commits yet, or a line past the committed end: nothing to blame.
-			if (isMissingPathError(error)) return null;
-			throw error;
-		}
-		const hash = out.slice(0, 40);
-		if (!/^[0-9a-f]{40}$/.test(hash) || /^0+$/.test(hash)) return null;
-		const field = (name: string): string =>
-			new RegExp(`^${name} (.*)$`, 'm').exec(out)?.[1]?.trim() ?? '';
-		return {
-			hash,
-			author: field('author'),
-			date: Number(field('author-time')) * 1000,
-			summary: field('summary'),
-		};
-	}
-
-	/** `path` is relative to the open folder (the editor's view), not to the repo root. */
-	async headContent(path: string): Promise<string | null> {
 		const root = await this.repoRoot();
-		if (!root) return null;
-		const repoPath = this.repoPathOfWorkspacePath(root, path);
-		try {
-			const text = await git(root).show([`HEAD:${repoPath}`]);
-			return isBinary(text) || text.length > MAX_DIFF_BYTES ? null : text;
-		} catch (error) {
-			if (isMissingPathError(error)) return null;
-			throw error;
-		}
+		if (!workspace || !root) return null;
+		const abs = toAbsolute(realpathSync.native(workspace), workspacePath);
+		return { root, repoPath: relative(root, abs).split(sep).join('/') };
 	}
 
 	/** HEAD's full message, to prefill an amend; null before the first commit. */

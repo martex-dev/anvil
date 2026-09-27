@@ -1,5 +1,6 @@
 import type { MainFeature } from '../../core/features';
 import { gitError } from './git-errors';
+import { blame, headContent, log, show } from './git-history';
 import { branches, checkout, fetchRemotes, pull, push } from './git-remote';
 import { GitService } from './git-service';
 import { stash, stashCommand, stashList } from './git-stash';
@@ -72,12 +73,30 @@ export const gitFeature: MainFeature = {
 		ctx.ipc.handle('git:checkout', ({ branch, create }) =>
 			run(async () => checkout(await repo(), branch, create)),
 		);
-		ctx.ipc.handle('git:log', ({ limit }) => run(() => service.log(limit), false));
+		ctx.ipc.handle('git:log', ({ limit, path }) =>
+			run(async () => {
+				if (path === undefined) return log(await repo(), limit);
+				const located = await service.locate(path);
+				return located ? log(located.root, limit, located.repoPath) : [];
+			}, false),
+		);
+		ctx.ipc.handle('git:show', ({ hash, path, parent }) =>
+			run(async () => show(await repo(), hash, path, parent ?? false), false),
+		);
+		// Editor paths are relative to the open folder, which may be a subfolder of the repo.
 		ctx.ipc.handle('git:blame', ({ path, line }) =>
-			run(() => service.blame(path, line), false),
+			run(async () => {
+				const located = await service.locate(path);
+				return located ? blame(located.root, located.repoPath, line) : null;
+			}, false),
 		);
 		ctx.ipc.handle('git:headContent', (path) =>
-			run(async () => ({ content: await service.headContent(path) }), false),
+			run(async () => {
+				const located = await service.locate(path);
+				return {
+					content: located ? await headContent(located.root, located.repoPath) : null,
+				};
+			}, false),
 		);
 		ctx.ipc.handle('git:scanStaged', () => run(() => service.scanStaged(), false));
 	},

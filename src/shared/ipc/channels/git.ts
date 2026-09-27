@@ -50,6 +50,9 @@ export const GitCommitSchema = z.object({
 	date: z.number(),
 	message: z.string(),
 	refs: z.string(),
+	/** File history only: the file's repo path in this commit, and its old path if renamed here. */
+	path: z.string().optional(),
+	from: z.string().optional(),
 });
 export type GitCommit = z.infer<typeof GitCommitSchema>;
 
@@ -144,8 +147,24 @@ export const gitChannels = defineChannels({
 	},
 	/** Recent commits of HEAD, newest first. */
 	'git:log': {
-		input: z.object({ limit: z.number().int().min(1).max(500) }),
+		input: z.object({
+			limit: z.number().int().min(1).max(500),
+			/** Relative to the open folder: only commits touching that file, following renames. */
+			path: z.string().min(1).max(4096).optional(),
+		}),
 		output: z.array(GitCommitSchema),
+	},
+	/**
+	 * A file (repo path) as it was in a commit, or in the commit's first parent. null when it
+	 * didn't exist there; binary or oversized files come back as `binary`.
+	 */
+	'git:show': {
+		input: z.object({
+			hash: z.string().regex(/^[0-9a-f]{4,64}$/, 'Not a commit hash'),
+			path: RepoPath,
+			parent: z.boolean().optional(),
+		}),
+		output: z.object({ content: z.string().nullable(), binary: z.boolean() }),
 	},
 	/** Who last touched this line (1-based); null for uncommitted lines. */
 	'git:blame': {

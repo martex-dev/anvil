@@ -5,6 +5,7 @@ import {
 	ArrowDownUp,
 	ArrowUp,
 	CloudDownload,
+	FileClock,
 	FileDiff,
 	FolderGit2,
 	GitBranch,
@@ -21,6 +22,7 @@ import { focusedTab, useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
 import { quickPick } from '../../ui/QuickPick';
 import { useCommitFocus } from './commit-focus';
+import { showFileHistory } from './file-history';
 import { discardChanges, initRepository, pickStash, stashChanges } from './git-actions';
 import { refreshGit, runRemote } from './git-ops';
 import { openDiff } from './open-diff';
@@ -222,6 +224,14 @@ export const GIT_COMMANDS: Command[] = [
 		run: initRepository,
 	},
 	{ id: 'git.log', title: 'Show Recent Commits', category: 'Git', icon: History, run: showLog },
+	{
+		id: 'git.fileHistory',
+		title: 'File History',
+		category: 'Git',
+		keywords: ['log', 'blame', 'commits', 'timeline'],
+		icon: FileClock,
+		run: showFileHistory,
+	},
 	{
 		id: 'git.diffFile',
 		title: 'Diff Active File',

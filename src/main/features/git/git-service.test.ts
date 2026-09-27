@@ -5,9 +5,20 @@ import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { batchPaths, isMissingPathError, isUnbornHead } from './git-process';
+import { blame, headContent, log } from './git-history';
+import { batchPaths, isMissingPathError } from './git-process';
 import { pullSummary } from './git-remote';
 import { GitService } from './git-service';
+
+// How the git:headContent / git:blame handlers resolve an editor path.
+const headOf = async (git: GitService, path: string): Promise<string | null> => {
+	const at = await git.locate(path);
+	return at ? headContent(at.root, at.repoPath) : null;
+};
+const blameOf = async (git: GitService, path: string, line: number) => {
+	const at = await git.locate(path);
+	return at ? blame(at.root, at.repoPath, line) : null;
+};
 
 // Integration test against the real system git in a throwaway repository.
 let repo: string;
@@ -161,10 +172,10 @@ describe('GitService', { timeout: 30_000 }, () => {
 		run('add', '.');
 		run('commit', '-q', '-m', 'files');
 		const git = new GitService(() => join(repo, 'app'));
-		expect(await git.headContent('b.ts')).toBe('sub\n');
-		const blame = await git.blame('b.ts', 1);
+		expect(await headOf(git, 'b.ts')).toBe('sub\n');
+		const blame = await blameOf(git, 'b.ts', 1);
 		expect(blame).toMatchObject({ author: 'Anvil Test', summary: 'files' });
-		await expect(git.headContent('../b.ts')).rejects.toMatchObject({
+		await expect(headOf(git, '../b.ts')).rejects.toMatchObject({
 			code: 'FS_OUTSIDE_WORKSPACE',
 		});
 	});
@@ -205,13 +216,13 @@ describe('GitService', { timeout: 30_000 }, () => {
 		writeFileSync(join(repo, 'new.txt'), 'n\n');
 		await git.stage(['new.txt']);
 		expect(await git.diff('new.txt', true)).toMatchObject({ original: '', modified: 'n\n' });
-		expect(await git.headContent('new.txt')).toBeNull();
-		expect(await git.blame('new.txt', 1)).toBeNull();
+		expect(await headOf(git, 'new.txt')).toBeNull();
+		expect(await blameOf(git, 'new.txt', 1)).toBeNull();
 		await git.commit('first');
 		writeFileSync(join(repo, 'untracked.txt'), 'u\n');
-		expect(await git.headContent('untracked.txt')).toBeNull();
-		expect(await git.blame('untracked.txt', 1)).toBeNull();
-		expect(await git.blame('new.txt', 5)).toBeNull();
+		expect(await headOf(git, 'untracked.txt')).toBeNull();
+		expect(await blameOf(git, 'untracked.txt', 1)).toBeNull();
+		expect(await blameOf(git, 'new.txt', 5)).toBeNull();
 
 		expect(isMissingPathError(new Error("fatal: path 'a' does not exist in 'HEAD'"))).toBe(
 			true,
@@ -222,19 +233,14 @@ describe('GitService', { timeout: 30_000 }, () => {
 
 	it('lists no commits for an unborn branch but reports other log failures', async () => {
 		const git = new GitService(() => repo);
-		expect(await git.log(10)).toEqual([]);
+		expect(await log(repo, 10)).toEqual([]);
 		writeFileSync(join(repo, 'a.txt'), 'a\n');
 		await git.stage(['a.txt']);
 		await git.commit('first');
-		expect((await git.log(10)).map((c) => c.message)).toEqual(['first']);
+		expect((await log(repo, 10)).map((c) => c.message)).toEqual(['first']);
 
-		expect(
-			isUnbornHead(
-				new Error("fatal: your current branch 'main' does not have any commits yet"),
-			),
-		).toBe(true);
-		expect(isUnbornHead(new Error("fatal: bad default revision 'HEAD'"))).toBe(true);
-		expect(isUnbornHead(new Error('fatal: unable to read tree'))).toBe(false);
+		// Not an empty history: a failure (here, a folder that isn't there) is reported.
+		await expect(log(join(repo, 'missing'), 10)).rejects.toThrow();
 	});
 
 	it('summarizes a pull without claiming changes that did not happen', () => {
