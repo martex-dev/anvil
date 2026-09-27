@@ -210,3 +210,22 @@ export const FLOPPY: PixelArt = [
 	'................',
 	'................',
 ];
+
+export const BUG: PixelArt = [
+	'................',
+	'....k......k....',
+	'.....k....k.....',
+	'......kkkk......',
+	'.....kggggk.....',
+	'.k..kkkkkkkk..k.',
+	'..kkkrrrrrrkkk..',
+	'....krrkrrrk....',
+	'.kkkkrrkrrrkkkk.',
+	'....krrkrrrk....',
+	'..kkkrrkrrrkkk..',
+	'.k..krrkrrrk..k.',
+	'.....krkrrk.....',
+	'......kkkk......',
+	'................',
+	'................',
+];

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 
 import { AnvilError, errorMessage } from '../../core/errors';
@@ -8,6 +9,15 @@ import { DapSession } from './dap-session';
 import { envInfo, hasDebugpy, installCommand } from './env-info';
 import { launchConfig, targetLabel } from './launch';
 import { terminalCommand } from './shell-command';
+
+/** The folder's real path; the folder itself if it can't be resolved (it was just deleted). */
+function realRoot(root: string): string {
+	try {
+		return realpathSync.native(root);
+	} catch {
+		return root;
+	}
+}
 
 /**
  * Python debugging through debugpy's Debug Adapter Protocol server, run from the selected
@@ -86,7 +96,7 @@ export const debugFeature: MainFeature = {
 			);
 			sessions.set(id, session);
 			ctx.log.info('debug adapter started', { target: target.kind, pid: session.pid });
-			return { status: 'started' as const, session: id, python };
+			return { status: 'started' as const, session: id, python, root: realRoot(root) };
 		});
 
 		ctx.ipc.handle('debug:send', ({ session, message }) => {

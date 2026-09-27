@@ -5,6 +5,7 @@ export const SIDE_VIEWS = [
 	'search',
 	'git',
 	'run',
+	'debug',
 	'outline',
 	'todos',
 	'history',
@@ -13,7 +14,8 @@ export const SIDE_VIEWS = [
 ] as const;
 export type SideView = (typeof SIDE_VIEWS)[number];
 
-export type PanelTab = 'terminal' | 'problems';
+export const PANEL_TABS = ['terminal', 'problems', 'debug'] as const;
+export type PanelTab = (typeof PANEL_TABS)[number];
 
 export interface LayoutState {
 	sideView: SideView;
@@ -134,8 +136,11 @@ export function sanitizeLayout(saved: Record<string, unknown>): Partial<LayoutSt
 		(SIDE_VIEWS as readonly string[]).includes(saved['sideView'])
 	)
 		out.sideView = saved['sideView'] as SideView;
-	if (saved['panelTab'] === 'terminal' || saved['panelTab'] === 'problems')
-		out.panelTab = saved['panelTab'];
+	if (
+		typeof saved['panelTab'] === 'string' &&
+		(PANEL_TABS as readonly string[]).includes(saved['panelTab'])
+	)
+		out.panelTab = saved['panelTab'] as PanelTab;
 	num('sideWidth', 180, 640);
 	num('panelHeight', 120, 900);
 	num('aiWidth', 280, 900);

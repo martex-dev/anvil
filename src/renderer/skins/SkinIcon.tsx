@@ -1,6 +1,7 @@
 import {
 	Blocks,
 	Bot,
+	Bug,
 	CircleAlert,
 	Columns2,
 	Copy,
@@ -36,6 +37,7 @@ const DEFAULT_ICONS: Record<ChromeIconName, LucideIcon> = {
 	search: Search,
 	git: GitBranch,
 	run: Play,
+	debug: Bug,
 	outline: ListTree,
 	todos: ListTodo,
 	history: History,

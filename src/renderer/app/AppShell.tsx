@@ -3,6 +3,7 @@ import type { CSSProperties, JSX } from 'react';
 import { AiStreamController } from '../features/ai/AiStreamController';
 import { ApplyDialog } from '../features/ai/ApplyDialog';
 import { InlineEditHost } from '../features/ai/InlineEditHost';
+import { DebugController } from '../features/debug/DebugController';
 import { EditorBridge } from '../features/editor/EditorBridge';
 import { LspController } from '../features/lsp/LspController';
 import { PythonController } from '../features/python/PythonController';
@@ -94,6 +95,7 @@ export function AppShell(): JSX.Element {
 			<EditorBridge />
 			<LspController />
 			<PythonController />
+			<DebugController />
 			<AiStreamController />
 			<InlineEditHost />
 			<CommandPalette />

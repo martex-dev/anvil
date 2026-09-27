@@ -30,6 +30,12 @@ const DRAWINGS: Record<ChromeIconName, ReactNode> = {
 		</>
 	),
 	run: <path d='M8 5.5 18.5 12 8 18.5z' />,
+	debug: (
+		<>
+			<path d='M8.5 9.5h7v4.5a3.5 3.5 0 0 1-7 0z' />
+			<path d='M10 9.5a2 2 0 0 1 4 0M5 11h3.5M15.5 11H19M5 15.5h3.5M15.5 15.5H19M12 11v6' />
+		</>
+	),
 	outline: <path d='M5 6h14M8 10h11M8 14h8M11 18h8' />,
 	todos: (
 		<>

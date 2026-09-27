@@ -45,6 +45,13 @@ const DRAW: Record<ChromeIconName, JSX.Element> = {
 			{shine('M6.4 9.6a6 6 0 0 1 3-3.4')}
 		</>
 	),
+	debug: (
+		<>
+			<path d='M4 10.5h3.5M16.5 10.5H20M4 15.5h3.5M16.5 15.5H20M9 6.5 7.5 4.5M15 6.5l1.5-2' />
+			<rect {...CANDY} x='7.5' y='6.5' width='9' height='13' rx='4.5' />
+			{shine('M9.6 10a2.6 2.6 0 0 1 1.6-1.8')}
+		</>
+	),
 	outline: (
 		<>
 			<circle {...SOLID} cx='5' cy='6' r='1.9' />

@@ -1,5 +1,6 @@
 import { AI_COMMANDS } from '../../features/ai/commands';
 import { DATA_COMMANDS } from '../../features/data/commands';
+import { DEBUG_COMMANDS } from '../../features/debug/commands';
 import { EDITOR_COMMANDS } from '../../features/editor/commands';
 import { EXPLORER_COMMANDS } from '../../features/explorer/commands';
 import { GIT_COMMANDS } from '../../features/git/commands';
@@ -20,6 +21,7 @@ export const ALL_COMMANDS: readonly Command[] = [
 	...EDITOR_COMMANDS,
 	...EXPLORER_COMMANDS,
 	...PYTHON_COMMANDS,
+	...DEBUG_COMMANDS,
 	...DATA_COMMANDS,
 	...VIEWER_COMMANDS,
 	...AI_COMMANDS,

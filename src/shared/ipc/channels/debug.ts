@@ -33,6 +33,11 @@ export const DebugStartResultSchema = z.discriminatedUnion('status', [
 		session: SessionSchema,
 		/** Absolute path of the interpreter the adapter (and the program) runs with. */
 		python: z.string(),
+		/**
+		 * The open folder as the adapter spells paths: symlinks and Windows 8.3 short names
+		 * (C:\Users\PCGAME~1) resolved, so stack frames map back to workspace files.
+		 */
+		root: z.string(),
 	}),
 	/** debugpy isn't importable from the selected interpreter. Nothing was started. */
 	z.object({

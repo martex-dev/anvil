@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { fitWidths, LAYOUT_DEFAULTS, MIN_EDITOR_WIDTH, useLayoutStore } from './layout-store';
+import {
+	fitWidths,
+	LAYOUT_DEFAULTS,
+	MIN_EDITOR_WIDTH,
+	sanitizeLayout,
+	useLayoutStore,
+} from './layout-store';
 
 beforeEach(() => useLayoutStore.setState(LAYOUT_DEFAULTS));
 
@@ -80,6 +86,14 @@ describe('zen mode', () => {
 		useLayoutStore.setState({ zen: true });
 		useLayoutStore.getState().toggleMaximizePanel();
 		expect(useLayoutStore.getState().zen).toBe(false);
+	});
+
+	it('restores the Debug view and the Debug Console tab, and drops unknown ones', () => {
+		expect(sanitizeLayout({ sideView: 'debug', panelTab: 'debug' })).toEqual({
+			sideView: 'debug',
+			panelTab: 'debug',
+		});
+		expect(sanitizeLayout({ sideView: 'nope', panelTab: 'output' })).toEqual({});
 	});
 
 	it('reveals the AI pane, but closing it keeps zen', () => {

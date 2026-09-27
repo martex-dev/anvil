@@ -62,6 +62,7 @@ export const CHROME_ICONS = [
 	'search',
 	'git',
 	'run',
+	'debug',
 	'outline',
 	'todos',
 	'history',
