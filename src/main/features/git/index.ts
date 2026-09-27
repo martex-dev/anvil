@@ -25,6 +25,7 @@ export const gitFeature: MainFeature = {
 		);
 		ctx.ipc.handle('git:stage', (paths) => run(() => service.stage(paths)));
 		ctx.ipc.handle('git:unstage', (paths) => run(() => service.unstage(paths)));
+		ctx.ipc.handle('git:init', () => run(() => service.init()));
 		ctx.ipc.handle('git:conflictMarkers', (paths) =>
 			run(() => service.conflictMarkers(paths), false),
 		);

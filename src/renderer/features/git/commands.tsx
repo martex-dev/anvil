@@ -3,6 +3,7 @@ import {
 	ArrowDownUp,
 	ArrowUp,
 	FileDiff,
+	FolderGit2,
 	GitBranch,
 	GitCommitHorizontal,
 	History,
@@ -15,6 +16,7 @@ import { focusedTab, useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
 import { quickPick } from '../../ui/QuickPick';
 import { useCommitFocus } from './commit-focus';
+import { initRepository } from './git-actions';
 import { refreshGit, runRemote } from './git-ops';
 import { openDiff } from './open-diff';
 
@@ -144,6 +146,14 @@ export const GIT_COMMANDS: Command[] = [
 			if (await runRemote('pull', { announce: true }))
 				await runRemote('push', { announce: true });
 		},
+	},
+	{
+		id: 'git.init',
+		title: 'Initialize Repository',
+		category: 'Git',
+		keywords: ['init', 'create repository'],
+		icon: FolderGit2,
+		run: initRepository,
 	},
 	{ id: 'git.log', title: 'Show Recent Commits', category: 'Git', icon: History, run: showLog },
 	{

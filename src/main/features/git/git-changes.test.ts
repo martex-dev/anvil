@@ -1,3 +1,7 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { GitService } from './git-service';
@@ -11,6 +15,19 @@ afterEach(() => repo.remove());
 
 // Real git processes: each spawn costs ~0.5 s on CI runners.
 describe('GitService changes', { timeout: 30_000 }, () => {
+	it('initializes a repository in a plain folder, once', async () => {
+		const plain = mkdtempSync(join(tmpdir(), 'anvil-plain-'));
+		try {
+			const git = new GitService(() => plain);
+			expect((await git.status()).isRepo).toBe(false);
+			await git.init();
+			expect(await git.status()).toMatchObject({ isRepo: true, staged: [], unstaged: [] });
+			await expect(git.init()).rejects.toMatchObject({ code: 'GIT_ALREADY_A_REPO' });
+		} finally {
+			rmSync(plain, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+		}
+	});
+
 	it('finds conflict markers left in a conflicted file', async () => {
 		repo.write('a.txt', 'base\n');
 		repo.commitAll('base');

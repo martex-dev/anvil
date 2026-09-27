@@ -178,6 +178,19 @@ export class GitService {
 		});
 	}
 
+	/** `git init` in the open folder itself, not in a parent repository it may sit in. */
+	async init(): Promise<void> {
+		const workspace = this.getWorkspaceRoot();
+		if (!workspace) throw new AnvilError('GIT_NO_FOLDER', 'Open a folder first');
+		if (await this.repoRoot())
+			throw new AnvilError(
+				'GIT_ALREADY_A_REPO',
+				'The open folder is already in a repository',
+			);
+		await git(workspace, 'write').init();
+		this.reset();
+	}
+
 	/**
 	 * Paths (of those given) whose working copy still has conflict markers. Staging a conflicted
 	 * file is how git marks it resolved, so a forgotten `<<<<<<<` would be committed as is.

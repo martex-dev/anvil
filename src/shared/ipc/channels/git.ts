@@ -77,6 +77,8 @@ export const gitChannels = defineChannels({
 	'git:stage': { input: RepoPaths.min(1), output: z.void() },
 	/** Pass a staged rename's `from` too, or the old path's deletion stays staged. */
 	'git:unstage': { input: RepoPaths.min(1), output: z.void() },
+	/** `git init` in the open folder. */
+	'git:init': { input: z.void(), output: z.void() },
 	/** Which of these files still contain conflict markers (<<<<<<<, =======, >>>>>>>). */
 	'git:conflictMarkers': { input: RepoPaths.min(1).max(5000), output: z.array(z.string()) },
 	'git:commit': {

@@ -8,6 +8,7 @@ import { ErrorState } from '../../ui/ErrorState';
 import { Spinner } from '../../ui/Spinner';
 import { ChangeList } from './ChangeList';
 import { CommitBox } from './CommitBox';
+import { initRepository } from './git-actions';
 import { GitConfirmDialog } from './GitConfirmDialog';
 import { GitHeader } from './GitHeader';
 import { openDiff } from './open-diff';
@@ -51,7 +52,17 @@ function GitPanelBody(): JSX.Element {
 			<EmptyState
 				icon={<GitBranch size={22} />}
 				title='Not a git repository'
-				description='Run `git init` in a terminal to start tracking this folder.'
+				description='Start tracking this folder with git to see and commit its changes.'
+				action={
+					<Button
+						variant='primary'
+						size='sm'
+						loading={actions.busy}
+						onClick={() => void initRepository()}
+					>
+						Initialize Repository
+					</Button>
+				}
 			/>
 		);
 	}
