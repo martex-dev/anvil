@@ -15,7 +15,7 @@ export const SIDE_VIEWS = [
 ] as const;
 export type SideView = (typeof SIDE_VIEWS)[number];
 
-export const PANEL_TABS = ['terminal', 'problems', 'debug'] as const;
+export const PANEL_TABS = ['terminal', 'problems', 'variables', 'debug'] as const;
 export type PanelTab = (typeof PANEL_TABS)[number];
 
 export interface LayoutState {

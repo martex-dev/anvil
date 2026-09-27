@@ -11,6 +11,7 @@ import {
 import type { Command } from '../../app/commands/types';
 import { focusedEditor } from '../../lib/monaco/editors';
 import { toWorkspacePath } from '../../lib/monaco/workspace-root';
+import { useLayoutStore } from '../../stores/layout-store';
 import { toast } from '../../stores/toast-store';
 import { formatPython } from '../editor/file-ops';
 import { revealTests, runCurrentFileTests } from '../tests/editor-actions';
@@ -70,6 +71,14 @@ export const PYTHON_COMMANDS: Command[] = [
 		keywords: ['ipython', 'console', 'interactive'],
 		icon: SquareTerminal,
 		run: openRepl,
+	},
+	{
+		id: 'python.showVariables',
+		title: 'Show REPL Variables',
+		category: 'Python',
+		keywords: ['variable explorer', 'workspace', 'dataframe', 'inspect'],
+		icon: Braces,
+		run: () => useLayoutStore.getState().showPanel('variables'),
 	},
 	{
 		id: 'python.restartRepl',

@@ -98,6 +98,9 @@ function PresetMenu(): JSX.Element {
 	);
 }
 
+const VariablesView = lazy(() =>
+	import('../features/python/VariablesView').then((m) => ({ default: m.VariablesView })),
+);
 const DebugConsole = lazy(() =>
 	import('../features/debug/DebugConsole').then((m) => ({ default: m.DebugConsole })),
 );
@@ -176,6 +179,7 @@ export function BottomPanel(): JSX.Element {
 				<div role='tablist' aria-label='Panel' className='flex h-full items-center'>
 					<TabButton tab='terminal' label='Terminal' />
 					<TabButton tab='problems' label='Problems' count={problems} />
+					<TabButton tab='variables' label='Variables' />
 					<TabButton tab='debug' label='Debug Console' />
 				</div>
 				{tab === 'terminal' && <TerminalTabs />}
@@ -216,6 +220,11 @@ export function BottomPanel(): JSX.Element {
 				className='relative min-h-0 flex-1'
 			>
 				{tab === 'problems' && <ProblemsView />}
+				{tab === 'variables' && (
+					<Suspense fallback={<Spinner />}>
+						<VariablesView />
+					</Suspense>
+				)}
 				{tab === 'debug' && (
 					<Suspense fallback={<Spinner />}>
 						<DebugConsole />
