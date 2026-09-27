@@ -42,7 +42,7 @@ export class GitService {
 			const top = (await git(workspace).revparse(['--show-toplevel'])).trim();
 			root = top ? join(top) : null;
 		} catch (error) {
-			// "Not a repo" is a normal state; anything else (git missing, blocked envâ€¦) is a real error.
+			// "Not a repo" is a normal state; anything else (git missing, blocked env…) is a real error.
 			if (!isNotARepo(error)) throw error;
 			root = null;
 		}
@@ -105,7 +105,7 @@ export class GitService {
 	}
 
 	/**
-	 * Both sides of a diff as text. Unstaged: index â†’ working tree. Staged: HEAD â†’ index.
+	 * Both sides of a diff as text. Unstaged: index → working tree. Staged: HEAD → index.
 	 * A missing side (new or deleted file) is an empty string.
 	 */
 	async diff(

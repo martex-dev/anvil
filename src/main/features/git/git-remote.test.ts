@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { formatGitError } from './git-errors';
 import { git } from './git-process';
-import { branches, checkout, fetchRemotes, publishRemote, push } from './git-remote';
+import { branches, checkout, deleteBranch, fetchRemotes, publishRemote, push } from './git-remote';
 
 // Integration tests against the real system git, with a bare repository as the remote.
 let dir: string;
@@ -45,6 +45,43 @@ describe('branches and remotes', { timeout: 30_000 }, () => {
 		expect(run(repo, 'rev-parse', '--abbrev-ref', 'main@{upstream}').trim()).toBe(
 			'upstream/main',
 		);
+	});
+
+	it('checks out a remote branch as a local tracking branch, and deletes branches', async () => {
+		run(dir, 'init', '-q', '--bare', 'remote.git');
+		run(repo, 'remote', 'add', 'origin', join(dir, 'remote.git'));
+		run(repo, 'push', '-q', 'origin', 'main', 'main:feature/x');
+		run(repo, 'fetch', '-q', 'origin');
+		expect(await branches(repo)).toEqual({
+			current: 'main',
+			local: ['main'],
+			remote: ['origin/feature/x', 'origin/main'],
+		});
+		await expect(checkout(repo, 'origin/feature/x', false, true)).resolves.toEqual({
+			branch: 'feature/x',
+		});
+		expect(run(repo, 'rev-parse', '--abbrev-ref', 'feature/x@{upstream}').trim()).toBe(
+			'origin/feature/x',
+		);
+		await expect(checkout(repo, 'origin/nope', false, true)).rejects.toMatchObject({
+			code: 'GIT_BAD_BRANCH',
+		});
+
+		await expect(deleteBranch(repo, 'feature/x', false)).rejects.toMatchObject({
+			code: 'GIT_BRANCH_CURRENT',
+		});
+		await checkout(repo, 'main', false);
+		await checkout(repo, 'wip', true);
+		writeFileSync(join(repo, 'w.txt'), 'w\n');
+		run(repo, 'add', 'w.txt');
+		run(repo, 'commit', '-q', '-m', 'wip');
+		await checkout(repo, 'main', false);
+		await expect(deleteBranch(repo, 'wip', false)).rejects.toMatchObject({
+			code: 'GIT_BRANCH_NOT_MERGED',
+		});
+		await deleteBranch(repo, 'wip', true);
+		await deleteBranch(repo, 'feature/x', false);
+		expect((await branches(repo)).local).toEqual(['main']);
 	});
 
 	it('fetches every remote and prunes branches deleted there', async () => {

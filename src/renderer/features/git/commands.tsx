@@ -9,6 +9,7 @@ import {
 	FileDiff,
 	FolderGit2,
 	GitBranch,
+	GitBranchMinus,
 	GitCommitHorizontal,
 	History,
 	Trash2,
@@ -21,39 +22,12 @@ import { useLayoutStore } from '../../stores/layout-store';
 import { focusedTab, useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
 import { quickPick } from '../../ui/QuickPick';
+import { deleteBranch, switchBranch } from './branch-actions';
 import { useCommitFocus } from './commit-focus';
 import { showFileHistory } from './file-history';
 import { discardChanges, initRepository, pickStash, stashChanges } from './git-actions';
-import { refreshGit, runRemote } from './git-ops';
+import { runRemote } from './git-ops';
 import { openDiff } from './open-diff';
-
-async function switchBranch(): Promise<void> {
-	const picked = await quickPick({
-		title: 'branch',
-		placeholder: 'Switch to a branch, or type a new name to create it',
-		loadErrorTitle: 'Could not list branches',
-		items: call('git:branches').then((b) =>
-			b.local.map((name) => ({
-				id: name,
-				label: name,
-				current: name === b.current,
-				icon: <GitBranch size={13} />,
-			})),
-		),
-		allowCustom: { label: (text) => `Create branch "${text}" and switch to it` },
-	});
-	if (!picked) return;
-	const create = picked.startsWith('custom:');
-	const branch = create ? picked.slice(7) : picked;
-	try {
-		await call('git:checkout', { branch, create });
-		toast.success(create ? 'Branch created' : 'Switched branch', branch);
-	} catch (error) {
-		toast.error('Checkout failed', error instanceof Error ? error.message : undefined);
-	} finally {
-		void refreshGit();
-	}
-}
 
 async function showLog(): Promise<void> {
 	const hash = await quickPick({
@@ -124,6 +98,13 @@ export const GIT_COMMANDS: Command[] = [
 		keywords: ['checkout'],
 		icon: GitBranch,
 		run: switchBranch,
+	},
+	{
+		id: 'git.deleteBranch',
+		title: 'Delete Branch…',
+		category: 'Git',
+		icon: GitBranchMinus,
+		run: deleteBranch,
 	},
 	{
 		id: 'git.pull',

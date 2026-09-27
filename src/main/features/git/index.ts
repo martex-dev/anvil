@@ -1,7 +1,7 @@
 import type { MainFeature } from '../../core/features';
 import { gitError } from './git-errors';
 import { blame, headContent, log, show } from './git-history';
-import { branches, checkout, fetchRemotes, pull, push } from './git-remote';
+import { branches, checkout, deleteBranch, fetchRemotes, pull, push } from './git-remote';
 import { GitService } from './git-service';
 import { stash, stashCommand, stashList } from './git-stash';
 
@@ -70,8 +70,11 @@ export const gitFeature: MainFeature = {
 			run(async () => stashCommand(await repo(), 'drop', index)),
 		);
 		ctx.ipc.handle('git:branches', () => run(async () => branches(await repo()), false));
-		ctx.ipc.handle('git:checkout', ({ branch, create }) =>
-			run(async () => checkout(await repo(), branch, create)),
+		ctx.ipc.handle('git:checkout', ({ branch, create, remote }) =>
+			run(async () => checkout(await repo(), branch, create, remote ?? false)),
+		);
+		ctx.ipc.handle('git:deleteBranch', ({ branch, force }) =>
+			run(async () => deleteBranch(await repo(), branch, force)),
 		);
 		ctx.ipc.handle('git:log', ({ limit, path }) =>
 			run(async () => {

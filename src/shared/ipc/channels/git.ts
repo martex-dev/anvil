@@ -139,10 +139,26 @@ export const gitChannels = defineChannels({
 	'git:stashDrop': { input: StashIndex, output: z.void() },
 	'git:branches': {
 		input: z.void(),
-		output: z.object({ current: z.string().nullable(), local: z.array(z.string()) }),
+		output: z.object({
+			current: z.string().nullable(),
+			local: z.array(z.string()),
+			/** Remote-tracking branches, e.g. "origin/feature" (without origin/HEAD). */
+			remote: z.array(z.string()),
+		}),
 	},
 	'git:checkout': {
-		input: z.object({ branch: z.string().min(1).max(255), create: z.boolean() }),
+		input: z.object({
+			branch: z.string().min(1).max(255),
+			create: z.boolean(),
+			/** `branch` is a remote branch ("origin/x"): switch to a local branch tracking it. */
+			remote: z.boolean().optional(),
+		}),
+		/** The local branch now checked out. */
+		output: z.object({ branch: z.string() }),
+	},
+	/** `git branch -d`; `force` (-D) also deletes a branch that isn't merged. */
+	'git:deleteBranch': {
+		input: z.object({ branch: z.string().min(1).max(255), force: z.boolean() }),
 		output: z.void(),
 	},
 	/** Recent commits of HEAD, newest first. */

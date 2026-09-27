@@ -108,16 +108,72 @@ export async function push(root: string): Promise<{ summary: string }> {
 	});
 }
 
-export async function branches(root: string): Promise<{ current: string | null; local: string[] }> {
-	const b = await git(root).branchLocal();
-	return { current: b.current || null, local: b.all };
+/** Remote-tracking branches ("origin/feature"), without the remotes' HEAD pointers. */
+async function remoteBranches(g: SimpleGit): Promise<string[]> {
+	const out = await g.raw(['for-each-ref', '--format=%(refname)', 'refs/remotes']);
+	return lines(out)
+		.map((ref) => ref.replace(/^refs\/remotes\//, ''))
+		.filter((name) => !name.endsWith('/HEAD'));
 }
 
-export async function checkout(root: string, branch: string, create: boolean): Promise<void> {
+export async function branches(
+	root: string,
+): Promise<{ current: string | null; local: string[]; remote: string[] }> {
+	const g = git(root);
+	const b = await g.branchLocal();
+	return { current: b.current || null, local: b.all, remote: await remoteBranches(g) };
+}
+
+/**
+ * Switches branch and returns the local branch now checked out. `remote`: `branch` is a remote
+ * branch ("origin/feature"); switch to the local branch of the same name, creating it to track
+ * the remote one when it doesn't exist yet (VS Code's "checkout remote branch").
+ */
+export async function checkout(
+	root: string,
+	branch: string,
+	create: boolean,
+	remote = false,
+): Promise<{ branch: string }> {
+	const g = git(root, 'write');
+	if (!remote) {
+		await assertBranchName(g, branch);
+		// `switch` (not `checkout`) can't mistake a branch for a file of the same name.
+		await queued(root, 'index', () =>
+			g.raw(create ? ['switch', '-c', branch] : ['switch', branch]),
+		);
+		return { branch };
+	}
+	if (!(await remoteBranches(g)).includes(branch))
+		throw new AnvilError('GIT_BAD_BRANCH', `No remote branch ${branch}`);
+	// Remote names may contain '/', so the longest remote that prefixes the branch owns it.
+	const owner = (await remotes(g))
+		.filter((r) => branch.startsWith(`${r}/`))
+		.sort((a, b) => b.length - a.length)[0];
+	if (!owner) throw new AnvilError('GIT_BAD_BRANCH', `No remote owns ${branch}`);
+	const local = branch.slice(owner.length + 1);
+	await assertBranchName(g, local);
+	const exists = (await g.branchLocal()).all.includes(local);
+	await queued(root, 'index', () =>
+		g.raw(exists ? ['switch', local] : ['switch', '-c', local, '--track', branch]),
+	);
+	return { branch: local };
+}
+
+/** `git branch -d`; `force` (-D) also deletes a branch whose commits aren't merged anywhere. */
+export async function deleteBranch(root: string, branch: string, force: boolean): Promise<void> {
 	const g = git(root, 'write');
 	await assertBranchName(g, branch);
-	// `switch` (not `checkout`) can't mistake a branch for a file of the same name.
-	await queued(root, 'index', () =>
-		g.raw(create ? ['switch', '-c', branch] : ['switch', branch]),
-	);
+	if ((await g.branchLocal()).current === branch)
+		throw new AnvilError('GIT_BRANCH_CURRENT', `Switch away from ${branch} before deleting it`);
+	try {
+		await queued(root, 'index', () => g.raw(['branch', force ? '-D' : '-d', '--', branch]));
+	} catch (error) {
+		if (/not fully merged/i.test(String(error)))
+			throw new AnvilError(
+				'GIT_BRANCH_NOT_MERGED',
+				`${branch} has commits that are not merged anywhere; deleting it anyway loses them.`,
+			);
+		throw error;
+	}
 }

@@ -5,6 +5,7 @@ import type { GitStatus } from '@shared/ipc/channels/git';
 
 import { IconButton } from '../../ui/IconButton';
 import { Spinner } from '../../ui/Spinner';
+import { switchBranch } from './branch-actions';
 import type { useGitActions } from './use-git';
 
 interface GitHeaderProps {
@@ -18,13 +19,19 @@ interface GitHeaderProps {
 export function GitHeader({ status, actions, refreshing, onRefresh }: GitHeaderProps): JSX.Element {
 	return (
 		<div className='flex h-7 shrink-0 items-center gap-1 border-b border-glass-edge pr-1 pl-2 text-12'>
-			<GitBranch size={13} className='text-accent' />
-			<span
-				className='num min-w-0 flex-1 truncate text-fg-0'
-				title={status.tracking ?? 'No upstream'}
+			<button
+				type='button'
+				onClick={() => void switchBranch()}
+				disabled={actions.busy}
+				aria-label={`Branch ${status.branch ?? ''}: switch or create a branch`}
+				title={`${status.tracking ? `Tracking ${status.tracking}` : 'No upstream'} · click to switch branch`}
+				className='flex min-w-0 flex-1 items-center gap-1 rounded-sm text-left outline-none hover:text-accent focus-visible:shadow-glow disabled:opacity-60'
 			>
-				{status.detached ? `(detached) ${status.branch ?? ''}` : status.branch}
-			</span>
+				<GitBranch size={13} className='shrink-0 text-accent' />
+				<span className='num min-w-0 truncate text-fg-0'>
+					{status.detached ? `(detached) ${status.branch ?? ''}` : status.branch}
+				</span>
+			</button>
 			{(status.ahead > 0 || status.behind > 0) && (
 				<span
 					className='num flex items-center gap-1 text-11 text-fg-1'
