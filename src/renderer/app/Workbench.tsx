@@ -175,9 +175,10 @@ export function Workbench({ Activity }: { Activity: ComponentType }): JSX.Elemen
 	const aiOpen = useLayoutStore((s) => s.aiOpen);
 	const showSide = sideOpen && !zen;
 	const docked = layout.sidebar !== 'drawer';
-	// A drawer starts put away: a side bar left open by a docked skin would cover the editor.
+	// A drawer starts put away: a side bar left open by a docked skin would cover the editor. The
+	// store remembers the mode, so the saved layout arriving later doesn't reopen it.
 	useEffect(() => {
-		if (!docked) useLayoutStore.setState({ sideOpen: false });
+		useLayoutStore.getState().setSideDrawer(!docked);
 	}, [docked]);
 	const gap = <span data-part='pane-gap' className='w-[var(--pane-gap)] shrink-0' />;
 	return (

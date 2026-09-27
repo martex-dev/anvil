@@ -1,28 +1,97 @@
 import { useEffect } from 'react';
 
-import { isAltGraph, isBindable, matchesShortcut } from '../../lib/shortcuts';
+import { isAltGraph, isBindable, type KeyLike, shortcutMatchRank } from '../../lib/shortcuts';
 import { useOverlayStore } from '../../stores/overlay-store';
 import { getCommands, runCommand } from './run';
 import type { Command } from './types';
 
-type KeyEventLike = Parameters<typeof matchesShortcut>[0];
+/**
+ * App commands that still fire while the terminal has focus; every other key goes to the shell.
+ * Readline needs Ctrl+B/F/P/N/O/G/S/W/L/J, Ctrl+\ is SIGQUIT, Ctrl+Shift+V pastes, and TUI programs
+ * use F5 and F9. Modelled on VS Code's `terminal.integrated.commandsToSkipShell` defaults: the
+ * palette, Quick Open, the terminal toggle, view switches and window-level keys. Toggle Panel
+ * (Ctrl+J) stays with the shell, where TUIs like Claude Code use it for a newline; Ctrl+` hides
+ * the panel from inside the terminal instead.
+ */
+export const TERMINAL_SHORTCUTS: ReadonlySet<string> = new Set([
+	'view.palette',
+	'view.paletteF1',
+	'file.quickOpen',
+	'view.toggleTerminal',
+	'view.problems',
+	'view.fullscreen',
+	'view.focusGroup1',
+	'view.focusGroup2',
+	'go.nextTab',
+	'go.prevTab',
+	'terminal.new',
+	'anvil.settings',
+	'anvil.shortcuts',
+	// Ctrl+Shift+E/F/G/D/J/X: shells don't use Shift with Ctrl letters.
+	'view.explorer',
+	'view.search',
+	'view.git',
+	'view.run',
+	'view.snippets',
+	'view.toolbox',
+]);
 
-/** The global command bound to this key, if any, given whether the terminal has focus. */
+/**
+ * Commands whose keys a plain text field needs: Ctrl+Shift+V pastes without formatting in any
+ * input, and Ctrl+L in the chat box would re-attach the selection and yank the caret.
+ */
+const TEXT_FIELD_KEEPS: ReadonlySet<string> = new Set(['markdown.preview']);
+const CHAT_INPUT_KEEPS: ReadonlySet<string> = new Set(['ai.focusChat']);
+
+export interface ShortcutContext {
+	/** Focus is inside xterm.js. */
+	inTerminal?: boolean;
+	/** Focus is in a text input or textarea other than Monaco's or xterm's. */
+	inTextField?: boolean;
+	/** Focus is in the AI chat's message box. */
+	inChatInput?: boolean;
+}
+
+/** Whether a matched command may take the key where focus is. */
+function allowedIn(command: Command, ctx: ShortcutContext): boolean {
+	if (ctx.inTerminal) return TERMINAL_SHORTCUTS.has(command.id);
+	if (ctx.inChatInput && CHAT_INPUT_KEEPS.has(command.id)) return false;
+	if ((ctx.inTextField || ctx.inChatInput) && TEXT_FIELD_KEEPS.has(command.id)) return false;
+	return true;
+}
+
+/**
+ * The global command bound to this key, if any. The best match wins, so a layout where the
+ * printed and physical keys disagree (German's - sits on the US / key) runs one command, not two.
+ */
 export function globalCommandFor(
-	event: KeyEventLike,
+	event: KeyLike,
 	commands: readonly Command[],
-	inTerminal: boolean,
+	ctx: ShortcutContext = {},
 ): Command | null {
-	return (
-		commands.find(
-			(c) =>
-				(c.scope ?? 'global') === 'global' &&
-				!(inTerminal && c.terminalKeepsKey) &&
-				c.shortcut &&
-				isBindable(c.shortcut) &&
-				matchesShortcut(event, c.shortcut),
-		) ?? null
-	);
+	if (isAltGraph(event)) return null;
+	let best: Command | null = null;
+	let bestRank = 0;
+	for (const c of commands) {
+		if ((c.scope ?? 'global') !== 'global' || !c.shortcut || !isBindable(c.shortcut)) continue;
+		const rank = shortcutMatchRank(event, c.shortcut);
+		if (rank > bestRank) {
+			best = c;
+			bestRank = rank;
+		}
+	}
+	return best && allowedIn(best, ctx) ? best : null;
+}
+
+/** Where focus is, for `globalCommandFor`. */
+export function shortcutContext(target: EventTarget | null): ShortcutContext {
+	if (!(target instanceof Element)) return {};
+	// xterm.js puts the `xterm` class on the terminal's root element.
+	if (target.closest('.xterm')) return { inTerminal: true };
+	if (target.closest('[data-part="chat-input"]')) return { inChatInput: true };
+	// Monaco's hidden textarea is the editor, not a text field.
+	const field = target.closest('input, textarea') !== null && !target.closest('.monaco-editor');
+	return { inTextField: field };
 }
 
 /**
@@ -42,20 +111,16 @@ export function shortcutAction(
 }
 
 /**
- * Binds every global command's shortcut. Capture phase, so the editor and terminal can't
- * swallow app-level keys like Ctrl+P. Editor-scoped commands are bound inside Monaco instead.
+ * Binds every global command's shortcut. Capture phase, so the editor can't swallow app-level
+ * keys like Ctrl+P; the terminal and text fields keep the keys they need (see `allowedIn`).
+ * Editor-scoped commands are bound inside Monaco instead.
  */
 export function useGlobalShortcuts(): void {
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent): void => {
 			const fn = /^F\d{1,2}$/.test(event.key);
 			if (!event.ctrlKey && !event.metaKey && !event.altKey && !fn) return;
-			// AltGr+S types ś on Polish layouts; let it through as text instead of Save All.
-			if (isAltGraph(event)) return;
-			// xterm.js puts the `xterm` class on the terminal's root element.
-			const inTerminal =
-				event.target instanceof Element && event.target.closest('.xterm') !== null;
-			const command = globalCommandFor(event, getCommands(), inTerminal);
+			const command = globalCommandFor(event, getCommands(), shortcutContext(event.target));
 			if (!command) return;
 			const overlayOpen = useOverlayStore.getState().open.size > 0;
 			const action = shortcutAction(event, command, overlayOpen);

@@ -54,17 +54,25 @@ export function installLayoutPersistence({
 	let hydrating = false;
 	let timer: ReturnType<typeof setTimeout> | null = null;
 	const touched = new Set<keyof LayoutState>();
+	// A drawer skin always starts with its side bar put away. Saving that would also close the
+	// docked side bar after switching back to a docked skin, so keep the last docked choice.
+	const initial = store.getState();
+	let dockedSideOpen = initial.sideDrawer ? true : initial.sideOpen;
 
 	const schedule = (): void => {
 		if (timer) clearTimeout(timer);
 		timer = setTimeout(() => {
 			const s = store.getState();
-			const layout = Object.fromEntries(PERSISTED.map((k) => [k, s[k]]));
+			const layout: Record<string, unknown> = Object.fromEntries(
+				PERSISTED.map((k) => [k, s[k]]),
+			);
+			layout['sideOpen'] = dockedSideOpen;
 			save(layout).catch((error: unknown) => warn('save failed', error));
 		}, delayMs);
 	};
 
 	const off = store.subscribe((s, prev) => {
+		if (!s.sideDrawer) dockedSideOpen = s.sideOpen;
 		if (ready) return schedule();
 		if (hydrating) return;
 		for (const k of USER_TOGGLES) if (s[k] !== prev[k]) touched.add(k);
@@ -77,6 +85,11 @@ export function installLayoutPersistence({
 			const patch = Object.fromEntries(
 				Object.entries(saved).filter(([k]) => !touched.has(k as keyof LayoutState)),
 			) as Partial<LayoutState>;
+			// Under a drawer the side bar was closed by the skin, not by a person: the saved
+			// choice still stands for docked skins.
+			const drawer = store.getState().sideDrawer;
+			if (saved.sideOpen !== undefined && (drawer || !touched.has('sideOpen')))
+				dockedSideOpen = saved.sideOpen;
 			hydrating = true;
 			try {
 				store.getState().hydrate(patch);

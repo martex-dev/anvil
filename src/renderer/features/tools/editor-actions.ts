@@ -24,6 +24,9 @@ export async function runEditorAction(id: string): Promise<void> {
 		toast.warn('Not available here', id);
 		return;
 	}
+	// From the palette or a menu, focus may still be on the way back: rename boxes and peek
+	// views open at the cursor and need the editor focused.
+	editor.focus();
 	await action.run();
 }
 

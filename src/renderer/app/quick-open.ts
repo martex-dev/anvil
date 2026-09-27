@@ -26,12 +26,16 @@ export function recentFiles(): string[] {
 	}
 }
 
-export type QuickOpenMode = 'files' | 'commands' | 'symbols' | 'line';
+export type QuickOpenMode = 'files' | 'commands' | 'symbols' | 'workspace' | 'line';
 
-/** `>` runs commands, `@` jumps to a symbol, `:` goes to a line; anything else finds files. */
+/**
+ * `>` runs commands, `@` jumps to a symbol in the file, `#` to a symbol anywhere in the project,
+ * `:` goes to a line; anything else finds files.
+ */
 export function quickOpenMode(value: string): QuickOpenMode {
 	if (value.startsWith('>')) return 'commands';
 	if (value.startsWith('@')) return 'symbols';
+	if (value.startsWith('#')) return 'workspace';
 	if (value.startsWith(':')) return 'line';
 	return 'files';
 }
@@ -39,9 +43,11 @@ export function quickOpenMode(value: string): QuickOpenMode {
 /**
  * cmdk scores items against the raw input, which still carries the mode prefix (`>git`), and no
  * item contains `>` or `@`, so the built-in filter hid everything. Score without the prefix.
+ * Symbol values start with their line (`12:main`) to stay unique when a name repeats; the line
+ * isn't something to match on, so it's dropped too.
  */
 export function quickOpenFilter(value: string, search: string, keywords?: string[]): number {
-	return defaultFilter(value, search.replace(/^[>@]\s*/, ''), keywords);
+	return defaultFilter(value.replace(/^\d+:/, ''), search.replace(/^[>@]\s*/, ''), keywords);
 }
 
 /**
@@ -62,10 +68,13 @@ export function resolvePendingEnter(
 	return { open: undefined, cancel: !fetching };
 }
 
-/** Opens a file and gives the editor focus (an already-open file doesn't refocus by itself). */
-export function openAndFocus(path: string): void {
+/**
+ * Opens a file (at a position, for symbols) and gives the editor focus: an already-open file
+ * doesn't refocus by itself.
+ */
+export function openAndFocus(path: string, line?: number, column?: number): void {
 	rememberRecentFile(path);
-	requestOpenFile({ path });
+	requestOpenFile({ path, line, column });
 	focusedEditor()?.focus();
 }
 
