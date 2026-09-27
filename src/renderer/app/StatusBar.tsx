@@ -17,6 +17,7 @@ import { useGitStatus } from '../features/git/use-git';
 import { LspStatusItem } from '../features/lsp/LspStatusItem';
 import { useProblems } from '../features/problems/problems-store';
 import { PythonEnvChip } from '../features/python/PythonEnvChip';
+import { TestStatusItem } from '../features/tests/TestStatusItem';
 import { cn } from '../lib/cn';
 import { everySecond } from '../lib/every-second';
 import { call } from '../lib/ipc';
@@ -227,6 +228,7 @@ export function StatusBar(): JSX.Element {
 				<ProblemsItem />
 				<PythonEnvChip />
 				<LspStatusItem />
+				<TestStatusItem />
 			</div>
 			<span className='flex-1' />
 			<div

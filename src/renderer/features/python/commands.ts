@@ -13,9 +13,9 @@ import { focusedEditor } from '../../lib/monaco/editors';
 import { toWorkspacePath } from '../../lib/monaco/workspace-root';
 import { toast } from '../../stores/toast-store';
 import { formatPython } from '../editor/file-ops';
-import { runInTerminal } from '../terminal/terminal-store';
+import { revealTests, runCurrentFileTests } from '../tests/editor-actions';
+import { runTests } from '../tests/tests-store';
 import { openRepl, restartRepl, runCell, runPythonFile, runSelection } from './run';
-import { saveDirtyFiles } from './save-before-run';
 import { pickPythonEnv } from './use-python';
 
 export const PYTHON_COMMANDS: Command[] = [
@@ -108,38 +108,16 @@ export const PYTHON_COMMANDS: Command[] = [
 		title: 'Run Tests (pytest)',
 		category: 'Python',
 		icon: ListChecks,
-		run: async () => {
-			// pytest reads files from disk: run it on the code that is on screen.
-			if (!(await saveDirtyFiles())) return;
-			await runInTerminal({
-				role: 'task:pytest',
-				preset: 'python',
-				title: 'pytest',
-				command: 'python -m pytest -q',
-			});
+		// The Test Explorer runs it (saving first): live results in the Tests view and the gutter.
+		run: () => {
+			revealTests();
+			return runTests();
 		},
 	},
 	{
 		id: 'python.pytestFile',
 		title: 'Run Tests in Current File',
 		category: 'Python',
-		run: async () => {
-			const model = focusedEditor()?.getModel();
-			const path = model ? toWorkspacePath(model.uri) : null;
-			if (!path?.endsWith('.py')) {
-				toast.info(
-					'Open a Python test file',
-					'Then run this command to test just that file.',
-				);
-				return;
-			}
-			if (!(await saveDirtyFiles())) return;
-			await runInTerminal({
-				role: 'task:pytest',
-				preset: 'python',
-				title: 'pytest',
-				command: `python -m pytest -q "${path}"`,
-			});
-		},
+		run: runCurrentFileTests,
 	},
 ];
