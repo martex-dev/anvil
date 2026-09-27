@@ -1,6 +1,6 @@
 import type { MainFeature } from '../../core/features';
 import { gitError } from './git-errors';
-import { branches, checkout, pull, push } from './git-remote';
+import { branches, checkout, fetchRemotes, pull, push } from './git-remote';
 import { GitService } from './git-service';
 
 export const gitFeature: MainFeature = {
@@ -36,6 +36,19 @@ export const gitFeature: MainFeature = {
 		const repo = (): Promise<string> => service.repo();
 		ctx.ipc.handle('git:pull', () => run(async () => pull(await repo())));
 		ctx.ipc.handle('git:push', () => run(async () => push(await repo())));
+		ctx.ipc.handle('git:fetch', ({ background }) =>
+			run(async () => {
+				try {
+					return await fetchRemotes(await repo(), background ?? false);
+				} catch (error) {
+					// A background fetch fails often (offline, VPN, expired token) and on its own
+					// schedule; it is logged here and the renderer stays quiet about it.
+					if (background)
+						ctx.log.warn('background fetch failed', { error: gitError(error).message });
+					throw error;
+				}
+			}),
+		);
 		ctx.ipc.handle('git:branches', () => run(async () => branches(await repo()), false));
 		ctx.ipc.handle('git:checkout', ({ branch, create }) =>
 			run(async () => checkout(await repo(), branch, create)),

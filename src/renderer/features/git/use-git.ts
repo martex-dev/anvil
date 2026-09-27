@@ -6,6 +6,7 @@ import { useWorkspace } from '../../app/hooks/use-workspace';
 import { call } from '../../lib/ipc';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { toast } from '../../stores/toast-store';
+import { useGitAutoFetch } from './auto-fetch';
 import { confirmGit } from './git-confirm';
 import {
 	GIT_MUTATION_KEY,
@@ -41,6 +42,7 @@ export function useGitStatus(): {
 	const refresh = (): void => void client.invalidateQueries({ queryKey: GIT_STATUS_KEY });
 	useAnvilEvent('git:changed', refresh);
 	useAnvilEvent('fs:changed', refresh);
+	useGitAutoFetch(info.root, query.data?.isRepo ?? false);
 	return {
 		status: query.data,
 		isLoading: query.isLoading,
@@ -91,9 +93,11 @@ export function useGitActions(status?: GitStatus): {
 	commit: (message: string) => Promise<boolean>;
 	pull: () => void;
 	push: () => void;
+	fetch: () => void;
 	/** Per-operation progress, for a spinner on the button that started it. */
 	pulling: boolean;
 	pushing: boolean;
+	fetching: boolean;
 	busy: boolean;
 } {
 	// Returned so a mutation stays pending until the status has refreshed: the lists never
@@ -154,8 +158,10 @@ export function useGitActions(status?: GitStatus): {
 		// have their own spinner, so no progress toast.
 		pull: () => void runRemote('pull', { announce: false }),
 		push: () => void runRemote('push', { announce: false }),
+		fetch: () => void runRemote('fetch', { announce: false }),
 		pulling: running === 'pull',
 		pushing: running === 'push',
+		fetching: running === 'fetch',
 		busy: running !== null || ops > 0 || [stage, unstage, commit].some((m) => m.isPending),
 	};
 }

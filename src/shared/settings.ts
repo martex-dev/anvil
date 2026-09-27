@@ -78,6 +78,8 @@ export const SettingsSchema = z.object({
 	colorSwatches: z.boolean().default(true),
 	/** "Author, time • message" after the line the cursor is on (Toggle Inline Blame). */
 	inlineBlame: z.boolean().default(true),
+	/** `git fetch --prune` every 5 minutes while a repository is open, so ahead/behind is right. */
+	gitAutoFetch: z.boolean().default(true),
 	/** Tabs tinted by file type, with an error dot when the file has problems. */
 	tabTint: z.boolean().default(true),
 	/** Blur values in .env files and flag keys/seed phrases in code. */

@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, CloudUpload, GitBranch, RefreshCw } from 'lucide-react';
+import { ArrowDown, ArrowUp, CloudDownload, CloudUpload, GitBranch, RefreshCw } from 'lucide-react';
 import type { JSX } from 'react';
 
 import type { GitStatus } from '@shared/ipc/channels/git';
@@ -70,6 +70,19 @@ export function GitHeader({ status, actions, refreshing, onRefresh }: GitHeaderP
 				}
 				disabled={actions.busy}
 				onClick={actions.push}
+			/>
+			<IconButton
+				size='sm'
+				label={actions.fetching ? 'Fetching…' : 'Fetch (and prune deleted branches)'}
+				icon={
+					actions.fetching ? (
+						<Spinner size={12} label='Fetching' />
+					) : (
+						<CloudDownload size={13} />
+					)
+				}
+				disabled={actions.busy}
+				onClick={actions.fetch}
 			/>
 			<IconButton
 				size='sm'

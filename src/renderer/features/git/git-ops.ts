@@ -48,23 +48,24 @@ export async function gitOp<T>(failTitle: string, op: () => Promise<T>): Promise
 	}
 }
 
-export type RemoteOp = 'pull' | 'push';
+export type RemoteOp = 'pull' | 'push' | 'fetch';
 
 /**
- * The pull or push in flight. Shared by the Source Control panel and the palette commands, so
- * both show the same progress and neither can start a second network operation meanwhile.
+ * The pull, push or fetch in flight. Shared by the Source Control panel and the palette
+ * commands, so both show the same progress and neither can start a second network operation.
  */
 export const useGitRemote = create<{ running: RemoteOp | null }>(() => ({ running: null }));
 
 const TEXT: Record<RemoteOp, { progress: string; done: string; failed: string }> = {
 	pull: { progress: 'Pulling…', done: 'Pulled', failed: 'Pull failed' },
 	push: { progress: 'Pushing…', done: 'Pushed', failed: 'Push failed' },
+	fetch: { progress: 'Fetching…', done: 'Fetched', failed: 'Fetch failed' },
 };
 
 /**
- * Runs `git pull`/`git push` and toasts the outcome. `announce` adds a progress toast for
- * callers with no spinner of their own (the palette). Resolves to whether it succeeded; it
- * never rejects.
+ * Runs `git pull`/`git push`/`git fetch` and toasts the outcome. `announce` adds a progress
+ * toast for callers with no spinner of their own (the palette). Resolves to whether it
+ * succeeded; it never rejects.
  */
 export async function runRemote(op: RemoteOp, options: { announce: boolean }): Promise<boolean> {
 	const running = useGitRemote.getState().running;
@@ -83,7 +84,10 @@ export async function runRemote(op: RemoteOp, options: { announce: boolean }): P
 				.push({ title: text.progress, tone: 'info', durationMs: Number.POSITIVE_INFINITY })
 		: null;
 	try {
-		const { summary } = await call(op === 'pull' ? 'git:pull' : 'git:push');
+		const { summary } =
+			op === 'fetch'
+				? await call('git:fetch', {})
+				: await call(op === 'pull' ? 'git:pull' : 'git:push');
 		toast.success(text.done, summary);
 		return true;
 	} catch (error) {

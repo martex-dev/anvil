@@ -2,6 +2,7 @@ import {
 	ArrowDown,
 	ArrowDownUp,
 	ArrowUp,
+	CloudDownload,
 	FileDiff,
 	FolderGit2,
 	GitBranch,
@@ -135,6 +136,16 @@ export const GIT_COMMANDS: Command[] = [
 		icon: ArrowUp,
 		run: async () => {
 			await runRemote('push', { announce: true });
+		},
+	},
+	{
+		id: 'git.fetch',
+		title: 'Fetch',
+		category: 'Git',
+		keywords: ['prune', 'remote'],
+		icon: CloudDownload,
+		run: async () => {
+			await runRemote('fetch', { announce: true });
 		},
 	},
 	{

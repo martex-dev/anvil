@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { formatGitError } from './git-errors';
 import { git } from './git-process';
-import { branches, checkout, publishRemote, push } from './git-remote';
+import { branches, checkout, fetchRemotes, publishRemote, push } from './git-remote';
 
 // Integration tests against the real system git, with a bare repository as the remote.
 let dir: string;
@@ -45,6 +45,20 @@ describe('branches and remotes', { timeout: 30_000 }, () => {
 		expect(run(repo, 'rev-parse', '--abbrev-ref', 'main@{upstream}').trim()).toBe(
 			'upstream/main',
 		);
+	});
+
+	it('fetches every remote and prunes branches deleted there', async () => {
+		await expect(fetchRemotes(repo, true)).resolves.toEqual({
+			summary: 'This repository has no remotes',
+		});
+		run(dir, 'init', '-q', '--bare', 'remote.git');
+		run(repo, 'remote', 'add', 'origin', join(dir, 'remote.git'));
+		run(repo, 'push', '-q', 'origin', 'main', 'main:gone');
+		run(repo, 'fetch', '-q', 'origin');
+		run(join(dir, 'remote.git'), 'branch', '-D', 'gone');
+		await expect(fetchRemotes(repo, true)).resolves.toEqual({ summary: 'Fetched origin' });
+		const refs = run(repo, 'for-each-ref', '--format=%(refname:short)', 'refs/remotes');
+		expect(refs.split('\n').filter(Boolean)).toEqual(['origin/main']);
 	});
 
 	it('prefers the configured push remote, then origin, and explains when it cannot choose', async () => {

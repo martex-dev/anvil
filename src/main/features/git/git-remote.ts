@@ -35,6 +35,24 @@ export async function assertBranchName(g: SimpleGit, name: string): Promise<void
 	if (checked.trim() !== name) throw bad();
 }
 
+/**
+ * Fetches every remote and prunes remote branches deleted there, so ahead/behind and the branch
+ * list stay accurate. `background` (the periodic auto-fetch) must never pop a sign-in window out
+ * of nowhere: Git Credential Manager is told not to prompt, and the fetch just fails instead.
+ */
+export async function fetchRemotes(
+	root: string,
+	background: boolean,
+): Promise<{ summary: string }> {
+	const names = await remotes(git(root));
+	if (names.length === 0) return { summary: 'This repository has no remotes' };
+	const env: Record<string, string> = background ? { GCM_INTERACTIVE: 'never' } : {};
+	await queued(root, 'remote', () =>
+		git(root, 'long', env).raw(['fetch', '--all', '--prune', '--quiet']),
+	);
+	return { summary: `Fetched ${names.join(', ')}` };
+}
+
 export async function pull(root: string): Promise<{ summary: string }> {
 	// Pull fetches (remote refs) and merges (index and working tree): it holds both lanes.
 	const r = await queued(root, 'remote', () =>

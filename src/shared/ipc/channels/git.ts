@@ -97,6 +97,14 @@ export const gitChannels = defineChannels({
 	},
 	'git:pull': { input: z.void(), output: z.object({ summary: z.string() }) },
 	'git:push': { input: z.void(), output: z.object({ summary: z.string() }) },
+	/**
+	 * `git fetch --all --prune`. `background` (the periodic auto-fetch) never opens a sign-in
+	 * window; a fetch that needs credentials just fails.
+	 */
+	'git:fetch': {
+		input: z.object({ background: z.boolean().optional() }),
+		output: z.object({ summary: z.string() }),
+	},
 	'git:branches': {
 		input: z.void(),
 		output: z.object({ current: z.string().nullable(), local: z.array(z.string()) }),
