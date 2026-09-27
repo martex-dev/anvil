@@ -1,4 +1,6 @@
 import {
+	Archive,
+	ArchiveRestore,
 	ArrowDown,
 	ArrowDownUp,
 	ArrowUp,
@@ -8,6 +10,7 @@ import {
 	GitBranch,
 	GitCommitHorizontal,
 	History,
+	Trash2,
 	Undo2,
 } from 'lucide-react';
 
@@ -18,7 +21,7 @@ import { focusedTab, useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
 import { quickPick } from '../../ui/QuickPick';
 import { useCommitFocus } from './commit-focus';
-import { discardChanges, initRepository } from './git-actions';
+import { discardChanges, initRepository, pickStash, stashChanges } from './git-actions';
 import { refreshGit, runRemote } from './git-ops';
 import { openDiff } from './open-diff';
 
@@ -180,6 +183,35 @@ export const GIT_COMMANDS: Command[] = [
 			}
 			await discardChanges(status.unstaged);
 		},
+	},
+	{
+		id: 'git.stash',
+		title: 'Stash (Include Untracked)…',
+		category: 'Git',
+		keywords: ['shelve', 'save changes'],
+		icon: Archive,
+		run: stashChanges,
+	},
+	{
+		id: 'git.stashPop',
+		title: 'Pop Stash…',
+		category: 'Git',
+		icon: ArchiveRestore,
+		run: () => pickStash('pop'),
+	},
+	{
+		id: 'git.stashApply',
+		title: 'Apply Stash…',
+		category: 'Git',
+		icon: ArchiveRestore,
+		run: () => pickStash('apply'),
+	},
+	{
+		id: 'git.stashDrop',
+		title: 'Drop Stash…',
+		category: 'Git',
+		icon: Trash2,
+		run: () => pickStash('drop'),
 	},
 	{
 		id: 'git.init',

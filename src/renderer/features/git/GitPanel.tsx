@@ -12,6 +12,7 @@ import { discardChanges, initRepository } from './git-actions';
 import { GitConfirmDialog } from './GitConfirmDialog';
 import { GitHeader } from './GitHeader';
 import { openDiff } from './open-diff';
+import { StashList } from './StashList';
 import { useGitActions, useGitStatus } from './use-git';
 
 export { openDiff } from './open-diff';
@@ -123,6 +124,7 @@ function GitPanelBody(): JSX.Element {
 						/>
 					</>
 				)}
+				<StashList root={info.root} busy={actions.busy} />
 			</div>
 		</div>
 	);

@@ -2,6 +2,7 @@ import type { MainFeature } from '../../core/features';
 import { gitError } from './git-errors';
 import { branches, checkout, fetchRemotes, pull, push } from './git-remote';
 import { GitService } from './git-service';
+import { stash, stashCommand, stashList } from './git-stash';
 
 export const gitFeature: MainFeature = {
 	id: 'git',
@@ -48,6 +49,19 @@ export const gitFeature: MainFeature = {
 					throw error;
 				}
 			}),
+		);
+		ctx.ipc.handle('git:stash', ({ message }) =>
+			run(async () => stash(await repo(), message || undefined)),
+		);
+		ctx.ipc.handle('git:stashList', () => run(async () => stashList(await repo()), false));
+		ctx.ipc.handle('git:stashApply', ({ index }) =>
+			run(async () => stashCommand(await repo(), 'apply', index)),
+		);
+		ctx.ipc.handle('git:stashPop', ({ index }) =>
+			run(async () => stashCommand(await repo(), 'pop', index)),
+		);
+		ctx.ipc.handle('git:stashDrop', ({ index }) =>
+			run(async () => stashCommand(await repo(), 'drop', index)),
 		);
 		ctx.ipc.handle('git:branches', () => run(async () => branches(await repo()), false));
 		ctx.ipc.handle('git:checkout', ({ branch, create }) =>

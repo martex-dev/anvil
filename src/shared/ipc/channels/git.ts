@@ -53,6 +53,17 @@ export const GitCommitSchema = z.object({
 });
 export type GitCommit = z.infer<typeof GitCommitSchema>;
 
+export const GitStashSchema = z.object({
+	/** n of stash@{n}; 0 is the newest. */
+	index: z.number().int(),
+	message: z.string(),
+	/** Epoch ms. */
+	date: z.number(),
+});
+export type GitStash = z.infer<typeof GitStashSchema>;
+
+const StashIndex = z.object({ index: z.number().int().min(0).max(10_000) });
+
 export const GitBlameSchema = z.object({
 	hash: z.string(),
 	author: z.string(),
@@ -105,6 +116,15 @@ export const gitChannels = defineChannels({
 		input: z.object({ background: z.boolean().optional() }),
 		output: z.object({ summary: z.string() }),
 	},
+	/** Stashes every change, untracked files included (VS Code's "Stash (Include Untracked)"). */
+	'git:stash': {
+		input: z.object({ message: z.string().trim().max(500).optional() }),
+		output: z.void(),
+	},
+	'git:stashList': { input: z.void(), output: z.array(GitStashSchema) },
+	'git:stashApply': { input: StashIndex, output: z.void() },
+	'git:stashPop': { input: StashIndex, output: z.void() },
+	'git:stashDrop': { input: StashIndex, output: z.void() },
 	'git:branches': {
 		input: z.void(),
 		output: z.object({ current: z.string().nullable(), local: z.array(z.string()) }),
