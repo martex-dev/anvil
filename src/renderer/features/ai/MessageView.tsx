@@ -5,7 +5,8 @@ import { cn } from '../../lib/cn';
 import { renderMarkdown } from '../../lib/markdown/markdown';
 import { toast } from '../../stores/toast-store';
 import { Button } from '../../ui/Button';
-import { openApply } from './ApplyDialog';
+import type { ApplyTarget } from './apply-target';
+import { openApplyTo } from './ApplyDialog';
 import { openChatLink } from './chat-links';
 import type { ChatMessage } from './chat-store';
 import { formatReplyTime } from './chat-time';
@@ -14,7 +15,15 @@ import { splitFences } from './fences';
 
 import '../../lib/markdown/markdown.css';
 
-function applyToEditor(block: string): void {
+/**
+ * Previews the block against the file the question was about (whichever editor has focus
+ * now), or against the focused file when the question named none.
+ */
+function applyToEditor(block: string, target: ApplyTarget | null): void {
+	if (target) {
+		openApplyTo(target, block);
+		return;
+	}
 	const editor = activeEditor();
 	if (!editor) {
 		toast.warn(
@@ -23,14 +32,7 @@ function applyToEditor(block: string): void {
 		);
 		return;
 	}
-	openApply({
-		path: editor.path,
-		language: editor.language,
-		block,
-		selection: editor.selection
-			? { startLine: editor.selection.startLine, endLine: editor.selection.endLine }
-			: null,
-	});
+	openApplyTo({ path: editor.path, selection: editor.selection }, block);
 }
 
 function insertAtCursor(code: string): void {
@@ -49,10 +51,12 @@ function CodeBlock({
 	lang,
 	code,
 	closed,
+	target,
 }: {
 	lang: string | null;
 	code: string;
 	closed: boolean;
+	target: ApplyTarget | null;
 }): JSX.Element {
 	return (
 		<div className='my-2 overflow-hidden rounded-lg border border-glass-edge' data-code-block>
@@ -90,8 +94,8 @@ function CodeBlock({
 					variant='ghost'
 					icon={<FileDiff size={11} />}
 					disabled={!closed}
-					onClick={() => applyToEditor(code)}
-					title='Preview this code as a change to the open file'
+					onClick={() => applyToEditor(code, target)}
+					title={`Preview this code as a change to ${target?.path ?? 'the open file'}`}
 				>
 					Apply…
 				</Button>
@@ -127,10 +131,13 @@ function Prose({ text }: { text: string }): JSX.Element {
 export function MessageView({
 	message,
 	onRetry,
+	target,
 }: {
 	message: ChatMessage;
 	/** Offered on a failed latest reply: asks the same question again. */
 	onRetry?: () => void;
+	/** The file (and lines) the question was about: where Apply sends the reply's code. */
+	target?: ApplyTarget | null;
 }): JSX.Element {
 	const segments = useMemo(() => splitFences(message.content), [message.content]);
 	if (message.role === 'user') {
@@ -175,6 +182,7 @@ export function MessageView({
 						lang={s.lang}
 						code={s.code}
 						closed={s.closed || !message.streaming}
+						target={target ?? null}
 					/>
 				),
 			)}
