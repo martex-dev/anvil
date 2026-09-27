@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 
-import { app, BrowserWindow, dialog, Menu } from 'electron';
+import { app, BrowserWindow, Menu } from 'electron';
 import log from 'electron-log/main';
 
 import { APP_NAME, WINDOW_CHROME } from '@shared/constants';
@@ -11,6 +11,7 @@ import { errorMessage } from './errors';
 import { devRendererUrl } from './renderer-origin';
 import { lockWindowNavigation } from './security';
 import type { SettingsStore } from './store/json-store';
+import { watchRenderer } from './window-recovery';
 import { readWindowState, trackWindowState } from './window-state';
 
 const CHROME_KEY = 'window:chrome';
@@ -79,9 +80,15 @@ export function createMainWindow(store: SettingsStore): BrowserWindow {
 	});
 	trackWindowState(win, store);
 	win.once('closed', () => clearTimeout(showFallback));
-	watchRenderer(win);
 
 	const devUrl = devRendererUrl(app.isPackaged);
+	const load = (): void => {
+		// did-fail-load (window-recovery.ts) tells the user; the rejection only needs a trace.
+		win.loadURL(devUrl ?? `${APP_ORIGIN}/index.html`).catch((error: unknown) =>
+			log.warn('[window] loadURL rejected', errorMessage(error)),
+		);
+	};
+	watchRenderer(win, load);
 
 	// With the menu gone, keep devtools reachable in development only.
 	if (devUrl) {
@@ -90,41 +97,6 @@ export function createMainWindow(store: SettingsStore): BrowserWindow {
 		});
 	}
 
-	win.loadURL(devUrl ?? `${APP_ORIGIN}/index.html`).catch((error: unknown) => {
-		log.error('[window] loading the interface failed', error);
-		if (win.isDestroyed()) return;
-		win.show();
-		dialog.showErrorBox('Anvil could not load its interface', errorMessage(error));
-	});
-
+	load();
 	return win;
-}
-
-/** A crashed or killed renderer leaves a blank window: log why and offer a reload. */
-function watchRenderer(win: BrowserWindow): void {
-	win.webContents.on('render-process-gone', (_event, details) => {
-		log.error('[window] renderer process gone', {
-			reason: details.reason,
-			exitCode: details.exitCode,
-		});
-		if (details.reason === 'clean-exit' || win.isDestroyed()) return;
-		void dialog
-			.showMessageBox(win, {
-				type: 'error',
-				title: APP_NAME,
-				message: 'The Anvil window stopped working',
-				detail: `Reason: ${details.reason}. Reloading restores the interface; unsaved editor changes in this window are lost.`,
-				buttons: ['Reload', 'Close'],
-				defaultId: 0,
-				cancelId: 1,
-			})
-			.then(({ response }) => {
-				if (win.isDestroyed()) return;
-				if (response === 0) win.webContents.reload();
-				else win.close();
-			})
-			.catch((error: unknown) => log.error('[window] crash dialog failed', error));
-	});
-	win.on('unresponsive', () => log.warn('[window] renderer is not responding'));
-	win.on('responsive', () => log.info('[window] renderer is responding again'));
 }
