@@ -4,8 +4,8 @@ import type { ColumnStats, DataFormat, DataPage, DataQuery } from '@shared/ipc/c
 
 import { AnvilError } from '../../core/errors';
 import { isTextFormat } from './format';
-import { readWithPython } from './python-reader';
-import { columnStats, type Table, view } from './table';
+import { cancelPythonReads, readWithPython } from './python-reader';
+import { columnStats, filterNeedle, narrow, type Table, view } from './table';
 import { readHead, tableFromText } from './text-reader';
 
 const PYTHON_ROWS = 250_000;
@@ -32,22 +32,50 @@ interface Cached {
 	 * Recent filter/sort results, reused while scrolling. Several, because two viewers of the
 	 * same file (split editor groups) can use different filters.
 	 */
-	views: Map<string, number[]>;
+	views: Map<string, CachedView>;
+}
+
+interface CachedView {
+	needle: string;
+	/** JSON of the sort, compared as a whole. */
+	sort: string;
+	idx: number[];
+}
+
+/**
+ * A cached view this query can be narrowed from: same sort, and a filter the new one contains
+ * (typing 'bt' after 'b'). The longest such filter has the fewest rows left to scan.
+ */
+function narrowable(entry: Cached, needle: string, sort: string): CachedView | null {
+	let best: CachedView | null = null;
+	for (const v of entry.views.values()) {
+		if (v.sort !== sort || !needle.includes(v.needle)) continue;
+		if (!best || v.needle.length > best.needle.length) best = v;
+	}
+	return best;
 }
 
 /** Row indices for a filter/sort, from a small per-file LRU. */
 function viewOf(entry: Cached, query: PageQuery): number[] {
-	const key = JSON.stringify([query.filter, query.sort]);
-	let idx = entry.views.get(key);
-	if (idx) entry.views.delete(key);
-	else idx = view(entry.table, query.filter, query.sort);
-	entry.views.set(key, idx);
+	const needle = filterNeedle(query.filter);
+	const sort = JSON.stringify(query.sort);
+	const key = JSON.stringify([needle, sort]);
+	let cached = entry.views.get(key);
+	if (cached) entry.views.delete(key);
+	else {
+		const base = narrowable(entry, needle, sort);
+		const idx = base
+			? narrow(entry.table, base.idx, needle)
+			: view(entry.table, query.filter, query.sort);
+		cached = { needle, sort, idx };
+	}
+	entry.views.set(key, cached);
 	while (entry.views.size > VIEWS_PER_FILE) {
 		const oldest = entry.views.keys().next();
 		if (oldest.done) break;
 		entry.views.delete(oldest.value);
 	}
-	return idx;
+	return cached.idx;
 }
 
 /** Expected file-system failures get a short message with the workspace path, not Node's. */
@@ -93,9 +121,11 @@ export class DataStore {
 		this.cache.delete(abs);
 	}
 
+	/** Forgets every table and stops Python reads still running (folder switch, quit). */
 	clear(): void {
 		this.generation++;
 		this.cache.clear();
+		cancelPythonReads();
 	}
 
 	private async load(spec: LoadSpec): Promise<Cached> {
