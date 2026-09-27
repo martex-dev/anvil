@@ -1,4 +1,4 @@
-import { Check, Sparkles } from 'lucide-react';
+import { Check, Sparkles, Square } from 'lucide-react';
 import { type JSX, useEffect, useRef, useState } from 'react';
 
 import { call } from '../../lib/ipc';
@@ -7,7 +7,7 @@ import { Button } from '../../ui/Button';
 import { Dialog } from '../../ui/Dialog';
 import { IconButton } from '../../ui/IconButton';
 import { Kbd } from '../../ui/Kbd';
-import { generateCommitMessage } from '../ai/actions';
+import { cancelCommitMessage, generateCommitMessage } from '../ai/actions';
 import { useCommitDrafts } from './commit-draft-store';
 import { useCommitFocus } from './commit-focus';
 
@@ -130,6 +130,11 @@ export function CommitBox({
 					aria-busy={writing || undefined}
 					onChange={(e) => setMessage(e.target.value)}
 					onKeyDown={(e) => {
+						if (e.key === 'Escape' && writing) {
+							e.preventDefault();
+							cancelCommitMessage();
+							return;
+						}
 						if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
 							e.preventDefault();
 							submit();
@@ -143,14 +148,25 @@ export function CommitBox({
 					}
 					className={`selectable w-full resize-y rounded-md border border-border-strong bg-bg-2/60 py-1.5 pr-8 pl-2 text-12 text-fg-0 outline-none placeholder:text-fg-2 focus:border-accent focus:shadow-glow ${writing ? 'shimmer' : ''}`}
 				/>
-				<IconButton
-					size='sm'
-					label='Write the message with AI (from staged changes)'
-					icon={<Sparkles size={12} className='text-accent-2' />}
-					disabled={writing}
-					onClick={requestGenerate}
-					className='absolute top-1 right-1'
-				/>
+				{writing ? (
+					// Stopping keeps what was written so far, editable (generateCommitMessage resolves
+					// with the partial text), so a message going the wrong way can be cut short.
+					<IconButton
+						size='sm'
+						label='Stop writing the message'
+						icon={<Square size={11} className='fill-current text-accent-2' />}
+						onClick={() => cancelCommitMessage()}
+						className='absolute top-1 right-1'
+					/>
+				) : (
+					<IconButton
+						size='sm'
+						label='Write the message with AI (from staged changes)'
+						icon={<Sparkles size={12} className='text-accent-2' />}
+						onClick={requestGenerate}
+						className='absolute top-1 right-1'
+					/>
+				)}
 			</div>
 			<label className='flex w-fit cursor-pointer items-center gap-1.5 text-11 text-fg-1 select-none'>
 				<input
