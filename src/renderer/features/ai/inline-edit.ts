@@ -10,6 +10,7 @@ import { bindInlineEditKeys } from './inline-edit-keys';
 import { appliedRange, currentRange, trackRange } from './inline-range';
 import { extractCode, lineCount, withCursor } from './inline-text';
 import { streamOnce } from './requests';
+import { isSecretFile, maskSecrets, safeContext } from './secret-filter';
 
 export type InlinePhase = 'prompt' | 'generating' | 'review';
 
@@ -212,13 +213,16 @@ export async function submitInlineEdit(instruction: string): Promise<void> {
 	// The session's own model, not the focused editor's: in a split, focus may have moved to
 	// the other group (another file) since the box opened.
 	const target = { path, language: s.model.getLanguageId(), model: s.model };
-	const file = fileContext(target);
-	if (insert) {
+	// The rest of the file is background: its secrets are masked (a key file is withheld). The
+	// selection below goes as it is, since the reply has to fit back in its place.
+	const file = safeContext(fileContext(target)).item;
+	if (insert && !isSecretFile(path)) {
 		const offset = s.model.getOffsetAt({
 			lineNumber: s.range.startLineNumber,
 			column: s.range.startColumn,
 		});
-		file.text = withCursor(s.model.getValue(), offset);
+		// Masking keeps the length, so the cursor offset still points at the same spot.
+		file.text = withCursor(maskSecrets(s.model.getValue(), path).text, offset);
 	}
 	const context: AiContext[] = [file];
 	const problems = monaco

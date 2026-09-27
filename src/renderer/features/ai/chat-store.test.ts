@@ -134,6 +134,20 @@ describe('chat attach', () => {
 		expect(useChat.getState().attached.at(-1)?.label).toBe('f3.py');
 	});
 
+	it('masks secrets in what it attaches and says so', () => {
+		const key = `sk-ant-${'a1B2'.repeat(10)}`;
+		useToastStore.setState({ toasts: [] });
+		useChat.setState({ attached: [] });
+		useChat.getState().attach({
+			kind: 'file',
+			label: 'app.py',
+			language: 'python',
+			text: `client = Anthropic(api_key="${key}")`,
+		});
+		expect(useChat.getState().attached[0]?.text).not.toContain(key);
+		expect(useToastStore.getState().toasts.at(-1)?.title).toBe('Secrets kept out of the chat');
+	});
+
 	it('clamps a label to what the request allows', () => {
 		useChat.setState({ attached: [] });
 		useChat.getState().attach(file('x'.repeat(600)));

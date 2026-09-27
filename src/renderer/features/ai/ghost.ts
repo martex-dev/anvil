@@ -9,6 +9,7 @@ import { toWorkspacePath } from '../../lib/monaco/workspace-root';
 import { queryClient } from '../../lib/query-client';
 import { AI_SETTINGS_KEY } from './ai-settings';
 import { beginGhostRequest, useGhostStatus } from './ghost-status';
+import { hasSecrets, isSecretFile } from './secret-filter';
 
 const PREFIX_CHARS = 6_000;
 const SUFFIX_CHARS = 2_000;
@@ -18,6 +19,15 @@ export function shouldSuggest(lineBefore: string, lineAfter: string): boolean {
 	if (/\w$/.test(lineBefore) && /^\w/.test(lineAfter)) return false;
 	// Only closing brackets/quotes may follow the cursor on the same line.
 	return /^[\s)\]}"'`;:,]*$/.test(lineAfter);
+}
+
+/**
+ * Autocomplete sends code on every pause in typing, with nobody choosing what goes out: never
+ * a key file, nor code around the cursor that the Secret Shield flags.
+ */
+export function mayAutocomplete(path: string, prefix: string, suffix: string): boolean {
+	// Joined, they are the real text around the cursor: a key split by it is still found.
+	return !isSecretFile(path) && !hasSecrets(prefix + suffix);
 }
 
 /** Drops the part of a suggestion that already exists right after the cursor. */
@@ -100,6 +110,7 @@ export function registerGhostText(monaco: MonacoApi): Monaco.IDisposable {
 					return { items: last.text ? [{ insertText: last.text, range }] : [] };
 
 				if (!(await sleep(settings.ghostDelayMs, token))) return { items: [] };
+				if (!mayAutocomplete(path, prefix, suffix)) return { items: [] };
 				const requestId = crypto.randomUUID();
 				const cancel = token.onCancellationRequested(
 					() => void call('ai:cancel', requestId).catch(() => undefined),

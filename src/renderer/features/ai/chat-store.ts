@@ -5,6 +5,7 @@ import type { AiContext, AiModelRef } from '@shared/ipc/channels/ai';
 import { call } from '../../lib/ipc';
 import { toast } from '../../stores/toast-store';
 import { buildContext, buildHistory, MAX_CONTEXT } from './chat-history';
+import { safeContext } from './secret-filter';
 
 export interface ChatMessage {
 	id: string;
@@ -121,8 +122,11 @@ export const useChat = create<ChatState>((set, get) => {
 		draft: '',
 		setDraft: (draft) => set({ draft }),
 		attach: (raw) => {
+			// Every chat attachment passes here, so this is where secrets are masked: the model
+			// can explain or fix code without ever seeing a key's value.
+			const { item: safe, hidden } = safeContext(raw);
 			// Labels are capped by the ai:send schema; a longer one would fail the whole request.
-			const item = { ...raw, label: raw.label.slice(0, MAX_LABEL) };
+			const item = { ...safe, label: safe.label.slice(0, MAX_LABEL) };
 			// One item per kind+label: re-attaching the same file refreshes it.
 			const others = get().attached.filter(
 				(a) => !(a.kind === item.kind && a.label === item.label),
@@ -135,6 +139,11 @@ export const useChat = create<ChatState>((set, get) => {
 				return;
 			}
 			set({ attached: [...others, item] });
+			if (hidden > 0)
+				toast.info(
+					'Secrets kept out of the chat',
+					`${item.label}: ${hidden === 1 ? 'one secret was' : `${hidden} secrets were`} masked before sending.`,
+				);
 		},
 		detach: (index) => set((s) => ({ attached: s.attached.filter((_, i) => i !== index) })),
 		send: (text, model) => {

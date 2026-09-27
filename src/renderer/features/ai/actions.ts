@@ -20,6 +20,7 @@ import {
 } from './editor-context';
 import { startInlineEdit } from './inline-edit';
 import { streamOnce } from './requests';
+import { maskSecrets } from './secret-filter';
 
 /** Opens the AI panel and sends a prompt with the given context attached. */
 export async function askChat(prompt: string, context: AiContext[]): Promise<void> {
@@ -253,7 +254,8 @@ export async function generateCommitMessage(onPartial: (text: string) => void): 
 				kind: 'diff',
 				label: truncated ? 'staged diff (truncated)' : 'staged diff',
 				language: 'diff',
-				text: diff,
+				// The message needs what changed, not a staged key's value.
+				text: maskSecrets(diff).text,
 			},
 		],
 		onPartial: (t) => onPartial(t.trim()),
