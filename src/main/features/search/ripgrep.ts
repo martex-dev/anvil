@@ -7,10 +7,34 @@ import type { SearchQuery, SearchResult } from '@shared/ipc/channels/search';
 import { SearchQuerySchema } from '@shared/ipc/channels/search';
 
 import { AnvilError } from '../../core/errors';
-import { IGNORED_DIRS } from '../../core/workspace/watcher';
 import { PER_FILE_LIMIT, ResultCollector, splitGlobs } from './rg-parse';
 
 export const MATCH_LIMIT = 2_000;
+
+/**
+ * Always skipped, even outside a git repo or when committed: dependency and virtualenv trees and
+ * tool caches, which are never what a search is for. Build output (out, dist, build, .cache) is
+ * left to .gitignore, like VS Code does: a tracked dist/ or a data folder named build/ is searched.
+ */
+export const SEARCH_EXCLUDED_DIRS = [
+	'.git',
+	'node_modules',
+	'.venv',
+	'venv',
+	'__pycache__',
+	'.pytest_cache',
+	'.ruff_cache',
+	'.mypy_cache',
+];
+
+/**
+ * .gitignore decides what else is skipped, in a folder that isn't a git repo too (ripgrep only
+ * reads .gitignore inside one unless told otherwise).
+ */
+const excludeArgs = (): string[] => [
+	'--no-require-git',
+	...SEARCH_EXCLUDED_DIRS.flatMap((dir) => ['--glob', `!**/${dir}/**`]),
+];
 const TIMEOUT_MS = 20_000;
 const STDERR_LIMIT = 4_000;
 
@@ -51,7 +75,7 @@ export function rgArgs(input: SearchQuery): string[] {
 	const args = [
 		'--json',
 		// Dotfiles (.github/, .env.example, .pre-commit-config.yaml) are code too, and Quick Open
-		// lists them; .git itself is excluded through IGNORED_DIRS below.
+		// lists them; .git itself is excluded through SEARCH_EXCLUDED_DIRS below.
 		'--hidden',
 		'--max-filesize',
 		'2M',
@@ -62,8 +86,7 @@ export function rgArgs(input: SearchQuery): string[] {
 	];
 	if (!q.regex) args.push('--fixed-strings');
 	if (q.wholeWord) args.push('--word-regexp');
-	// .gitignore is honoured by default; these also apply outside git repos.
-	for (const dir of IGNORED_DIRS) args.push('--glob', `!**/${dir}/**`);
+	args.push(...excludeArgs());
 	for (const glob of splitGlobs(q.include)) args.push('--glob', glob);
 	for (const glob of splitGlobs(q.exclude)) args.push('--glob', `!${glob}`);
 	args.push('--', q.query, '.');
@@ -152,8 +175,7 @@ export function listFiles(
 	root: string,
 	binary: string = rgPath(),
 ): Promise<{ files: string[]; truncated: boolean }> {
-	const args = ['--files', '--hidden', '--glob', '!.git/**'];
-	for (const dir of IGNORED_DIRS) args.push('--glob', `!**/${dir}/**`);
+	const args = ['--files', '--hidden', ...excludeArgs()];
 	const child = spawn(binary, args, { cwd: root, windowsHide: true });
 	const files: string[] = [];
 	let truncated = false;
@@ -167,7 +189,11 @@ export function listFiles(
 		if (line) files.push(line.replaceAll('\\', '/').replace(/^\.\//, ''));
 	});
 	return new Promise((resolve, reject) => {
-		const timer = setTimeout(() => child.kill(), TIMEOUT_MS);
+		const timer = setTimeout(() => {
+			// A partial list must say so, or Quick Open silently misses files.
+			truncated = true;
+			child.kill();
+		}, TIMEOUT_MS);
 		child.on('error', (error) => {
 			clearTimeout(timer);
 			reject(new AnvilError('SEARCH_FAILED', `Could not run ripgrep: ${error.message}`));

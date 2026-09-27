@@ -21,9 +21,6 @@ const ALWAYS_IGNORED = new Set([
 /** Folder names that are build output in JS/Python projects, but often data folders elsewhere. */
 const BUILD_OUTPUT = ['out', 'dist', 'build'];
 
-/** Everything search skips (it has no per-project context, and build output is noise there). */
-export const IGNORED_DIRS: ReadonlySet<string> = new Set([...ALWAYS_IGNORED, ...BUILD_OUTPUT]);
-
 /**
  * Top-level folders to treat as build output, based on the project files in the root. A research
  * script writing results to out/ or build/ elsewhere must still be watched.
