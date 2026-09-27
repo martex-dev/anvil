@@ -38,6 +38,9 @@ nsis:
   # Settings, keys and history (userData) survive uninstall/reinstall.
   deleteAppDataOnUninstall: false
   artifactName: Anvil-Setup-${version}.${ext}
+  # "Open with Anvil" in Explorer and in the Open with list of .py/.ipynb/.csv/.parquet. Not
+  # `fileAssociations`: that makes Anvil the default program for those types (ADR-021).
+  include: resources/installer/installer.nsh
 
 publish:
   provider: github
