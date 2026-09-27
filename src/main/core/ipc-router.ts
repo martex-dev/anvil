@@ -80,16 +80,17 @@ export class IpcRouter {
 		}
 
 		const def = this.contract[channel];
-		const parsed = (def.input as z.ZodType).safeParse(rawInput);
-		if (!parsed.success) {
-			const message = parsed.error.issues
-				.map((i) => `${i.path.join('.') || 'input'}: ${i.message}`)
-				.join('; ');
-			this.logger.warn('[ipc] invalid input', { channel, message });
-			return err('INVALID_INPUT', message);
-		}
-
 		try {
+			// Inside the try: a refine or transform that throws (instead of adding an issue) must
+			// still come back as a Result, not as a rejected invoke.
+			const parsed = (def.input as z.ZodType).safeParse(rawInput);
+			if (!parsed.success) {
+				const message = parsed.error.issues
+					.map((i) => `${i.path.join('.') || 'input'}: ${i.message}`)
+					.join('; ');
+				this.logger.warn('[ipc] invalid input', { channel, message });
+				return err('INVALID_INPUT', message);
+			}
 			const output = await handler(parsed.data);
 			const checked = (def.output as z.ZodType).safeParse(output);
 			if (!checked.success) {
