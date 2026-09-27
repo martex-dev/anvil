@@ -48,6 +48,7 @@ General-purpose editors treat a backtest like any other script. Anvil is tuned f
 
 - **Interpreter picker**: finds `.venv`/`venv`, uv, conda and system Pythons. The language server, run commands and REPL all follow it.
 - **Run file** (`F5`), **run cell** (`Ctrl+Enter`), **run cell and advance** (`Shift+Enter`), **run selection** (`F9`). Cells go to a persistent IPython REPL, Jupyter-style, with your variables kept between runs.
+- **Test Explorer for pytest**: every test as a tree (file, class, function, parametrized case) with live pass/fail marks, Run All / Run Failed / Re-run Last, a filter, and the failure's traceback with clickable `file:line`. A "▶ Run test | Debug (pdb)" lens sits above each test in the editor, and `Ctrl+Shift+F10` runs the test at the cursor. pytest comes from your selected interpreter; if it's missing, the view offers to install it there.
 - **Data viewer** for CSV, TSV, JSON/JSONL, Parquet, Feather and Excel. Virtualized to a million rows, with filter, sort, cell-range copy and a column profile (nulls, unique, mean/std, histogram). Parquet and Excel are read by your own Python (polars first, then pandas).
 - **Notebook viewer** for `.ipynb` (outputs, images, tracebacks), with one-click conversion to a `# %%` script. Plus image and Markdown previews.
 - **Tasks**: npm scripts, pyproject scripts, poe, pytest, ruff, Makefile and justfile targets, detected and runnable in one click.
