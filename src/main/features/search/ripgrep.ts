@@ -1,15 +1,31 @@
 import { type ChildProcess, spawn } from 'node:child_process';
+import { stat } from 'node:fs/promises';
+import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 
 import log from 'electron-log/main';
 
-import type { SearchQuery, SearchResult } from '@shared/ipc/channels/search';
+import type { SearchFile, SearchQuery, SearchResult } from '@shared/ipc/channels/search';
 import { SearchQuerySchema } from '@shared/ipc/channels/search';
 
 import { AnvilError } from '../../core/errors';
 import { PER_FILE_LIMIT, ResultCollector, splitGlobs } from './rg-parse';
 
 export const MATCH_LIMIT = 2_000;
+
+/**
+ * Records each file's mtime, so Replace can tell whether a file changed since the search. Taken
+ * right after ripgrep finishes; an edit in that instant is still caught by Replace re-checking
+ * that every listed line matches.
+ */
+async function withMtimes(root: string, files: SearchFile[]): Promise<SearchFile[]> {
+	return Promise.all(
+		files.map(async (f) => {
+			const s = await stat(join(root, f.path)).catch(() => null);
+			return s ? { ...f, mtimeMs: s.mtimeMs } : f;
+		}),
+	);
+}
 
 /**
  * Always skipped, even outside a git repo or when committed: dependency and virtualenv trees and
@@ -156,13 +172,15 @@ export class Ripgrep {
 					return;
 				}
 				if (code === 2) log.warn('[search] ripgrep reported errors', { stderr });
-				resolve({
-					files: collector.result(),
-					matchCount: collector.count,
-					truncated: collector.truncated || timedOut,
-					timedOut,
-					durationMs: Math.round(performance.now() - started),
-				});
+				void withMtimes(root, collector.result()).then((files) =>
+					resolve({
+						files,
+						matchCount: collector.count,
+						truncated: collector.truncated || timedOut,
+						timedOut,
+						durationMs: Math.round(performance.now() - started),
+					}),
+				);
 			});
 		});
 	}
