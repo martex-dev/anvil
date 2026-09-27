@@ -27,6 +27,19 @@ export const PythonToolsSchema = z.object({
 });
 export type PythonTools = z.infer<typeof PythonToolsSchema>;
 
+/** One user variable in the REPL, summarised for the Variables panel (repl-vars.ts). */
+export const ReplVariableSchema = z.object({
+	name: z.string().max(256),
+	/** e.g. `int`, `pandas.DataFrame`, `numpy.ndarray float64`. */
+	type: z.string().max(256),
+	/** Shape (`1000 x 5`) or length; empty when neither applies. */
+	size: z.string().max(128),
+	/** A one-line, bounded repr. */
+	value: z.string().max(400),
+});
+export type ReplVariable = z.infer<typeof ReplVariableSchema>;
+export const ReplVariablesSchema = z.array(ReplVariableSchema).max(500);
+
 export const pythonChannels = defineChannels({
 	/** Interpreters found for the open folder: local venvs, conda envs, PATH pythons. */
 	'python:envs': { input: z.object({ refresh: z.boolean() }), output: z.array(PythonEnvSchema) },
@@ -59,6 +72,8 @@ export const pythonChannels = defineChannels({
 		output: z.object({ content: z.string() }),
 	},
 	/** The shell command that runs a file with the selected interpreter. */
+	/** The REPL's variables as of its last run (empty before a REPL has started). */
+	'python:vars': { input: z.void(), output: ReplVariablesSchema },
 	'python:runCommand': {
 		input: z.object({ path: z.string().min(1).max(4096), module: z.boolean() }),
 		output: z.object({ command: z.string() }),
@@ -66,6 +81,8 @@ export const pythonChannels = defineChannels({
 });
 
 export const pythonEvents = {
+	/** The REPL finished running something; its variables as they are now. */
+	'python:vars': ReplVariablesSchema,
 	/** `root`: the folder it was resolved for, so a late event never lands on the next folder. */
 	'python:changed': z.object({
 		root: z.string().nullable(),

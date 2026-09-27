@@ -12,6 +12,7 @@ import { psQuote, shQuote } from '../../core/shell-quote';
 import { toAbsolute } from '../../core/workspace/fs-guard';
 import { discoverEnvs, findEnv, interpreterExists } from './envs';
 import { activatedEnv, envTool, interpreter, setReplSupport } from './interpreter';
+import { readReplVars, REPL_VARS_HELPER, watchReplVars } from './repl-vars';
 import { runRuffFormat } from './ruff-format';
 import { cellCommand, CellStager, removeCellFiles, REPL_STARTUP, stagedCode } from './staged-cells';
 import { LocalEnvWatcher } from './venv-watch';
@@ -205,7 +206,11 @@ export const pythonFeature: MainFeature = {
 			return { ipython, pytest, ruff };
 		});
 
-		writeFileSync(join(ctx.dataDir, 'anvil_startup.py'), REPL_STARTUP, 'utf8');
+		writeFileSync(
+			join(ctx.dataDir, 'anvil_startup.py'),
+			REPL_STARTUP + REPL_VARS_HELPER,
+			'utf8',
+		);
 		const cells = new CellStager(join(ctx.dataDir, 'cells'));
 		for (const dir of [ctx.dataDir, cells.dir]) {
 			try {
@@ -216,6 +221,15 @@ export const pythonFeature: MainFeature = {
 			}
 		}
 		setReplSupport({ startup: join(ctx.dataDir, 'anvil_startup.py'), cells: cells.dir });
+		// The Variables panel: the REPL rewrites vars.json after each run.
+		ctx.onDispose(
+			watchReplVars(
+				cells.dir,
+				(vars) => ctx.emit('python:vars', vars),
+				(error) => ctx.log.warn('variables watch failed', { message: error.message }),
+			),
+		);
+		ctx.ipc.handle('python:vars', () => readReplVars(cells.dir));
 		ctx.ipc.handle('python:stageCell', ({ code, source }) => {
 			const root = ctx.workspace.root();
 			const file = source && root ? toAbsolute(root, source.path) : null;

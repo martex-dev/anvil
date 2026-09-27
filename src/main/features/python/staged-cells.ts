@@ -21,7 +21,12 @@ export const REPL_STARTUP = [
 	'\t\t\t_p = _f.read().strip() or _p',
 	'\texcept OSError:',
 	'\t\tpass',
-	"\texec(compile(_code, _p, 'exec'), globals())",
+	'\ttry:',
+	"\t\texec(compile(_code, _p, 'exec'), globals())",
+	'\tfinally:',
+	'\t\t# IPython refreshes the Variables panel after every run; plain Python only here.',
+	"\t\tif 'get_ipython' not in globals() and '_anvil_vars' in globals():",
+	'\t\t\t_anvil_vars()',
 	'',
 ].join('\n');
 
