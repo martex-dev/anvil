@@ -1,7 +1,6 @@
 import { existsSync } from 'node:fs';
-import { delimiter, dirname, join } from 'node:path';
 
-import { candidates, envDirOf } from './envs';
+import { candidates } from './envs';
 
 /**
  * The Python every feature uses for the open folder: Run, the REPL, the language server,
@@ -77,25 +76,8 @@ class InterpreterState {
 
 export const interpreter = new InterpreterState();
 
-/**
- * Environment that makes a child process behave as if the env were activated: its folder and
- * Scripts/bin on PATH, VIRTUAL_ENV for venvs. No Activate.ps1, so execution policy never matters.
- */
-export function activatedEnv(
-	python: string,
-	base: NodeJS.ProcessEnv = process.env,
-): NodeJS.ProcessEnv {
-	const env: NodeJS.ProcessEnv = { ...base };
-	const envDir = envDirOf(python);
-	const bins = [dirname(python)];
-	const scripts = join(envDir, process.platform === 'win32' ? 'Scripts' : 'bin');
-	if (!bins.includes(scripts) && existsSync(scripts)) bins.push(scripts);
-	const pathKey = Object.keys(env).find((k) => k.toLowerCase() === 'path') ?? 'PATH';
-	env[pathKey] = [...bins, env[pathKey] ?? ''].join(delimiter);
-	if (existsSync(join(envDir, 'pyvenv.cfg'))) env['VIRTUAL_ENV'] = envDir;
-	else if (existsSync(join(envDir, 'conda-meta'))) env['CONDA_PREFIX'] = envDir;
-	return env;
-}
+// Lives in its own module; re-exported because other features may only import this one.
+export { activatedEnv } from './activation';
 
 /** Where the REPL helper script and staged cells live; set by the Python feature on start. */
 let replSupport: { startup: string; cells: string } | null = null;

@@ -16,7 +16,7 @@ const spawnPty: SpawnPty = (spec, { cwd, cols, rows }) =>
 		cwd,
 		cols,
 		rows,
-		env: { ...process.env, ...spec.env } as Record<string, string>,
+		env: spec.env,
 		// ConPTY is the modern Windows console backend (Windows 10 1809+).
 		useConpty: true,
 	});
