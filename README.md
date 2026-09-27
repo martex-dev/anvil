@@ -22,7 +22,7 @@ General-purpose editors treat a backtest like any other script. Anvil is tuned f
 
 ### Editing
 
-- **Monaco with real language servers**: basedpyright for Python (using _your_ interpreter's site-packages), typescript-language-server for TS/JS. Go to definition, hovers, inlay hints and diagnostics.
+- **Monaco with real language servers**: basedpyright for Python (using _your_ interpreter's site-packages), typescript-language-server for TS/JS. Go to definition, hovers, inlay hints and diagnostics. When your environment has ruff, `ruff server` adds lint problems, `Ctrl+.` quick fixes, fix-all and Organize Imports, following your `pyproject.toml`.
 - **Split editors, preview tabs, breadcrumbs** that show the class › method and the `# %%` cell you're in.
 - **Git in the gutter**: added / changed / deleted bars against HEAD, plus inline blame for the current line.
 - **Local history**: every save is snapshotted (50 per file, 30 days). Diff or roll back without git.

@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { existsSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
 import { z } from 'zod';
@@ -10,8 +10,8 @@ import { AnvilError, errorMessage } from '../../core/errors';
 import type { MainFeature } from '../../core/features';
 import { psQuote, shQuote } from '../../core/shell-quote';
 import { toAbsolute } from '../../core/workspace/fs-guard';
-import { discoverEnvs, envDirOf, findEnv, interpreterExists } from './envs';
-import { activatedEnv, interpreter, setReplSupport } from './interpreter';
+import { discoverEnvs, findEnv, interpreterExists } from './envs';
+import { activatedEnv, envTool, interpreter, setReplSupport } from './interpreter';
 import { runRuffFormat } from './ruff-format';
 import { cellCommand, CellStager, removeCellFiles, REPL_STARTUP, stagedCode } from './staged-cells';
 import { LocalEnvWatcher } from './venv-watch';
@@ -241,13 +241,8 @@ export const pythonFeature: MainFeature = {
 			const root = ctx.workspace.root();
 			const python = interpreter.resolve(root);
 			const env = python ? activatedEnv(python) : process.env;
-			const envRuff = python
-				? join(
-						envDirOf(python),
-						process.platform === 'win32' ? 'Scripts\\ruff.exe' : 'bin/ruff',
-					)
-				: null;
-			const ruff = envRuff && existsSync(envRuff) ? envRuff : 'ruff';
+			// 'ruff' as a last resort, so a missing ruff reports "not installed" from the spawn.
+			const ruff = envTool(python, 'ruff') ?? 'ruff';
 			// Run from the workspace root like VS Code's ruff does, so the fallback config and any
 			// relative path ruff prints resolve against the project rather than a subfolder.
 			const abs = root ? toAbsolute(root, path) : null;

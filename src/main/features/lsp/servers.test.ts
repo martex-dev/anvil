@@ -35,3 +35,22 @@ describe('tsserverPath', () => {
 		expect(tsserverPath(root, true)).toBe(tsserverPath(root));
 	});
 });
+
+describe('ruff server', () => {
+	it("runs the environment's own ruff as `ruff server`", () => {
+		const env = mkdtempSync(join(tmpdir(), 'anvil-env-'));
+		const bin = join(env, process.platform === 'win32' ? 'Scripts' : 'bin');
+		mkdirSync(bin);
+		const exe = join(bin, process.platform === 'win32' ? 'ruff.exe' : 'ruff');
+		writeFileSync(exe, '');
+		const python = join(bin, process.platform === 'win32' ? 'python.exe' : 'python');
+		try {
+			const launch = serverLaunch('ruff', root, python, { PATH: '' });
+			expect(launch.command).toBe(exe);
+			expect(launch.args).toEqual(['server']);
+			expect(launch.languageIds).toEqual(['python']);
+		} finally {
+			rmSync(env, { recursive: true, force: true });
+		}
+	});
+});

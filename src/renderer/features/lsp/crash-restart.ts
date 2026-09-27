@@ -29,6 +29,7 @@ export class RestartBudget {
 
 const budgets: Record<LspLanguage, RestartBudget> = {
 	python: new RestartBudget(),
+	ruff: new RestartBudget(),
 	typescript: new RestartBudget(),
 };
 

@@ -1,4 +1,25 @@
-import { candidates, interpreterExists } from './envs';
+import { existsSync } from 'node:fs';
+import { delimiter, join } from 'node:path';
+
+import { candidates, envDirOf, interpreterExists } from './envs';
+
+/**
+ * A command-line tool that belongs to the interpreter's environment (ruff, pytest…): its own
+ * Scripts/bin copy first, then the first one on PATH; null when neither exists.
+ */
+export function envTool(python: string | null, name: string): string | null {
+	const exe = process.platform === 'win32' ? `${name}.exe` : name;
+	if (python) {
+		const own = join(envDirOf(python), process.platform === 'win32' ? 'Scripts' : 'bin', exe);
+		if (existsSync(own)) return own;
+	}
+	for (const dir of (process.env['PATH'] ?? '').split(delimiter)) {
+		if (!dir) continue;
+		const candidate = join(dir, exe);
+		if (existsSync(candidate)) return candidate;
+	}
+	return null;
+}
 
 /**
  * The Python every feature uses for the open folder: Run, the REPL, the language server,

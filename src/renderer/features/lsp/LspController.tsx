@@ -4,7 +4,7 @@ import { useWorkspace } from '../../app/hooks/use-workspace';
 import { onMonacoLoaded } from '../../lib/monaco/load';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { ensureClient, restart, stopAll } from './lsp-clients';
-import { serverFor, useLspStatus } from './lsp-status';
+import { serversFor, useLspStatus } from './lsp-status';
 import { isInWorkspace, type UriLike } from './workspace-match';
 
 /**
@@ -16,7 +16,9 @@ export function LspController(): null {
 	const root = info.root;
 	// A new interpreter means new site-packages; main already stopped the old Python server.
 	useAnvilEvent('python:changed', () => {
-		if (useLspStatus.getState().status.python.state !== 'idle') void restart(['python']);
+		const { status } = useLspStatus.getState();
+		const running = (['python', 'ruff'] as const).filter((l) => status[l].state !== 'idle');
+		if (running.length > 0) void restart(running);
 	});
 
 	useEffect(() => {
@@ -25,8 +27,8 @@ export function LspController(): null {
 		const offLoaded = onMonacoLoaded((monaco) => {
 			const consider = (model: { uri: UriLike; getLanguageId(): string }): void => {
 				if (!isInWorkspace(root, model.uri)) return;
-				const language = serverFor(model.getLanguageId());
-				if (language) void ensureClient(language);
+				for (const language of serversFor(model.getLanguageId()))
+					void ensureClient(language);
 			};
 			monaco.editor.getModels().forEach(consider);
 			const created = monaco.editor.onDidCreateModel(consider);

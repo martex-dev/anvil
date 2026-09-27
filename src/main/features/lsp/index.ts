@@ -10,7 +10,7 @@ import { AnvilError } from '../../core/errors';
 import type { MainFeature } from '../../core/features';
 import { interpreter } from '../python/interpreter';
 import { LspSession } from './lsp-session';
-import { serverLaunch, workspaceTsserver } from './servers';
+import { RuffMissingError, type ServerLaunch, serverLaunch, workspaceTsserver } from './servers';
 
 const TrustSchema = z.boolean();
 
@@ -48,8 +48,10 @@ export const lspFeature: MainFeature = {
 		// A different interpreter means different site-packages: the renderer restarts Python.
 		ctx.onDispose(
 			interpreter.onChange(() => {
-				const id = byLanguage.get('python');
-				if (id) void stop(id);
+				for (const language of ['python', 'ruff'] as const) {
+					const id = byLanguage.get(language);
+					if (id) void stop(id);
+				}
 			}),
 		);
 
@@ -62,13 +64,21 @@ export const lspFeature: MainFeature = {
 			if (previous) await stop(previous);
 
 			const id = randomUUID();
-			const launch = serverLaunch(
-				language,
-				root,
-				interpreter.resolve(root),
-				process.env,
-				language === 'typescript' && useWorkspaceTs(root),
-			);
+			let launch: ServerLaunch;
+			try {
+				launch = serverLaunch(
+					language,
+					root,
+					interpreter.resolve(root),
+					process.env,
+					language === 'typescript' && useWorkspaceTs(root),
+				);
+			} catch (error) {
+				// The renderer shows this as "not installed", not as a failure.
+				if (error instanceof RuffMissingError)
+					throw new AnvilError('LSP_UNAVAILABLE', error.message);
+				throw error;
+			}
 			// Not the project folder: Windows locks a process's cwd, so the user couldn't rename or
 			// delete the folder while its server runs. Servers get the folder from rootUri anyway.
 			const session = new LspSession(id, launch, tmpdir(), {

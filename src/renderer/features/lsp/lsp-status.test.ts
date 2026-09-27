@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { describeLanguage, serverFor } from './lsp-status';
+import { describeLanguage, serversFor } from './lsp-status';
 
 describe('describeLanguage', () => {
 	it('names the state in words, not only a colour', () => {
@@ -19,10 +19,10 @@ describe('describeLanguage', () => {
 	});
 });
 
-describe('serverFor', () => {
+describe('serversFor', () => {
 	it('maps Monaco language ids to servers', () => {
-		expect(serverFor('python')).toBe('python');
-		expect(serverFor('typescriptreact')).toBe('typescript');
-		expect(serverFor('markdown')).toBeNull();
+		expect(serversFor('python')).toEqual(['python', 'ruff']);
+		expect(serversFor('typescriptreact')).toEqual(['typescript']);
+		expect(serversFor('markdown')).toEqual([]);
 	});
 });

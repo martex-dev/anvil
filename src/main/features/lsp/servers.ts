@@ -1,13 +1,19 @@
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-import { activatedEnv } from '../python/interpreter';
+import type { LspLanguage } from '@shared/ipc/channels/lsp';
 
-export type LspLanguage = 'python' | 'typescript';
+import { activatedEnv, envTool } from '../python/interpreter';
+
+export type { LspLanguage };
 
 export interface ServerLaunch {
-	/** Script run with Electron's own Node (ELECTRON_RUN_AS_NODE), so no system Node is needed. */
+	/**
+	 * Script run with Electron's own Node (ELECTRON_RUN_AS_NODE), so no system Node is needed;
+	 * or, for a native server (ruff), the executable itself.
+	 */
 	script: string;
+	command?: string;
 	args: string[];
 	env: NodeJS.ProcessEnv;
 	/** Monaco language ids this server handles. */
@@ -44,6 +50,20 @@ export function serverLaunch(
 	baseEnv = process.env,
 	useWorkspaceTs = false,
 ): ServerLaunch {
+	if (language === 'ruff') {
+		const ruff = envTool(python, 'ruff');
+		if (!ruff) throw new RuffMissingError();
+		return {
+			script: '',
+			command: ruff,
+			args: ['server'],
+			env: python ? activatedEnv(python, baseEnv) : baseEnv,
+			languageIds: ['python'],
+			// The project's pyproject.toml / ruff.toml decides the rules; these only switch on
+			// the code actions ruff offers besides quick fixes.
+			initializationOptions: { settings: { organizeImports: true, fixAll: true } },
+		};
+	}
 	if (language === 'python') {
 		// basedpyright finds site-packages by asking `python`; put the chosen interpreter first.
 		const env: NodeJS.ProcessEnv = {
@@ -65,4 +85,11 @@ export function serverLaunch(
 		languageIds: ['typescript', 'typescriptreact', 'javascript', 'javascriptreact'],
 		initializationOptions: { tsserver: { path: tsserverPath(root, useWorkspaceTs) } },
 	};
+}
+
+/** ruff isn't in the selected environment or on PATH: linting is simply off, not broken. */
+export class RuffMissingError extends Error {
+	constructor() {
+		super('ruff is not installed. Add it with `uv add --dev ruff` or `pip install ruff`.');
+	}
 }

@@ -37,6 +37,17 @@ const builtin = (
 });
 
 export const BUILTIN_EDITOR_COMMANDS: Command[] = [
+	builtin('editor.organizeImports', 'Organize Imports', 'Edit', 'editor.action.organizeImports', [
+		'Shift+Alt+O',
+		'sort imports',
+		'isort',
+		'ruff',
+	]),
+	builtin('editor.quickFix', 'Quick Fix…', 'Edit', 'editor.action.quickFix', [
+		'Ctrl+.',
+		'code action',
+		'fix lint',
+	]),
 	builtin(
 		'editor.renameSymbol',
 		'Rename Symbol',

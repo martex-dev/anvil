@@ -25,7 +25,10 @@ export class LspSession {
 		events: SessionEvents,
 		node: string = process.execPath,
 	) {
-		this.child = spawn(node, [launch.script, ...launch.args], {
+		const [file, args] = launch.command
+			? [launch.command, launch.args]
+			: [node, [launch.script, ...launch.args]];
+		this.child = spawn(file, args, {
 			cwd,
 			env: launch.env,
 			windowsHide: true,

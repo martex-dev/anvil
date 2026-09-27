@@ -2,7 +2,8 @@ import { create } from 'zustand';
 
 import type { LspLanguage } from '@shared/ipc/channels/lsp';
 
-export type LspState = 'idle' | 'starting' | 'ready' | 'error';
+/** 'unavailable': the server isn't installed (ruff), so its features are simply off. */
+export type LspState = 'idle' | 'starting' | 'ready' | 'error' | 'unavailable';
 
 export interface LanguageStatus {
 	state: LspState;
@@ -11,6 +12,7 @@ export interface LanguageStatus {
 
 export const LANGUAGE_LABEL: Record<LspLanguage, string> = {
 	python: 'Python',
+	ruff: 'Ruff',
 	typescript: 'TS/JS',
 };
 
@@ -21,6 +23,7 @@ export const useLspStatus = create<{
 }>((set) => ({
 	status: {
 		python: { state: 'idle', message: null },
+		ruff: { state: 'idle', message: null },
 		typescript: { state: 'idle', message: null },
 	},
 	set: (language, state, message = null) =>
@@ -29,16 +32,17 @@ export const useLspStatus = create<{
 		set({
 			status: {
 				python: { state: 'idle', message: null },
+				ruff: { state: 'idle', message: null },
 				typescript: { state: 'idle', message: null },
 			},
 		}),
 }));
 
-/** Monaco language id → the server that handles it. */
-export function serverFor(languageId: string): LspLanguage | null {
-	if (languageId === 'python') return 'python';
-	if (/^(typescript|javascript)(react)?$/.test(languageId)) return 'typescript';
-	return null;
+/** Monaco language id → the servers that handle it (Python: types and lint). */
+export function serversFor(languageId: string): LspLanguage[] {
+	if (languageId === 'python') return ['python', 'ruff'];
+	if (/^(typescript|javascript)(react)?$/.test(languageId)) return ['typescript'];
+	return [];
 }
 
 const STATE_LABEL: Record<LspState, string> = {
@@ -46,6 +50,7 @@ const STATE_LABEL: Record<LspState, string> = {
 	starting: 'starting',
 	ready: 'ready',
 	error: 'failed',
+	unavailable: 'not installed',
 };
 
 /** One language's state in words, with the failure reason when there is one. */

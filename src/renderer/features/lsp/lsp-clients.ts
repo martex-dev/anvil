@@ -3,7 +3,7 @@ import type { CloseAction, ErrorAction } from 'vscode-languageclient/browser';
 
 import type { LspLanguage } from '@shared/ipc/channels/lsp';
 
-import { call } from '../../lib/ipc';
+import { call, IpcCallError } from '../../lib/ipc';
 import { rlog } from '../../lib/log';
 import { restartBudget } from './crash-restart';
 import { ipcTransports } from './ipc-transport';
@@ -35,7 +35,7 @@ const clients = new Map<LspLanguage, Running>();
 const starting = new Map<LspLanguage, Promise<void>>();
 // Bumped per language when its server is stopped, so a start still in flight is thrown away
 // instead of registering a client for the old folder or interpreter.
-const generations: Record<LspLanguage, number> = { python: 0, typescript: 0 };
+const generations: Record<LspLanguage, number> = { python: 0, ruff: 0, typescript: 0 };
 
 /** Disposes a client, releasing its IPC listeners; failures are logged, never thrown. */
 async function disposeClient(client: MonacoLanguageClient): Promise<void> {
@@ -142,9 +142,14 @@ async function start(language: LspLanguage): Promise<void> {
 		// awaited, and not in sequence: disposing a client whose start never finished can hang.
 		if (client) void disposeClient(client);
 		if (session) void stopSession(session);
-		rlog.error('lsp', `${language} server failed to start`, error);
 		// A start superseded by a stop or restart no longer owns the status.
 		if (!current()) return;
+		// Not installed (ruff): its features are off, which is not an error worth a red dot.
+		if (error instanceof IpcCallError && error.code === 'LSP_UNAVAILABLE') {
+			useLspStatus.getState().set(language, 'unavailable', error.message);
+			return;
+		}
+		rlog.error('lsp', `${language} server failed to start`, error);
 		useLspStatus
 			.getState()
 			.set(language, 'error', error instanceof Error ? error.message : String(error));

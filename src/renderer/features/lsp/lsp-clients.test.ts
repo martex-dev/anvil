@@ -37,7 +37,17 @@ const call = vi.fn(async (channel: string, input: { language?: string; session?:
 	return undefined;
 });
 
-vi.mock('../../lib/ipc', () => ({ call }));
+vi.mock('../../lib/ipc', () => ({
+	call,
+	IpcCallError: class IpcCallError extends Error {
+		constructor(
+			readonly code: string,
+			message: string,
+		) {
+			super(message);
+		}
+	},
+}));
 vi.mock('../../lib/log', () => ({ rlog: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 vi.mock('./ipc-transport', () => ({ ipcTransports: () => ({}) }));
 vi.mock('monaco-languageclient', () => ({ MonacoLanguageClient: FakeClient }));
