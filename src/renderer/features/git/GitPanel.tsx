@@ -8,7 +8,7 @@ import { ErrorState } from '../../ui/ErrorState';
 import { Spinner } from '../../ui/Spinner';
 import { ChangeList } from './ChangeList';
 import { CommitBox } from './CommitBox';
-import { initRepository } from './git-actions';
+import { discardChanges, initRepository } from './git-actions';
 import { GitConfirmDialog } from './GitConfirmDialog';
 import { GitHeader } from './GitHeader';
 import { openDiff } from './open-diff';
@@ -119,6 +119,7 @@ function GitPanelBody(): JSX.Element {
 							busy={actions.busy}
 							onOpen={(c) => void openDiff(c, false)}
 							onToggle={actions.stage}
+							onDiscard={(c) => void discardChanges(c)}
 						/>
 					</>
 				)}

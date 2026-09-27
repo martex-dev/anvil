@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -26,6 +26,29 @@ describe('GitService changes', { timeout: 30_000 }, () => {
 		} finally {
 			rmSync(plain, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 		}
+	});
+
+	it('discards unstaged edits back to the index and deletes untracked files', async () => {
+		repo.write('a.txt', 'one\n');
+		repo.write('b.txt', 'b\n');
+		repo.commitAll('first');
+		const git = new GitService(() => repo.dir);
+		// Staged, then edited again: discarding keeps what is staged.
+		repo.write('a.txt', 'staged\n');
+		await git.stage(['a.txt']);
+		repo.write('a.txt', 'unstaged\n');
+		rmSync(join(repo.dir, 'b.txt'));
+		repo.write('new file [1].txt', 'n\n');
+		await git.discard(['a.txt', 'b.txt'], ['new file [1].txt']);
+		expect(readFileSync(join(repo.dir, 'a.txt'), 'utf8')).toBe('staged\n');
+		expect(readFileSync(join(repo.dir, 'b.txt'), 'utf8')).toBe('b\n');
+		expect(existsSync(join(repo.dir, 'new file [1].txt'))).toBe(false);
+		const status = await git.status();
+		expect(status.unstaged).toEqual([]);
+		expect(status.staged.map((c) => c.path)).toEqual(['a.txt']);
+		await expect(git.discard(['../x.txt'], [])).rejects.toMatchObject({
+			code: 'FS_OUTSIDE_WORKSPACE',
+		});
 	});
 
 	it('finds conflict markers left in a conflicted file', async () => {

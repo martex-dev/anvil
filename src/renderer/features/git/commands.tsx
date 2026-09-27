@@ -7,6 +7,7 @@ import {
 	GitBranch,
 	GitCommitHorizontal,
 	History,
+	Undo2,
 } from 'lucide-react';
 
 import type { Command } from '../../app/commands/types';
@@ -16,7 +17,7 @@ import { focusedTab, useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
 import { quickPick } from '../../ui/QuickPick';
 import { useCommitFocus } from './commit-focus';
-import { initRepository } from './git-actions';
+import { discardChanges, initRepository } from './git-actions';
 import { refreshGit, runRemote } from './git-ops';
 import { openDiff } from './open-diff';
 
@@ -145,6 +146,28 @@ export const GIT_COMMANDS: Command[] = [
 			// A failed pull (conflicts, divergence) must be resolved before anything is pushed.
 			if (await runRemote('pull', { announce: true }))
 				await runRemote('push', { announce: true });
+		},
+	},
+	{
+		id: 'git.discardAll',
+		title: 'Discard All Changes…',
+		category: 'Git',
+		keywords: ['revert', 'reset', 'clean'],
+		icon: Undo2,
+		run: async () => {
+			const status = await call('git:status').catch((error: unknown) => {
+				toast.error(
+					'Could not read git status',
+					error instanceof Error ? error.message : undefined,
+				);
+				return null;
+			});
+			if (!status?.isRepo) return;
+			if (status.unstaged.length === 0) {
+				toast.info('Nothing to discard', 'There are no unstaged changes.');
+				return;
+			}
+			await discardChanges(status.unstaged);
 		},
 	},
 	{

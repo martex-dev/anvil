@@ -178,6 +178,24 @@ export class GitService {
 		});
 	}
 
+	/**
+	 * Throws away working-tree changes. Tracked files go back to their index version, so for a
+	 * file staged and then edited only the later, unstaged edits are lost (VS Code's Discard
+	 * Changes). Untracked files are deleted; git has no copy of them, so the UI asks first.
+	 */
+	async discard(tracked: string[], untracked: string[]): Promise<void> {
+		const root = await this.repo();
+		for (const p of [...tracked, ...untracked]) toAbsolute(root, p);
+		const g = git(root, 'write');
+		await queued(root, 'index', async () => {
+			for (const batch of batchPaths(tracked))
+				await g.raw(['restore', '--worktree', '--', ...batch]);
+			// clean never touches tracked or ignored files, whatever paths it is given.
+			for (const batch of batchPaths(untracked))
+				await g.raw(['clean', '-f', '-q', '--', ...batch]);
+		});
+	}
+
 	/** `git init` in the open folder itself, not in a parent repository it may sit in. */
 	async init(): Promise<void> {
 		const workspace = this.getWorkspaceRoot();

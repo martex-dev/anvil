@@ -33,6 +33,24 @@ export function togglePaths(change: GitChange, staged: boolean): string[] {
 	return staged && change.from ? [change.path, change.from] : [change.path];
 }
 
+/**
+ * What discarding these (unstaged) changes does: tracked files go back to their staged version,
+ * untracked ones are deleted. Conflicted files are left out: a conflict is resolved by editing
+ * and staging, and `restore` refuses unmerged paths anyway.
+ */
+export function discardPlan(changes: readonly GitChange[]): {
+	tracked: string[];
+	untracked: string[];
+} {
+	const tracked: string[] = [];
+	const untracked: string[] = [];
+	for (const c of changes) {
+		if (c.kind === 'conflicted') continue;
+		(c.kind === 'untracked' ? untracked : tracked).push(c.path);
+	}
+	return { tracked, untracked };
+}
+
 export function togglePathsAll(changes: readonly GitChange[], staged: boolean): string[] {
 	return changes.flatMap((c) => togglePaths(c, staged));
 }
