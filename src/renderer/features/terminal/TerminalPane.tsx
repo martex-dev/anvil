@@ -45,6 +45,7 @@ export function TerminalPane({ tab, visible }: { tab: TermTab; visible: boolean 
 		fontSize: Math.max(11, settings.editorFontSize - 1),
 		enabled: info?.available ?? false,
 		initialCommand: initial,
+		role: tab.role,
 		focus: visible && !initial,
 		// The REPL is IPython or plain Python depending on the env: take main's name for it.
 		onOpen: tab.preset === 'repl' ? ({ title }) => renameTab(tab.id, title) : undefined,

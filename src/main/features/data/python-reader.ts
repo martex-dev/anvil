@@ -1,4 +1,4 @@
-import { execFile, type ExecFileException } from 'node:child_process';
+import { type ChildProcess, execFile, type ExecFileException } from 'node:child_process';
 
 import type { ColumnType } from '@shared/ipc/channels/data';
 
@@ -78,64 +78,80 @@ export function pythonFailure(error: ExecFileException, stderr: string): string 
 	return `Python could not read the file: ${last || error.message}`;
 }
 
-export function readWithPython(
+/** Readers still running. They are OS processes: stopping the worker thread won't end them. */
+const running = new Set<ChildProcess>();
+const cancelled = new WeakSet<ChildProcess>();
+
+/**
+ * Stops every running reader (folder switch, quit). A 250k-row parquet read can take a minute
+ * and hold hundreds of MB; nobody is waiting for it any more.
+ */
+export function cancelPythonReads(): void {
+	for (const child of running) {
+		cancelled.add(child);
+		child.kill();
+	}
+	running.clear();
+}
+
+/** Runs one reader process and resolves with its stdout; failures become AnvilErrors. */
+export function runReader(file: string, args: string[], env: NodeJS.ProcessEnv): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const child = execFile(
+			file,
+			args,
+			{ env, windowsHide: true, timeout: TIMEOUT_MS, maxBuffer: 512 * 1024 * 1024 },
+			(error, stdout, stderr) => {
+				running.delete(child);
+				if (cancelled.has(child)) {
+					reject(new AnvilError('DATA_CANCELLED', 'Reading the file was cancelled'));
+					return;
+				}
+				if (!error) {
+					resolve(stdout);
+					return;
+				}
+				const missing = /No module named '(pandas|polars|pyarrow|fastexcel|openpyxl)'/.exec(
+					stderr,
+				);
+				reject(
+					new AnvilError(
+						'DATA_PYTHON_FAILED',
+						missing
+							? `Reading this file needs ${missing[1]} in the selected Python env (uv add polars, or pip install pandas pyarrow).`
+							: pythonFailure(error, stderr),
+					),
+				);
+			},
+		);
+		running.add(child);
+	});
+}
+
+export async function readWithPython(
 	python: string,
 	env: NodeJS.ProcessEnv,
 	absPath: string,
 	limit: number,
 ): Promise<Table> {
-	return new Promise((resolve, reject) => {
-		execFile(
-			python,
-			['-c', SCRIPT, absPath, String(limit)],
-			{
-				env,
-				windowsHide: true,
-				timeout: TIMEOUT_MS,
-				maxBuffer: 512 * 1024 * 1024,
-			},
-			(error, stdout, stderr) => {
-				if (error) {
-					const missing =
-						/No module named '(pandas|polars|pyarrow|fastexcel|openpyxl)'/.exec(stderr);
-					reject(
-						new AnvilError(
-							'DATA_PYTHON_FAILED',
-							missing
-								? `Reading this file needs ${missing[1]} in the selected Python env (uv add polars, or pip install pandas pyarrow).`
-								: pythonFailure(error, stderr),
-						),
-					);
-					return;
-				}
-				try {
-					const out = JSON.parse(stdout) as {
-						columns: Array<[string, string]>;
-						rows: Cell[][];
-						total: number;
-						engine: string;
-					};
-					const table = buildTable(
-						out.columns.map(([name]) => name),
-						out.rows,
-						out.total > out.rows.length,
-						out.engine,
-					);
-					// The file's own schema beats inference from text.
-					table.columns = out.columns.map(([name, dtype]) => ({
-						name,
-						type: mapDtype(dtype),
-					}));
-					resolve(table);
-				} catch {
-					reject(
-						new AnvilError(
-							'DATA_PYTHON_FAILED',
-							'Unexpected output from the Python reader',
-						),
-					);
-				}
-			},
+	const stdout = await runReader(python, ['-c', SCRIPT, absPath, String(limit)], env);
+	let out: { columns: Array<[string, string]>; rows: Cell[][]; total: number; engine: string };
+	try {
+		out = JSON.parse(stdout) as typeof out;
+	} catch (error) {
+		throw new AnvilError(
+			'DATA_PYTHON_FAILED',
+			'Unexpected output from the Python reader',
+			error,
 		);
-	});
+	}
+	const table = buildTable(
+		out.columns.map(([name]) => name),
+		out.rows,
+		out.total > out.rows.length,
+		out.engine,
+	);
+	// The file's own schema beats inference from text.
+	table.columns = out.columns.map(([name, dtype]) => ({ name, type: mapDtype(dtype) }));
+	return table;
 }

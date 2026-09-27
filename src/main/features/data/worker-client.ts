@@ -11,6 +11,9 @@ export function unpackedPath(path: string): string {
 	return path.replace(/([\\/])app\.asar([\\/])/, '$1app.asar.unpacked$2');
 }
 
+/** How long quitting waits for the worker to stop its Python readers. */
+const DISPOSE_GRACE_MS = 1_000;
+
 interface Pending {
 	resolve: (value: unknown) => void;
 	reject: (error: Error) => void;
@@ -55,6 +58,21 @@ export class DataWorkerClient {
 	}
 
 	async dispose(): Promise<void> {
+		if (this.worker) {
+			// 'clear' also kills Python readers the worker started: they are processes, and
+			// terminating the thread would leave them running after Anvil quits. Bounded, since
+			// a worker stuck parsing a huge file can't answer.
+			let timer: ReturnType<typeof setTimeout> | undefined;
+			await Promise.race([
+				this.call({ op: 'clear' }).catch((error: unknown) => {
+					this.log.error('[data] stopping readers failed', { error: String(error) });
+				}),
+				new Promise<void>((resolve) => {
+					timer = setTimeout(resolve, DISPOSE_GRACE_MS);
+				}),
+			]);
+			clearTimeout(timer);
+		}
 		const worker = this.worker;
 		this.worker = null;
 		if (worker) await worker.terminate();

@@ -41,8 +41,10 @@ export class LspSession {
 				void this.dispose();
 			}
 		});
-		this.child.stderr.on('data', (chunk: Buffer) => {
-			this.appendStderr(chunk.toString('utf8'));
+		// A stream decoder keeps a multi-byte character split across two chunks intact.
+		this.child.stderr.setEncoding('utf8');
+		this.child.stderr.on('data', (chunk: string) => {
+			this.appendStderr(chunk);
 		});
 		// A crashing server closes its pipe before 'exit' arrives; writing then fails with EPIPE,
 		// which without a listener is an uncaught exception that takes down the main process.

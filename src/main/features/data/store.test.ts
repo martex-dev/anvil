@@ -107,4 +107,26 @@ describe('DataStore', () => {
 		}
 		expect(table.view).toHaveBeenCalledTimes(2);
 	});
+
+	it('narrows the previous result while a filter is typed, keeping its sort', async () => {
+		const store = new DataStore();
+		const spec = file('e.csv', 'sym\nBTC\nETH\nbtc-perp\nSOL\nBTCUSD\n');
+		const sort = { column: 0, desc: true };
+		await store.page(spec, { ...all, sort });
+		const pages = [];
+		for (const filter of ['b', 'bt', 'BTC ', 'btcu'])
+			pages.push(await store.page(spec, { ...all, sort, filter }));
+		// Only the unfiltered view scanned (and sorted) the whole table.
+		expect(table.view).toHaveBeenCalledTimes(1);
+		expect(pages.map((p) => p.rows.map((r) => r[0]))).toEqual([
+			['BTCUSD', 'btc-perp', 'BTC'],
+			['BTCUSD', 'btc-perp', 'BTC'],
+			['BTCUSD', 'btc-perp', 'BTC'],
+			['BTCUSD'],
+		]);
+		// A filter that doesn't contain 'btc…' is never narrowed from those views: rows would be
+		// missing.
+		const other = await store.page(spec, { ...all, sort, filter: 'e' });
+		expect(other.rows.map((r) => r[0])).toEqual(['ETH', 'btc-perp']);
+	});
 });

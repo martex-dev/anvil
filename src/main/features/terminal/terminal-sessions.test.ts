@@ -35,8 +35,8 @@ class FakePty implements PtyLike {
 const spec: LaunchSpec = { file: 'pwsh.exe', args: [], env: {}, title: 'PowerShell' };
 
 let ptys: FakePty[];
-let onData: ReturnType<typeof vi.fn<(id: string, d: string) => void>>;
-let onExit: ReturnType<typeof vi.fn<(id: string, code: number) => void>>;
+let onData: ReturnType<typeof vi.fn<(id: string, d: string, seq: number) => void>>;
+let onExit: ReturnType<typeof vi.fn<(id: string, code: number, reason?: string) => void>>;
 let sessions: TerminalSessions;
 
 beforeEach(() => {
@@ -64,7 +64,7 @@ describe('TerminalSessions', () => {
 		expect(onData).not.toHaveBeenCalled();
 		vi.advanceTimersByTime(10);
 		expect(onData).toHaveBeenCalledTimes(1);
-		expect(onData).toHaveBeenCalledWith('s1', 'abc');
+		expect(onData).toHaveBeenCalledWith('s1', 'abc', 3);
 	});
 
 	it('keeps a bounded backlog for reattaching', () => {
@@ -104,7 +104,7 @@ describe('TerminalSessions', () => {
 		expect(ptys[0]?.written).toEqual(['dir\r']);
 		ptys[0]?.emit('bye');
 		ptys[0]?.exitWith(0);
-		expect(onData).toHaveBeenCalledWith('s1', 'bye');
+		expect(onData).toHaveBeenCalledWith('s1', 'bye', 3);
 		expect(onExit).toHaveBeenCalledWith('s1', 0);
 		expect(sessions.get('s1')?.pty).toBeNull();
 	});
@@ -196,7 +196,7 @@ describe('TerminalSessions', () => {
 		ptys[0]?.emit('stale');
 		ptys[1]?.emit('fresh');
 		vi.advanceTimersByTime(10);
-		expect(onData).toHaveBeenCalledWith('s1', 'fresh');
+		expect(onData).toHaveBeenCalledWith('s1', 'fresh', 5);
 		expect(onData).not.toHaveBeenCalledWith('s1', expect.stringContaining('stale'));
 	});
 
@@ -208,5 +208,74 @@ describe('TerminalSessions', () => {
 		// A late exit from the killed process must not be reported.
 		ptys[0]?.exitWith(0);
 		expect(onExit).not.toHaveBeenCalled();
+	});
+
+	it('snapshots the backlog with the output still waiting for its batch', () => {
+		sessions.start('s1', 'powershell', spec, 'C:/p', 80, 24);
+		ptys[0]?.emit('PS> ');
+		vi.advanceTimersByTime(10);
+		ptys[0]?.emit('dir');
+		// 'dir' is in the backlog but its event hasn't gone out yet: it goes out now, before the
+		// snapshot, so the renderer can tell by seq that the backlog already has it.
+		const snap = sessions.snapshot('s1');
+		expect(snap).toEqual({ backlog: 'PS> dir', seq: 7 });
+		expect(onData.mock.calls).toEqual([
+			['s1', 'PS> ', 4],
+			['s1', 'dir', 7],
+		]);
+		ptys[0]?.emit('\r\n');
+		vi.advanceTimersByTime(10);
+		expect(onData).toHaveBeenLastCalledWith('s1', '\r\n', 9);
+		expect(sessions.snapshot('nope')).toEqual({ backlog: '', seq: 0 });
+	});
+
+	it('stop ends the process, keeps the session and reports why', async () => {
+		sessions.start('s1', 'repl', spec, 'C:/p', 80, 24, { role: 'repl', python: 'C:/py/a.exe' });
+		ptys[0]?.emit('>>> ');
+		sessions.stop('s1', 'The folder changed');
+		expect(ptys[0]?.killed).toBe(true);
+		expect(onData).toHaveBeenCalledWith('s1', '>>> ', 4);
+		expect(onExit).toHaveBeenCalledWith('s1', -1, 'The folder changed');
+		expect(sessions.get('s1')).toMatchObject({
+			pty: null,
+			role: 'repl',
+			python: 'C:/py/a.exe',
+		});
+		// The killed process's own exit comes later and is not reported twice.
+		ptys[0]?.exitWith(1);
+		expect(onExit).toHaveBeenCalledTimes(1);
+		// The next command starts it again, keeping its role.
+		const launch = vi.fn(async () => {
+			sessions.start('s1', 'repl', spec, 'C:/q', 80, 24, {
+				role: 'repl',
+				python: 'C:/py/b.exe',
+			});
+		});
+		expect(await sessions.relaunch('s1', launch)).toBe(true);
+		expect(sessions.get('s1')).toMatchObject({ role: 'repl', python: 'C:/py/b.exe' });
+	});
+
+	it('stops every session, one still starting once it is up', async () => {
+		sessions.start('a', 'powershell', spec, 'C:/p', 80, 24);
+		sessions.start('b', 'powershell', spec, 'C:/p', 80, 24, { role: 'run', python: null });
+		let release = (): void => undefined;
+		const gate = new Promise<void>((r) => (release = r));
+		const starting = sessions.ensure('c', async () => {
+			await gate;
+			sessions.start('c', 'powershell', spec, 'C:/p', 80, 24, { role: 'run', python: null });
+		});
+		ptys[0]?.exitWith(0);
+		sessions.stopAll('Folder changed');
+		// Already stopped: nothing to report twice.
+		sessions.stopAll('Folder changed');
+		expect(ptys[1]?.killed).toBe(true);
+		release();
+		await starting;
+		expect(ptys[2]?.killed).toBe(true);
+		expect(onExit.mock.calls).toEqual([
+			['a', 0],
+			['b', -1, 'Folder changed'],
+			['c', -1, 'Folder changed'],
+		]);
 	});
 });

@@ -26,6 +26,11 @@ export type TerminalPreset = z.infer<typeof TerminalPresetSchema>;
 
 const SessionId = z.string().regex(/^[a-zA-Z0-9-]{8,64}$/);
 const Size = z.number().int().min(2).max(1000);
+/**
+ * A tab's reusable role ('run', 'repl', 'task:…'). Its environment was fixed at spawn, so the
+ * next command sent with `restart` starts it again if the interpreter has changed since.
+ */
+const Role = z.string().min(1).max(200);
 
 export const terminalChannels = defineChannels({
 	'terminal:presets': { input: z.void(), output: z.array(TerminalPresetSchema) },
@@ -38,6 +43,7 @@ export const terminalChannels = defineChannels({
 			rows: Size,
 			/** Typed into the shell once it starts (Run file, tasks). */
 			initialCommand: z.string().max(10_000).optional(),
+			role: Role.optional(),
 		}),
 		output: z.object({
 			sessionId: z.string(),
@@ -45,6 +51,8 @@ export const terminalChannels = defineChannels({
 			cwd: z.string(),
 			/** Output produced before this call (reattach after a reload). */
 			backlog: z.string(),
+			/** The `seq` of the last data event the backlog includes; drop events up to it. */
+			seq: z.number().int().nonnegative(),
 			running: z.boolean(),
 		}),
 	},
@@ -71,6 +79,7 @@ export const terminalChannels = defineChannels({
 			preset: TerminalPresetIdSchema,
 			cols: Size,
 			rows: Size,
+			role: Role.optional(),
 		}),
 		output: z.void(),
 	},
@@ -78,6 +87,16 @@ export const terminalChannels = defineChannels({
 });
 
 export const terminalEvents = {
-	'terminal:data': z.object({ sessionId: z.string(), data: z.string() }),
-	'terminal:exit': z.object({ sessionId: z.string(), exitCode: z.number().int() }),
+	'terminal:data': z.object({
+		sessionId: z.string(),
+		data: z.string(),
+		/** Characters of output sent for this session so far, this event included. */
+		seq: z.number().int().nonnegative(),
+	}),
+	'terminal:exit': z.object({
+		sessionId: z.string(),
+		exitCode: z.number().int(),
+		/** Set when Anvil stopped the process (folder or interpreter changed): shown as is. */
+		reason: z.string().optional(),
+	}),
 };

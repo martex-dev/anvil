@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, sep } from 'node:path';
+import { join, relative, sep } from 'node:path';
 
 import { z } from 'zod';
 
@@ -10,9 +10,10 @@ import { AnvilError, errorMessage } from '../../core/errors';
 import type { MainFeature } from '../../core/features';
 import { psQuote, shQuote } from '../../core/shell-quote';
 import { toAbsolute } from '../../core/workspace/fs-guard';
-import { discoverEnvs, envDirOf, findEnv } from './envs';
+import { discoverEnvs, envDirOf, findEnv, interpreterExists } from './envs';
 import { activatedEnv, interpreter, setReplSupport } from './interpreter';
 import { runRuffFormat } from './ruff-format';
+import { cellCommand, CellStager, removeCellFiles, REPL_STARTUP, stagedCode } from './staged-cells';
 import { LocalEnvWatcher } from './venv-watch';
 
 const PickSchema = z.string().nullable();
@@ -57,36 +58,13 @@ export function moduleName(rel: string): string {
 }
 
 /**
- * Loaded into every Anvil REPL through PYTHONSTARTUP (plain python and IPython both honour it).
- * `_cell(n)` runs staged cell n in the REPL's own namespace, so the prompt echoes a short call
- * instead of a long exec() line. Not `%run -i`: on Windows IPython keeps the quotes of a quoted
- * path, and userData paths often contain spaces. `cell_n.src` names the file the cell came
- * from; compiling under that name makes tracebacks (and terminal links) point at the source.
+ * `ruff format` over stdin. The file is named absolutely: ruff finds its settings by walking up
+ * from --stdin-filename (nearest pyproject.toml / ruff.toml) and matches per-file settings against
+ * that path. --force-exclude makes ruff honour `exclude` for a file it is handed directly (it
+ * returns the text unchanged), as the VS Code extension does.
  */
-export const REPL_STARTUP = [
-	'# Anvil REPL helpers. _cell(n) runs a staged "# %%" cell in this namespace.',
-	'def _cell(n):',
-	'\timport os as _os',
-	"\t_d = _os.environ['ANVIL_CELLS']",
-	"\t_p = _os.path.join(_d, 'cell_%d.py' % n)",
-	"\twith open(_p, encoding='utf-8') as _f:",
-	'\t\t_code = _f.read()',
-	'\ttry:',
-	"\t\twith open(_os.path.join(_d, 'cell_%d.src' % n), encoding='utf-8') as _f:",
-	'\t\t\t_p = _f.read().strip() or _p',
-	'\texcept OSError:',
-	'\t\tpass',
-	"\texec(compile(_code, _p, 'exec'), globals())",
-	'',
-].join('\n');
-
-/** Staged cell text: blank lines in front so traceback line numbers match the source file. */
-export function stagedCode(code: string, line: number): string {
-	return '\n'.repeat(Math.max(0, line - 1)) + code;
-}
-
-export function cellCommand(n: number): string {
-	return `_cell(${n})`;
+export function ruffFormatArgs(absPath: string): string[] {
+	return ['format', '--force-exclude', '--stdin-filename', absPath, '-'];
 }
 
 export const pythonFeature: MainFeature = {
@@ -172,7 +150,7 @@ export const pythonFeature: MainFeature = {
 			if (!root)
 				throw new AnvilError('PY_NO_FOLDER', 'Open a folder to pick its interpreter');
 			if (path !== null) {
-				if (!existsSync(path))
+				if (!interpreterExists(path))
 					throw new AnvilError('PY_NOT_FOUND', `Interpreter not found: ${path}`);
 				// Only a discovered interpreter: every REPL, Run and tool call spawns this path.
 				// Rediscover once in case the env was created after the list was cached.
@@ -228,18 +206,21 @@ export const pythonFeature: MainFeature = {
 		});
 
 		writeFileSync(join(ctx.dataDir, 'anvil_startup.py'), REPL_STARTUP, 'utf8');
-		setReplSupport({ startup: join(ctx.dataDir, 'anvil_startup.py'), cells: ctx.dataDir });
-		let cellCounter = 0;
+		const cells = new CellStager(join(ctx.dataDir, 'cells'));
+		for (const dir of [ctx.dataDir, cells.dir]) {
+			try {
+				removeCellFiles(dir);
+			} catch (e) {
+				// Leftovers only cost disk space; staging overwrites any number it reuses.
+				ctx.log.warn('could not remove old staged cells', { message: errorMessage(e) });
+			}
+		}
+		setReplSupport({ startup: join(ctx.dataDir, 'anvil_startup.py'), cells: cells.dir });
 		ctx.ipc.handle('python:stageCell', ({ code, source }) => {
-			// Rotate a few files so a cell still running is never overwritten by the next one.
-			const n = cellCounter++ % 8;
 			const root = ctx.workspace.root();
 			const file = source && root ? toAbsolute(root, source.path) : null;
 			const text = file && source ? stagedCode(code, source.line) : code;
-			writeFileSync(join(ctx.dataDir, `cell_${n}.py`), text, 'utf8');
-			// Always rewritten, so a rotated slot never keeps the previous cell's file name.
-			writeFileSync(join(ctx.dataDir, `cell_${n}.src`), file ?? '', 'utf8');
-			return { command: cellCommand(n) };
+			return { command: cellCommand(cells.stage(text, file)) };
 		});
 
 		ctx.ipc.handle('python:runCommand', ({ path, module }) => {
@@ -267,15 +248,13 @@ export const pythonFeature: MainFeature = {
 					)
 				: null;
 			const ruff = envRuff && existsSync(envRuff) ? envRuff : 'ruff';
-			// Run from the file's folder so ruff finds the project's pyproject/ruff.toml, and name
-			// the file absolutely: a root-relative name would resolve against that folder and
-			// misapply per-file settings and excludes.
+			// Run from the workspace root like VS Code's ruff does, so the fallback config and any
+			// relative path ruff prints resolve against the project rather than a subfolder.
 			const abs = root ? toAbsolute(root, path) : null;
-			const cwd = abs ? dirname(abs) : undefined;
 			return runRuffFormat({
 				ruff,
-				args: ['format', '--stdin-filename', abs ?? path, '-'],
-				cwd,
+				args: ruffFormatArgs(abs ?? path),
+				cwd: root ?? undefined,
 				env,
 				content,
 				onStdinError: (message) => ctx.log.warn('ruff stdin', { message }),
