@@ -37,10 +37,13 @@ export function runRuffFormat(options: RuffFormatOptions): Promise<{ content: st
 			child.kill();
 			settle(() => reject(new AnvilError('PY_FORMAT_TIMEOUT', 'ruff format timed out')));
 		}, timeoutMs);
-		let stdout = '';
-		let stderr = '';
-		child.stdout.on('data', (b: Buffer) => (stdout += b.toString('utf8')));
-		child.stderr.on('data', (b: Buffer) => (stderr += b.toString('utf8')));
+		// Buffers, decoded once at the end: a chunk boundary (64 KB pipes) can fall inside a
+		// multi-byte UTF-8 character, and decoding chunk by chunk would corrupt it.
+		const stdout: Buffer[] = [];
+		const stderr: Buffer[] = [];
+		child.stdout.on('data', (b: Buffer) => stdout.push(b));
+		child.stderr.on('data', (b: Buffer) => stderr.push(b));
+		const text = (chunks: Buffer[]): string => Buffer.concat(chunks).toString('utf8');
 		child.stdin.on('error', (e) => onStdinError?.(errorMessage(e)));
 		child.on('error', (e) =>
 			settle(() =>
@@ -55,12 +58,13 @@ export function runRuffFormat(options: RuffFormatOptions): Promise<{ content: st
 		);
 		child.on('close', (code) =>
 			settle(() => {
-				if (code === 0) resolve({ content: stdout });
+				if (code === 0) resolve({ content: text(stdout) });
 				else
 					reject(
 						new AnvilError(
 							'PY_FORMAT_FAILED',
-							stderr.trim().split(/\r?\n/).slice(0, 3).join(' ') || 'ruff failed',
+							text(stderr).trim().split(/\r?\n/).slice(0, 3).join(' ') ||
+								'ruff failed',
 						),
 					);
 			}),
