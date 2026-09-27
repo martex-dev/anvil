@@ -6,6 +6,7 @@ import { GIT_COMMANDS } from '../../features/git/commands';
 import { LSP_COMMANDS } from '../../features/lsp/commands';
 import { PYTHON_COMMANDS } from '../../features/python/commands';
 import { TERMINAL_COMMANDS } from '../../features/terminal/commands';
+import { TESTS_COMMANDS } from '../../features/tests/commands';
 import { APPEARANCE_COMMANDS } from '../../features/themes/commands';
 import { TOOLBOX_COMMANDS } from '../../features/toolbox/commands';
 import { TOOL_COMMANDS } from '../../features/tools/commands';
@@ -20,6 +21,7 @@ export const ALL_COMMANDS: readonly Command[] = [
 	...EDITOR_COMMANDS,
 	...EXPLORER_COMMANDS,
 	...PYTHON_COMMANDS,
+	...TESTS_COMMANDS,
 	...DATA_COMMANDS,
 	...VIEWER_COMMANDS,
 	...AI_COMMANDS,

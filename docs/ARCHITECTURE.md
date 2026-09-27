@@ -15,7 +15,7 @@ Anvil is an Electron app with three layers. The rule that shapes everything: **t
 │ core/       window + security, app:// protocol, IPC router, JSON settings store,     │
 │             secrets (safeStorage/DPAPI), workspace + fs guard + watcher, updater     │
 │ features/   ai · git · lsp · search · terminal · python · data · history · tasks ·   │
-│             templates   (each: activate(ctx) → registers its IPC handlers)           │
+│             templates · tests   (each: activate(ctx) → registers its IPC handlers)   │
 └──────────────────────────────────────────────────────────────────────────────────────┘
           │ child processes                                       │ HTTPS
    python / IPython · ruff · pip/uv · basedpyright ·        Anthropic · OpenAI · Gemini ·
@@ -48,12 +48,13 @@ Each feature is a `MainFeature { id, activate(ctx) }`. The context gives it IPC 
 | `history`            | A snapshot on every save (deduplicated, 50 per file, 30 days), used by the History view.                                                                                                                           |
 | `search`             | ripgrep: content search, plus the gitignore-aware file list for Quick Open.                                                                                                                                        |
 | `tasks`, `templates` | Detected runnable tasks, and the "new project" template writer.                                                                                                                                                    |
+| `tests`              | pytest discovery and runs with the selected interpreter (ADR-020). A small reporter plugin streams one JSON line per test; runs only accept node ids from the last discovery and are spawned without a shell.      |
 
 ## The renderer
 
 - **Workbench**: fixed regions instead of free docking. Activity bar, a resizable side bar, 1–2 editor groups over a resizable bottom panel, and a resizable AI pane. Sizes and open views persist through `ui:getState` / `ui:setState`.
 - **Tabs** (`stores/tabs-store.ts`): each tab has a kind (`code`, `data`, `image`, `notebook`, `markdown`, `diff`, `welcome`). Code tabs point at a text buffer (`features/editor/file-ops.ts`). One Monaco instance per group swaps models in and out, so undo history lives in the model and survives tab switches.
-- **Editor extras** attach to each Monaco instance: `# %%` cell decorations, the secret shield, git gutter + blame, bookmarks. Global providers are ghost text, snippets and problems tracking.
+- **Editor extras** attach to each Monaco instance: `# %%` cell decorations, the secret shield, git gutter + blame, bookmarks, and the test run lens (a code lens, so the glyph margin stays free for cells, bookmarks and breakpoints). Global providers are ghost text, snippets and problems tracking.
 - **Commands** (`app/commands/*`) are one list that drives the palette, the menu bar, global shortcuts, and Monaco actions for editor-scoped keys (`scope: 'editor'`, optionally limited to one language).
 - **Monaco** is `@codingame/monaco-vscode-api`, i.e. VS Code's editor services. TextMate grammars come from VS Code's built-in extensions and are bundled locally; nothing loads from a CDN.
 

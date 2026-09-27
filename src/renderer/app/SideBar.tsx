@@ -11,6 +11,9 @@ import { VIEW_META } from './ActivityBar';
 const RunView = lazy(() =>
 	import('../features/python/RunView').then((m) => ({ default: m.RunView })),
 );
+const TestsView = lazy(() =>
+	import('../features/tests/TestsView').then((m) => ({ default: m.TestsView })),
+);
 const OutlineView = lazy(() =>
 	import('../features/outline/OutlineView').then((m) => ({ default: m.OutlineView })),
 );
@@ -37,6 +40,8 @@ function View({ view }: { view: SideView }): JSX.Element {
 			return <GitPanel />;
 		case 'run':
 			return <RunView />;
+		case 'tests':
+			return <TestsView />;
 		case 'outline':
 			return <OutlineView />;
 		case 'todos':

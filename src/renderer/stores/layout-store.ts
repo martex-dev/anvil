@@ -5,6 +5,7 @@ export const SIDE_VIEWS = [
 	'search',
 	'git',
 	'run',
+	'tests',
 	'outline',
 	'todos',
 	'history',

@@ -1,0 +1,21 @@
+/* Test code lens: the result icon in "▶ Run test" takes the result's colour. Only the test lens
+   uses these codicons in a code lens. */
+.monaco-editor .codelens-decoration .codicon-pass-filled {
+	color: var(--up);
+}
+.monaco-editor .codelens-decoration .codicon-error {
+	color: var(--down);
+}
+.monaco-editor .codelens-decoration .codicon-circle-slash {
+	color: var(--warn);
+}
+.monaco-editor .codelens-decoration .codicon-play,
+.monaco-editor .codelens-decoration .codicon-loading {
+	color: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.monaco-editor .codelens-decoration .codicon-loading {
+		animation: none;
+	}
+}
