@@ -1,4 +1,5 @@
 import { FitAddon } from '@xterm/addon-fit';
+import { SearchAddon } from '@xterm/addon-search';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { WebglAddon } from '@xterm/addon-webgl';
@@ -12,6 +13,7 @@ import { rlog } from '../../lib/log';
 import { toast } from '../../stores/toast-store';
 import { useClipboardHistory } from '../editor/extras/clipboard';
 import { registerFileLinks } from './terminal-links';
+import { openTerminalFind, registerTerminal } from './terminal-registry';
 import { FOCUS_TERMINAL_EVENT, markAttached, unmarkAttached } from './terminal-store';
 import { terminalKeyAction } from './xterm-keys';
 import { buildXtermTheme } from './xterm-theme';
@@ -144,6 +146,21 @@ export function useXterm(
 		motion.addEventListener('change', updateBlink);
 		// Tracebacks and `file.py:12:5` references open the file at that line (if it exists).
 		const links = registerFileLinks(term, () => cwd ?? '');
+		// Find selects each match (no decorations: those need raw colors outside the tokens).
+		const search = new SearchAddon();
+		term.loadAddon(search);
+		const unregister = registerTerminal(sessionId, {
+			clear: () => term.clear(),
+			find: (query, direction, caseSensitive) =>
+				direction === 'next'
+					? search.findNext(query, { caseSensitive })
+					: search.findPrevious(query, { caseSensitive }),
+			clearFind: () => {
+				search.clearDecorations();
+				term.clearSelection();
+			},
+			focus: () => term.focus(),
+		});
 		try {
 			// GPU rendering is much faster for heavy output; fall back to DOM if WebGL is unavailable.
 			const webgl = new WebglAddon();
@@ -164,7 +181,11 @@ export function useXterm(
 				});
 				term.clearSelection();
 			}
-			// false: xterm ignores the key (copied, or the browser pastes natively).
+			if (action === 'find') {
+				e.preventDefault();
+				openTerminalFind(sessionId);
+			}
+			// false: xterm ignores the key (copied, find opened, or the browser pastes natively).
 			return action === 'xterm';
 		});
 
@@ -277,6 +298,7 @@ export function useXterm(
 			window.removeEventListener('anvil:appearance', recolor);
 			motion.removeEventListener('change', updateBlink);
 			links.dispose();
+			unregister();
 			disposed = true;
 			clearTimeout(resizeTimer);
 			observer.disconnect();

@@ -1,7 +1,9 @@
 import {
 	ArrowLeftRight,
 	Bot,
+	Eraser,
 	Pencil,
+	Search,
 	Sparkles,
 	SquareTerminal,
 	TerminalSquare,
@@ -13,6 +15,7 @@ import type { Command } from '../../app/commands/types';
 import { useLayoutStore } from '../../stores/layout-store';
 import { toast } from '../../stores/toast-store';
 import { quickPick } from '../../ui/QuickPick';
+import { openTerminalFind, terminalApi } from './terminal-registry';
 import { closeTerminal, focusTerminal, newTerminal, useTerminalStore } from './terminal-store';
 
 /** Command Prompt and Git Bash are Windows shells; main doesn't offer them elsewhere. */
@@ -91,6 +94,30 @@ export function cycleTerminal(step: 1 | -1): void {
 	if (next) focusTerminal(next.id);
 }
 
+/** The active terminal's live xterm, or null after saying why there is none. */
+function activeTerminal(what: string): { id: string } | null {
+	const id = useTerminalStore.getState().active;
+	if (!id || !terminalApi(id)) {
+		toast.info(`No terminal to ${what}`, 'Open a terminal first (Ctrl+Shift+`).');
+		return null;
+	}
+	return { id };
+}
+
+/** Opens the find bar over the active terminal (Ctrl+F inside a terminal does the same). */
+export function findInTerminal(): void {
+	const target = activeTerminal('search');
+	if (!target) return;
+	useLayoutStore.getState().showPanel('terminal');
+	openTerminalFind(target.id);
+}
+
+/** Clears the active terminal's scrollback, keeping the prompt line. */
+export function clearTerminal(): void {
+	const target = activeTerminal('clear');
+	if (target) terminalApi(target.id)?.clear();
+}
+
 export const TERMINAL_COMMANDS: Command[] = [
 	{
 		id: 'terminal.new',
@@ -144,6 +171,22 @@ export const TERMINAL_COMMANDS: Command[] = [
 		keywords: ['ai', 'agent', 'google'],
 		icon: Wand2,
 		run: () => newTerminal('gemini', 'gemini'),
+	},
+	{
+		id: 'terminal.find',
+		title: 'Find in Terminal',
+		category: 'Terminal',
+		keywords: ['search', 'scrollback', 'output'],
+		icon: Search,
+		run: findInTerminal,
+	},
+	{
+		id: 'terminal.clear',
+		title: 'Clear Terminal',
+		category: 'Terminal',
+		keywords: ['cls', 'scrollback', 'reset'],
+		icon: Eraser,
+		run: clearTerminal,
 	},
 	{
 		id: 'terminal.kill',

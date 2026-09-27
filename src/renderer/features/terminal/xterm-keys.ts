@@ -1,5 +1,5 @@
 /** What a key event means to the terminal before xterm sees it. */
-export type TerminalKeyAction = 'copy' | 'native-paste' | 'xterm';
+export type TerminalKeyAction = 'copy' | 'native-paste' | 'find' | 'xterm';
 
 type KeyInfo = Pick<KeyboardEvent, 'type' | 'key' | 'code' | 'ctrlKey' | 'shiftKey' | 'altKey'>;
 
@@ -14,7 +14,8 @@ function letter(e: KeyInfo): string {
 
 /**
  * Ctrl+C (and Ctrl+Shift+C, the Windows Terminal habit) copies when text is selected; without a
- * selection Ctrl+C is SIGINT. Ctrl+V is left to the browser's native paste. Everything else,
+ * selection Ctrl+C is SIGINT. Ctrl+V is left to the browser's native paste. Ctrl+F opens the
+ * terminal's find bar, as in VS Code (shells rarely need its forward-char). Everything else,
  * including Ctrl+Shift+V (a global shortcut), goes to xterm as usual.
  */
 export function terminalKeyAction(e: KeyInfo, hasSelection: boolean): TerminalKeyAction {
@@ -22,5 +23,6 @@ export function terminalKeyAction(e: KeyInfo, hasSelection: boolean): TerminalKe
 	const key = letter(e);
 	if (key === 'c' && hasSelection) return 'copy';
 	if (key === 'v' && !e.shiftKey) return 'native-paste';
+	if (key === 'f' && !e.shiftKey) return 'find';
 	return 'xterm';
 }

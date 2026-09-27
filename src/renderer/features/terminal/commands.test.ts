@@ -12,7 +12,10 @@ vi.mock('../../ui/QuickPick', () => ({ quickPick }));
 
 const { useLayoutStore } = await import('../../stores/layout-store');
 const { useTerminalStore } = await import('./terminal-store');
-const { cycleTerminal, killActiveTerminal } = await import('./commands');
+const { clearTerminal, cycleTerminal, findInTerminal, killActiveTerminal } =
+	await import('./commands');
+const { closeTerminalFind, registerTerminal, useTerminalFind } =
+	await import('./terminal-registry');
 const { uniqueTitle } = await import('./terminal-store');
 
 const tab = { id: 'anvil-1111-2222', preset: 'powershell' as const, title: 'pwsh 1' };
@@ -68,5 +71,31 @@ describe('terminal names and switching', () => {
 		cycleTerminal(-1);
 		expect(useTerminalStore.getState().active).toBe(other.id);
 		vi.unstubAllGlobals();
+	});
+});
+
+describe('find and clear', () => {
+	const api = { clear: vi.fn(), find: vi.fn(), clearFind: vi.fn(), focus: vi.fn() };
+
+	it('say so when the active terminal has no live xterm', () => {
+		clearTerminal();
+		findInTerminal();
+		expect(toastInfo).toHaveBeenCalledTimes(2);
+		expect(useTerminalFind.getState().open).toBeNull();
+	});
+
+	it('clear the active terminal and open its find bar, which closes back to it', () => {
+		const unregister = registerTerminal(tab.id, api);
+		useLayoutStore.setState({ panelOpen: false });
+		clearTerminal();
+		expect(api.clear).toHaveBeenCalled();
+		findInTerminal();
+		expect(useTerminalFind.getState().open).toBe(tab.id);
+		expect(useLayoutStore.getState().panelOpen).toBe(true);
+		closeTerminalFind();
+		expect(useTerminalFind.getState().open).toBeNull();
+		expect(api.clearFind).toHaveBeenCalled();
+		expect(api.focus).toHaveBeenCalled();
+		unregister();
 	});
 });
