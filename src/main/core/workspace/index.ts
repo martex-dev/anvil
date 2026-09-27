@@ -3,9 +3,11 @@ import { sep } from 'node:path';
 import { BrowserWindow, dialog, shell } from 'electron';
 import log from 'electron-log/main';
 
+import { AnvilError } from '../errors';
 import { emitEvent, router } from '../ipc';
 import type { SettingsStore } from '../store/json-store';
 import { FsService } from './fs-service';
+import { readLargeText } from './large-text';
 import { describeWatchError, WorkspaceWatcher } from './watcher';
 import { WorkspaceService } from './workspace-service';
 
@@ -18,6 +20,13 @@ export interface WorkspaceServices {
 export interface WorkspaceHooks {
 	/** Runs after every successful save from the editor (local history snapshots). */
 	afterWrite?: (rel: string, content: string) => void;
+}
+
+/** The open folder, for file operations that live outside FsService. */
+function requireRoot(workspace: WorkspaceService): string {
+	const root = workspace.getRoot();
+	if (!root) throw new AnvilError('NO_WORKSPACE', 'No folder is open');
+	return root;
 }
 
 export function createWorkspace(
@@ -101,6 +110,7 @@ export function createWorkspace(
 	router.handle('fs:copyPath', ({ path, absolute }) =>
 		absolute ? fs.absolute(path) : path.split('/').join(sep),
 	);
+	router.handle('fs:readLargeText', (rel) => readLargeText(requireRoot(workspace), rel));
 
 	return { workspace, fs, watcher };
 }

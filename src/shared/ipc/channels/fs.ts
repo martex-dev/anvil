@@ -84,6 +84,11 @@ export const fsChannels = defineChannels({
 		input: z.object({ path: RelPathSchema, absolute: z.boolean() }),
 		output: z.string(),
 	},
+	/**
+	 * Read-only text for viewers that parse whole files (notebooks with embedded plots): a 50 MB
+	 * cap instead of the editor's 5 MB, with `tooLarge` set beyond it.
+	 */
+	'fs:readLargeText': { input: RelPathSchema.min(1), output: FileContentSchema },
 });
 
 export const fsEvents = {
