@@ -21,9 +21,10 @@ test('side views and the panel keep their state while hidden', async ({ page }) 
 		const term = page.locator('[data-terminal-status="running"]').first();
 		await expect(term).toBeVisible({ timeout: 30_000 });
 		await term.locator('.xterm').evaluate((el) => el.setAttribute('data-e2e-mark', '1'));
-		await page.keyboard.press('Control+j');
+		// Ctrl+` (not Ctrl+J, which the terminal keeps for TUIs) hides the panel from inside it.
+		await page.keyboard.press('Control+Backquote');
 		await expect(term).toBeHidden();
-		await page.keyboard.press('Control+j');
+		await page.keyboard.press('Control+Backquote');
 		await expect(term).toBeVisible();
 		await expect(term.locator('.xterm[data-e2e-mark="1"]')).toHaveCount(1);
 	} finally {
