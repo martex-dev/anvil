@@ -6,7 +6,7 @@ import { renderMarkdown } from '../../lib/markdown/markdown';
 import { toast } from '../../stores/toast-store';
 import { requestOpenFile } from '../../stores/workbench-store';
 import { searchInFiles } from '../search/use-search';
-import { resolveRelative, resolveWikilink } from './viewer-paths';
+import { anchorIndex, resolveRelative, resolveWikilink } from './viewer-paths';
 
 import '../../lib/markdown/markdown.css';
 import './viewers.css';
@@ -31,6 +31,29 @@ async function openWikilink(fromFile: string, target: string): Promise<void> {
 	}
 }
 
+/**
+ * Scrolls to the heading a same-document `#fragment` link names (GitHub-style anchors). The
+ * document is the nearest `data-anchor-scope` (a notebook's cells), else this Markdown block.
+ */
+function scrollToAnchor(block: HTMLElement, fragment: string): void {
+	const container = block.closest('[data-anchor-scope]') ?? block;
+	const headings = [...container.querySelectorAll('h1, h2, h3, h4, h5, h6')];
+	const index = anchorIndex(
+		headings.map((h) => h.textContent ?? ''),
+		fragment,
+	);
+	const heading = headings[index];
+	if (heading) heading.scrollIntoView({ block: 'start' });
+	else toast.info('No heading matches this link', `#${fragment}`);
+}
+
+/** Opens a web link in the browser; main refuses plain http to other hosts and says why. */
+function openWebLink(href: string): void {
+	call('app:openExternal', href).catch((error: unknown) =>
+		toast.error('Could not open link', error instanceof Error ? error.message : href),
+	);
+}
+
 /** Renders Markdown with the sanitizing renderer; every link click is routed, never navigated. */
 export function MarkdownHtml({ text, path, className }: MarkdownHtmlProps): JSX.Element {
 	const html = useMemo(() => renderMarkdown(text), [text]);
@@ -50,14 +73,17 @@ export function MarkdownHtml({ text, path, className }: MarkdownHtmlProps): JSX.
 			return;
 		}
 		const href = anchor.getAttribute('href') ?? '';
-		if (/^https:\/\//i.test(href)) {
-			call('app:openExternal', href).catch(() => toast.error('Could not open link', href));
+		if (/^https?:\/\//i.test(href)) {
+			openWebLink(href);
 			return;
 		}
-		// Same-document anchors have nowhere to go yet; everything else deserves an answer.
-		if (!href || href.startsWith('#')) return;
+		if (!href || href === '#') return;
+		if (href.startsWith('#')) {
+			scrollToAnchor(event.currentTarget, href.slice(1));
+			return;
+		}
 		if (/^[a-z][a-z\d+.-]*:/i.test(href) || href.startsWith('//')) {
-			toast.info('Only https links open externally', href);
+			toast.info('Only web links open externally', href);
 			return;
 		}
 		const target = resolveRelative(path, href);

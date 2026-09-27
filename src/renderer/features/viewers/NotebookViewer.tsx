@@ -140,7 +140,11 @@ export function NotebookViewer({ path }: { path: string }): JSX.Element {
 	} else {
 		const { cells, language } = parsed.notebook;
 		body = (
-			<div className='animate-fade mx-auto flex w-full max-w-[1000px] flex-col gap-3 py-6 pr-8 pl-2'>
+			// Anchor links in one Markdown cell may point at a heading in another.
+			<div
+				data-anchor-scope
+				className='animate-fade mx-auto flex w-full max-w-[1000px] flex-col gap-3 py-6 pr-8 pl-2'
+			>
 				{cells.map((cell) => (
 					<NotebookCell
 						key={cell.id}
