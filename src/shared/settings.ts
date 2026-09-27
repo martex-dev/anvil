@@ -32,7 +32,21 @@ export const SettingsSchema = z.object({
 	tabSize: z.number().int().min(1).max(8).default(4),
 	wordWrap: z.boolean().default(false),
 	minimap: z.boolean().default(true),
+	/** The enclosing class / function headers stay pinned at the top while you scroll. */
+	stickyScroll: z.boolean().default(true),
 	formatOnSave: z.boolean().default(false),
+	/**
+	 * Save without Ctrl+S: a moment after you stop typing, or when focus leaves the file or the
+	 * window. Auto saves skip format-on-save so code doesn't jump while you type.
+	 */
+	autoSave: z.enum(['off', 'afterDelay', 'onFocusChange']).default('off'),
+	autoSaveDelayMs: z.number().int().min(200).max(60_000).default(1000),
+	/**
+	 * How strictly basedpyright checks Python. 'standard' matches Pylance; basedpyright's own
+	 * default flags every untyped return in plain research code. A project's pyrightconfig.json
+	 * or [tool.basedpyright] / [tool.pyright] in pyproject.toml overrides it.
+	 */
+	pythonTypeChecking: z.enum(['off', 'basic', 'standard', 'strict']).default('standard'),
 	trimTrailingWhitespace: z.boolean().default(false),
 	insertFinalNewline: z.boolean().default(false),
 	/** Save a snapshot on every save so files can be rolled back from the History view. */
@@ -78,6 +92,8 @@ export const SettingsSchema = z.object({
 	colorSwatches: z.boolean().default(true),
 	/** "Author, time • message" after the line the cursor is on (Toggle Inline Blame). */
 	inlineBlame: z.boolean().default(true),
+	/** `git fetch --prune` every 5 minutes while a repository is open, so ahead/behind is right. */
+	gitAutoFetch: z.boolean().default(true),
 	/** Tabs tinted by file type, with an error dot when the file has problems. */
 	tabTint: z.boolean().default(true),
 	/** Blur values in .env files and flag keys/seed phrases in code. */
@@ -85,6 +101,8 @@ export const SettingsSchema = z.object({
 	/** Copilot-style gray suggestions while typing. */
 	ghostText: z.boolean().default(true),
 	ghostDelayMs: z.number().int().min(100).max(2000).default(350),
+	/** The debugger steps through your code only, not the standard library or installed packages. */
+	debugJustMyCode: z.boolean().default(true),
 	/** Check the releases feed and download updates in the background (installed builds only). */
 	autoUpdate: z.boolean().default(true),
 });

@@ -8,6 +8,10 @@ describe('shell quoting', () => {
 		expect(shQuote("/home/john's project/a.py")).toBe("'/home/john'\\''s project/a.py'");
 	});
 
+	it('doubles the typographic quotes PowerShell also ends a string on', () => {
+		expect(psQuote('C:\\John\u2019s\\a.py')).toBe("'C:\\John\u2019\u2019s\\a.py'");
+	});
+
 	it('leaves plain words alone and quotes the rest', () => {
 		expect(shellWord('build:prod', true)).toBe('build:prod');
 		expect(shellWord('@scope;rm', true)).toBe("'@scope;rm'");

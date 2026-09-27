@@ -21,10 +21,10 @@ afterEach(() => rmSync(dir, { recursive: true, force: true }));
 describe('HistoryStore', () => {
 	it('stores snapshots newest first and reads them back', () => {
 		store.snapshot(root, 'a.py', 'v1');
-		clock += 1000;
+		clock += 60_000;
 		store.snapshot(root, 'a.py', 'v2');
 		const list = store.list(root, 'a.py');
-		expect(list.map((s) => s.time)).toEqual([clock, clock - 1000]);
+		expect(list.map((s) => s.time)).toEqual([clock, clock - 60_000]);
 		expect(store.read(root, 'a.py', list[1]?.id ?? '')).toBe('v1');
 	});
 
@@ -37,7 +37,7 @@ describe('HistoryStore', () => {
 
 	it('keeps at most 50 snapshots and drops ones older than 30 days', () => {
 		for (let i = 0; i < 55; i++) {
-			clock += 1000;
+			clock += 60_000;
 			store.snapshot(root, 'b.py', `v${i}`);
 		}
 		expect(store.list(root, 'b.py')).toHaveLength(50);

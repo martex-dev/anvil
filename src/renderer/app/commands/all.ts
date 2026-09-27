@@ -1,13 +1,17 @@
 import { AI_COMMANDS } from '../../features/ai/commands';
 import { DATA_COMMANDS } from '../../features/data/commands';
+import { DEBUG_COMMANDS } from '../../features/debug/commands';
 import { EDITOR_COMMANDS } from '../../features/editor/commands';
 import { EXPLORER_COMMANDS } from '../../features/explorer/commands';
 import { GIT_COMMANDS } from '../../features/git/commands';
 import { LSP_COMMANDS } from '../../features/lsp/commands';
 import { PYTHON_COMMANDS } from '../../features/python/commands';
+import { SEARCH_COMMANDS } from '../../features/search/commands';
 import { TERMINAL_COMMANDS } from '../../features/terminal/commands';
+import { TESTS_COMMANDS } from '../../features/tests/commands';
 import { APPEARANCE_COMMANDS } from '../../features/themes/commands';
 import { TOOLBOX_COMMANDS } from '../../features/toolbox/commands';
+import { BUILTIN_EDITOR_COMMANDS } from '../../features/tools/builtin-commands';
 import { TOOL_COMMANDS } from '../../features/tools/commands';
 import { VIEWER_COMMANDS } from '../../features/viewers/commands';
 import { CORE_COMMANDS } from './core-commands';
@@ -20,12 +24,16 @@ export const ALL_COMMANDS: readonly Command[] = [
 	...EDITOR_COMMANDS,
 	...EXPLORER_COMMANDS,
 	...PYTHON_COMMANDS,
+	...TESTS_COMMANDS,
+	...DEBUG_COMMANDS,
 	...DATA_COMMANDS,
 	...VIEWER_COMMANDS,
 	...AI_COMMANDS,
 	...GIT_COMMANDS,
+	...SEARCH_COMMANDS,
 	...TERMINAL_COMMANDS,
 	...TOOL_COMMANDS,
+	...BUILTIN_EDITOR_COMMANDS,
 	...APPEARANCE_COMMANDS,
 	...TOOLBOX_COMMANDS,
 	...LSP_COMMANDS,

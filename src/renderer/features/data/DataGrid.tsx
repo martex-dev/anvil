@@ -12,6 +12,7 @@ import {
 
 import type { DataColumn } from '@shared/ipc/channels/data';
 
+import { matchesShortcut } from '../../lib/shortcuts';
 import { AppContextMenu } from '../../ui/ContextMenu';
 import {
 	columnOffsets,
@@ -125,13 +126,13 @@ export function DataGrid({
 
 	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
 		const ctrl = event.ctrlKey || event.metaKey;
-		const key = event.key.toLowerCase();
-		if (ctrl && key === 'c') {
+		// By shortcut, not `event.key`: on a Cyrillic layout Ctrl+C reports 'с', and Caps Lock 'C'.
+		if (matchesShortcut(event, 'Ctrl+C')) {
 			if (range) onCopy(range);
 			event.preventDefault();
 			return;
 		}
-		if (ctrl && key === 'a') {
+		if (matchesShortcut(event, 'Ctrl+A')) {
 			event.preventDefault();
 			onSelectionChange({
 				anchor: { row: 0, col: 0 },

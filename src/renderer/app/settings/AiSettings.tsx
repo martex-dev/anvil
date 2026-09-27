@@ -13,6 +13,7 @@ import { toast } from '../../stores/toast-store';
 import { Button } from '../../ui/Button';
 import { ErrorState } from '../../ui/ErrorState';
 import { Input } from '../../ui/Input';
+import { withOllamaScheme } from './ollama-url';
 import { SettingRow } from './SettingRow';
 import { SettingStepper } from './SettingStepper';
 import { SettingToggle } from './SettingToggle';
@@ -39,7 +40,7 @@ export function AiSettings({
 		);
 	if (!settings) return <div className='shimmer h-24 rounded-md' />;
 	const commitUrl = (text: string): void => {
-		const url = parseOllamaUrl(text);
+		const url = parseOllamaUrl(withOllamaScheme(text));
 		setInvalidUrl(url === null);
 		if (url === null) {
 			toast.error(

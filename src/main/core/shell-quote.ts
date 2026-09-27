@@ -1,5 +1,8 @@
-/** PowerShell single-quoted literal: only ' needs escaping (as ''). */
-export const psQuote = (s: string): string => `'${s.replace(/'/g, "''")}'`;
+/**
+ * PowerShell single-quoted literal: a quote is escaped by doubling it. PowerShell also ends
+ * such strings on the typographic quotes ‘ ’ ‚ ‛, so those are doubled like ' is.
+ */
+export const psQuote = (s: string): string => `'${s.replace(/['‘’‚‛]/g, (q) => q + q)}'`;
 
 /** POSIX shell single-quoted literal: close, add an escaped ', reopen. */
 export const shQuote = (s: string): string => `'${s.replace(/'/g, `'\\''`)}'`;

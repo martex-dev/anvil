@@ -19,6 +19,11 @@ import type { MainFeature } from '../../core/features';
 const MAX_PER_FILE = 50;
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
+/**
+ * Saves this close together replace the newest snapshot instead of adding one (VS Code's
+ * localHistory.mergeWindow): auto save would otherwise push out a day of history in minutes.
+ */
+const MERGE_WINDOW_MS = 30_000;
 const NAME = /^(\d{13})-([a-f0-9]{8})\.txt$/;
 
 const sha = (s: string): string => createHash('sha1').update(s).digest('hex');
@@ -44,7 +49,10 @@ export class HistoryStore {
 		const hash = sha(content).slice(0, 8);
 		const existing = this.names(folder);
 		// Saving without changes (Ctrl+S spam) adds nothing.
-		if (existing[0] && NAME.exec(existing[0])?.[2] === hash) return;
+		const newest = existing[0] ? NAME.exec(existing[0]) : null;
+		if (newest?.[2] === hash) return;
+		if (existing[0] && this.now() - Number(newest?.[1] ?? 0) < MERGE_WINDOW_MS)
+			unlinkSync(join(folder, existing[0]));
 		writeFileSync(join(folder, `${this.now()}-${hash}.txt`), content, 'utf8');
 		writeFileSync(join(folder, 'path.txt'), rel, 'utf8');
 		this.prune(folder);

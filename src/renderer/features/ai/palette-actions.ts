@@ -2,16 +2,17 @@ import { useLayoutStore } from '../../stores/layout-store';
 import { toast } from '../../stores/toast-store';
 import { attachCurrent, attachDiff } from './chat-attach';
 import { useChat } from './chat-store';
+import { cancelCommitMessage } from './commit-message';
 import { acceptInlineEdit, cancelInlineEdit, useInlineEdit } from './inline-edit';
 
 // Palette versions of controls that otherwise need the mouse in the AI panel or inline box.
 
-/** Stops the chat reply, or else the inline edit, that is being generated. */
+/** Stops the chat reply, or else the inline edit or commit message, being generated. */
 export function stopGenerating(): void {
 	const chat = useChat.getState();
 	if (chat.activeRequest) chat.stop();
 	else if (useInlineEdit.getState().phase === 'generating') cancelInlineEdit();
-	else toast.info('Nothing is generating');
+	else if (!cancelCommitMessage()) toast.info('Nothing is generating');
 }
 
 /** Attaches to the next chat message and shows the panel, so the chip is visible. */

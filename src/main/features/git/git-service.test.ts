@@ -1,12 +1,24 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { batchPaths, gitEnv, isMissingPathError, isUnbornHead } from './git-process';
-import { GitService, pullSummary } from './git-service';
+import { blame, headContent, log } from './git-history';
+import { batchPaths, isMissingPathError } from './git-process';
+import { pullSummary } from './git-remote';
+import { GitService } from './git-service';
+
+// How the git:headContent / git:blame handlers resolve an editor path.
+const headOf = async (git: GitService, path: string): Promise<string | null> => {
+	const at = await git.locate(path);
+	return at ? headContent(at.root, at.repoPath) : null;
+};
+const blameOf = async (git: GitService, path: string, line: number) => {
+	const at = await git.locate(path);
+	return at ? blame(at.root, at.repoPath, line) : null;
+};
 
 // Integration test against the real system git in a throwaway repository.
 let repo: string;
@@ -112,6 +124,24 @@ describe('GitService', { timeout: 30_000 }, () => {
 		]);
 	});
 
+	it('unstages before the first commit, keeping the file on disk', async () => {
+		const git = new GitService(() => repo);
+		mkdirSync(join(repo, 'src'));
+		writeFileSync(join(repo, 'a.txt'), 'a\n');
+		writeFileSync(join(repo, 'src', 'b.py'), 'b\n');
+		await git.stage(['a.txt', 'src/b.py']);
+		// Edited after staging: the index and the working tree now differ.
+		writeFileSync(join(repo, 'a.txt'), 'a2\n');
+		await git.unstage(['a.txt', 'src']);
+		const status = await git.status();
+		expect(status.staged).toEqual([]);
+		expect(status.unstaged.map((c) => `${c.path}:${c.kind}`)).toEqual([
+			'a.txt:untracked',
+			'src/b.py:untracked',
+		]);
+		expect(readFileSync(join(repo, 'a.txt'), 'utf8')).toBe('a2\n');
+	});
+
 	it('refuses to commit with nothing staged and rejects paths outside the repo', async () => {
 		const git = new GitService(() => repo);
 		await expect(git.commit('empty')).rejects.toMatchObject({ code: 'GIT_NOTHING_STAGED' });
@@ -142,27 +172,11 @@ describe('GitService', { timeout: 30_000 }, () => {
 		run('add', '.');
 		run('commit', '-q', '-m', 'files');
 		const git = new GitService(() => join(repo, 'app'));
-		expect(await git.headContent('b.ts')).toBe('sub\n');
-		const blame = await git.blame('b.ts', 1);
+		expect(await headOf(git, 'b.ts')).toBe('sub\n');
+		const blame = await blameOf(git, 'b.ts', 1);
 		expect(blame).toMatchObject({ author: 'Anvil Test', summary: 'files' });
-		await expect(git.headContent('../b.ts')).rejects.toMatchObject({
+		await expect(headOf(git, '../b.ts')).rejects.toMatchObject({
 			code: 'FS_OUTSIDE_WORKSPACE',
-		});
-	});
-
-	it('keeps git messages untranslated but preserves the character set', () => {
-		expect(
-			gitEnv({
-				LANG: 'de_DE.UTF-8',
-				LANGUAGE: 'de',
-				LC_ALL: 'de_DE.UTF-8',
-				LC_MESSAGES: 'de_DE.UTF-8',
-			}),
-		).toEqual({
-			LANG: 'de_DE.UTF-8',
-			LC_CTYPE: 'de_DE.UTF-8',
-			LC_MESSAGES: 'C',
-			GIT_TERMINAL_PROMPT: '0',
 		});
 	});
 
@@ -202,13 +216,13 @@ describe('GitService', { timeout: 30_000 }, () => {
 		writeFileSync(join(repo, 'new.txt'), 'n\n');
 		await git.stage(['new.txt']);
 		expect(await git.diff('new.txt', true)).toMatchObject({ original: '', modified: 'n\n' });
-		expect(await git.headContent('new.txt')).toBeNull();
-		expect(await git.blame('new.txt', 1)).toBeNull();
+		expect(await headOf(git, 'new.txt')).toBeNull();
+		expect(await blameOf(git, 'new.txt', 1)).toBeNull();
 		await git.commit('first');
 		writeFileSync(join(repo, 'untracked.txt'), 'u\n');
-		expect(await git.headContent('untracked.txt')).toBeNull();
-		expect(await git.blame('untracked.txt', 1)).toBeNull();
-		expect(await git.blame('new.txt', 5)).toBeNull();
+		expect(await headOf(git, 'untracked.txt')).toBeNull();
+		expect(await blameOf(git, 'untracked.txt', 1)).toBeNull();
+		expect(await blameOf(git, 'new.txt', 5)).toBeNull();
 
 		expect(isMissingPathError(new Error("fatal: path 'a' does not exist in 'HEAD'"))).toBe(
 			true,
@@ -219,19 +233,14 @@ describe('GitService', { timeout: 30_000 }, () => {
 
 	it('lists no commits for an unborn branch but reports other log failures', async () => {
 		const git = new GitService(() => repo);
-		expect(await git.log(10)).toEqual([]);
+		expect(await log(repo, 10)).toEqual([]);
 		writeFileSync(join(repo, 'a.txt'), 'a\n');
 		await git.stage(['a.txt']);
 		await git.commit('first');
-		expect((await git.log(10)).map((c) => c.message)).toEqual(['first']);
+		expect((await log(repo, 10)).map((c) => c.message)).toEqual(['first']);
 
-		expect(
-			isUnbornHead(
-				new Error("fatal: your current branch 'main' does not have any commits yet"),
-			),
-		).toBe(true);
-		expect(isUnbornHead(new Error("fatal: bad default revision 'HEAD'"))).toBe(true);
-		expect(isUnbornHead(new Error('fatal: unable to read tree'))).toBe(false);
+		// Not an empty history: a failure (here, a folder that isn't there) is reported.
+		await expect(log(join(repo, 'missing'), 10)).rejects.toThrow();
 	});
 
 	it('summarizes a pull without claiming changes that did not happen', () => {
@@ -242,30 +251,5 @@ describe('GitService', { timeout: 30_000 }, () => {
 		expect(pullSummary({ changes: 3, insertions: 5, deletions: 4 })).toBe(
 			'3 files changed, +5 −4',
 		);
-	});
-
-	it('passes git only an allowlisted environment', () => {
-		const env = gitEnv({
-			Path: 'C:/bin',
-			USERPROFILE: 'C:/Users/marto',
-			GCM_INTERACTIVE: 'auto',
-			GIT_SSH: 'C:/Program Files/PuTTY/plink.exe',
-			GIT_SSH_COMMAND: 'ssh -i ~/.ssh/work',
-			XDG_CONFIG_HOME: '/home/marto/.config',
-			GIT_ASKPASS: 'C:/other-app/askpass.exe',
-			VSCODE_GIT_IPC_HANDLE: 'pipe',
-			EDITOR: 'code --wait',
-			SOME_SECRET_TOKEN: 'nope',
-		});
-		expect(env).toEqual({
-			Path: 'C:/bin',
-			USERPROFILE: 'C:/Users/marto',
-			GCM_INTERACTIVE: 'auto',
-			GIT_SSH: 'C:/Program Files/PuTTY/plink.exe',
-			GIT_SSH_COMMAND: 'ssh -i ~/.ssh/work',
-			XDG_CONFIG_HOME: '/home/marto/.config',
-			LC_MESSAGES: 'C',
-			GIT_TERMINAL_PROMPT: '0',
-		});
 	});
 });

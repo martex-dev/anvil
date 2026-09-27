@@ -19,6 +19,15 @@ export function toAbsolute(root: string, rel: string): string {
 	return abs;
 }
 
+/**
+ * Whether `abs` is the workspace folder itself. Compared through `relative`, which ignores case
+ * on Windows as the filesystem does: `../PROJ` or `c:\x\proj` for `C:\x\proj` name the root
+ * too, and a plain `===` let them rename or recycle the whole open folder.
+ */
+export function isWorkspaceRoot(root: string, abs: string): boolean {
+	return relative(root, abs) === '';
+}
+
 export function toRelative(root: string, abs: string): string {
 	return relative(root, abs).split(sep).join('/');
 }

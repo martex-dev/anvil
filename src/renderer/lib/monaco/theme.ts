@@ -16,6 +16,8 @@ export type EditorPrefs = Pick<
 	| 'editorLineHeight'
 	| 'cursorStyle'
 	| 'colorSwatches'
+	| 'pythonTypeChecking'
+	| 'stickyScroll'
 >;
 
 export const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
@@ -232,7 +234,7 @@ export function buildUserConfiguration(prefs: EditorPrefs): string {
 		'editor.renderWhitespace': 'selection',
 		'editor.bracketPairColorization.enabled': true,
 		'editor.guides.bracketPairs': 'active',
-		'editor.stickyScroll.enabled': true,
+		'editor.stickyScroll.enabled': prefs.stickyScroll,
 		'editor.inlineSuggest.enabled': prefs.ghostText,
 		'editor.inlineSuggest.showToolbar': 'onHover',
 		'editor.suggest.preview': true,
@@ -251,5 +253,12 @@ export function buildUserConfiguration(prefs: EditorPrefs): string {
 		'editor.inlayHints.enabled': 'onUnlessPressed',
 		'editor.unicodeHighlight.ambiguousCharacters': true,
 		'files.eol': 'auto',
+		// basedpyright pulls these through workspace/configuration. Config files in the project
+		// take precedence, as in VS Code.
+		'basedpyright.analysis.typeCheckingMode': prefs.pythonTypeChecking,
+		'basedpyright.analysis.autoImportCompletions': true,
+		// Type hints on every variable and argument name are noise in notebook-style code.
+		'basedpyright.analysis.inlayHints.variableTypes': false,
+		'basedpyright.analysis.inlayHints.callArgumentNames': false,
 	});
 }

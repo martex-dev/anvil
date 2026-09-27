@@ -19,6 +19,13 @@ describe('parseStoredTerminals', () => {
 		});
 	});
 
+	it('keeps the folder an Open in Terminal tab started in', () => {
+		const c = { ...a, id: 'anvil-0a1b2c3d-3333', cwd: 'src/strategies' };
+		expect(parseStoredTerminals({ tabs: [c] }).tabs).toEqual([c]);
+		const empty = { ...a, cwd: '' };
+		expect(parseStoredTerminals({ tabs: [empty] }).tabs).toEqual([]);
+	});
+
 	it('drops corrupt entries and falls back to the first tab', () => {
 		const stored = {
 			tabs: [

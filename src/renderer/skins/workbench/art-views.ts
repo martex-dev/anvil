@@ -172,3 +172,22 @@ export const TOOLBOX: PixelArt = [
 	'kkkkkkkkkkkkkkkk',
 	'................',
 ];
+
+export const FLASK: PixelArt = [
+	'................',
+	'....kkkkkkkk....',
+	'.....kwwwsk.....',
+	'.....kwwwsk.....',
+	'.....kwwwsk.....',
+	'....kwwwwssk....',
+	'...kwwwwwsssk...',
+	'..kwwwwwwssssk..',
+	'..kllllllllllk..',
+	'.klllwlllllllek.',
+	'.kllllllllllllk.',
+	'.klllllwllllllk.',
+	'.kllllllllllllk.',
+	'..keeeeeeeeeek..',
+	'...kkkkkkkkkk...',
+	'................',
+];

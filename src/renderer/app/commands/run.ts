@@ -1,7 +1,18 @@
 import { rlog } from '../../lib/log';
 import { toast } from '../../stores/toast-store';
 import { recordRecentCommand } from './recent';
-import type { Command } from './types';
+import type { Command, CommandContext } from './types';
+
+/** Who answers each context; features register theirs (the debugger answers 'debugging'). */
+const contexts = new Map<CommandContext, () => boolean>();
+
+export function setContextSource(context: CommandContext, isActive: () => boolean): void {
+	contexts.set(context, isActive);
+}
+
+export function isContextActive(context: CommandContext): boolean {
+	return contexts.get(context)?.() ?? false;
+}
 
 /**
  * Commands are registered here at startup (see all.ts). Kept as a plain module-level list so

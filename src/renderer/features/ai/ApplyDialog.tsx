@@ -1,7 +1,15 @@
-import { Check, GitCompare, X } from 'lucide-react';
+import { AlertTriangle, Check, GitCompare, X } from 'lucide-react';
 import type * as Monaco from 'monaco-editor';
 import { Dialog as RadixDialog } from 'radix-ui';
-import { type JSX, useEffect, useMemo, useRef, useState } from 'react';
+import {
+	type JSX,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from 'react';
 import { create } from 'zustand';
 
 import { focusedEditor } from '../../lib/monaco/editors';
@@ -9,7 +17,9 @@ import { getLoadedMonaco } from '../../lib/monaco/load';
 import { toWorkspacePath } from '../../lib/monaco/workspace-root';
 import { useRegisterOverlay } from '../../stores/overlay-store';
 import { toast } from '../../stores/toast-store';
+import { requestOpenFile } from '../../stores/workbench-store';
 import { Button } from '../../ui/Button';
+import { type ApplyTarget, applyWarnings, locateSelection } from './apply-target';
 import { applyBlock } from './fences';
 
 export interface Proposal {
@@ -18,8 +28,10 @@ export interface Proposal {
 	language: string;
 	/** The code block from the reply. */
 	block: string;
-	/** Lines that were selected when Apply was clicked (1-based, inclusive). */
+	/** The asked-about lines, where they are in the file now (1-based, inclusive). */
 	selection: { startLine: number; endLine: number } | null;
+	/** The file's version when the preview opened: a change after that makes the diff stale. */
+	version: number;
 }
 
 export const useApply = create<{ proposal: Proposal | null; set: (p: Proposal | null) => void }>(
@@ -37,13 +49,47 @@ function findModel(path: string): Monaco.editor.ITextModel | null {
 	return monaco?.editor.getModels().find((m) => toWorkspacePath(m.uri) === path) ?? null;
 }
 
-/** Opens the preview, or explains why not when the target file isn't open any more. */
-export function openApply(proposal: Proposal): void {
-	if (!findModel(proposal.path)) {
-		toast.info('Open the file first', `${proposal.path} isn't open in the editor anymore.`);
+/**
+ * Previews `block` against the file the question was about, on the lines asked about (found
+ * again if edits moved them), or explains why not.
+ */
+export function openApplyTo(target: ApplyTarget, block: string): void {
+	const model = findModel(target.path);
+	if (!model) {
+		toast.info('Open the file first', `The question was about ${target.path}.`, {
+			label: 'Open',
+			run: () => void requestOpenFile({ path: target.path }),
+		});
 		return;
 	}
-	useApply.getState().set(proposal);
+	let selection: Proposal['selection'] = null;
+	if (target.selection) {
+		selection = locateSelection(model.getValue(), target.selection);
+		if (!selection)
+			toast.warn(
+				'The asked-about lines changed',
+				`Previewing against the whole of ${target.path}. Check the diff before accepting.`,
+			);
+	}
+	useApply.getState().set({
+		path: target.path,
+		language: model.getLanguageId(),
+		block,
+		selection,
+		version: model.getVersionId(),
+	});
+}
+
+/** The model's version, re-rendering on every edit, so a stale preview shows at once. */
+function useVersion(model: Monaco.editor.ITextModel | null): number {
+	const subscribe = useCallback(
+		(changed: () => void) => {
+			const listener = model?.onDidChangeContent(changed);
+			return () => listener?.dispose();
+		},
+		[model],
+	);
+	return useSyncExternalStore(subscribe, () => model?.getVersionId() ?? -1);
 }
 
 function Preview({ proposal }: { proposal: Proposal }): JSX.Element {
@@ -52,6 +98,9 @@ function Preview({ proposal }: { proposal: Proposal }): JSX.Element {
 	);
 	const hostRef = useRef<HTMLDivElement>(null);
 	const target = findModel(proposal.path);
+	// Accepting writes `proposed` over the whole file: if the file changed after the preview
+	// opened, that would silently undo the change, so the preview refuses instead.
+	const stale = useVersion(target) !== proposal.version;
 	const original = target?.getValue() ?? '';
 	const proposed = useMemo(
 		() =>
@@ -105,6 +154,8 @@ function Preview({ proposal }: { proposal: Proposal }): JSX.Element {
 			useApply.getState().set(null);
 			return;
 		}
+		// Checked again here: an edit can land between the last render and the click.
+		if (model.getVersionId() !== proposal.version) return;
 		// One undoable edit, kept apart from any typing just before it; the editor marks the
 		// file unsaved and Ctrl+S writes it.
 		model.pushStackElement();
@@ -122,6 +173,14 @@ function Preview({ proposal }: { proposal: Proposal }): JSX.Element {
 		focusEditorOnClose = true;
 		useApply.getState().set(null);
 	};
+
+	const warnings = applyWarnings({
+		path: proposal.path,
+		stale,
+		original,
+		block: proposal.block,
+		wholeFile: mode === 'file',
+	});
 
 	return (
 		<div className='flex h-full flex-col' data-apply-preview={proposal.path}>
@@ -171,11 +230,27 @@ function Preview({ proposal }: { proposal: Proposal }): JSX.Element {
 					variant='primary'
 					icon={<Check size={12} />}
 					onClick={accept}
-					autoFocus
+					disabled={stale}
+					// Only for a line edit: with Accept focused, a stray Enter on a whole-file
+					// preview would swap the file for a snippet. Radix focuses Discard instead.
+					autoFocus={proposal.selection !== null}
 				>
 					Accept
 				</Button>
 			</header>
+			{warnings.length > 0 && (
+				<div
+					role='status'
+					className='flex flex-col gap-0.5 border-b border-warn/30 bg-warn-soft px-4 py-1.5 text-12 text-warn'
+				>
+					{warnings.map((w) => (
+						<p key={w} className='flex items-start gap-1.5'>
+							<AlertTriangle size={12} className='mt-0.5 shrink-0' />
+							{w}
+						</p>
+					))}
+				</div>
+			)}
 			<div
 				ref={hostRef}
 				className='min-h-0 flex-1'
@@ -189,7 +264,7 @@ function Preview({ proposal }: { proposal: Proposal }): JSX.Element {
 export function ApplyDialog(): JSX.Element {
 	const proposal = useApply((s) => s.proposal);
 	useRegisterOverlay(proposal !== null);
-	// openApply checks the file up front; this only guards a model closed since then.
+	// openApplyTo checks the file up front; this only guards a model closed since then.
 	const missing = proposal !== null && !findModel(proposal.path);
 	// Radix traps focus inside, marks the rest of the app inert (aria-modal), closes on Escape
 	// or a scrim click, and puts focus back where it was (the chat's Apply button) on close.

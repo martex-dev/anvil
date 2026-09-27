@@ -25,6 +25,8 @@ export interface PickItem {
 interface PickRequest {
 	title: string;
 	placeholder: string;
+	/** Text the input starts with (e.g. the current path for Save As). */
+	initialQuery?: string;
 	items: PickItem[] | Promise<PickItem[]>;
 	/**
 	 * Toast title when `items` rejects; the picker then closes. Without it, the picker shows the
@@ -73,7 +75,7 @@ export function quickPick(options: Omit<PickRequest, 'resolve'>): Promise<string
 		useQuickPickStore.setState({
 			request,
 			items: Array.isArray(options.items) ? options.items : null,
-			query: '',
+			query: options.initialQuery ?? '',
 			active: Array.isArray(options.items) ? initialActive(options.items) : '',
 			error: null,
 		});

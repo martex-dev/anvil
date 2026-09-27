@@ -167,19 +167,35 @@ function toNumber(v: string): number {
 	return Number(v);
 }
 
+/** The filter as matched: case-insensitive, surrounding spaces ignored. */
+export function filterNeedle(filter: string): string {
+	return filter.trim().toLowerCase();
+}
+
+/**
+ * The rows of `idx` with a cell containing `filter`, in the same order. A longer filter only
+ * ever matches a subset, so the viewer narrows its previous result while the user types instead
+ * of scanning every row again (and keeps that result's sort).
+ */
+export function narrow(table: Table, idx: readonly number[], filter: string): number[] {
+	const needle = filterNeedle(filter);
+	if (!needle) return [...idx];
+	return idx.filter((i) =>
+		(table.rows[i] ?? []).some((v) => v !== null && v.toLowerCase().includes(needle)),
+	);
+}
+
 /** Row indices after filtering and sorting (numbers compare numerically, missing last). */
 export function view(
 	table: Table,
 	filter: string,
 	sort: { column: number; desc: boolean } | null,
 ): number[] {
-	const needle = filter.trim().toLowerCase();
-	let idx = table.rows.map((_, i) => i);
-	if (needle) {
-		idx = idx.filter((i) =>
-			(table.rows[i] ?? []).some((v) => v !== null && v.toLowerCase().includes(needle)),
-		);
-	}
+	const idx = narrow(
+		table,
+		table.rows.map((_, i) => i),
+		filter,
+	);
 	if (sort) {
 		const numeric = NUMERIC.has(table.columns[sort.column]?.type ?? 'string');
 		const dir = sort.desc ? -1 : 1;

@@ -1,11 +1,27 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
+import type * as JsonFileModule from './json-file';
 import { JsonStore } from './json-store';
+
+// Lets a test make settings.json unreadable, like a file a scanner or backup tool holds open.
+const lock = vi.hoisted(() => ({ error: null as Error | null }));
+vi.mock('./json-file', async (importOriginal) => {
+	const actual = await importOriginal<typeof JsonFileModule>();
+	return {
+		...actual,
+		readJsonFile: (path: string): JsonFileModule.JsonFile => {
+			if (lock.error) throw lock.error;
+			return actual.readJsonFile(path, []);
+		},
+	};
+});
+
+const corruptCopies = (): string[] => readdirSync(dir).filter((n) => n.includes('.corrupt-'));
 
 let dir: string;
 let file: string;
@@ -15,7 +31,10 @@ beforeEach(() => {
 	file = join(dir, 'settings.json');
 });
 
-afterEach(() => rmSync(dir, { recursive: true, force: true }));
+afterEach(() => {
+	lock.error = null;
+	rmSync(dir, { recursive: true, force: true });
+});
 
 describe('JsonStore', () => {
 	it('returns the fallback for missing keys', () => {
@@ -50,7 +69,37 @@ describe('JsonStore', () => {
 		writeFileSync(file, '{not json');
 		const store = new JsonStore(file);
 		expect(store.get('a', z.number(), 1)).toBe(1);
-		expect(existsSync(`${file}.corrupt`)).toBe(true);
+		expect(corruptCopies()).toHaveLength(1);
+	});
+
+	it('reads a file saved with a UTF-8 BOM', () => {
+		writeFileSync(file, `\ufeff${JSON.stringify({ font: 15 })}`, 'utf8');
+		expect(new JsonStore(file).get('font', z.number(), 13)).toBe(15);
+		expect(corruptCopies()).toEqual([]);
+	});
+
+	it('keeps a locked file, and merges changes into it once it can be read', () => {
+		writeFileSync(file, JSON.stringify({ font: 15, theme: 'dark', old: true }));
+		lock.error = Object.assign(new Error('EBUSY: locked'), { code: 'EBUSY' });
+		const readErrors: unknown[] = [];
+		const store = new JsonStore(file, undefined, 250, undefined, (e) => readErrors.push(e));
+		expect(readErrors).toHaveLength(1);
+		// Defaults for now; the file is neither moved aside nor replaced by them.
+		expect(store.get('font', z.number(), 13)).toBe(13);
+		store.set('theme', z.string(), 'light');
+		store.delete('old');
+		expect(() => store.flush()).toThrow(/EBUSY/);
+		expect(corruptCopies()).toEqual([]);
+		expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({
+			font: 15,
+			theme: 'dark',
+			old: true,
+		});
+
+		lock.error = null;
+		store.flush();
+		expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({ font: 15, theme: 'light' });
+		expect(store.get('font', z.number(), 13)).toBe(15);
 	});
 
 	it('reports a file that parses but is not an object before moving it aside', () => {
@@ -58,7 +107,7 @@ describe('JsonStore', () => {
 		const issues: string[] = [];
 		new JsonStore(file, (key) => issues.push(key));
 		expect(issues).toEqual(['<file>']);
-		expect(existsSync(`${file}.corrupt`)).toBe(true);
+		expect(corruptCopies()).toHaveLength(1);
 	});
 
 	it('rejects invalid writes', () => {

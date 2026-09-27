@@ -7,7 +7,9 @@ import { toMonacoKeybinding } from '../../lib/monaco/keybinding';
 import type { MonacoApi } from '../../lib/monaco/setup';
 import { isAltGraph } from '../../lib/shortcuts';
 import { useTabsStore } from '../../stores/tabs-store';
+import { attachDebugger } from '../debug/editor-debug';
 import { runCell } from '../python/run';
+import { attachTestLens } from '../tests/test-lens';
 import { countWords, MAX_COUNTED_SELECTION, useEditorStore } from './editor-store';
 import { attachBookmarks } from './extras/bookmarks';
 import { attachCells } from './extras/cells';
@@ -100,7 +102,9 @@ export function CodeEditor({ monaco, group, path, visible }: CodeEditorProps): J
 			attachShield(editor, monaco),
 			attachGitLines(editor, monaco),
 			attachBookmarks(editor, monaco),
+			attachDebugger(editor, monaco),
 			attachLens(editor, monaco),
+			attachTestLens(editor, monaco),
 			attachSpotlight(editor, monaco),
 			attachClipboard(editor, () =>
 				isScratch(shown.current) ? 'Scratchpad' : shown.current,

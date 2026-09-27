@@ -19,6 +19,18 @@ describe('runRuffFormat', () => {
 		expect(out).toEqual({ content: 'x = 1\n' });
 	});
 
+	it('keeps multi-byte characters that straddle a pipe chunk boundary', async () => {
+		// Far over one 64 KB pipe chunk, and 3-byte characters never line up with it everywhere.
+		const content = '# €✓ データ\n'.repeat(40_000);
+		const out = await runRuffFormat({
+			...fake('process.stdin.pipe(process.stdout)'),
+			cwd: undefined,
+			env: process.env,
+			content,
+		});
+		expect(out.content).toBe(content);
+	});
+
 	it('rejects with stderr when ruff exits early, without an unhandled stdin error', async () => {
 		const onStdinError = vi.fn();
 		await expect(

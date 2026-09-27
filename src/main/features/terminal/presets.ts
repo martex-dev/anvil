@@ -9,6 +9,10 @@ import { activatedEnv, replEnv } from '../python/interpreter';
 export interface LaunchSpec {
 	file: string;
 	args: string[];
+	/**
+	 * The complete environment, not additions to Anvil's own: activation may have removed an
+	 * inherited VIRTUAL_ENV or PYTHONHOME that must not come back.
+	 */
 	env: Record<string, string>;
 	title: string;
 }
@@ -139,11 +143,17 @@ export async function launchSpec(
 	preset: TerminalPresetId,
 	python: string | null,
 	ipython: boolean,
+	/** The workspace's `.env`, applied where your Python code runs (not to AI CLIs). */
+	dotEnv: Record<string, string> = {},
 ): Promise<LaunchSpec> {
 	const sh = await shell();
 	const noLogo = WIN ? ['-NoLogo'] : [];
-	const withPython = (): Record<string, string> =>
-		python ? { ...clean(activatedEnv(python)), ...BASE_ENV } : BASE_ENV;
+	const inherited = (): Record<string, string> => ({ ...clean(process.env), ...BASE_ENV });
+	const activated = (): Record<string, string> =>
+		python ? { ...clean(activatedEnv(python)), ...BASE_ENV } : inherited();
+	// Run File, Run Cell, tasks and the env shell see the project's .env, like VS Code's
+	// python.envFile. The AI CLI presets below deliberately don't: they'd hand your keys to them.
+	const withPython = (): Record<string, string> => ({ ...activated(), ...dotEnv });
 	switch (preset) {
 		case 'powershell':
 			return {
@@ -153,11 +163,11 @@ export async function launchSpec(
 				title: WIN ? 'PowerShell' : 'Shell',
 			};
 		case 'cmd':
-			return { file: 'cmd.exe', args: [], env: BASE_ENV, title: 'cmd' };
+			return { file: 'cmd.exe', args: [], env: inherited(), title: 'cmd' };
 		case 'gitbash': {
 			const bash = gitBash();
 			if (!bash) throw new Error('Git Bash is not installed');
-			return { file: bash, args: ['--login', '-i'], env: BASE_ENV, title: 'Git Bash' };
+			return { file: bash, args: ['--login', '-i'], env: inherited(), title: 'Git Bash' };
 		}
 		case 'python':
 			if (!python) throw new Error('No Python interpreter found');
@@ -177,7 +187,7 @@ export async function launchSpec(
 			const args = WIN
 				? [...noLogo, '-NoExit', '-Command', p.command]
 				: ['-c', `${p.command}; exec ${sh}`];
-			return { file: sh, args, env: withPython(), title: p.label };
+			return { file: sh, args, env: activated(), title: p.label };
 		}
 	}
 }

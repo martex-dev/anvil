@@ -2,8 +2,9 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { ChevronsDownUp, ChevronsUpDown, FileCode2, NotebookPen, RotateCw } from 'lucide-react';
 import { type JSX, useMemo, useState } from 'react';
 
+import { fsKeys } from '../../app/hooks/use-fs-invalidation';
+import { useWorkspace } from '../../app/hooks/use-workspace';
 import { call } from '../../lib/ipc';
-import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { toast } from '../../stores/toast-store';
 import { requestOpenFile } from '../../stores/workbench-store';
 import { Badge } from '../../ui/Badge';
@@ -45,21 +46,21 @@ async function convertToScript(path: string, notebook: Notebook): Promise<string
 }
 
 export function NotebookViewer({ path }: { path: string }): JSX.Element {
+	const root = useWorkspace().info.root ?? '';
+	// Under the folder's file key, which the shell refetches on fs:changed: a notebook re-saved
+	// by Jupyter (or a papermill run) refreshes in place. Read with the viewer's 50 MB limit:
+	// embedded plots push many notebooks past the editor's 5 MB.
 	const query = useQuery({
-		queryKey: ['fs-notebook', path],
-		queryFn: () => call('fs:readFile', path),
+		queryKey: [...fsKeys.file(root, path), 'notebook'],
+		queryFn: () => call('fs:readLargeText', path),
 	});
 	const { refetch } = query;
-	// A notebook re-saved by Jupyter (or a papermill run) should refresh in place.
-	useAnvilEvent('fs:changed', ({ files }) => {
-		if (files.includes(path)) void refetch();
-	});
 
 	const parsed = useMemo((): Parsed | null => {
 		const file = query.data;
 		if (!file) return null;
 		if (file.tooLarge)
-			return { ok: false, message: 'This notebook is too large to open here.' };
+			return { ok: false, message: 'This notebook is over 50 MB, too large to view here.' };
 		if (file.binary) return { ok: false, message: 'This file is binary, not notebook JSON.' };
 		try {
 			return { ok: true, notebook: parseNotebook(file.content) };
@@ -139,7 +140,11 @@ export function NotebookViewer({ path }: { path: string }): JSX.Element {
 	} else {
 		const { cells, language } = parsed.notebook;
 		body = (
-			<div className='animate-fade mx-auto flex w-full max-w-[1000px] flex-col gap-3 py-6 pr-8 pl-2'>
+			// Anchor links in one Markdown cell may point at a heading in another.
+			<div
+				data-anchor-scope
+				className='animate-fade mx-auto flex w-full max-w-[1000px] flex-col gap-3 py-6 pr-8 pl-2'
+			>
 				{cells.map((cell) => (
 					<NotebookCell
 						key={cell.id}

@@ -25,6 +25,7 @@ import { FileBadge } from '../../ui/FileBadge';
 import { IconButton } from '../../ui/IconButton';
 import { Spinner } from '../../ui/Spinner';
 import { PROVIDER_LABEL, useAiSettings } from './ai-settings';
+import { replyTargets } from './apply-target';
 import { attachCurrent, attachDiff, attachPath } from './chat-attach';
 import { useChatFocus } from './chat-focus';
 import { chatTrigger, mentionStatus, SLASH_COMMANDS, STARTERS } from './chat-shortcuts';
@@ -84,6 +85,8 @@ export function ChatPanel(): JSX.Element {
 					matches: suggestions.length,
 				})
 			: null;
+	// Apply sends a reply's code to the file its question was about, not whatever has focus.
+	const targets = useMemo(() => replyTargets(messages), [messages]);
 	const popupOpen = (suggestions.length > 0 || status !== null) && dismissedAt !== text;
 	const listOpen = popupOpen && suggestions.length > 0;
 
@@ -201,6 +204,7 @@ export function ChatPanel(): JSX.Element {
 							<MessageView
 								key={m.id}
 								message={m}
+								target={targets[i] ?? null}
 								onRetry={
 									m.error && i === messages.length - 1 && !activeRequest
 										? () => {

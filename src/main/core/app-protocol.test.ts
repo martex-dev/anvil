@@ -3,6 +3,7 @@ import { join, sep } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('electron', () => ({ net: {}, protocol: {} }));
+vi.mock('electron-log/main', () => ({ default: { warn: vi.fn() } }));
 
 const { resolveAppPath } = await import('./app-protocol');
 
@@ -28,10 +29,13 @@ describe('resolveAppPath', () => {
 	);
 
 	// Encoded backslashes survive URL parsing and would escape without the guard.
-	it.each(['app://anvil/..%5c..%5cmain%5cindex.js', 'app://other/index.html'])(
-		'refuses %s',
-		(url) => {
-			expect(resolveAppPath(root, url)).toBeNull();
-		},
-	);
+	it.each([
+		'app://anvil/..%5c..%5cmain%5cindex.js',
+		'app://other/index.html',
+		// A malformed escape made decodeURIComponent throw out of the protocol handler.
+		'app://anvil/assets/%E0%A4%A.js',
+		'app://anvil/%',
+	])('refuses %s', (url) => {
+		expect(resolveAppPath(root, url)).toBeNull();
+	});
 });

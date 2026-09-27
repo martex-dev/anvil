@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { baseName, dirName, formatBytes, resolveRelative, resolveWikilink } from './viewer-paths';
+import {
+	anchorIndex,
+	baseName,
+	dirName,
+	formatBytes,
+	headingSlug,
+	headingSlugs,
+	resolveRelative,
+	resolveWikilink,
+} from './viewer-paths';
 
 describe('paths', () => {
 	it('splits workspace-relative paths', () => {
@@ -63,5 +72,32 @@ describe('formatBytes', () => {
 		expect(formatBytes(250 * 1024)).toBe('250 KB');
 		expect(formatBytes(3.25 * 1024 * 1024)).toBe('3.3 MB');
 		expect(formatBytes(-1)).toBe('—');
+	});
+});
+
+describe('heading anchors', () => {
+	it('slugs headings like GitHub', () => {
+		expect(headingSlug('Getting Started')).toBe('getting-started');
+		expect(headingSlug('Sharpe & Sortino (annualised)!')).toBe('sharpe--sortino-annualised');
+		expect(headingSlug('Настройка на средата')).toBe('настройка-на-средата');
+		expect(headingSlug('step_1 - load')).toBe('step_1---load');
+	});
+
+	it('numbers repeated headings', () => {
+		expect(headingSlugs(['Setup', 'Usage', 'Setup', 'Setup'])).toEqual([
+			'setup',
+			'usage',
+			'setup-1',
+			'setup-2',
+		]);
+	});
+
+	it('finds the heading a fragment names, decoded and case-insensitive', () => {
+		const headings = ['Intro', 'Настройка', 'Intro'];
+		expect(anchorIndex(headings, 'intro-1')).toBe(2);
+		expect(anchorIndex(headings, encodeURIComponent('настройка'))).toBe(1);
+		expect(anchorIndex(headings, 'INTRO')).toBe(0);
+		expect(anchorIndex(headings, 'missing')).toBe(-1);
+		expect(anchorIndex(headings, '%E0%A4%A')).toBe(-1);
 	});
 });

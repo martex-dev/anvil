@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { which } from './presets';
+import { launchSpec, which } from './presets';
 
 vi.mock('node:child_process', () => ({ execFile: vi.fn() }));
 
@@ -34,5 +34,31 @@ describe('which', () => {
 		expect(await which('anvil-test-cli-b')).toBe('/usr/bin/anvil-test-cli-b');
 		expect(await which('anvil-test-cli-b')).toBe('/usr/bin/anvil-test-cli-b');
 		expect(execFileMock).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('launchSpec and the project .env', () => {
+	const dotEnv = { EXCHANGE_KEY: 'k' };
+
+	it('applies it where your Python code runs', async () => {
+		// No pwsh or CLI found: whichever argument is the callback gets the miss.
+		execFileMock.mockImplementation((...args: unknown[]) => {
+			const cb = args.findLast((a) => typeof a === 'function') as Callback | undefined;
+			cb?.(new Error('none'), '');
+		});
+		const shell = await launchSpec('powershell', null, false, dotEnv);
+		const repl = await launchSpec('repl', '/py/python', false, dotEnv);
+		expect(shell.env['EXCHANGE_KEY']).toBe('k');
+		expect(repl.env['EXCHANGE_KEY']).toBe('k');
+	});
+
+	it('keeps it away from the AI CLIs', async () => {
+		// No pwsh or CLI found: whichever argument is the callback gets the miss.
+		execFileMock.mockImplementation((...args: unknown[]) => {
+			const cb = args.findLast((a) => typeof a === 'function') as Callback | undefined;
+			cb?.(new Error('none'), '');
+		});
+		const claude = await launchSpec('claude', '/py/python', false, dotEnv);
+		expect(claude.env['EXCHANGE_KEY']).toBeUndefined();
 	});
 });

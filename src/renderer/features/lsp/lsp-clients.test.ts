@@ -37,7 +37,17 @@ const call = vi.fn(async (channel: string, input: { language?: string; session?:
 	return undefined;
 });
 
-vi.mock('../../lib/ipc', () => ({ call }));
+vi.mock('../../lib/ipc', () => ({
+	call,
+	IpcCallError: class IpcCallError extends Error {
+		constructor(
+			readonly code: string,
+			message: string,
+		) {
+			super(message);
+		}
+	},
+}));
 vi.mock('../../lib/log', () => ({ rlog: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 vi.mock('./ipc-transport', () => ({ ipcTransports: () => ({}) }));
 vi.mock('monaco-languageclient', () => ({ MonacoLanguageClient: FakeClient }));
@@ -101,18 +111,37 @@ describe('language clients', () => {
 		expect(stopped()).toHaveLength(1);
 	});
 
-	it('releases a client whose server crashed', async () => {
+	it('releases a client whose server crashed and starts a new one', async () => {
 		vi.useFakeTimers();
 		try {
 			await ensureClient('python');
 			const client = FakeClient.instances[0];
 			client?.options.clientOptions.errorHandler.closed();
-			expect(state('python')).toBe('error');
-			await vi.runAllTimersAsync();
+			expect(state('python')).toBe('starting');
+			await vi.advanceTimersByTimeAsync(10);
 			expect(client?.dispose).toHaveBeenCalled();
 			expect(stopped()).toHaveLength(1);
+			expect(startCount()).toBe(1);
+			await vi.advanceTimersByTimeAsync(1_000);
 		} finally {
 			vi.useRealTimers();
 		}
+		await vi.waitFor(() => expect(state('python')).toBe('ready'));
+		expect(startCount()).toBe(2);
+	});
+
+	it('does not restart a crashed server after the language was stopped', async () => {
+		vi.useFakeTimers();
+		try {
+			await ensureClient('typescript');
+			FakeClient.instances[0]?.options.clientOptions.errorHandler.closed();
+			// The folder changed before the restart was due.
+			await stopAll();
+			await vi.advanceTimersByTimeAsync(5_000);
+		} finally {
+			vi.useRealTimers();
+		}
+		expect(startCount()).toBe(1);
+		expect(state('typescript')).toBe('idle');
 	});
 });

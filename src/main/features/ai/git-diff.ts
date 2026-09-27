@@ -1,6 +1,7 @@
 import { execFile, type ExecFileException } from 'node:child_process';
 
 import { AnvilError } from '../../core/errors';
+import { gitEnv } from '../../core/git-env';
 
 const MAX_DIFF = 200_000;
 const TIMEOUT_MS = 10_000;
@@ -14,9 +15,9 @@ interface GitRun {
 }
 
 function runGit(root: string, args: string[]): Promise<GitRun> {
-	const env: NodeJS.ProcessEnv = { ...process.env, GIT_TERMINAL_PROMPT: '0' };
-	delete env['GIT_ASKPASS'];
-	delete env['GIT_EDITOR'];
+	// The Git view's environment: English messages (parsed below), no prompts, no editor, and no
+	// GIT_DIR from a parent git pointing at another repository. A read never takes index.lock.
+	const env = { ...gitEnv(process.env), GIT_OPTIONAL_LOCKS: '0' };
 	return new Promise((resolve) => {
 		execFile(
 			'git',

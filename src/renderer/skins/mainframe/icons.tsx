@@ -9,6 +9,8 @@ const GLYPHS: Record<ChromeIconName, string> = {
 	search: '/',
 	git: '±',
 	run: '▶',
+	tests: '√',
+	debug: '¤',
 	outline: '§',
 	todos: '!',
 	history: '↺',

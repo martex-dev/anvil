@@ -3,8 +3,11 @@ import { SearchX, Table2 } from 'lucide-react';
 import { type JSX, type KeyboardEvent, useEffect, useMemo, useRef } from 'react';
 
 import { getCommands, runCommand } from '../../app/commands/run';
+import { useWorkspace } from '../../app/hooks/use-workspace';
 import { cn } from '../../lib/cn';
+import { touchesFile } from '../../lib/fs-batch';
 import { call, IpcCallError } from '../../lib/ipc';
+import { matchesShortcut } from '../../lib/shortcuts';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { toast } from '../../stores/toast-store';
 import { requestOpenFile } from '../../stores/workbench-store';
@@ -25,7 +28,7 @@ import { DataGrid } from './DataGrid';
 import { DataStatusBar } from './DataStatusBar';
 import { DataToolbar } from './DataToolbar';
 import { type GridSelection, selectionRange } from './grid-selection';
-import { useDataMeta } from './use-data-pages';
+import { dataKeys, useDataMeta } from './use-data-pages';
 import { useTableCopy } from './use-table-copy';
 
 /** Errors an interpreter change can fix: none selected, or one without the needed packages. */
@@ -40,7 +43,8 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 	const profileToggleRef = useRef<HTMLButtonElement>(null);
 	const filterRef = useRef<HTMLInputElement>(null);
 
-	const params = useMemo(() => ({ path, filter, sort }), [path, filter, sort]);
+	const root = useWorkspace().info.root ?? '';
+	const params = useMemo(() => ({ root, path, filter, sort }), [root, path, filter, sort]);
 	const meta = useDataMeta(params);
 	const data = meta.data;
 	const columns = useMemo(() => data?.columns ?? [], [data?.columns]);
@@ -84,14 +88,17 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 				keepRows
 					? client.invalidateQueries({ queryKey })
 					: client.resetQueries({ queryKey });
-			await Promise.all([refresh(['data', 'page', path]), refresh(['data', 'stats', path])]);
+			await Promise.all([
+				refresh(dataKeys.page(root, path)),
+				refresh(dataKeys.stats(root, path)),
+			]);
 		} catch (err) {
 			toast.error('Reload failed', err instanceof Error ? err.message : String(err));
 		}
 	};
 
-	useAnvilEvent('fs:changed', ({ files }) => {
-		if (files.includes(path)) void reload(true);
+	useAnvilEvent('fs:changed', (batch) => {
+		if (touchesFile(batch, path)) void reload(true);
 	});
 
 	// Parquet, feather and xlsx need a Python env with polars or pandas; let the user pick one
@@ -145,11 +152,8 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 	);
 
 	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
-		if (
-			(event.ctrlKey || event.metaKey) &&
-			!event.shiftKey &&
-			event.key.toLowerCase() === 'f'
-		) {
+		// Matched by shortcut so Ctrl+F also works on a Cyrillic layout ('а').
+		if (matchesShortcut(event, 'Ctrl+F')) {
 			event.preventDefault();
 			focusFilter();
 		}

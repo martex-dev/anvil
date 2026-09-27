@@ -12,6 +12,9 @@ const toneStyle: Record<ToastTone, { icon: JSX.Element; bar: string }> = {
 	error: { icon: <CircleAlert size={14} className='text-down' />, bar: 'bg-down' },
 };
 
+/** Alt+Shift+N moves focus to the notifications (Radix matches modifier flags and key codes). */
+export const TOAST_HOTKEY = ['altKey', 'shiftKey', 'KeyN'];
+
 /** Mount once at the app root; raise toasts with `toast.*()` from the toast store. */
 export function Toaster(): JSX.Element {
 	const toasts = useToastStore((s) => s.toasts);
@@ -57,13 +60,18 @@ export function Toaster(): JSX.Element {
 					)}
 					<RadixToast.Close
 						aria-label='Dismiss'
-						className='rounded-sm p-0.5 text-fg-2 hover:bg-bg-3 hover:text-fg-0'
+						className='rounded-sm p-0.5 text-fg-2 outline-none hover:bg-bg-3 hover:text-fg-0 focus-visible:shadow-glow'
 					>
 						<X size={12} />
 					</RadixToast.Close>
 				</RadixToast.Root>
 			))}
-			<RadixToast.Viewport className='fixed right-3 bottom-9 z-[60] flex flex-col gap-2 outline-none' />
+			{/* Radix jumps to the toasts on F8 by default, which is Monaco's Next Problem. */}
+			<RadixToast.Viewport
+				hotkey={TOAST_HOTKEY}
+				label='Notifications ({hotkey})'
+				className='fixed right-3 bottom-9 z-[60] flex flex-col gap-2 rounded-lg outline-none focus-visible:shadow-glow'
+			/>
 		</RadixToast.Provider>
 	);
 }

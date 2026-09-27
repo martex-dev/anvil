@@ -71,7 +71,7 @@ export function problemsContext(
 	monaco: {
 		editor: { getModelMarkers(filter: { resource: Monaco.Uri }): Monaco.editor.IMarker[] };
 	},
-	editor: ActiveEditor,
+	editor: Pick<ActiveEditor, 'path' | 'model'>,
 	lines?: { start: number; end: number },
 ): AiContext | null {
 	const markers = monaco.editor

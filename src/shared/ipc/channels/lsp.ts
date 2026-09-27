@@ -2,7 +2,8 @@ import { z } from 'zod';
 
 import { defineChannels } from '../define';
 
-export const LspLanguageSchema = z.enum(['python', 'typescript']);
+/** Servers, not file languages: Python files get basedpyright (types) and ruff (lint, fixes). */
+export const LspLanguageSchema = z.enum(['python', 'ruff', 'typescript']);
 export type LspLanguage = z.infer<typeof LspLanguageSchema>;
 
 const SessionSchema = z.string().uuid();

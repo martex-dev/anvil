@@ -52,7 +52,9 @@ export function InlineNameInput({
 	}, [initial]);
 
 	const name = value.trim();
-	const problem = name && name !== initial ? newNameProblem(name, siblings) : null;
+	// New items may be typed as a path (`data/raw/prices.csv`); renames stay one name.
+	const problem =
+		name && name !== initial ? newNameProblem(name, siblings, mode === 'create') : null;
 	const message = failure ?? problem;
 
 	const cancel = (): void => {

@@ -10,10 +10,18 @@ import { FileBadge } from '../../ui/FileBadge';
 import { IconButton } from '../../ui/IconButton';
 import { Input } from '../../ui/Input';
 import { askAiAboutProblem } from '../ai/actions';
-import { problemKeys } from './problems-model';
-import { type Problem, useProblems } from './problems-store';
+import {
+	groupProblems,
+	problemKeys,
+	SEVERITIES,
+	type Severity,
+	severityCounts,
+} from './problems-model';
+import { useProblems } from './problems-store';
 
-const ICON = {
+const LABEL: Record<Severity, string> = { error: 'Errors', warning: 'Warnings', info: 'Infos' };
+
+const ICON: Record<Severity, JSX.Element> = {
 	error: <CircleAlert size={13} className='shrink-0 text-down' />,
 	warning: <TriangleAlert size={13} className='shrink-0 text-warn' />,
 	info: <Info size={13} className='shrink-0 text-info' />,
@@ -22,15 +30,19 @@ const ICON = {
 export function ProblemsView(): JSX.Element {
 	const items = useProblems((s) => s.items);
 	const [filter, setFilter] = useState('');
-	const groups = useMemo(() => {
-		const f = filter.trim().toLowerCase();
-		const byFile = new Map<string, Problem[]>();
-		for (const p of items) {
-			if (f && !`${p.path} ${p.message} ${p.source}`.toLowerCase().includes(f)) continue;
-			byFile.set(p.path, [...(byFile.get(p.path) ?? []), p]);
-		}
-		return [...byFile.entries()];
-	}, [items, filter]);
+	const [shown, setShown] = useState<ReadonlySet<Severity>>(() => new Set(SEVERITIES));
+	const counts = useMemo(() => severityCounts(items), [items]);
+	const groups = useMemo(() => groupProblems(items, filter, shown), [items, filter, shown]);
+	const toggleSeverity = (s: Severity): void => {
+		const next = new Set(shown);
+		if (!next.delete(s)) next.add(s);
+		setShown(next);
+	};
+	const filtered = filter.trim() !== '' || shown.size < SEVERITIES.length;
+	const clearFilters = (): void => {
+		setFilter('');
+		setShown(new Set(SEVERITIES));
+	};
 	const keys = useMemo(
 		() => new Map(groups.map(([path, problems]) => [path, problemKeys(problems)])),
 		[groups],
@@ -60,17 +72,45 @@ export function ProblemsView(): JSX.Element {
 					aria-label='Filter problems'
 					className='h-6 max-w-72 text-12'
 				/>
+				<div role='group' aria-label='Show severities' className='flex items-center gap-1'>
+					{SEVERITIES.map((s) => (
+						<button
+							key={s}
+							type='button'
+							aria-pressed={shown.has(s)}
+							aria-label={`${LABEL[s]}: ${counts[s]}`}
+							data-part='problems-severity'
+							data-severity={s}
+							onClick={() => toggleSeverity(s)}
+							className={cn(
+								'flex h-6 items-center gap-1 rounded-md border px-1.5 text-11 outline-none transition-colors transition-fast focus-visible:shadow-glow',
+								shown.has(s)
+									? 'border-glass-edge bg-bg-3/60 text-fg-0'
+									: 'border-transparent text-fg-2 opacity-60 hover:opacity-100',
+							)}
+						>
+							{ICON[s]}
+							<span className='num'>{counts[s]}</span>
+						</button>
+					))}
+				</div>
 			</div>
 			{groups.length === 0 ? (
 				<EmptyState
 					className='flex-1'
 					icon={<SearchX size={20} />}
 					title='No problems match'
-					description={`Nothing for “${filter.trim()}”.`}
+					description={
+						filter.trim()
+							? `Nothing for “${filter.trim()}” in the severities shown.`
+							: 'Every severity with problems is hidden.'
+					}
 					action={
-						<Button size='sm' onClick={() => setFilter('')}>
-							Clear filter
-						</Button>
+						filtered && (
+							<Button size='sm' onClick={clearFilters}>
+								Clear filters
+							</Button>
+						)
 					}
 				/>
 			) : (

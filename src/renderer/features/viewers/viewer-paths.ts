@@ -70,6 +70,41 @@ export function resolveWikilink(
 	return null;
 }
 
+/** GitHub's heading anchor: lower case, punctuation dropped, each space a hyphen. */
+export function headingSlug(text: string): string {
+	return text
+		.trim()
+		.toLowerCase()
+		.replace(/[^\p{L}\p{N}\s_-]/gu, '')
+		.replace(/\s/g, '-');
+}
+
+/**
+ * Anchors for a document's headings in order, with GitHub's `-1`, `-2` suffixes for repeats, so
+ * `[see](#setup-1)` finds the second "Setup".
+ */
+export function headingSlugs(texts: readonly string[]): string[] {
+	const seen = new Map<string, number>();
+	return texts.map((text) => {
+		const base = headingSlug(text);
+		const n = seen.get(base) ?? 0;
+		seen.set(base, n + 1);
+		return n === 0 ? base : `${base}-${n}`;
+	});
+}
+
+/** The heading a `#fragment` names among `headings` (their texts, in order), or -1. */
+export function anchorIndex(headings: readonly string[], fragment: string): number {
+	let id: string;
+	try {
+		id = decodeURIComponent(fragment);
+	} catch {
+		// A malformed %-escape: match it literally.
+		id = fragment;
+	}
+	return headingSlugs(headings).indexOf(id.toLowerCase());
+}
+
 const UNITS = ['B', 'KB', 'MB', 'GB'] as const;
 
 export function formatBytes(bytes: number): string {

@@ -1,7 +1,25 @@
 import { existsSync } from 'node:fs';
-import { delimiter, dirname, join } from 'node:path';
+import { delimiter, join } from 'node:path';
 
-import { candidates, envDirOf } from './envs';
+import { candidates, envDirOf, interpreterExists } from './envs';
+
+/**
+ * A command-line tool that belongs to the interpreter's environment (ruff, pytest…): its own
+ * Scripts/bin copy first, then the first one on PATH; null when neither exists.
+ */
+export function envTool(python: string | null, name: string): string | null {
+	const exe = process.platform === 'win32' ? `${name}.exe` : name;
+	if (python) {
+		const own = join(envDirOf(python), process.platform === 'win32' ? 'Scripts' : 'bin', exe);
+		if (existsSync(own)) return own;
+	}
+	for (const dir of (process.env['PATH'] ?? '').split(delimiter)) {
+		if (!dir) continue;
+		const candidate = join(dir, exe);
+		if (existsSync(candidate)) return candidate;
+	}
+	return null;
+}
 
 /**
  * The Python every feature uses for the open folder: Run, the REPL, the language server,
@@ -62,7 +80,7 @@ class InterpreterState {
 		const key = root.toLowerCase();
 		if (!this.picked.has(key)) this.picked.set(key, this.loadPick(root));
 		const path = this.picked.get(key) ?? null;
-		return path && existsSync(path) ? path : null;
+		return path && interpreterExists(path) ? path : null;
 	}
 
 	/** Resolved interpreter for a folder (or for no folder at all). Null if none is installed. */
@@ -71,31 +89,14 @@ class InterpreterState {
 			const explicit = this.explicit(root);
 			if (explicit) return explicit;
 		}
-		return candidates(root)[0]?.path ?? this.system.find((p) => existsSync(p)) ?? null;
+		return candidates(root)[0]?.path ?? this.system.find((p) => interpreterExists(p)) ?? null;
 	}
 }
 
 export const interpreter = new InterpreterState();
 
-/**
- * Environment that makes a child process behave as if the env were activated: its folder and
- * Scripts/bin on PATH, VIRTUAL_ENV for venvs. No Activate.ps1, so execution policy never matters.
- */
-export function activatedEnv(
-	python: string,
-	base: NodeJS.ProcessEnv = process.env,
-): NodeJS.ProcessEnv {
-	const env: NodeJS.ProcessEnv = { ...base };
-	const envDir = envDirOf(python);
-	const bins = [dirname(python)];
-	const scripts = join(envDir, process.platform === 'win32' ? 'Scripts' : 'bin');
-	if (!bins.includes(scripts) && existsSync(scripts)) bins.push(scripts);
-	const pathKey = Object.keys(env).find((k) => k.toLowerCase() === 'path') ?? 'PATH';
-	env[pathKey] = [...bins, env[pathKey] ?? ''].join(delimiter);
-	if (existsSync(join(envDir, 'pyvenv.cfg'))) env['VIRTUAL_ENV'] = envDir;
-	else if (existsSync(join(envDir, 'conda-meta'))) env['CONDA_PREFIX'] = envDir;
-	return env;
-}
+// Lives in its own module; re-exported because other features may only import this one.
+export { activatedEnv } from './activation';
 
 /** Where the REPL helper script and staged cells live; set by the Python feature on start. */
 let replSupport: { startup: string; cells: string } | null = null;

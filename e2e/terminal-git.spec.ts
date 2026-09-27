@@ -56,7 +56,11 @@ test('the secret shield blocks a commit that stages a private key', async ({ pag
 		await page.keyboard.press('Control+Shift+G');
 		await page.getByRole('textbox', { name: 'Commit message' }).fill('add bot');
 		await page.getByRole('button', { name: /^Commit/ }).click();
-		await expect(page.getByText(/Blocked by the secret shield/)).toBeVisible();
+		await expect(
+			page
+				.getByRole('region', { name: /Notifications/ })
+				.getByText(/Blocked by the secret shield/),
+		).toBeVisible();
 		expect(() => git('rev-parse', 'HEAD')).toThrow();
 	} finally {
 		project.cleanup();

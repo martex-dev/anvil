@@ -1,6 +1,15 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { fitWidths, LAYOUT_DEFAULTS, MIN_EDITOR_WIDTH, useLayoutStore } from './layout-store';
+import {
+	fitPanelHeight,
+	fitPanes,
+	fitWidths,
+	LAYOUT_DEFAULTS,
+	MIN_EDITOR_HEIGHT,
+	MIN_EDITOR_WIDTH,
+	sanitizeLayout,
+	useLayoutStore,
+} from './layout-store';
 
 beforeEach(() => useLayoutStore.setState(LAYOUT_DEFAULTS));
 
@@ -82,10 +91,64 @@ describe('zen mode', () => {
 		expect(useLayoutStore.getState().zen).toBe(false);
 	});
 
+	it('restores the Debug view and the Debug Console tab, and drops unknown ones', () => {
+		expect(sanitizeLayout({ sideView: 'debug', panelTab: 'debug' })).toEqual({
+			sideView: 'debug',
+			panelTab: 'debug',
+		});
+		expect(sanitizeLayout({ sideView: 'nope', panelTab: 'output' })).toEqual({});
+	});
+
 	it('reveals the AI pane, but closing it keeps zen', () => {
 		useLayoutStore.getState().toggleAi(false);
 		expect(useLayoutStore.getState()).toMatchObject({ zen: true, aiOpen: false });
 		useLayoutStore.getState().toggleAi();
 		expect(useLayoutStore.getState()).toMatchObject({ zen: false, aiOpen: true });
+	});
+});
+
+describe('fitting a big-monitor layout into a laptop window', () => {
+	const big = { ...LAYOUT_DEFAULTS, sideWidth: 640, aiWidth: 900, panelHeight: 900 };
+
+	it('caps the bottom panel so the editor keeps its minimum height', () => {
+		const fit = fitPanelHeight(big, 768);
+		expect(fit.panelHeight).toBeDefined();
+		expect(768 - 110 - (fit.panelHeight ?? 0)).toBe(MIN_EDITOR_HEIGHT);
+		expect(fitPanelHeight({ ...big, panelHeight: 240 }, 768)).toEqual({});
+	});
+
+	it('fits width and height together at 1366x768', () => {
+		const fit = fitPanes(big, { width: 1366, height: 768 });
+		const side = fit.sideWidth ?? big.sideWidth;
+		const ai = fit.aiWidth ?? big.aiWidth;
+		expect(1366 - side - ai - 80).toBeGreaterThanOrEqual(MIN_EDITOR_WIDTH);
+		expect(fit.panelHeight).toBe(768 - 110 - MIN_EDITOR_HEIGHT);
+	});
+
+	it('never shrinks the panel below its own minimum in a tiny window', () => {
+		expect(fitPanelHeight(big, 200)).toEqual({ panelHeight: 120 });
+	});
+
+	it('does not count a drawer side bar against the editor width', () => {
+		expect(fitWidths({ ...big, aiOpen: false, sideDrawer: true }, 800)).toEqual({});
+	});
+});
+
+describe('side drawer', () => {
+	it('closes the side bar when a drawer skin takes over', () => {
+		useLayoutStore.getState().setSideDrawer(true);
+		expect(useLayoutStore.getState()).toMatchObject({ sideDrawer: true, sideOpen: false });
+	});
+
+	it('keeps the drawer closed when the saved layout arrives later', () => {
+		useLayoutStore.getState().setSideDrawer(true);
+		useLayoutStore.getState().hydrate({ sideOpen: true, panelHeight: 300 });
+		expect(useLayoutStore.getState()).toMatchObject({ sideOpen: false, panelHeight: 300 });
+	});
+
+	it('restores the side bar for docked skins', () => {
+		useLayoutStore.setState({ sideOpen: false });
+		useLayoutStore.getState().hydrate({ sideOpen: true });
+		expect(useLayoutStore.getState().sideOpen).toBe(true);
 	});
 });

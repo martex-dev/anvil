@@ -1,9 +1,11 @@
 import { execFile } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 
-import type { PythonEnv, PythonEnvKind } from '@shared/ipc/channels/python';
+import type { PythonEnv } from '@shared/ipc/channels/python';
+
+import { type Candidate, externalEnvs, isStorePython, storePythons } from './env-sources';
 
 const WIN = process.platform === 'win32';
 
@@ -13,6 +15,21 @@ export function interpreterIn(envDir: string): string | null {
 		? [join(envDir, 'Scripts', 'python.exe'), join(envDir, 'python.exe')]
 		: [join(envDir, 'bin', 'python3'), join(envDir, 'bin', 'python')];
 	return candidates.find((p) => existsSync(p)) ?? null;
+}
+
+/**
+ * Whether an interpreter path is usable. Microsoft Store Pythons are app execution aliases: stat()
+ * is denied on them (so existsSync says no) while lstat() and spawning work.
+ */
+export function interpreterExists(path: string): boolean {
+	if (existsSync(path)) return true;
+	if (!WIN || !isStorePython(path)) return false;
+	try {
+		lstatSync(path);
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 /** `version = 3.12.4` (venv) or `version_info = 3.12.4.final.0` (uv). */
@@ -59,13 +76,6 @@ function subdirs(dir: string): string[] {
 	} catch {
 		return [];
 	}
-}
-
-interface Candidate {
-	path: string;
-	kind: PythonEnvKind;
-	label: string;
-	local: boolean;
 }
 
 function condaRoots(): string[] {
@@ -152,8 +162,9 @@ async function systemPythons(): Promise<Candidate[]> {
 		const where = await run('where.exe', ['python']);
 		for (const line of where?.split(/\r?\n/) ?? []) {
 			const p = line.trim();
-			// The Microsoft Store alias only opens the Store; it isn't an interpreter.
-			if (p && !/WindowsApps/i.test(p)) found.push(p);
+			// The bare WindowsApps alias may only open the Store; real Store installs are found
+			// through their own folders (storePythons).
+			if (p && (!/[\\/]WindowsApps[\\/]/i.test(p) || isStorePython(p))) found.push(p);
 		}
 	} else {
 		for (const name of ['python3', 'python']) {
@@ -173,7 +184,12 @@ export function findEnv(envs: readonly PythonEnv[], path: string): PythonEnv | u
 }
 
 export async function discoverEnvs(root: string | null): Promise<PythonEnv[]> {
-	const all = [...candidates(root), ...(await systemPythons())];
+	const [system, store, external] = await Promise.all([
+		systemPythons(),
+		storePythons(),
+		externalEnvs(condaRoots(), interpreterIn),
+	]);
+	const all = [...candidates(root), ...system, ...store, ...external];
 	const unique: Candidate[] = [];
 	for (const c of all) if (!unique.some((u) => sameFile(u.path, c.path))) unique.push(c);
 	const versions = await Promise.all(unique.map((c) => versionOf(c.path)));

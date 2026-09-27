@@ -50,3 +50,6 @@ desktop.ini
 !.vscode/extensions.json
 .pytest-tmp/
 shots/
+
+# Claude Code worktrees (parallel agent checkouts)
+.claude/worktrees/

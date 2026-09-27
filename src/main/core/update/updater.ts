@@ -5,6 +5,7 @@ import { autoUpdater } from 'electron-updater';
 import type { UpdateStatus } from '@shared/ipc/channels/update';
 
 import { emitEvent, router } from '../ipc';
+import { allowNextUnload } from '../window-handlers';
 import { describeUpdateError, dueAfterWake, reduceUpdate, type UpdaterEvent } from './update-state';
 
 const ulog = log.scope('update');
@@ -32,7 +33,11 @@ export function registerUpdater(autoUpdate: () => boolean): void {
 
 	router.handle('update:status', () => status);
 	router.handle('update:install', () => {
-		if (status.state === 'ready') autoUpdater.quitAndInstall(true, true);
+		if (status.state !== 'ready') return false;
+		// The page has already asked about unsaved files before calling this.
+		allowNextUnload();
+		autoUpdater.quitAndInstall(true, true);
+		return true;
 	});
 	if (status.state === 'disabled') {
 		router.handle('update:check', () => status);

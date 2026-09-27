@@ -6,6 +6,8 @@ import { call } from '../../lib/ipc';
 import { PAGE_SIZE, pagesForRange, type SortState } from './data-format';
 
 export interface DataParams {
+	/** The open folder: `path` is relative to it, so another project's `data.csv` is another file. */
+	root: string;
 	path: string;
 	filter: string;
 	sort: SortState | null;
@@ -13,11 +15,15 @@ export interface DataParams {
 
 type Row = (string | null)[];
 
+/** Prefixes for everything cached about one table, for reloads that drop it all. */
+export const dataKeys = {
+	page: (root: string, path: string) => ['data', root, 'page', path] as const,
+	stats: (root: string, path: string) => ['data', root, 'stats', path] as const,
+};
+
 export function pageKey(params: DataParams, page: number): readonly unknown[] {
 	return [
-		'data',
-		'page',
-		params.path,
+		...dataKeys.page(params.root, params.path),
 		params.filter,
 		params.sort?.column ?? -1,
 		params.sort?.desc ?? false,
@@ -51,13 +57,16 @@ function pageQuery(
  * never stand in for this one's (the grid would draw the new cells under the old headers).
  */
 export function sameFilePlaceholder(
+	root: string,
 	path: string,
 ): (
 	previous: DataPage | undefined,
 	previousQuery: { queryKey: readonly unknown[] } | undefined,
 ) => DataPage | undefined {
 	return (previous, previousQuery) =>
-		previousQuery?.queryKey[2] === path ? previous : undefined;
+		previousQuery?.queryKey[1] === root && previousQuery.queryKey[3] === path
+			? previous
+			: undefined;
 }
 
 /**
@@ -65,7 +74,10 @@ export function sameFilePlaceholder(
  * while a new filter/sort loads stops the grid from flashing to a spinner on every keystroke.
  */
 export function useDataMeta(params: DataParams): UseQueryResult<DataPage> {
-	return useQuery({ ...pageQuery(params, 0), placeholderData: sameFilePlaceholder(params.path) });
+	return useQuery({
+		...pageQuery(params, 0),
+		placeholderData: sameFilePlaceholder(params.root, params.path),
+	});
 }
 
 export type RowLookup = (row: number) => Row | 'loading' | 'error';

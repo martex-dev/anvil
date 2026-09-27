@@ -145,3 +145,67 @@ Short ADRs: the context, what was decided, and what it costs.
 **Decision.** The data feature keeps its tables in a `node:worker_threads` worker (`features/data/worker.ts`, bundled by electron-vite's `?modulePath` import). The main thread only validates the request (workspace, path guard, format, which Python) and forwards it; `DataWorkerClient` matches replies to requests, turns error codes back into `AnvilError`s, and restarts the worker on the next call if it dies. The worker file is unpacked from `app.asar` so Node can always load it.
 
 **Consequences.** The UI stays responsive whatever the file size, and a worker crash (for example out of memory) fails only the pending data requests. Requests are copied between threads (structured clone), which is cheap for pages and stats but means the worker must stay free of Electron imports: it only uses Node built-ins and pure modules.
+
+## ADR-019: Terminals follow the folder and interpreter, language servers restart themselves
+
+**Context.** A terminal's cwd and environment (PATH, VIRTUAL_ENV) are fixed when its process starts, so after a folder switch or an interpreter change, shells kept the old folder (on Windows also locking it) and Run, REPL and task commands used the old environment. A crashed language server stayed down until the user clicked the status bar.
+
+**Decision.** On a folder switch main ends every terminal process, keeping its tab, which shows why and starts again on Enter (VS Code also ends terminals when the folder changes). On an interpreter change nothing is killed: Run, REPL and task terminals (the pane tells main its role) remember the interpreter they started with, and the next command sent to one restarts it with the selected interpreter. Killing them when the interpreter changes would end work in progress, for example a `uv sync` task whose new `.venv` is what changed the interpreter. The user's own shells are never restarted. A crashed language server is restarted by the renderer's language client, at most three times in five minutes with 1, 2 and 4 s delays, then left stopped for a manual restart. The restart lives in the renderer because only the client can redo the LSP `initialize` handshake and reopen documents; a server respawned by main under the same session would be uninitialized.
+
+**Consequences.** A REPL loses its namespace on the first Run Cell after an interpreter change, which is the only way to run that cell in the interpreter the user picked. Terminal output events carry a sequence number so a pane that reattaches after a reload can drop output its backlog already contains.
+
+## ADR-020: pytest results come from a tiny reporter plugin
+
+**Context.** The Test Explorer needs the tests with their real file and line (for the tree, the editor lens and Run Test at Cursor) and each result as it happens. `pytest --collect-only -q` prints node ids without lines, parsing `def test_` lines misses parametrized, inherited and generated tests, and `--junitxml` only arrives when the whole run has finished.
+
+**Decision.** Main writes a ~100-line plugin (`features/tests/plugin-source.ts`) into its data folder and loads it with `-p anvil_pytest_reporter` and PYTHONPATH, so the project needs no conftest and nothing is installed. The plugin changes nothing about collection or running. It prints one marked JSON line per collected item (node id, absolute file, line, enclosing classes) and per report (`pytest_runtest_logreport`), to a copy of stdout taken before pytest starts capturing. Main separates those lines from the console text, keeps a tree from the last discovery, and only runs node ids from it. It spawns pytest without a shell, with `--continue-on-collection-errors` so one broken module doesn't stop every other file's tests. "Debug" runs `pytest --pdb` in a terminal until Anvil has a debugger.
+
+**Consequences.** Results stream per test and lines are exact for every kind of test. The plugin relies on public hooks that have been stable since pytest 7 (`item.path`, `reportinfo()`, `longreprtext`). A test that prints a line starting with the plugin's marker and valid JSON could fake a record. That fools only the view, since ids are still checked against the discovery before anything runs.
+
+## ADR-021: Explorer's "Open with Anvil", without becoming a default program
+
+**Context.** Opening a folder or a file from Windows Explorer needs registry entries. electron-builder's `fileAssociations` writes each extension's default value, which makes Anvil the program that opens every `.py` and `.csv` on a double-click, taking them away from Python, VS Code or Excel.
+
+**Decision.** The installer includes `resources/installer/installer.nsh`, which writes, per user (HKCU): an "Open with Anvil" verb on folders, on a folder's background and on every file, an `Anvil.File` ProgID, and that ProgID under `OpenWithProgids` for `.py`, `.ipynb`, `.csv` and `.parquet` (plus `Applications\Anvil.exe\SupportedTypes`). Every command is `Anvil.exe "<path>"`. The background verb passes `"%V\."` because `%V` is `C:\` at a drive root, and `"C:\"` would reach Anvil as `C:"`. The uninstaller removes the entries, except during an update.
+
+**Consequences.** Anvil shows up in the context menu and the "Open with" list, and never changes which program a double-click starts; users who want Anvil as the default pick it once in Windows' own dialog. A path from the folder background ends in `\.`, so the receiving side must resolve it (`path.resolve`).
+
+## ADR-022: Saves replace the file, with in-place fallbacks
+
+**Context.** A save truncated the file and wrote it in place, so a crash, a `taskkill` or a power cut mid-save left a half-written file, possibly the only copy of a research script.
+
+**Decision.** `writeFileAtomic` (`core/workspace/atomic-write.ts`) writes a hidden sibling `.<name>.<random>.anvil-save`, flushes it to disk, and renames it over the target, keeping the permission bits. On Windows an antivirus scanner or the indexer often holds a just-written file for a moment, so a rename failing with EPERM, EBUSY or EACCES is retried with backoff (about 0.8 s in total) and then the file is written in place, as before, rather than failing the save. A hard-linked file (uv and pnpm install those) is always written in place so its other names see the change. A symlinked file is saved at its target. A read-only file is refused, since a rename would quietly replace it on Linux and macOS. The watcher ignores the temp files.
+
+**Consequences.** A save is all-or-nothing except in the fallback cases. Replacing the file gives it the folder's default ACL on Windows, so a file with its own hand-set ACL loses it. A temp file can be left behind only if Anvil dies between writing it and renaming it; it is hidden and harmless.
+
+## ADR-023: Reads follow links out of the folder, changes don't
+
+**Context.** Quant and ML projects often link a big data folder from another drive into the project (a junction needs no admin rights). The file service confines every path to the open folder, and a junction or symlink inside it can point anywhere. Refusing every link that leaves the folder would also refuse those data folders; allowing everything would let a link in a cloned repository change files elsewhere.
+
+**Decision.** Reads follow links: listing, reading, stat, image previews and "Reveal in Explorer" work through a link to anywhere, and a linked folder expands like any other. Changes don't: saving and creating resolve the real path of the target (or its nearest existing parent) and refuse it outside the folder, and trash and rename require the entry's parent folder to be really inside, so the link itself can be recycled or renamed but nothing behind it. The root is recognised case-insensitively, as Windows does.
+
+**Consequences.** Opening a folder whose links point at private files (a hostile repository with a symlink to `~/.ssh`) shows those files in the explorer if the user expands the link; nothing reads them without a click, and the AI only sees files the user attaches or asks it about. Git creates symlinks on Windows only with `core.symlinks` and Developer Mode, and never junctions, which keeps that case rare. The watcher does not follow links (a linked dataset can hold millions of files), so changes inside a linked folder show after Refresh Explorer rather than live.
+
+## ADR-024: A debugpy debugger with a DAP relay in main
+
+**Context.** Print statements and the REPL cover a lot, but stepping through a backtest loop or a failing test needs a debugger. VS Code's debugger is not part of the editor services Anvil bundles, and Anvil ships no Python (ADR-004).
+
+**Decision.** Main spawns `<selected python> -m debugpy.adapter` with the activated environment and relays Debug Adapter Protocol messages over IPC, reusing LSP's `Content-Length` framing (now in `core/framing.ts`). The renderer names only a target: a workspace file, a module name or a pytest node id. Main resolves it through the fs guard and builds debugpy's `launch` configuration, which replaces whatever a launch request carries, and attach requests are refused, so the renderer can't choose an interpreter or run a program outside the folder. The program runs in an Anvil terminal through DAP's `runInTerminal`: main turns the argument list into a quoted PowerShell (or POSIX) line, so `input()` works and output keeps its colors. The renderer keeps a small DAP client, a reducer for the session state (variables are cached per stop, keyed by a generation that bumps on every stop) and per-folder breakpoints in local storage. If debugpy is missing, `debug:start` returns the pip or `uv pip` command for that environment and the UI offers to run it in a terminal. A session ends on Stop, on a folder switch and on quit: a `disconnect` with `terminateDebuggee`, then stdin is closed (the adapter waits for EOF), then the process tree is killed if it's still there. Debug keys only apply during a session through a command context (`when: 'debugging'`), so F5 and F11 keep running the file and toggling full screen otherwise.
+
+**Consequences.** Python only, one session at a time, launch only (no attach, no remote, no multi-process debugging). debugpy has to be installed in each environment you debug. Frames outside the folder (the standard library, site-packages with "just my code" off) show in the call stack but can't be opened, because file access is confined to the folder.
+
+## ADR-025: ruff runs as a second Python language server
+
+**Context.** basedpyright checks types, but most day-to-day Python feedback (unused imports, undefined names, bugbear rules, import order) is ruff's, configured in the project's `pyproject.toml`. ruff only ran as "Format with ruff" and as a task, so its findings never reached the Problems view and there were no quick fixes.
+
+**Decision.** Python files get two language servers: basedpyright and `ruff server`, the ruff in the selected interpreter's environment (else the first on PATH), spawned as a native process through the same LSP relay. ruff decides the rules from the project's own config; Anvil only switches on its organize-imports and fix-all code actions. A missing ruff is a quiet "not installed" state, not an error.
+
+**Consequences.** Lint problems, `Ctrl+.` fixes, fix-all and Organize Imports come from the tool the project already uses, with no bundled linter to drift from it. ruff's formatter also backs Format Document for Python. Projects without ruff simply don't get lint; installing it into the env (`uv add --dev ruff`) turns it on after a server restart.
+
+## ADR-026: git inherits the environment, runs without a timeout for slow operations, and queues writes
+
+**Context.** The Git view passed git an allowlisted environment, gave every command simple-git's 60 s block timeout, and ran operations as they came. Hooks and signing need variables no allowlist anticipates (GIT_CONFIG_GLOBAL, JAVA_HOME, VIRTUAL_ENV for pre-commit), and simple-git refused GIT_SSH / GIT_SSH_COMMAND outright unless allowed. A slow pre-commit hook or a first Git Credential Manager sign-in hit the 60 s limit and was killed. The 5 s status poll and a stage or a terminal commit raced for `index.lock`.
+
+**Decision.** `core/git-env.ts` inherits the user's environment and strips only what hijacks or stalls git: other apps' askpass, editors and pagers, and GIT_DIR-style variables left by a parent git; messages are forced to English and `GIT_TERMINAL_PROMPT=0`. simple-git's checks for ssh commands, config paths, proxy and template dirs are relaxed, because these values come from the user's own environment, never from IPC input. Commands have three kinds: reads run with `GIT_OPTIONAL_LOCKS=0` (the environment form of `--no-optional-locks`), quick writes keep the 60 s timeout, and commit, pull, push and fetch have none. Mutating operations are queued per repository, on an index lane and a remote lane (pull holds both).
+
+**Consequences.** git behaves as it does in the user's terminal, including plink, custom configs and hooks. A hung remote operation is never killed by Anvil; the user sees the spinner and can cancel from a terminal. The queue is per process, so git run from a terminal can still take the lock, but Anvil's own poll no longer does.

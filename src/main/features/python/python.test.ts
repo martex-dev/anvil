@@ -5,8 +5,9 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { candidates, envDirOf, findEnv, parsePyvenvVersion } from './envs';
-import { cellCommand, moduleName, REPL_STARTUP, stagedCode } from './index';
+import { moduleName, ruffFormatArgs } from './index';
 import { activatedEnv } from './interpreter';
+import { cellCommand, REPL_STARTUP, stagedCode } from './staged-cells';
 
 let dir: string;
 beforeEach(() => {
@@ -72,6 +73,17 @@ describe('run helpers', () => {
 		expect(REPL_STARTUP).toContain('def _cell(n):');
 		expect(REPL_STARTUP).toContain("exec(compile(_code, _p, 'exec'), globals())");
 		expect(REPL_STARTUP).toContain("'cell_%d.src' % n");
+	});
+
+	it('formats with the absolute file name and honours ruff excludes', () => {
+		const file = join(dir, 'pkg', 'mod.py');
+		expect(ruffFormatArgs(file)).toEqual([
+			'format',
+			'--force-exclude',
+			'--stdin-filename',
+			file,
+			'-',
+		]);
 	});
 
 	it('pads staged code so traceback lines match the source file', () => {

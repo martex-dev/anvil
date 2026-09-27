@@ -4,6 +4,7 @@ import type { JSX } from 'react';
 
 import type { DataColumn } from '@shared/ipc/channels/data';
 
+import { useWorkspace } from '../../app/hooks/use-workspace';
 import { call } from '../../lib/ipc';
 import { EmptyState } from '../../ui/EmptyState';
 import { ErrorState } from '../../ui/ErrorState';
@@ -18,6 +19,7 @@ import {
 	typeTag,
 } from './data-format';
 import { Histogram } from './Histogram';
+import { dataKeys } from './use-data-pages';
 
 interface ColumnProfileProps {
 	path: string;
@@ -97,8 +99,9 @@ function ProfileBody({
 	column: DataColumn;
 	truncated: boolean;
 }): JSX.Element {
+	const root = useWorkspace().info.root ?? '';
 	const stats = useQuery({
-		queryKey: ['data', 'stats', path, index],
+		queryKey: [...dataKeys.stats(root, path), index],
 		queryFn: () => call('data:stats', { path, column: index }),
 	});
 

@@ -1,15 +1,23 @@
-import { type JSX, lazy, Suspense } from 'react';
+import { type JSX, lazy, Suspense, useState } from 'react';
 
 import { ExplorerPanel } from '../features/explorer/ExplorerPanel';
 import { GitPanel } from '../features/git/GitPanel';
 import { SearchPanel } from '../features/search/SearchPanel';
+import { cn } from '../lib/cn';
 import { SIDE_VIEWS, type SideView, useLayoutStore } from '../stores/layout-store';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { Spinner } from '../ui/Spinner';
 import { VIEW_META } from './ActivityBar';
+import { SideViewVisibleContext } from './side-view-visible';
 
 const RunView = lazy(() =>
 	import('../features/python/RunView').then((m) => ({ default: m.RunView })),
+);
+const TestsView = lazy(() =>
+	import('../features/tests/TestsView').then((m) => ({ default: m.TestsView })),
+);
+const DebugView = lazy(() =>
+	import('../features/debug/DebugView').then((m) => ({ default: m.DebugView })),
 );
 const OutlineView = lazy(() =>
 	import('../features/outline/OutlineView').then((m) => ({ default: m.OutlineView })),
@@ -37,6 +45,10 @@ function View({ view }: { view: SideView }): JSX.Element {
 			return <GitPanel />;
 		case 'run':
 			return <RunView />;
+		case 'tests':
+			return <TestsView />;
+		case 'debug':
+			return <DebugView />;
 		case 'outline':
 			return <OutlineView />;
 		case 'todos':
@@ -50,10 +62,16 @@ function View({ view }: { view: SideView }): JSX.Element {
 	}
 }
 
-/** The left pane: one view at a time, with a HUD header ("02 / SEARCH"). */
+/**
+ * The left pane: one view at a time, with a HUD header ("02 / SEARCH"). A view mounts the first
+ * time it is shown and then stays mounted, hidden, so switching away and back keeps its state
+ * (open folders, a search, a half-written commit message, scroll positions).
+ */
 export function SideBar(): JSX.Element {
 	const view = useLayoutStore((s) => s.sideView);
 	const index = SIDE_VIEWS.indexOf(view) + 1;
+	const [visited, setVisited] = useState<ReadonlySet<SideView>>(() => new Set([view]));
+	if (!visited.has(view)) setVisited(new Set([...visited, view]));
 	return (
 		<aside
 			aria-label={VIEW_META[view].label}
@@ -73,19 +91,30 @@ export function SideBar(): JSX.Element {
 					{VIEW_META[view].label}
 				</h2>
 			</header>
-			{/* Keyed on the view so switching views fades the new one in. */}
-			<div key={view} data-part='pane-body' className='animate-fade min-h-0 flex-1'>
-				<ErrorBoundary name={VIEW_META[view].label} resetKey={view}>
-					<Suspense
-						fallback={
-							<div className='flex h-24 items-center justify-center'>
-								<Spinner />
-							</div>
-						}
+			<div data-part='pane-body' className='min-h-0 flex-1'>
+				{SIDE_VIEWS.filter((v) => visited.has(v)).map((v) => (
+					// The fade class is only on the shown view, so switching fades the new one in.
+					<div
+						key={v}
+						data-side-view={v}
+						hidden={v !== view}
+						className={cn('h-full', v === view && 'animate-fade')}
 					>
-						<View view={view} />
-					</Suspense>
-				</ErrorBoundary>
+						<SideViewVisibleContext value={v === view}>
+							<ErrorBoundary name={VIEW_META[v].label}>
+								<Suspense
+									fallback={
+										<div className='flex h-24 items-center justify-center'>
+											<Spinner />
+										</div>
+									}
+								>
+									<View view={v} />
+								</Suspense>
+							</ErrorBoundary>
+						</SideViewVisibleContext>
+					</div>
+				))}
 			</div>
 		</aside>
 	);

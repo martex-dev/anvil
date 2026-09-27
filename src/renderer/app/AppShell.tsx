@@ -3,6 +3,7 @@ import type { CSSProperties, JSX } from 'react';
 import { AiStreamController } from '../features/ai/AiStreamController';
 import { ApplyDialog } from '../features/ai/ApplyDialog';
 import { InlineEditHost } from '../features/ai/InlineEditHost';
+import { DebugController } from '../features/debug/DebugController';
 import { EditorBridge } from '../features/editor/EditorBridge';
 import { LspController } from '../features/lsp/LspController';
 import { PythonController } from '../features/python/PythonController';
@@ -18,6 +19,7 @@ import { useFeatureErrors } from './hooks/use-feature-errors';
 import { useFitPanesToWindow } from './hooks/use-fit-panes';
 import { useFocusRescue } from './hooks/use-focus-rescue';
 import { useFsInvalidation } from './hooks/use-fs-invalidation';
+import { useLaunchRequests } from './hooks/use-launch-requests';
 import { useLayoutPersistence } from './hooks/use-layout-persistence';
 import { useMonacoExtras } from './hooks/use-monaco-extras';
 import { useSecretsReset } from './hooks/use-secrets-reset';
@@ -44,6 +46,7 @@ function Ambient(): JSX.Element {
  */
 export function AppShell(): JSX.Element {
 	useGlobalShortcuts();
+	useLaunchRequests();
 	useApplySettings();
 	useFsInvalidation();
 	useFocusRescue();
@@ -94,6 +97,7 @@ export function AppShell(): JSX.Element {
 			<EditorBridge />
 			<LspController />
 			<PythonController />
+			<DebugController />
 			<AiStreamController />
 			<InlineEditHost />
 			<CommandPalette />

@@ -1,5 +1,6 @@
 import { AnvilError } from '../../core/errors';
 import type { MainFeature } from '../../core/features';
+import { replaceInFiles } from './replace';
 import { listFiles, Ripgrep } from './ripgrep';
 
 export const searchFeature: MainFeature = {
@@ -26,5 +27,14 @@ export const searchFeature: MainFeature = {
 		ctx.ipc.handle('search:run', (query) => rg.search(root(), query));
 		ctx.ipc.handle('search:todos', (query) => todos.search(root(), query));
 		ctx.ipc.handle('search:files', () => listFiles(root()));
+		ctx.ipc.handle('search:replace', async ({ query, replacement, files }) => {
+			const result = await replaceInFiles(root(), query, replacement, files);
+			ctx.log.info('replaced in files', {
+				replaced: result.replaced,
+				files: result.files.length,
+				skipped: result.skipped.length,
+			});
+			return result;
+		});
 	},
 };

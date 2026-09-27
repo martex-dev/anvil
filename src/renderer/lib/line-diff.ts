@@ -59,11 +59,13 @@ export function diffHunks(
 	const max = n + m;
 	const offset = max + 1;
 	const v = new Int32Array(2 * max + 3);
+	// Step d only reads diagonals -d-1 … d+1 of the previous step, so keep just that window:
+	// copying the whole vector each step cost hundreds of MB on a big, heavily edited file.
 	const trace: Int32Array[] = [];
 	let found = false;
 	for (let d = 0; d <= max; d++) {
 		if (d > maxCost) return null;
-		trace.push(v.slice());
+		trace.push(v.slice(offset - d - 1, offset + d + 2));
 		for (let k = -d; k <= d; k += 2) {
 			let x =
 				k === -d || (k !== d && (v[offset + k - 1] ?? 0) < (v[offset + k + 1] ?? 0))
@@ -91,12 +93,11 @@ export function diffHunks(
 	for (let d = trace.length - 1; d >= 0 && (x > 0 || y > 0); d--) {
 		const vd = trace[d];
 		if (!vd) break;
+		// trace[d] starts at diagonal -d-1.
+		const at = (diag: number): number => vd[diag + d + 1] ?? 0;
 		const k = x - y;
-		const prevK =
-			k === -d || (k !== d && (vd[offset + k - 1] ?? 0) < (vd[offset + k + 1] ?? 0))
-				? k + 1
-				: k - 1;
-		const prevX = vd[offset + prevK] ?? 0;
+		const prevK = k === -d || (k !== d && at(k - 1) < at(k + 1)) ? k + 1 : k - 1;
+		const prevX = at(prevK);
 		const prevY = prevX - prevK;
 		while (x > prevX && y > prevY) {
 			keepA[--x] = 1;

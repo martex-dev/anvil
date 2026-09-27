@@ -14,6 +14,12 @@ export type CommandCategory =
 	| 'Tools'
 	| 'Anvil';
 
+/**
+ * A state some keys depend on. While it holds, a command bound with `when` wins its key over the
+ * command that normally has it (F5 continues a paused program instead of running the file).
+ */
+export type CommandContext = 'debugging';
+
 export interface Command {
 	/** Globally unique, e.g. `python.runFile`. */
 	id: string;
@@ -28,10 +34,10 @@ export interface Command {
 	 */
 	scope?: 'global' | 'editor';
 	/**
-	 * Global shortcuts only: leave the key to the integrated terminal while it has focus, for
-	 * keys shells rely on (Ctrl+L clears the screen).
+	 * Global shortcuts only: the key belongs to this command only while the context holds. The
+	 * command stays in the palette either way.
 	 */
-	terminalKeepsKey?: boolean;
+	when?: CommandContext;
 	/** Editor-scoped commands only fire for this Monaco language (e.g. Shift+Enter in Python). */
 	editorLanguage?: string;
 	/**

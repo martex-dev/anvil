@@ -100,7 +100,18 @@ export function siblingNames(rows: readonly TreeRow[], dir: string, except?: str
  * Why `name` can't be used for a new or renamed item next to `siblings`, or null. Windows
  * names are case-insensitive, so "Data.csv" clashes with "data.csv".
  */
-export function newNameProblem(name: string, siblings: readonly string[]): string | null {
+export function newNameProblem(
+	name: string,
+	siblings: readonly string[],
+	nested = false,
+): string | null {
+	// A new item may be typed as a path (`models/lstm/net.py`): every part must be a valid name.
+	// Clashes further down are main's to report, since those folders aren't listed here.
+	const parts = nested ? name.split(/[\\/]/).map((p) => p.trim()) : [name];
+	if (parts.length > 1) {
+		if (parts.some((p) => p === '')) return 'A folder name in the path is empty';
+		return parts.map((p) => fileNameProblem(p)).find((p) => p !== null) ?? null;
+	}
 	const lower = name.toLowerCase();
 	return (
 		fileNameProblem(name) ??

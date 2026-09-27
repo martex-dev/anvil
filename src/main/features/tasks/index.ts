@@ -14,10 +14,20 @@ function read(root: string, name: string): string | null {
 	}
 }
 
+// A TOML key: "double quoted", 'single quoted' (literal) or bare.
+const KEY = String.raw`(?:"([^"]+)"|'([^']+)'|([A-Za-z0-9_.-]+))`;
+const keyOf = (m: RegExpExecArray | null): string | undefined => m?.[1] ?? m?.[2] ?? m?.[3];
+
+/** `[ tool.poe.tasks ]` and `[tool.poe.tasks]` (with or without a comment) are the same header. */
+function header(line: string): string | null {
+	const m = /^\s*\[([^[\]]+)\]\s*(?:#.*)?$/.exec(line);
+	return m?.[1] ? m[1].replace(/\s+/g, '') : null;
+}
+
 /** The body of one `[section]` of a TOML file, up to the next table header. */
 export function tomlSection(toml: string, section: string): string | null {
 	const lines = toml.split(/\r?\n/);
-	const start = lines.findIndex((l) => l.trim() === `[${section}]`);
+	const start = lines.findIndex((l) => header(l) === section);
 	if (start === -1) return null;
 	const body: string[] = [];
 	for (const line of lines.slice(start + 1)) {
@@ -27,14 +37,27 @@ export function tomlSection(toml: string, section: string): string | null {
 	return body.join('\n');
 }
 
-/** Keys of `key = ...` lines (quoted or bare). */
+/** Keys of `key = ...` lines: bare, "quoted" or 'quoted' (uv's templates write the latter). */
 export function tomlKeys(body: string): string[] {
+	const pattern = new RegExp(`^\\s*${KEY}\\s*=`);
 	const keys: string[] = [];
 	for (const line of body.split('\n')) {
-		const m = /^\s*"?([A-Za-z0-9_.-]+)"?\s*=/.exec(line);
-		if (m?.[1]) keys.push(m[1]);
+		const key = keyOf(pattern.exec(line));
+		if (key) keys.push(key);
 	}
 	return keys;
+}
+
+/** Names of `[prefix.name]` subtables, e.g. poe's `[tool.poe.tasks.test]` with its own keys. */
+export function tomlSubtables(toml: string, prefix: string): string[] {
+	const escaped = prefix.replace(/\./g, '\\.');
+	const pattern = new RegExp(`^\\s*\\[\\s*${escaped}\\.${KEY}\\s*\\]\\s*(?:#.*)?$`);
+	const names: string[] = [];
+	for (const line of toml.split(/\r?\n/)) {
+		const name = keyOf(pattern.exec(line));
+		if (name && !names.includes(name)) names.push(name);
+	}
+	return names;
 }
 
 export function makeTargets(makefile: string): string[] {
@@ -107,10 +130,15 @@ export function detectTasks(root: string): Task[] {
 				detail: 'project.scripts',
 			});
 		}
-		for (const name of tomlKeys(tomlSection(pyproject, 'tool.poe.tasks') ?? '')) {
+		// Inline (`name = "cmd"`) and table-style (`[tool.poe.tasks.name]`) poe tasks.
+		const poe = [
+			...tomlKeys(tomlSection(pyproject, 'tool.poe.tasks') ?? ''),
+			...tomlSubtables(pyproject, 'tool.poe.tasks'),
+		];
+		for (const name of new Set(poe)) {
 			add('poe', {
 				label: name,
-				command: `${prefix}poe ${name}`,
+				command: `${prefix}poe ${shellWord(name)}`,
 				source: 'python',
 				detail: 'poe task',
 			});

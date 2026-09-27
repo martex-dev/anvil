@@ -12,12 +12,13 @@ import {
 	SIDEBAR,
 	SPLIT,
 } from './art-glyphs';
-import { PAINT, PLAY, PROMPT, ROBOT, SLIDERS, WARNING } from './art-tools';
+import { BUG, PAINT, PLAY, PROMPT, ROBOT, SLIDERS, WARNING } from './art-tools';
 import {
 	BLOCKS,
 	BRANCH,
 	CHECKLIST,
 	CLOCK,
+	FLASK,
 	FOLDER,
 	MAGNIFIER,
 	PROGRAM,
@@ -33,6 +34,8 @@ export const CHROME_ART: Record<ChromeIconName, PixelArt> = {
 	search: MAGNIFIER,
 	git: BRANCH,
 	run: PROGRAM,
+	tests: FLASK,
+	debug: BUG,
 	outline: TREE,
 	todos: CHECKLIST,
 	history: CLOCK,

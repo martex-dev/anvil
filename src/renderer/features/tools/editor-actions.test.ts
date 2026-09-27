@@ -12,6 +12,7 @@ vi.mock('../../ui/QuickPick', () => ({ quickPick: vi.fn() }));
 describe('runEditorAction', () => {
 	it('passes an action failure on to the caller', async () => {
 		const editor = {
+			focus: vi.fn(),
 			getAction: () => ({ run: () => Promise.reject(new Error('read-only')) }),
 		};
 		vi.mocked(requireEditor).mockReturnValue(

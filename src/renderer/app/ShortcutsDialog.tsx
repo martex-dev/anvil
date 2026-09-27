@@ -62,6 +62,9 @@ export function ShortcutsDialog(): JSX.Element {
 									{c.scope === 'editor' && (
 										<span className='text-10 text-fg-2'>editor</span>
 									)}
+									{c.when === 'debugging' && (
+										<span className='text-10 text-fg-2'>debugging</span>
+									)}
 									<Kbd keys={c.shortcut ?? ''} />
 								</li>
 							))}

@@ -1,7 +1,7 @@
 import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process';
 
+import { encodeMessage, MessageDecoder } from '../../core/framing';
 import { killTree } from '../../core/process-utils';
-import { encodeMessage, MessageDecoder } from './framing';
 import type { ServerLaunch } from './servers';
 
 export interface SessionEvents {
@@ -25,7 +25,10 @@ export class LspSession {
 		events: SessionEvents,
 		node: string = process.execPath,
 	) {
-		this.child = spawn(node, [launch.script, ...launch.args], {
+		const [file, args] = launch.command
+			? [launch.command, launch.args]
+			: [node, [launch.script, ...launch.args]];
+		this.child = spawn(file, args, {
 			cwd,
 			env: launch.env,
 			windowsHide: true,
@@ -41,8 +44,10 @@ export class LspSession {
 				void this.dispose();
 			}
 		});
-		this.child.stderr.on('data', (chunk: Buffer) => {
-			this.appendStderr(chunk.toString('utf8'));
+		// A stream decoder keeps a multi-byte character split across two chunks intact.
+		this.child.stderr.setEncoding('utf8');
+		this.child.stderr.on('data', (chunk: string) => {
+			this.appendStderr(chunk);
 		});
 		// A crashing server closes its pipe before 'exit' arrives; writing then fails with EPIPE,
 		// which without a listener is an uncaught exception that takes down the main process.

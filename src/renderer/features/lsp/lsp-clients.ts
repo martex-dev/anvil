@@ -3,8 +3,9 @@ import type { CloseAction, ErrorAction } from 'vscode-languageclient/browser';
 
 import type { LspLanguage } from '@shared/ipc/channels/lsp';
 
-import { call } from '../../lib/ipc';
+import { call, IpcCallError } from '../../lib/ipc';
 import { rlog } from '../../lib/log';
+import { restartBudget } from './crash-restart';
 import { ipcTransports } from './ipc-transport';
 import { LANGUAGE_LABEL, useLspStatus } from './lsp-status';
 
@@ -34,7 +35,7 @@ const clients = new Map<LspLanguage, Running>();
 const starting = new Map<LspLanguage, Promise<void>>();
 // Bumped per language when its server is stopped, so a start still in flight is thrown away
 // instead of registering a client for the old folder or interpreter.
-const generations: Record<LspLanguage, number> = { python: 0, typescript: 0 };
+const generations: Record<LspLanguage, number> = { python: 0, ruff: 0, typescript: 0 };
 
 /** Disposes a client, releasing its IPC listeners; failures are logged, never thrown. */
 async function disposeClient(client: MonacoLanguageClient): Promise<void> {
@@ -90,16 +91,34 @@ async function start(language: LspLanguage): Promise<void> {
 				errorHandler: {
 					error: () => ({ action: ERROR_CONTINUE }),
 					closed: () => {
-						// The server died (crash, killed): report it; the user restarts from the status bar.
+						// The server died (crash, killed): start a fresh one after a short delay, a few
+						// times at most (see RestartBudget); then the user restarts from the status bar.
 						if (clients.get(language)?.session === info.session) {
 							clients.delete(language);
-							useLspStatus
-								.getState()
-								.set(language, 'error', 'The language server stopped');
+							const delay = restartBudget(language).next();
+							if (delay === null) {
+								useLspStatus
+									.getState()
+									.set(language, 'error', 'The language server keeps stopping');
+							} else {
+								useLspStatus
+									.getState()
+									.set(
+										language,
+										'starting',
+										'The language server stopped; restarting',
+									);
+								// A stop or restart meanwhile (folder switch) owns the language now.
+								setTimeout(() => {
+									if (current()) void ensureClient(language);
+								}, delay);
+							}
 							// Release the transport's IPC listeners. Deferred: disposing from inside the
 							// client's own close callback would re-enter it.
 							setTimeout(() => void shutdown(created, info.session), 0);
 						}
+						// Restarted by Anvil instead: a restart by the library would reuse this
+						// session, whose server process is gone.
 						return { action: CLOSE_DO_NOT_RESTART };
 					},
 				},
@@ -123,9 +142,14 @@ async function start(language: LspLanguage): Promise<void> {
 		// awaited, and not in sequence: disposing a client whose start never finished can hang.
 		if (client) void disposeClient(client);
 		if (session) void stopSession(session);
-		rlog.error('lsp', `${language} server failed to start`, error);
 		// A start superseded by a stop or restart no longer owns the status.
 		if (!current()) return;
+		// Not installed (ruff): its features are off, which is not an error worth a red dot.
+		if (error instanceof IpcCallError && error.code === 'LSP_UNAVAILABLE') {
+			useLspStatus.getState().set(language, 'unavailable', error.message);
+			return;
+		}
+		rlog.error('lsp', `${language} server failed to start`, error);
 		useLspStatus
 			.getState()
 			.set(language, 'error', error instanceof Error ? error.message : String(error));

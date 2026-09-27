@@ -22,7 +22,7 @@ General-purpose editors treat a backtest like any other script. Anvil is tuned f
 
 ### Editing
 
-- **Monaco with real language servers**: basedpyright for Python (using _your_ interpreter's site-packages), typescript-language-server for TS/JS. Go to definition, hovers, inlay hints and diagnostics.
+- **Monaco with real language servers**: basedpyright for Python (using _your_ interpreter's site-packages), typescript-language-server for TS/JS. Go to definition, hovers, inlay hints and diagnostics. When your environment has ruff, `ruff server` adds lint problems, `Ctrl+.` quick fixes, fix-all and Organize Imports, following your `pyproject.toml`.
 - **Split editors, preview tabs, breadcrumbs** that show the class › method and the `# %%` cell you're in.
 - **Git in the gutter**: added / changed / deleted bars against HEAD, plus inline blame for the current line.
 - **Local history**: every save is snapshotted (50 per file, 30 days). Diff or roll back without git.
@@ -47,7 +47,10 @@ General-purpose editors treat a backtest like any other script. Anvil is tuned f
 ### Python and data
 
 - **Interpreter picker**: finds `.venv`/`venv`, uv, conda and system Pythons. The language server, run commands and REPL all follow it.
-- **Run file** (`F5`), **run cell** (`Ctrl+Enter`), **run cell and advance** (`Shift+Enter`), **run selection** (`F9`). Cells go to a persistent IPython REPL, Jupyter-style, with your variables kept between runs.
+- **Run file** (`F5`), **run cell** (`Ctrl+Enter`), **run cell and advance** (`Shift+Enter`), **run selection** (`F9`). Cells go to a persistent IPython REPL, Jupyter-style, with your variables kept between runs. The folder's `.env` is loaded into runs, the REPL and tasks (never into the AI CLIs).
+- **Variables**: after every cell, the panel lists the REPL's variables with type, shape (`1000 x 5`), dtype and value, Spyder-style. Click one to print it (a DataFrame's first rows) in the REPL.
+- **Test Explorer for pytest**: every test as a tree (file, class, function, parametrized case) with live pass/fail marks, Run All / Run Failed / Re-run Last, a filter, and the failure's traceback with clickable `file:line`. A "▶ Run test | Debug (pdb)" lens sits above each test in the editor, and `Ctrl+Shift+F10` runs the test at the cursor. pytest comes from your selected interpreter; if it's missing, the view offers to install it there.
+- **Debugger** (debugpy, from your own environment): `Shift+F9` debugs the file, a module or the pytest test at the cursor. Breakpoints in the gutter (`Ctrl+F9`), conditional, hit count and logpoints, kept per project. While paused: the line is highlighted, hover a name to see its value, and the Debug view has variables, watches, the call stack and breakpoints. The Debug Console evaluates in the selected frame. The program runs in a terminal, so `input()` works. If debugpy is missing, Anvil offers to install it with pip or uv.
 - **Data viewer** for CSV, TSV, JSON/JSONL, Parquet, Feather and Excel. Virtualized to a million rows, with filter, sort, cell-range copy and a column profile (nulls, unique, mean/std, histogram). Parquet and Excel are read by your own Python (polars first, then pandas).
 - **Notebook viewer** for `.ipynb` (outputs, images, tracebacks), with one-click conversion to a `# %%` script. Plus image and Markdown previews.
 - **Tasks**: npm scripts, pyproject scripts, poe, pytest, ruff, Makefile and justfile targets, detected and runnable in one click.
@@ -127,6 +130,10 @@ Effects are optional. **Settings → Appearance → Effects: subtle / off** (and
 | `Ctrl+P`                    | Quick Open (`>` `@` `:`)            | `Ctrl+Shift+P` / `F1` | Command palette              |
 | `F5`                        | Run Python file                     | `Ctrl+Enter`          | Run `# %%` cell              |
 | `Shift+Enter`               | Run cell and advance                | `F9`                  | Run selection / line         |
+| `Shift+F9`                  | Debug Python file                   | `Ctrl+F9`             | Toggle breakpoint            |
+| `F5` (debugging)            | Continue                            | `F10` / `F11`         | Step over / into (debugging) |
+| `Shift+F11`                 | Step out (debugging)                | `Shift+F5`            | Stop debugging               |
+| `Ctrl+Shift+F5`             | Restart debugging                   |                       |                              |
 | `Ctrl+I`                    | Edit with AI (inline)               | `Ctrl+L`              | Ask AI (attaches selection)  |
 | `Ctrl+Alt+.`                | Fix problems here with AI           | `Ctrl+Alt+F`          | Format with ruff             |
 | `Ctrl+\`                    | Split editor                        | `Ctrl+B` / `Ctrl+J`   | Side bar / panel             |

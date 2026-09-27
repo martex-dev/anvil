@@ -38,6 +38,11 @@ export async function runPythonFile(module = false): Promise<void> {
 		toast.info('Open a Python file to run it');
 		return;
 	}
+	await runPythonAt(path, module);
+}
+
+/** Runs a workspace Python file in the Run terminal, saving its open buffer first. */
+export async function runPythonAt(path: string, module = false): Promise<void> {
 	const file = useEditorStore.getState().files.find((f) => f.path === path);
 	if (file?.dirty && !(await saveFile(path))) return;
 	const { command } = await call('python:runCommand', { path, module });

@@ -65,15 +65,27 @@ md.renderer.rules['tag'] = (tokens, idx) => {
 	return `<a href="#" class="md-tag" data-tag="${esc(name)}">#${esc(name)}</a>`;
 };
 
+// A type alias, not an interface: markdown-it's render env is an index-signature record.
+export type RenderOptions = {
+	/**
+	 * Load https images (default true). Off for text you didn't write, like an AI reply: a
+	 * prompt-injected image URL would send data out the moment it renders. They show as links.
+	 */
+	remoteImages?: boolean;
+};
+
 // The renderer's CSP only allows https images; show local ones as a labelled chip instead.
 const defaultImage = md.renderer.rules.image;
 md.renderer.rules.image = (tokens, idx, options, env, self) => {
 	const token = tokens[idx];
 	const src = String(token?.attrGet('src') ?? '');
-	if (token && /^https:\/\//i.test(src) && defaultImage) {
-		return defaultImage(tokens, idx, options, env, self);
+	const label = esc(token?.content || src);
+	if (token && /^https:\/\//i.test(src)) {
+		if ((env as RenderOptions | undefined)?.remoteImages === false)
+			return `<a href="${esc(src)}" class="md-image-link" title="${esc(src)}">Image: ${label}</a>`;
+		if (defaultImage) return defaultImage(tokens, idx, options, env, self);
 	}
-	return `<span class="md-embed" title="${esc(src)}">${esc(token?.content || src)}</span>`;
+	return `<span class="md-embed" title="${esc(src)}">${label}</span>`;
 };
 
 // GitHub/Obsidian task lists: "[ ] x" / "[x] x" at the start of a list item.
@@ -100,6 +112,6 @@ export function stripFrontmatter(text: string): string {
 	return after === -1 ? '' : text.slice(after + 1);
 }
 
-export function renderMarkdown(text: string): string {
-	return md.render(stripFrontmatter(text));
+export function renderMarkdown(text: string, options: RenderOptions = {}): string {
+	return md.render(stripFrontmatter(text), options);
 }

@@ -10,6 +10,7 @@ import { SettingStepper } from './SettingStepper';
 import { SettingToggle } from './SettingToggle';
 
 const LINE_HEIGHTS = ['1.3', '1.45', '1.55', '1.65', '1.8', '2'];
+const AUTO_SAVE_DELAYS = [500, 1000, 2000, 5000, 10_000];
 
 export function EditorSettings({
 	s,
@@ -124,6 +125,12 @@ export function EditorSettings({
 				onChange={(inlineBlame) => update({ inlineBlame })}
 			/>
 			<SettingToggle
+				label='Git auto-fetch'
+				description='Fetch from the remotes every 5 minutes, so ahead/behind counts stay current.'
+				value={s.gitAutoFetch}
+				onChange={(gitAutoFetch) => update({ gitAutoFetch })}
+			/>
+			<SettingToggle
 				label='Word wrap'
 				description='Alt+Z toggles it from the editor.'
 				value={s.wordWrap}
@@ -135,6 +142,42 @@ export function EditorSettings({
 				onChange={(minimap) => update({ minimap })}
 			/>
 			<SettingToggle
+				label='Sticky scroll'
+				description='Keep the enclosing class and function headers pinned while you scroll.'
+				value={s.stickyScroll}
+				onChange={(stickyScroll) => update({ stickyScroll })}
+			/>
+			<SettingRow
+				label='Auto save'
+				description='After a delay: a moment after you stop typing. On focus change: when you switch files or leave the window.'
+			>
+				<Select
+					aria-label='Auto save'
+					value={s.autoSave}
+					onValueChange={(v) => update({ autoSave: v as Settings['autoSave'] })}
+					options={[
+						{ value: 'off', label: 'Off' },
+						{ value: 'afterDelay', label: 'After a delay' },
+						{ value: 'onFocusChange', label: 'On focus change' },
+					]}
+				/>
+			</SettingRow>
+			{s.autoSave === 'afterDelay' && (
+				<SettingRow label='Auto save delay' description='After the last keystroke.'>
+					<Select
+						aria-label='Auto save delay'
+						value={String(s.autoSaveDelayMs)}
+						onValueChange={(v) => update({ autoSaveDelayMs: Number(v) })}
+						options={[...new Set([...AUTO_SAVE_DELAYS, s.autoSaveDelayMs])]
+							.sort((a, b) => a - b)
+							.map((ms) => ({
+								value: String(ms),
+								label: ms < 1000 ? `${ms} ms` : `${ms / 1000} s`,
+							}))}
+					/>
+				</SettingRow>
+			)}
+			<SettingToggle
 				label='Trim trailing whitespace on save'
 				value={s.trimTrailingWhitespace}
 				onChange={(trimTrailingWhitespace) => update({ trimTrailingWhitespace })}
@@ -145,11 +188,35 @@ export function EditorSettings({
 				value={s.insertFinalNewline}
 				onChange={(insertFinalNewline) => update({ insertFinalNewline })}
 			/>
+			<SettingRow
+				label='Python type checking'
+				description="basedpyright's strictness. A pyrightconfig.json or [tool.basedpyright] in the project wins. Applies when the language server restarts."
+			>
+				<Select
+					aria-label='Python type checking'
+					value={s.pythonTypeChecking}
+					onValueChange={(v) =>
+						update({ pythonTypeChecking: v as Settings['pythonTypeChecking'] })
+					}
+					options={[
+						{ value: 'off', label: 'Off (syntax and imports only)' },
+						{ value: 'basic', label: 'Basic' },
+						{ value: 'standard', label: 'Standard' },
+						{ value: 'strict', label: 'Strict' },
+					]}
+				/>
+			</SettingRow>
 			<SettingToggle
 				label='Format Python on save'
 				description='Runs ruff format from the selected environment (or PATH).'
 				value={s.formatOnSave}
 				onChange={(formatOnSave) => update({ formatOnSave })}
+			/>
+			<SettingToggle
+				label='Debug just my code'
+				description='The debugger steps through your files only, not the standard library or installed packages.'
+				value={s.debugJustMyCode}
+				onChange={(debugJustMyCode) => update({ debugJustMyCode })}
 			/>
 			<SettingToggle
 				label='Local history'

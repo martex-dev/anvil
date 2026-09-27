@@ -1,4 +1,5 @@
 import { FitAddon } from '@xterm/addon-fit';
+import { SearchAddon } from '@xterm/addon-search';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { WebglAddon } from '@xterm/addon-webgl';
@@ -9,11 +10,10 @@ import type { TerminalPresetId } from '@shared/ipc/channels/terminal';
 
 import { call } from '../../lib/ipc';
 import { rlog } from '../../lib/log';
-import { queryClient } from '../../lib/query-client';
 import { toast } from '../../stores/toast-store';
-import { requestOpenFile } from '../../stores/workbench-store';
 import { useClipboardHistory } from '../editor/extras/clipboard';
-import { findFileLinks } from './file-links';
+import { registerFileLinks } from './terminal-links';
+import { openTerminalFind, registerTerminal } from './terminal-registry';
 import { FOCUS_TERMINAL_EVENT, markAttached, unmarkAttached } from './terminal-store';
 import { terminalKeyAction } from './xterm-keys';
 import { buildXtermTheme } from './xterm-theme';
@@ -48,6 +48,10 @@ interface Options {
 	enabled: boolean;
 	/** Typed into the shell when the session is first created (Run file, tasks). */
 	initialCommand?: string | undefined;
+	/** The tab's reusable role ('run', 'repl', 'task:…'), for main's restart decisions. */
+	role?: string | undefined;
+	/** Workspace-relative folder the session starts in ('' or absent: the folder root). */
+	cwd?: string | undefined;
 	/** Keep keyboard focus where it is (a command sent in the background). */
 	focus?: boolean;
 	/** Main's name for the session once it is open ('IPython' or 'Python REPL' for the REPL). */
@@ -60,7 +64,17 @@ interface Options {
  */
 export function useXterm(
 	hostRef: RefObject<HTMLDivElement | null>,
-	{ sessionId, preset, fontSize, enabled, initialCommand, focus = true, onOpen }: Options,
+	{
+		sessionId,
+		preset,
+		fontSize,
+		enabled,
+		initialCommand,
+		role,
+		cwd,
+		focus = true,
+		onOpen,
+	}: Options,
 ): { status: TerminalStatus; error: string | null; retry: () => void } {
 	const [status, setStatus] = useState<TerminalStatus>('starting');
 	const [error, setError] = useState<string | null>(null);
@@ -130,23 +144,22 @@ export function useXterm(
 			term.options.cursorBlink = !reducedMotion();
 		};
 		motion.addEventListener('change', updateBlink);
-		// Tracebacks and `file.py:12:5` references open the file at that line.
-		const links = term.registerLinkProvider({
-			provideLinks(y, callback) {
-				const root = queryClient.getQueryData<{ root: string | null }>(['workspace'])?.root;
-				const text = term.buffer.active.getLine(y - 1)?.translateToString(true) ?? '';
-				if (!root || !text) return callback(undefined);
-				callback(
-					findFileLinks(text, root).map((l) => ({
-						range: { start: { x: l.start + 1, y }, end: { x: l.end, y } },
-						text: text.slice(l.start, l.end),
-						decorations: { underline: true, pointerCursor: true },
-						activate: () => {
-							requestOpenFile({ path: l.path, line: l.line, column: l.column });
-						},
-					})),
-				);
+		// Tracebacks and `file.py:12:5` references open the file at that line (if it exists).
+		const links = registerFileLinks(term, () => cwd ?? '');
+		// Find selects each match (no decorations: those need raw colors outside the tokens).
+		const search = new SearchAddon();
+		term.loadAddon(search);
+		const unregister = registerTerminal(sessionId, {
+			clear: () => term.clear(),
+			find: (query, direction, caseSensitive) =>
+				direction === 'next'
+					? search.findNext(query, { caseSensitive })
+					: search.findPrevious(query, { caseSensitive }),
+			clearFind: () => {
+				search.clearDecorations();
+				term.clearSelection();
 			},
+			focus: () => term.focus(),
 		});
 		try {
 			// GPU rendering is much faster for heavy output; fall back to DOM if WebGL is unavailable.
@@ -168,12 +181,25 @@ export function useXterm(
 				});
 				term.clearSelection();
 			}
-			// false: xterm ignores the key (copied, or the browser pastes natively).
+			if (action === 'find') {
+				e.preventDefault();
+				openTerminalFind(sessionId);
+			}
+			// false: xterm ignores the key (copied, find opened, or the browser pastes natively).
 			return action === 'xterm';
 		});
 
+		// Output that arrives before terminal:open answers is held back: the reply's backlog may
+		// already contain it. Events up to the reply's `seq` are dropped, the rest written after.
+		let openSeq: number | null = null;
+		const early: Array<{ data: string; seq: number }> = [];
 		const unsubscribeData = window.anvil.on('terminal:data', (m) => {
 			if (m.sessionId !== sessionId) return;
+			if (openSeq === null) {
+				early.push(m);
+				return;
+			}
+			if (m.seq <= openSeq) return;
 			// Output after an exit means main restarted the session (a Run or task command).
 			if (exited) {
 				exited = false;
@@ -186,15 +212,21 @@ export function useXterm(
 			exited = true;
 			exits++;
 			setStatus('exited');
-			term.write(
-				`\r\n\x1b[2m[process exited with code ${m.exitCode} — press Enter to restart]\x1b[0m\r\n`,
-			);
+			const text =
+				m.reason ?? `process exited with code ${m.exitCode} — press Enter to restart`;
+			term.write(`\r\n\x1b[2m[${text}]\x1b[0m\r\n`);
 		});
 
 		const restart = (): void => {
 			restarting = true;
 			const before = exits;
-			call('terminal:restart', { sessionId, preset, cols: term.cols, rows: term.rows }).then(
+			call('terminal:restart', {
+				sessionId,
+				preset,
+				cols: term.cols,
+				rows: term.rows,
+				...(role ? { role } : {}),
+			}).then(
 				() => {
 					restarting = false;
 					if (disposed || exits !== before) return;
@@ -234,10 +266,14 @@ export function useXterm(
 			cols: Math.max(term.cols, 2),
 			rows: Math.max(term.rows, 2),
 			...(initialCommand ? { initialCommand } : {}),
+			...(role ? { role } : {}),
+			...(cwd ? { cwd } : {}),
 		})
 			.then((res) => {
 				if (disposed) return;
+				openSeq = res.seq;
 				if (res.backlog) term.write(res.backlog);
+				for (const m of early.splice(0)) if (m.seq > res.seq) term.write(m.data);
 				setStatus(res.running ? 'running' : 'exited');
 				exited = !res.running;
 				if (focus) term.focus();
@@ -263,6 +299,7 @@ export function useXterm(
 			window.removeEventListener('anvil:appearance', recolor);
 			motion.removeEventListener('change', updateBlink);
 			links.dispose();
+			unregister();
 			disposed = true;
 			clearTimeout(resizeTimer);
 			observer.disconnect();

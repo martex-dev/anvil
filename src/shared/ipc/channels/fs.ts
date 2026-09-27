@@ -84,11 +84,40 @@ export const fsChannels = defineChannels({
 		input: z.object({ path: RelPathSchema, absolute: z.boolean() }),
 		output: z.string(),
 	},
+	/**
+	 * Read-only text for viewers that parse whole files (notebooks with embedded plots): a 50 MB
+	 * cap instead of the editor's 5 MB, with `tooLarge` set beyond it.
+	 */
+	'fs:readLargeText': { input: RelPathSchema.min(1), output: FileContentSchema },
+	/**
+	 * Moves a file or folder into another folder of the workspace. Fails with FS_EXISTS on a
+	 * name clash unless `overwrite` (the replaced item goes to the Recycle Bin).
+	 */
+	'fs:move': {
+		input: z.object({
+			path: RelPathSchema.min(1),
+			targetDir: RelPathSchema,
+			overwrite: z.boolean().optional(),
+		}),
+		output: FsEntrySchema,
+	},
+	/** Copies a file or folder (recursively) into a folder; a clash is named "<name> copy". */
+	'fs:copy': {
+		input: z.object({ path: RelPathSchema.min(1), targetDir: RelPathSchema }),
+		output: FsEntrySchema,
+	},
 });
 
 export const fsEvents = {
-	/** Directories whose listing changed and files whose content changed, workspace-relative. */
-	'fs:changed': z.object({ dirs: z.array(z.string()), files: z.array(z.string()) }),
+	/**
+	 * Directories whose listing changed and files whose content changed, workspace-relative.
+	 * `overflow`: too many changes to list (both lists are empty); refresh everything.
+	 */
+	'fs:changed': z.object({
+		dirs: z.array(z.string()),
+		files: z.array(z.string()),
+		overflow: z.literal(true).optional(),
+	}),
 	/** Watching failed, so outside changes may not show; once per watcher start, no paths. */
 	'fs:watchError': z.object({ message: z.string() }),
 };

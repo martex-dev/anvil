@@ -7,6 +7,7 @@ import { call } from '../../lib/ipc';
 import { toast } from '../../stores/toast-store';
 import { navHistory } from '../editor/nav-history';
 import { renameOpenPath } from '../editor/rename';
+import { createPath } from './explorer-ops';
 import { joinPath, parentOf } from './tree-model';
 
 /**
@@ -26,8 +27,14 @@ export function useFsActions(root: string): {
 
 	const createM = useMutation({
 		mutationFn: (v: { parent: string; name: string; kind: 'file' | 'dir' }) =>
-			call('fs:create', v),
-		onSuccess: (_e, v) => refresh(v.parent),
+			createPath(v.parent, v.name, v.kind),
+		// A nested name (`a/b/c.py`) also created the folders on the way to it.
+		onSuccess: (entry, v) => {
+			for (let dir = parentOf(entry.path); ; dir = parentOf(dir)) {
+				refresh(dir);
+				if (dir === v.parent || dir === '') break;
+			}
+		},
 	});
 	const renameM = useMutation({
 		mutationFn: (v: { path: string; newName: string }) => call('fs:rename', v),

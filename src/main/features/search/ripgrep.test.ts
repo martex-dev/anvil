@@ -23,6 +23,10 @@ beforeAll(() => {
 	write('notes.md', 'The price is right. Priceless.');
 	write('.github/workflows/ci.yml', 'run: check-price');
 	write('.git/config', 'price = internal');
+	// Build output is searched unless .gitignore says otherwise (no git repo here, either).
+	write('dist/bundle.js', 'price()');
+	write('build/report.txt', 'price report');
+	write('.gitignore', 'build/\n');
 });
 
 afterAll(() => rmSync(root, { recursive: true, force: true }));
@@ -56,11 +60,13 @@ describe('queryError', () => {
 describe('Ripgrep (real binary)', () => {
 	const rg = new Ripgrep();
 
-	it('finds case-insensitive literal matches, in dotfiles too, skipping node_modules and .git', async () => {
+	it('finds literal matches in dotfiles and build output, skipping node_modules, .git and ignored files', async () => {
 		const result = await rg.search(root, { query: 'price' });
-		const paths = result.files.map((f) => f.path).sort();
+		// Sorted by path, whatever order ripgrep's threads finished in.
+		const paths = result.files.map((f) => f.path);
 		expect(paths).toEqual([
 			'.github/workflows/ci.yml',
+			'dist/bundle.js',
 			'notes.md',
 			'src/app.ts',
 			'src/util.py',

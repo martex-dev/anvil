@@ -3,6 +3,7 @@ import { create } from 'zustand';
 
 import type { SearchQuery, SearchResult } from '@shared/ipc/channels/search';
 
+import { useSideViewVisible } from '../../app/side-view-visible';
 import { call, IpcCallError } from '../../lib/ipc';
 import { useFsRefresh } from '../../lib/use-fs-refresh';
 import { useLayoutStore } from '../../stores/layout-store';
@@ -26,11 +27,23 @@ export const useSearchRequest = create<{
 	tick: number;
 	query: string | null;
 	request: (query: string) => void;
+	/** Bumped by "Replace in Files": the panel opens its replace row and focuses it. */
+	replaceTick: number;
+	requestReplace: () => void;
 }>((set) => ({
 	tick: 0,
 	query: null,
 	request: (query) => set((s) => ({ tick: s.tick + 1, query })),
+	replaceTick: 0,
+	requestReplace: () => set((s) => ({ replaceTick: s.replaceTick + 1 })),
 }));
+
+/** "Replace in Files" (Ctrl+Shift+H): the Search view with its replace row open and focused. */
+export function replaceInFiles(): void {
+	useSearchParams.getState().setParams({ replaceOpen: true });
+	useLayoutStore.getState().showView('search');
+	useSearchRequest.getState().requestReplace();
+}
 
 /**
  * Opens the Search view with `query` as a literal search (e.g. a clicked Markdown #tag). The panel
@@ -56,10 +69,13 @@ export function useFileSearch(
 	refetch: () => void;
 } {
 	const client = useQueryClient();
+	// Paused while the Search view is hidden (it stays mounted): each refresh is a folder-wide
+	// ripgrep. Coming back re-runs it if files changed meanwhile.
+	const visible = useSideViewVisible();
 	const q = useQuery({
 		queryKey: ['search', root, query],
 		queryFn: () => call('search:run', query),
-		enabled: root !== null && query.query.trim().length > 0,
+		enabled: root !== null && query.query.trim().length > 0 && visible,
 		// Keep showing the last results while the next query runs (no flicker while typing).
 		placeholderData: keepPreviousData,
 		staleTime: 5_000,

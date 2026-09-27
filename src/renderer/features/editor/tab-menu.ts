@@ -1,9 +1,16 @@
+import { runCommandById } from '../../app/commands/run';
 import type { Tab } from '../../stores/tabs-store';
 import { useTabsStore } from '../../stores/tabs-store';
 import type { MenuItem } from '../../ui/ContextMenu';
 import { compareWithDisk } from './compare';
 import { isScratch, reloadFromDisk } from './file-ops';
 import { closeOtherTabs, closeTab } from './open';
+
+/** Closes the tabs after `id` in its group; dirty ones ask first, as with Close Others. */
+function closeToTheRight(group: number, id: string): void {
+	const ids = useTabsStore.getState().groups.find((g) => g.id === group)?.tabIds ?? [];
+	for (const next of ids.slice(ids.indexOf(id) + 1)) closeTab(group, next);
+}
 import { copyPath, revealInExplorer } from './tab-actions';
 
 /**
@@ -19,6 +26,8 @@ export function tabMenuItems(
 	const items: Array<MenuItem | 'separator'> = [
 		{ label: 'Close', shortcut: 'Ctrl+W', onSelect: () => closeTab(group, tab.id) },
 		{ label: 'Close Others', onSelect: () => closeOtherTabs(group, tab.id) },
+		{ label: 'Close to the Right', onSelect: () => closeToTheRight(group, tab.id) },
+		{ label: 'Close Saved', onSelect: () => runCommandById('file.closeSaved') },
 		'separator',
 		{
 			label: 'Split Right',

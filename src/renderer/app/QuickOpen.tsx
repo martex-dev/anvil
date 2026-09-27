@@ -1,11 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Command } from 'cmdk';
-import { CornerDownLeft, Hash, Search } from 'lucide-react';
+import { CornerDownLeft, Search } from 'lucide-react';
 import { Dialog as RadixDialog } from 'radix-ui';
 import { type JSX, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 
 import { outlineFor } from '../features/outline/outline';
-import { cn } from '../lib/cn';
 import { call } from '../lib/ipc';
 import { focusedEditor } from '../lib/monaco/editors';
 import { useAnvilEvent } from '../lib/use-anvil-event';
@@ -25,6 +24,8 @@ import {
 	resolvePendingEnter,
 } from './quick-open';
 import { QuickOpenFilesStatus } from './QuickOpenFilesStatus';
+import { QuickOpenSymbols } from './QuickOpenSymbols';
+import { QuickOpenWorkspace } from './QuickOpenWorkspace';
 
 function Highlight({
 	text,
@@ -56,7 +57,7 @@ const itemClass =
 
 /**
  * Ctrl+P. Plain text finds files; `>` runs commands, `@` jumps to a symbol in the current file,
- * `:` goes to a line.
+ * `#` to a symbol anywhere in the project, `:` goes to a line.
  */
 export function QuickOpen(): JSX.Element {
 	const { open, initial } = useUiStore((s) => s.quickOpen);
@@ -83,8 +84,9 @@ export function QuickOpen(): JSX.Element {
 		enabled: Boolean(info.root),
 		staleTime: 15_000,
 	});
-	useAnvilEvent('fs:changed', ({ dirs }) => {
-		if (dirs.length > 0) void client.invalidateQueries({ queryKey: ['search', 'files'] });
+	useAnvilEvent('fs:changed', ({ dirs, overflow }) => {
+		if (dirs.length > 0 || overflow)
+			void client.invalidateQueries({ queryKey: ['search', 'files'] });
 	});
 
 	const mode = quickOpenMode(value);
@@ -178,7 +180,7 @@ export function QuickOpen(): JSX.Element {
 										navigate(() => goLine(query));
 									}
 								}}
-								placeholder='Search files · > commands · @ symbols · : line'
+								placeholder='Search files · > commands · @ symbols · # project symbols · : line'
 								className='h-12 flex-1 bg-transparent text-14 text-fg-0 outline-none placeholder:text-fg-2 focus-visible:outline-none'
 							/>
 							<span className='hud'>{mode}</span>
@@ -241,41 +243,23 @@ export function QuickOpen(): JSX.Element {
 										onPick={close}
 									/>
 								))}
-							{mode === 'symbols' && symbols.length > 0 && (
-								<Command.Empty className='px-3 py-6 text-center text-13 text-fg-2'>
-									No matching symbols.
-								</Command.Empty>
+							{mode === 'symbols' && (
+								<QuickOpenSymbols
+									symbols={symbols}
+									itemClass={itemClass}
+									onPick={(line) => navigate(() => goLine(String(line)))}
+								/>
 							)}
-							{mode === 'symbols' &&
-								(symbols.length === 0 ? (
-									<div className='px-3 py-6 text-center text-13 text-fg-2'>
-										No symbols in the current file.
-									</div>
-								) : (
-									symbols.map((s) => (
-										<Command.Item
-											key={`${s.line}:${s.name}`}
-											value={`${s.name} ${s.kind}`}
-											onSelect={() => navigate(() => goLine(String(s.line)))}
-											className={itemClass}
-										>
-											<Hash size={12} className='text-accent-2' />
-											<span
-												style={{ paddingLeft: s.depth * 12 }}
-												className={cn(
-													'truncate',
-													s.kind === 'cell' && 'text-accent',
-												)}
-											>
-												{s.name}
-											</span>
-											<span className='hud'>{s.kind}</span>
-											<span className='num ml-auto text-11 text-fg-2'>
-												{s.line}
-											</span>
-										</Command.Item>
-									))
-								))}
+							{mode === 'workspace' && (
+								<QuickOpenWorkspace
+									query={query}
+									root={info.root}
+									itemClass={itemClass}
+									onPick={(path, line, column) =>
+										navigate(() => openAndFocus(path, line, column))
+									}
+								/>
+							)}
 							{mode === 'line' && (
 								<div className='px-3 py-4 text-13 text-fg-1'>
 									Go to line{' '}

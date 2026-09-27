@@ -12,6 +12,7 @@ const DOT: Record<LspState, string> = {
 	starting: 'bg-warn pulse-dot',
 	ready: 'bg-up',
 	error: 'bg-down',
+	unavailable: 'bg-border-strong',
 };
 
 /** Language servers at a glance; click restarts the ones that were running or failed. */

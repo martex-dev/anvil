@@ -1,5 +1,7 @@
 // Language grammars and the default themes are VS Code extensions; importing registers them.
 import { initialize } from '@codingame/monaco-vscode-api';
+import { IBulkEditService } from '@codingame/monaco-vscode-api/vscode/vs/editor/browser/services/bulkEditService.service';
+import { SyncDescriptor } from '@codingame/monaco-vscode-api/vscode/vs/platform/instantiation/common/descriptors';
 import getConfigurationServiceOverride, {
 	updateUserConfiguration,
 } from '@codingame/monaco-vscode-configuration-service-override';
@@ -17,6 +19,7 @@ import getThemeServiceOverride from '@codingame/monaco-vscode-theme-service-over
 import * as monaco from 'monaco-editor';
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
 
+import { AnvilBulkEditService } from './bulk-edit';
 import { openDefinition } from './open-definition';
 import { WorkspaceFileSystem } from './workspace-fs';
 
@@ -78,6 +81,8 @@ export async function setupMonaco(userConfiguration: string): Promise<MonacoApi>
 		...getModelServiceOverride(),
 		...getExtensionsServiceOverride({ enableWorkerExtensionHost: false }),
 		...getEditorServiceOverride(openEditor),
+		// Rename and quick fixes that touch files which aren't open (bulk-edit.ts).
+		[IBulkEditService.toString()]: new SyncDescriptor(AnvilBulkEditService, [], true),
 	});
 	registerFileSystemOverlay(1, new WorkspaceFileSystem());
 	await updateUserConfiguration(userConfiguration);

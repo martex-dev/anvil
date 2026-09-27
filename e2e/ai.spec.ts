@@ -6,7 +6,7 @@ import { join } from 'node:path';
 
 import { _electron as electron, expect, test } from '@playwright/test';
 
-import { makeProject, openProject, quickOpen } from './fixtures';
+import { closeDiscardingUnsaved, makeProject, openProject, quickOpen } from './fixtures';
 
 test.setTimeout(180_000);
 
@@ -172,7 +172,7 @@ test('AI: chat with selection, apply via diff, inline edit, ghost text', async (
 			timeout: 15_000,
 		});
 	} finally {
-		await app.close();
+		await closeDiscardingUnsaved(app);
 		server.close();
 		rmSync(userData, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 		project.cleanup();

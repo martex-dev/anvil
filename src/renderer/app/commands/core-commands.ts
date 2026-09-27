@@ -101,6 +101,14 @@ export const CORE_COMMANDS: Command[] = [
 		run: () => useUiStore.getState().openQuickOpen('@'),
 	},
 	{
+		id: 'go.workspaceSymbol',
+		title: 'Go to Symbol in Workspace…',
+		category: 'Go',
+		shortcut: 'Ctrl+T',
+		keywords: ['project', 'class', 'function', 'definition'],
+		run: () => useUiStore.getState().openQuickOpen('#'),
+	},
+	{
 		id: 'go.line',
 		title: 'Go to Line…',
 		category: 'Go',

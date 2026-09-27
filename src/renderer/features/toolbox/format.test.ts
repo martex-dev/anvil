@@ -49,12 +49,26 @@ describe('parseNumber', () => {
 		expect(parseNumber('abc')).toBeNaN();
 	});
 
-	it('rejects a decimal comma instead of reading it as a larger number', () => {
-		expect(parseNumber('0,5')).toBeNaN();
-		expect(parseNumber('1,5')).toBeNaN();
-		expect(parseNumber('1,50')).toBeNaN();
+	it('reads a decimal comma as a decimal, never as a number ten times bigger', () => {
+		expect(parseNumber('1,5')).toBe(1.5);
+		expect(parseNumber('0,5')).toBe(0.5);
+		expect(parseNumber('1,50')).toBe(1.5);
+		expect(parseNumber('-2,25')).toBe(-2.25);
+		expect(parseNumber('0,500')).toBe(0.5);
+		expect(parseNumber('1.234,5')).toBe(1234.5);
+		expect(parseNumber('1.234.567,89')).toBe(1234567.89);
+	});
+
+	it('keeps comma thousands, including the ambiguous 1,500', () => {
+		expect(parseNumber('1,500')).toBe(1500);
+		expect(parseNumber('10,000.5')).toBe(10000.5);
+	});
+
+	it('rejects malformed separators', () => {
 		expect(parseNumber('1,000,00')).toBeNaN();
 		expect(parseNumber('1,000.5,0')).toBeNaN();
+		expect(parseNumber('1.23,4.5')).toBeNaN();
+		expect(parseNumber('1,2,3')).toBeNaN();
 	});
 
 	it('rejects non-decimal forms Number() would accept', () => {
