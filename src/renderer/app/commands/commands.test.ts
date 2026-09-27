@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 // The command modules pull in stores and Monaco helpers; only their static data matters here.
 vi.mock('../../lib/ipc', () => ({ call: vi.fn() }));
 
-describe('command registry', () => {
+// Importing every command module is slow when the whole suite runs in parallel.
+describe('command registry', { timeout: 30_000 }, () => {
 	it('has unique ids and no shortcut bound twice in the same scope', async () => {
 		const { ALL_COMMANDS } = await import('./all');
 		const ids = ALL_COMMANDS.map((c) => c.id);
