@@ -48,6 +48,8 @@ interface Options {
 	enabled: boolean;
 	/** Typed into the shell when the session is first created (Run file, tasks). */
 	initialCommand?: string | undefined;
+	/** The tab's reusable role ('run', 'repl', 'task:…'), for main's restart decisions. */
+	role?: string | undefined;
 	/** Keep keyboard focus where it is (a command sent in the background). */
 	focus?: boolean;
 	/** Main's name for the session once it is open ('IPython' or 'Python REPL' for the REPL). */
@@ -60,7 +62,7 @@ interface Options {
  */
 export function useXterm(
 	hostRef: RefObject<HTMLDivElement | null>,
-	{ sessionId, preset, fontSize, enabled, initialCommand, focus = true, onOpen }: Options,
+	{ sessionId, preset, fontSize, enabled, initialCommand, role, focus = true, onOpen }: Options,
 ): { status: TerminalStatus; error: string | null; retry: () => void } {
 	const [status, setStatus] = useState<TerminalStatus>('starting');
 	const [error, setError] = useState<string | null>(null);
@@ -172,8 +174,17 @@ export function useXterm(
 			return action === 'xterm';
 		});
 
+		// Output that arrives before terminal:open answers is held back: the reply's backlog may
+		// already contain it. Events up to the reply's `seq` are dropped, the rest written after.
+		let openSeq: number | null = null;
+		const early: Array<{ data: string; seq: number }> = [];
 		const unsubscribeData = window.anvil.on('terminal:data', (m) => {
 			if (m.sessionId !== sessionId) return;
+			if (openSeq === null) {
+				early.push(m);
+				return;
+			}
+			if (m.seq <= openSeq) return;
 			// Output after an exit means main restarted the session (a Run or task command).
 			if (exited) {
 				exited = false;
@@ -186,15 +197,21 @@ export function useXterm(
 			exited = true;
 			exits++;
 			setStatus('exited');
-			term.write(
-				`\r\n\x1b[2m[process exited with code ${m.exitCode} — press Enter to restart]\x1b[0m\r\n`,
-			);
+			const text =
+				m.reason ?? `process exited with code ${m.exitCode} — press Enter to restart`;
+			term.write(`\r\n\x1b[2m[${text}]\x1b[0m\r\n`);
 		});
 
 		const restart = (): void => {
 			restarting = true;
 			const before = exits;
-			call('terminal:restart', { sessionId, preset, cols: term.cols, rows: term.rows }).then(
+			call('terminal:restart', {
+				sessionId,
+				preset,
+				cols: term.cols,
+				rows: term.rows,
+				...(role ? { role } : {}),
+			}).then(
 				() => {
 					restarting = false;
 					if (disposed || exits !== before) return;
@@ -234,10 +251,13 @@ export function useXterm(
 			cols: Math.max(term.cols, 2),
 			rows: Math.max(term.rows, 2),
 			...(initialCommand ? { initialCommand } : {}),
+			...(role ? { role } : {}),
 		})
 			.then((res) => {
 				if (disposed) return;
+				openSeq = res.seq;
 				if (res.backlog) term.write(res.backlog);
+				for (const m of early.splice(0)) if (m.seq > res.seq) term.write(m.data);
 				setStatus(res.running ? 'running' : 'exited');
 				exited = !res.running;
 				if (focus) term.focus();

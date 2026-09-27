@@ -33,11 +33,28 @@ interface Session {
 	backlogTrimmed: boolean;
 	pending: string;
 	timer: ReturnType<typeof setTimeout> | null;
+	/**
+	 * Characters sent as data events so far. Each event carries the count after it, and a
+	 * reattach returns the count its backlog covers, so the renderer can drop events it already
+	 * got through the backlog.
+	 */
+	seq: number;
+	/** The renderer's reusable role ('run', 'repl', 'task:…'), if any. */
+	role: string | null;
+	/** The interpreter the process was started with (its env was fixed at spawn). */
+	python: string | null;
+}
+
+/** What a session was started for; see Session. */
+export interface SessionMeta {
+	role: string | null;
+	python: string | null;
 }
 
 export interface SessionEvents {
-	onData(sessionId: string, data: string): void;
-	onExit(sessionId: string, exitCode: number): void;
+	onData(sessionId: string, data: string, seq: number): void;
+	/** `reason` is set when Anvil stopped the process itself (see stop()). */
+	onExit(sessionId: string, exitCode: number, reason?: string): void;
 }
 
 /** ~256 KB of scrollback kept in main so a reloaded renderer can reattach with history. */
@@ -50,6 +67,8 @@ export class TerminalSessions {
 	/** Starts in flight (launching awaits `which`, IPython checks…) and kills made meanwhile. */
 	private readonly starting = new Map<string, Promise<void>>();
 	private readonly cancelled = new Set<string>();
+	/** Sessions stop() was asked to end while starting, with the reason to report. */
+	private readonly staleStarts = new Map<string, string>();
 
 	constructor(
 		private readonly spawn: SpawnPty,
@@ -102,6 +121,10 @@ export class TerminalSessions {
 		} finally {
 			// Closed (or the app quit) while it was starting: don't leave that shell running.
 			if (this.cancelled.delete(id)) this.kill(id);
+			// The folder or interpreter changed meanwhile: it started with the old one.
+			const reason = this.staleStarts.get(id);
+			this.staleStarts.delete(id);
+			if (reason !== undefined) this.stop(id, reason);
 		}
 		return true;
 	}
@@ -113,6 +136,7 @@ export class TerminalSessions {
 		cwd: string,
 		cols: number,
 		rows: number,
+		meta: SessionMeta = { role: null, python: null },
 	): void {
 		const existing = this.sessions.get(id);
 		const session: Session = existing ?? {
@@ -128,10 +152,15 @@ export class TerminalSessions {
 			backlogTrimmed: false,
 			pending: '',
 			timer: null,
+			seq: 0,
+			role: meta.role,
+			python: meta.python,
 		};
 		this.sessions.set(id, session);
 		session.cols = cols;
 		session.rows = rows;
+		session.python = meta.python;
+		session.role = meta.role ?? session.role;
 		// Never orphan a live process: kill() only knows about session.pty.
 		const previous = session.pty;
 		session.pty = null;
@@ -147,6 +176,18 @@ export class TerminalSessions {
 			session.pty = null;
 			this.events.onExit(id, exitCode);
 		});
+	}
+
+	/**
+	 * The scrollback to replay on reattach and the data-event count it covers. Output still
+	 * waiting for its batch is sent first, so the backlog never holds data whose event is yet
+	 * to come: the renderer drops every event up to `seq` and writes the rest.
+	 */
+	snapshot(id: string): { backlog: string; seq: number } {
+		const session = this.sessions.get(id);
+		if (!session) return { backlog: '', seq: 0 };
+		this.flush(session);
+		return { backlog: this.backlog(id), seq: session.seq };
 	}
 
 	/**
@@ -197,6 +238,31 @@ export class TerminalSessions {
 		for (const id of [...this.sessions.keys()]) this.kill(id);
 	}
 
+	/**
+	 * Ends a session's process but keeps the session, reporting `reason` as its exit: the pane
+	 * shows why, and Enter (or the next Run / REPL command) starts it again with the current
+	 * folder and interpreter. For state fixed at spawn that no longer holds.
+	 */
+	stop(id: string, reason: string): void {
+		if (this.starting.has(id)) {
+			this.staleStarts.set(id, reason);
+			return;
+		}
+		const session = this.sessions.get(id);
+		const pty = session?.pty;
+		if (!session || !pty) return;
+		this.flush(session);
+		session.pty = null;
+		pty.kill();
+		this.events.onExit(id, -1, reason);
+	}
+
+	/** stop() for every session, including ones still starting. */
+	stopAll(reason: string): void {
+		for (const id of new Set([...this.sessions.keys(), ...this.starting.keys()]))
+			this.stop(id, reason);
+	}
+
 	private push(session: Session, data: string): void {
 		// Coalesce keystroke-sized echoes so the chunk list stays short (cheap shift()).
 		const last = session.backlog.length - 1;
@@ -223,6 +289,7 @@ export class TerminalSessions {
 		if (!session.pending) return;
 		const data = session.pending;
 		session.pending = '';
-		this.events.onData(session.id, data);
+		session.seq += data.length;
+		this.events.onData(session.id, data, session.seq);
 	}
 }
