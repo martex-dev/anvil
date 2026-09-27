@@ -1,19 +1,7 @@
-import { AnvilError } from '../../core/errors';
 import type { MainFeature } from '../../core/features';
+import { gitError } from './git-errors';
 import { branches, checkout, pull, push } from './git-remote';
 import { GitService } from './git-service';
-
-/** git prints useful reasons on stderr; keep the first lines, drop noise and hints. */
-function gitError(error: unknown): AnvilError {
-	if (error instanceof AnvilError) return error;
-	const raw = error instanceof Error ? error.message : String(error);
-	const message = raw
-		.split(/\r?\n/)
-		.filter((l) => l.trim() && !l.startsWith('hint:'))
-		.slice(0, 4)
-		.join('\n');
-	return new AnvilError('GIT_FAILED', message || 'git failed', error);
-}
 
 export const gitFeature: MainFeature = {
 	id: 'git',
