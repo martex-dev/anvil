@@ -30,7 +30,7 @@ export const test = base.extend<AnvilFixtures>({
 			env: { ...process.env, ANVIL_E2E: '1' },
 		});
 		await use(app);
-		await app.close();
+		await closeDiscardingUnsaved(app);
 	},
 	page: async ({ app }, use) => {
 		const page = await app.firstWindow();
@@ -42,6 +42,19 @@ export const test = base.extend<AnvilFixtures>({
 export { expect } from '@playwright/test';
 
 /** A throwaway project folder with the given files ('/'-separated paths). */
+/**
+ * Quits the app even if a test left unsaved edits: closing would otherwise stop at the Save /
+ * Don't Save prompt (window-handlers.ts).
+ */
+export async function closeDiscardingUnsaved(app: ElectronApplication): Promise<void> {
+	for (const page of app.windows()) {
+		await page
+			.evaluate(() => window.anvil.invoke('window:setUnsaved', 0))
+			.catch(() => undefined);
+	}
+	await app.close();
+}
+
 export function makeProject(files: Record<string, string>): { dir: string; cleanup: () => void } {
 	const dir = mkdtempSync(join(tmpdir(), 'anvil-proj-'));
 	for (const [rel, content] of Object.entries(files)) {

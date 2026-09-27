@@ -54,6 +54,14 @@ export interface RevealRequest {
 	focus: boolean;
 }
 
+/** Dirty files waiting for Save / Don't Save / Cancel before something closes them. */
+export interface UnsavedPrompt {
+	paths: string[];
+	/** What is about to happen, e.g. "closing the window". */
+	action: string;
+	resolve: (proceed: boolean) => void;
+}
+
 interface EditorState {
 	files: OpenFile[];
 	active: string | null;
@@ -72,6 +80,8 @@ interface EditorState {
 	 * (Close All / Close Others can hit several).
 	 */
 	closing: string[];
+	/** Unsaved files to settle before the window closes or the folder changes (unsaved.ts). */
+	unsaved: UnsavedPrompt | null;
 	/**
 	 * Bumped (debounced) when an editor's text changes, and when an editor swaps to another
 	 * file's model; views like Outline follow it.
@@ -92,6 +102,7 @@ interface EditorState {
 	queueClose: (path: string) => void;
 	dropClose: (path: string) => void;
 	clearClosing: () => void;
+	setUnsaved: (prompt: UnsavedPrompt | null) => void;
 	reset: () => void;
 }
 
@@ -103,6 +114,7 @@ export const useEditorStore = create<EditorState>((set) => ({
 	conflicts: [],
 	reveal: null,
 	closing: [],
+	unsaved: null,
 	contentVersion: 0,
 	bumpContent: () => set((s) => ({ contentVersion: s.contentVersion + 1 })),
 	// `active` follows the tab in front (EditorBridge): a file that loads in the background, or a
@@ -151,6 +163,7 @@ export const useEditorStore = create<EditorState>((set) => ({
 		set((s) => (s.closing.includes(path) ? s : { closing: [...s.closing, path] })),
 	dropClose: (path) => set((s) => ({ closing: s.closing.filter((p) => p !== path) })),
 	clearClosing: () => set({ closing: [] }),
+	setUnsaved: (unsaved) => set({ unsaved }),
 	reset: () =>
 		set({
 			files: [],

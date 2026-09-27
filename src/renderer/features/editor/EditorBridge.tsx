@@ -6,13 +6,14 @@ import type { WorkspaceInfo } from '@shared/ipc/channels/workspace';
 import { getSettings } from '../../app/hooks/use-settings';
 import { useWorkspace, WORKSPACE_KEY } from '../../app/hooks/use-workspace';
 import { rememberRecentFile } from '../../app/quick-open';
+import { call } from '../../lib/ipc';
 import { rlog } from '../../lib/log';
 import { refreshEditorConfiguration } from '../../lib/monaco/load';
 import { REDUCED_MOTION_QUERY } from '../../lib/monaco/theme';
 import { setMonacoWorkspaceRoot } from '../../lib/monaco/workspace-root';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { focusedTab, type Tab, useTabsStore } from '../../stores/tabs-store';
-import { useWorkbenchStore } from '../../stores/workbench-store';
+import { confirmLeave, useWorkbenchStore } from '../../stores/workbench-store';
 import { clearCompareSelection } from './compare';
 import { dirtyCount, useEditorStore } from './editor-store';
 import { setBookmarksRoot } from './extras/bookmarks';
@@ -20,6 +21,7 @@ import { invalidateGitLines } from './extras/git-lines';
 import { onExternalChange } from './file-ops';
 import { navHistory } from './nav-history';
 import { closeAllTabs, openPath, remembersRecent } from './open';
+import { askToSave, dirtyPaths } from './unsaved';
 
 interface SavedTab {
 	kind: Tab['kind'];
@@ -86,15 +88,35 @@ export function EditorBridge(): null {
 			if (remembersRecent(request)) rememberRecentFile(request.path);
 			void openPath(current, request);
 		});
-		const removeGuard = useWorkbenchStore.getState().addLeaveGuard(() => {
-			const n = dirtyCount();
-			return n > 0 ? `Save or close ${n} unsaved file${n === 1 ? '' : 's'} first.` : null;
-		});
+		const removeGuard = useWorkbenchStore
+			.getState()
+			.addLeaveGuard((action) => askToSave(dirtyPaths(), action));
 		return () => {
 			setOpenFileHandler(null);
 			removeGuard();
 		};
 	}, [client]);
+
+	// Main holds back a close or reload while files are unsaved (window-handlers.ts): keep it
+	// told how many there are, and ask when it does.
+	useEffect(() => {
+		let reported = 0;
+		const report = (): void => {
+			const n = dirtyCount();
+			if (n === reported) return;
+			reported = n;
+			void call('window:setUnsaved', n).catch((error: unknown) =>
+				rlog.warn('editor', 'could not report unsaved files', error),
+			);
+		};
+		report();
+		return useEditorStore.subscribe(report);
+	}, []);
+	useAnvilEvent('window:closeRequested', ({ intent }) => {
+		void confirmLeave(intent === 'reload' ? 'reloading the window' : 'closing the window').then(
+			(ok) => (ok ? call('window:proceedUnload') : undefined),
+		);
+	});
 
 	// The "active file" other features follow is the code tab in front of the focused group.
 	useEffect(

@@ -22,7 +22,8 @@ export const updateChannels = defineChannels({
 	'update:status': { input: z.void(), output: UpdateStatusSchema },
 	'update:check': { input: z.void(), output: UpdateStatusSchema },
 	/** Quits and installs a downloaded update; no-op unless ready. */
-	'update:install': { input: z.void(), output: z.void() },
+	/** Quits and installs a downloaded update; false (and nothing happens) unless ready. */
+	'update:install': { input: z.void(), output: z.boolean() },
 });
 
 export const updateEvents = {

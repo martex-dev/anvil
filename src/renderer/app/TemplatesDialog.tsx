@@ -8,7 +8,7 @@ import { openRecentFolder } from '../features/explorer/workspace-actions';
 import { call } from '../lib/ipc';
 import { toast } from '../stores/toast-store';
 import { useUiStore } from '../stores/ui-store';
-import { reasonNotToLeaveWorkspace } from '../stores/workbench-store';
+import { confirmLeave } from '../stores/workbench-store';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { EmptyState } from '../ui/EmptyState';
@@ -41,12 +41,11 @@ export function TemplatesDialog(): JSX.Element {
 		if (!selected || !valid || busyRef.current) return;
 		// Opening the new project replaces the workspace, so check the unsaved-changes guard
 		// before creating anything rather than dropping dirty tabs afterwards.
-		const reason = reasonNotToLeaveWorkspace();
-		if (reason) {
-			toast.warn("Can't switch folders yet", reason);
+		busyRef.current = true;
+		if (!(await confirmLeave('creating a project'))) {
+			busyRef.current = false;
 			return;
 		}
-		busyRef.current = true;
 		setBusy(true);
 		try {
 			const { root } = await call('templates:create', { templateId: selected.id, name });

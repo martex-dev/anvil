@@ -31,7 +31,11 @@ export interface RevealRequest {
 	nonce: number;
 }
 /** Returns a human-readable reason to block leaving the workspace, or null to allow it. */
-type LeaveGuard = () => string | null;
+/**
+ * Asked before the folder or the window goes away (`action` reads like "closing the window").
+ * Resolves true to allow it, e.g. once unsaved files are saved or deliberately discarded.
+ */
+type LeaveGuard = (action: string) => Promise<boolean>;
 
 interface WorkbenchState {
 	/** Workspace-relative path of the file focused in the editor, if any. */
@@ -81,11 +85,10 @@ export function requestOpenFile(request: OpenFileRequest): boolean {
 	return true;
 }
 
-/** Why the open folder can't be switched/closed right now (e.g. unsaved files), or null. */
-export function reasonNotToLeaveWorkspace(): string | null {
+/** Runs every leave guard in turn; false as soon as one of them says no. */
+export async function confirmLeave(action: string): Promise<boolean> {
 	for (const guard of useWorkbenchStore.getState().leaveGuards) {
-		const reason = guard();
-		if (reason) return reason;
+		if (!(await guard(action))) return false;
 	}
-	return null;
+	return true;
 }

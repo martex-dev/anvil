@@ -127,6 +127,8 @@ function openWindow(settings: JsonStore): void {
 	win.on('closed', () => {
 		if (mainWindow === win) mainWindow = null;
 	});
+	// Windows logoff and shutdown skip the quit events; keep the last settings change at least.
+	win.on('session-end', () => settings.flush());
 }
 
 if (isPrimary) {
@@ -147,17 +149,22 @@ app.on('window-all-closed', () => {
 	if (process.platform !== 'darwin') app.quit();
 });
 
+// `will-quit` (not `before-quit`) runs only once every window has really closed: a window can
+// still veto the quit to ask about unsaved files, and the features must keep working until then.
 let shuttingDown = false;
-app.on('before-quit', (event) => {
+app.on('will-quit', (event) => {
 	if (shuttingDown) return;
 	shuttingDown = true;
 	event.preventDefault();
 	void shutdownWithin({
-		steps: [() => features?.stopAll(), () => watcher?.stop()],
+		// Settings first: the updater's installer force-kills a slow quit after a couple of seconds.
+		steps: [() => store?.flush(), () => features?.stopAll(), () => watcher?.stop()],
 		// Settings changed in the last debounce window must reach disk even if cleanup failed.
 		finally: () => store?.flush(),
 		timeoutMs: 5000,
 		logError: (message, error) =>
 			error === undefined ? log.error(message) : log.error(message, error),
-	}).finally(() => app.quit());
+		// Every window is closed and settings are flushed: a second app.quit() from inside a
+		// prevented will-quit doesn't reliably quit again, so exit outright.
+	}).finally(() => app.exit(0));
 });

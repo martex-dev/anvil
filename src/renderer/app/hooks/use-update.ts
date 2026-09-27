@@ -12,6 +12,7 @@ import { describeError } from '../../lib/global-errors';
 import { call } from '../../lib/ipc';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { toast } from '../../stores/toast-store';
+import { confirmLeave } from '../../stores/workbench-store';
 
 export const UPDATE_KEY = ['update', 'status'] as const;
 const INSTALL_KEY = ['update', 'install'] as const;
@@ -32,7 +33,10 @@ export function useInstallUpdate(): { install: () => void; isPending: boolean } 
 	const installing = useIsMutating({ mutationKey: INSTALL_KEY }) > 0;
 	const mutation = useMutation({
 		mutationKey: INSTALL_KEY,
-		mutationFn: () => call('update:install'),
+		// Unsaved files get their Save / Don't Save prompt before Anvil quits to install.
+		mutationFn: async () => {
+			if (await confirmLeave('restarting to update')) await call('update:install');
+		},
 		onError: (error) => toast.error('Could not restart to update', describeError(error)),
 	});
 	return {
