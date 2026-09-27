@@ -14,12 +14,18 @@ describe('quickOpenFilter', () => {
 		expect(quickOpenFilter('load_prices function', '@')).toBeGreaterThan(0);
 		expect(quickOpenFilter('Git Commit', '>zzz')).toBe(0);
 	});
+
+	it('ignores the line a symbol value starts with', () => {
+		expect(quickOpenFilter('12:main function', '@12')).toBe(0);
+		expect(quickOpenFilter('12:main function', '@main')).toBeGreaterThan(0);
+	});
 });
 
 describe('quickOpenMode', () => {
 	it('picks the mode from the prefix', () => {
 		expect(quickOpenMode('>x')).toBe('commands');
 		expect(quickOpenMode('@')).toBe('symbols');
+		expect(quickOpenMode('#load')).toBe('workspace');
 		expect(quickOpenMode(':12')).toBe('line');
 		expect(quickOpenMode('main.py')).toBe('files');
 	});
