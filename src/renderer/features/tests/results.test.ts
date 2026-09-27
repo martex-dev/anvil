@@ -5,6 +5,7 @@ import type { TestResult, TestRunEvent } from '@shared/ipc/channels/tests';
 import {
 	countResults,
 	failedIds,
+	formatDuration,
 	initialRunState,
 	mergeResult,
 	OUTPUT_LIMIT,
@@ -129,5 +130,14 @@ describe('countResults / failedIds', () => {
 
 	it('lists failed and errored tests', () => {
 		expect(failedIds(results).sort()).toEqual(['b', 'c']);
+	});
+});
+
+describe('formatDuration', () => {
+	it('picks a unit by size', () => {
+		expect(formatDuration(0.0002)).toBe('<1 ms');
+		expect(formatDuration(0.042)).toBe('42 ms');
+		expect(formatDuration(1.254)).toBe('1.25 s');
+		expect(formatDuration(125)).toBe('2m 05s');
 	});
 });

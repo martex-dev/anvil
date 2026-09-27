@@ -30,6 +30,7 @@ import { searchFeature } from './features/search';
 import { tasksFeature } from './features/tasks';
 import { templatesFeature } from './features/templates';
 import { terminalFeature } from './features/terminal';
+import { testsFeature } from './features/tests';
 
 // Logs live next to the rest of userData so --user-data-dir (tests) isolates them too.
 log.transports.file.resolvePathFn = () => join(app.getPath('userData'), 'logs', 'main.log');
@@ -108,6 +109,7 @@ async function start(): Promise<void> {
 			historyFeature(history),
 			tasksFeature,
 			templatesFeature,
+			testsFeature,
 		],
 		{ settings, secrets, workspace: ws.workspace, dataDir },
 	);

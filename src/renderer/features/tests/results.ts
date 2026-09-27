@@ -22,6 +22,8 @@ export interface TestRunState {
 	/** Tests that reported in the current run (a teardown error merges into their result). */
 	fresh: Readonly<Record<string, true>>;
 	output: string;
+	/** Files that failed to import in the current run, with pytest's report. */
+	collectErrors: Readonly<Record<string, string>>;
 	end: RunEnd | null;
 }
 
@@ -33,6 +35,7 @@ export const initialRunState: TestRunState = {
 	results: {},
 	fresh: {},
 	output: '',
+	collectErrors: {},
 	end: null,
 };
 
@@ -60,11 +63,23 @@ export function reduceRun(state: TestRunState, event: TestRunEvent): TestRunStat
 			current: null,
 			fresh: {},
 			output: '',
+			collectErrors: {},
 			end: null,
 		};
 	}
 	if (event.runId !== state.runId) return state;
 	switch (event.type) {
+		case 'queued': {
+			// What pytest really collected; tests that already reported stay done.
+			const queued: Record<string, true> = {};
+			for (const id of event.ids) if (!state.fresh[id]) queued[id] = true;
+			return { ...state, queued };
+		}
+		case 'collectError':
+			return {
+				...state,
+				collectErrors: { ...state.collectErrors, [event.id]: event.message },
+			};
 		case 'running':
 			return { ...state, current: event.id };
 		case 'result': {
@@ -130,4 +145,13 @@ export function failedIds(results: Readonly<Record<string, TestResult>>): string
 	return Object.values(results)
 		.filter((r) => r.outcome === 'failed' || r.outcome === 'error')
 		.map((r) => r.id);
+}
+
+/** Test durations as people read them: `<1 ms`, `42 ms`, `1.25 s`, `2m 05s`. */
+export function formatDuration(seconds: number): string {
+	if (seconds < 0.001) return '<1 ms';
+	if (seconds < 1) return `${Math.round(seconds * 1000)} ms`;
+	if (seconds < 60) return `${seconds.toFixed(2)} s`;
+	const whole = Math.round(seconds);
+	return `${Math.floor(whole / 60)}m ${String(whole % 60).padStart(2, '0')}s`;
 }

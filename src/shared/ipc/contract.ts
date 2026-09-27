@@ -11,6 +11,7 @@ import { searchChannels } from './channels/search';
 import { secretChannels, secretEvents } from './channels/secrets';
 import { settingsChannels, settingsEvents } from './channels/settings';
 import { terminalChannels, terminalEvents } from './channels/terminal';
+import { testsChannels, testsEvents } from './channels/tests';
 import { toolsChannels } from './channels/tools';
 import { updateChannels, updateEvents } from './channels/update';
 import { windowChannels, windowEvents } from './channels/window';
@@ -37,6 +38,7 @@ export const ipcContract = {
 	...toolsChannels,
 	...updateChannels,
 	...windowChannels,
+	...testsChannels,
 };
 
 /** Push events main → renderer. Payloads are validated in main before sending. */
@@ -52,6 +54,7 @@ export const eventContract = defineEvents({
 	...pythonEvents,
 	...updateEvents,
 	...windowEvents,
+	...testsEvents,
 });
 
 export type IpcContract = typeof ipcContract;

@@ -105,11 +105,28 @@ export const testsChannels = defineChannels({
 	'tests:cancel': { input: z.void(), output: z.void() },
 	/** The full console output of the last run, for reading failures at length. */
 	'tests:output': { input: z.void(), output: z.object({ text: z.string() }) },
+	/**
+	 * A shell command that runs the given tests under pdb (`--pdb`) with the selected interpreter,
+	 * for Debug Test in a terminal. Same id rules as `tests:run`.
+	 */
+	'tests:debugCommand': {
+		input: z.object({ ids: z.array(TestIdSchema).min(1).max(100) }),
+		output: z.object({ command: z.string() }),
+	},
 });
 
 export const TestRunEventSchema = z.discriminatedUnion('type', [
-	/** The run began; `ids` are the tests it is expected to run (after collection). */
+	/** The run began; `ids` are the tests it is expected to run, from the last discovery. */
 	z.object({ type: z.literal('started'), runId: z.number().int(), ids: z.array(z.string()) }),
+	/** pytest collected what it will really run; replaces the expected set. */
+	z.object({ type: z.literal('queued'), runId: z.number().int(), ids: z.array(z.string()) }),
+	/** A file failed to import during the run; its tests can't run. */
+	z.object({
+		type: z.literal('collectError'),
+		runId: z.number().int(),
+		id: z.string(),
+		message: z.string(),
+	}),
 	/** One test started (drives the spinner). */
 	z.object({ type: z.literal('running'), runId: z.number().int(), id: z.string() }),
 	z.object({ type: z.literal('result'), runId: z.number().int(), result: TestResultSchema }),
