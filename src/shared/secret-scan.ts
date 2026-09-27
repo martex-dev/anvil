@@ -243,29 +243,50 @@ export function unquoteGitPath(raw: string): string {
 	return new TextDecoder().decode(new Uint8Array(bytes));
 }
 
-/** Only the added lines of a unified diff, attributed to their file and new line number. */
+/**
+ * Only the added lines of a unified diff, attributed to their file and new line number. Lines
+ * are read by the hunk's own line counts: an added line whose text starts with `++ ` looks
+ * exactly like a `+++ b/file` header, and must still be scanned.
+ */
 export function scanUnifiedDiff(diff: string): SecretFinding[] {
 	const findings: SecretFinding[] = [];
 	let file: string | null = null;
 	let line = 0;
+	// Lines still expected in the current hunk, old side and new side.
+	let oldLeft = 0;
+	let newLeft = 0;
 	for (const raw of diff.split('\n')) {
-		if (raw.startsWith('+++ ')) {
-			file = unquoteGitPath(raw.slice(4).trim()).replace(/^b\//, '');
-			if (file === '/dev/null') file = null;
-			continue;
-		}
-		const hunk = /^@@ -\d+(?:,\d+)? \+(\d+)/.exec(raw);
-		if (hunk) {
-			line = Number(hunk[1]);
+		const inHunk = (oldLeft > 0 || newLeft > 0) && /^[ +\-\\]|^$/.test(raw);
+		if (!inHunk) {
+			oldLeft = 0;
+			newLeft = 0;
+			if (raw.startsWith('+++ ')) {
+				file = unquoteGitPath(raw.slice(4).trim()).replace(/^b\//, '');
+				if (file === '/dev/null') file = null;
+				continue;
+			}
+			const hunk = /^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/.exec(raw);
+			if (hunk) {
+				// A count left out means one line.
+				oldLeft = Number(hunk[1] ?? 1);
+				line = Number(hunk[2]);
+				newLeft = Number(hunk[3] ?? 1);
+			}
 			continue;
 		}
 		// '\ No newline at end of file' annotates the line before it; it isn't a line itself.
 		if (raw.startsWith('\\')) continue;
-		if (raw.startsWith('+') && !raw.startsWith('+++')) {
+		if (raw.startsWith('+')) {
 			for (const f of scanText(raw.slice(1), file)) findings.push({ ...f, line });
 			line++;
-		} else if (!raw.startsWith('-')) {
+			newLeft--;
+		} else if (raw.startsWith('-')) {
+			oldLeft--;
+		} else {
+			// Context; a blank context line may have lost its leading space.
 			line++;
+			oldLeft--;
+			newLeft--;
 		}
 	}
 	return findings;

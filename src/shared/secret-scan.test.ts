@@ -68,6 +68,20 @@ describe('scanText', () => {
 		expect(kinds('secret_manager_url = "https://vault.example.com/v1"')).toEqual([]);
 	});
 
+	it.each([
+		`upkeep_id = "0x${'ab'.repeat(32)}"`,
+		`TOPK_HASH = "0x${'cd'.repeat(32)}"`,
+		'model_pkl = "models/final_model_v2.pkl"',
+		`pkg_hash = "${'ef'.repeat(20)}"`,
+	])('does not flag %s, whose name only contains "pk"', (line) => {
+		expect(scanText(line)).toEqual([]);
+	});
+
+	it('still flags a real pk next to those names', () => {
+		const [f] = scanText(`upkeep_id = 1\npk = "0x${'ab'.repeat(32)}"`);
+		expect(f).toMatchObject({ kind: 'EVM private key', line: 2 });
+	});
+
 	it('reports 1-based positions and never the raw value', () => {
 		const [f] = scanText(`a = 1\nk = "sk-ant-${'z'.repeat(30)}"`);
 		expect(f).toMatchObject({ line: 2, column: 6 });
@@ -89,6 +103,38 @@ describe('scanUnifiedDiff', () => {
 		const findings = scanUnifiedDiff(diff);
 		expect(findings).toHaveLength(1);
 		expect(findings[0]).toMatchObject({ path: 'bot.py', line: 2 });
+	});
+});
+
+describe('scanUnifiedDiff hunks', () => {
+	it('scans an added line whose text starts with "++ " instead of taking it for a header', () => {
+		const diff = [
+			'diff --git a/notes.md b/notes.md',
+			'--- a/notes.md',
+			'+++ b/notes.md',
+			'@@ -1 +1,2 @@',
+			' # Keys',
+			`+++ KEY = "sk-ant-${'q'.repeat(30)}"`,
+			'diff --git a/b.py b/b.py',
+			'--- a/b.py',
+			'+++ b/b.py',
+			'@@ -0,0 +1 @@',
+			`+TOKEN = "sk-ant-${'w'.repeat(30)}"`,
+		].join('\n');
+		expect(scanUnifiedDiff(diff)).toMatchObject([
+			{ path: 'notes.md', line: 2 },
+			{ path: 'b.py', line: 1 },
+		]);
+	});
+
+	it('does not scan removed lines that look like headers or hunks', () => {
+		const diff = [
+			'+++ b/a.py',
+			'@@ -1,2 +1 @@',
+			`--- KEY = "sk-ant-${'q'.repeat(30)}"`,
+			' x = 1',
+		].join('\n');
+		expect(scanUnifiedDiff(diff)).toEqual([]);
 	});
 });
 

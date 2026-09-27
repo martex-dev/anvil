@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FilePenLine, FileText, RotateCw } from 'lucide-react';
 import { type JSX, useEffect, useState } from 'react';
 
+import { touchesFile } from '../../lib/fs-batch';
 import { call } from '../../lib/ipc';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { requestOpenFile } from '../../stores/workbench-store';
@@ -64,8 +65,8 @@ export function MarkdownPreview({ path }: { path: string }): JSX.Element {
 
 	// Invalidate even while the editor buffer is shown: the disabled query is then marked stale,
 	// so closing the editor re-reads the saved file instead of showing the pre-edit cache.
-	useAnvilEvent('fs:changed', ({ files }) => {
-		if (files.includes(path)) void client.invalidateQueries({ queryKey: diskKey });
+	useAnvilEvent('fs:changed', (batch) => {
+		if (touchesFile(batch, path)) void client.invalidateQueries({ queryKey: diskKey });
 	});
 
 	const editSource = (): void => {

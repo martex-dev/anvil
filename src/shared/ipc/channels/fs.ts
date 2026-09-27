@@ -87,8 +87,15 @@ export const fsChannels = defineChannels({
 });
 
 export const fsEvents = {
-	/** Directories whose listing changed and files whose content changed, workspace-relative. */
-	'fs:changed': z.object({ dirs: z.array(z.string()), files: z.array(z.string()) }),
+	/**
+	 * Directories whose listing changed and files whose content changed, workspace-relative.
+	 * `overflow`: too many changes to list (both lists are empty); refresh everything.
+	 */
+	'fs:changed': z.object({
+		dirs: z.array(z.string()),
+		files: z.array(z.string()),
+		overflow: z.literal(true).optional(),
+	}),
 	/** Watching failed, so outside changes may not show; once per watcher start, no paths. */
 	'fs:watchError': z.object({ message: z.string() }),
 };

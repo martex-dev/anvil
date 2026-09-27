@@ -2,6 +2,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { ChevronsDownUp, ChevronsUpDown, FileCode2, NotebookPen, RotateCw } from 'lucide-react';
 import { type JSX, useMemo, useState } from 'react';
 
+import { touchesFile } from '../../lib/fs-batch';
 import { call } from '../../lib/ipc';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { toast } from '../../stores/toast-store';
@@ -51,8 +52,8 @@ export function NotebookViewer({ path }: { path: string }): JSX.Element {
 	});
 	const { refetch } = query;
 	// A notebook re-saved by Jupyter (or a papermill run) should refresh in place.
-	useAnvilEvent('fs:changed', ({ files }) => {
-		if (files.includes(path)) void refetch();
+	useAnvilEvent('fs:changed', (batch) => {
+		if (touchesFile(batch, path)) void refetch();
 	});
 
 	const parsed = useMemo((): Parsed | null => {

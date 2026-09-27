@@ -161,3 +161,27 @@ Short ADRs: the context, what was decided, and what it costs.
 **Decision.** Main writes a ~100-line plugin (`features/tests/plugin-source.ts`) into its data folder and loads it with `-p anvil_pytest_reporter` and PYTHONPATH, so the project needs no conftest and nothing is installed. The plugin changes nothing about collection or running. It prints one marked JSON line per collected item (node id, absolute file, line, enclosing classes) and per report (`pytest_runtest_logreport`), to a copy of stdout taken before pytest starts capturing. Main separates those lines from the console text, keeps a tree from the last discovery, and only runs node ids from it. It spawns pytest without a shell, with `--continue-on-collection-errors` so one broken module doesn't stop every other file's tests. "Debug" runs `pytest --pdb` in a terminal until Anvil has a debugger.
 
 **Consequences.** Results stream per test and lines are exact for every kind of test. The plugin relies on public hooks that have been stable since pytest 7 (`item.path`, `reportinfo()`, `longreprtext`). A test that prints a line starting with the plugin's marker and valid JSON could fake a record. That fools only the view, since ids are still checked against the discovery before anything runs.
+
+## ADR-021: Explorer's "Open with Anvil", without becoming a default program
+
+**Context.** Opening a folder or a file from Windows Explorer needs registry entries. electron-builder's `fileAssociations` writes each extension's default value, which makes Anvil the program that opens every `.py` and `.csv` on a double-click, taking them away from Python, VS Code or Excel.
+
+**Decision.** The installer includes `resources/installer/installer.nsh`, which writes, per user (HKCU): an "Open with Anvil" verb on folders, on a folder's background and on every file, an `Anvil.File` ProgID, and that ProgID under `OpenWithProgids` for `.py`, `.ipynb`, `.csv` and `.parquet` (plus `Applications\Anvil.exe\SupportedTypes`). Every command is `Anvil.exe "<path>"`. The background verb passes `"%V\."` because `%V` is `C:\` at a drive root, and `"C:\"` would reach Anvil as `C:"`. The uninstaller removes the entries, except during an update.
+
+**Consequences.** Anvil shows up in the context menu and the "Open with" list, and never changes which program a double-click starts; users who want Anvil as the default pick it once in Windows' own dialog. A path from the folder background ends in `\.`, so the receiving side must resolve it (`path.resolve`).
+
+## ADR-022: Saves replace the file, with in-place fallbacks
+
+**Context.** A save truncated the file and wrote it in place, so a crash, a `taskkill` or a power cut mid-save left a half-written file, possibly the only copy of a research script.
+
+**Decision.** `writeFileAtomic` (`core/workspace/atomic-write.ts`) writes a hidden sibling `.<name>.<random>.anvil-save`, flushes it to disk, and renames it over the target, keeping the permission bits. On Windows an antivirus scanner or the indexer often holds a just-written file for a moment, so a rename failing with EPERM, EBUSY or EACCES is retried with backoff (about 0.8 s in total) and then the file is written in place, as before, rather than failing the save. A hard-linked file (uv and pnpm install those) is always written in place so its other names see the change. A symlinked file is saved at its target. A read-only file is refused, since a rename would quietly replace it on Linux and macOS. The watcher ignores the temp files.
+
+**Consequences.** A save is all-or-nothing except in the fallback cases. Replacing the file gives it the folder's default ACL on Windows, so a file with its own hand-set ACL loses it. A temp file can be left behind only if Anvil dies between writing it and renaming it; it is hidden and harmless.
+
+## ADR-023: Reads follow links out of the folder, changes don't
+
+**Context.** Quant and ML projects often link a big data folder from another drive into the project (a junction needs no admin rights). The file service confines every path to the open folder, and a junction or symlink inside it can point anywhere. Refusing every link that leaves the folder would also refuse those data folders; allowing everything would let a link in a cloned repository change files elsewhere.
+
+**Decision.** Reads follow links: listing, reading, stat, image previews and "Reveal in Explorer" work through a link to anywhere, and a linked folder expands like any other. Changes don't: saving and creating resolve the real path of the target (or its nearest existing parent) and refuse it outside the folder, and trash and rename require the entry's parent folder to be really inside, so the link itself can be recycled or renamed but nothing behind it. The root is recognised case-insensitively, as Windows does.
+
+**Consequences.** Opening a folder whose links point at private files (a hostile repository with a symlink to `~/.ssh`) shows those files in the explorer if the user expands the link; nothing reads them without a click, and the AI only sees files the user attaches or asks it about. Git creates symlinks on Windows only with `core.symlinks` and Developer Mode, and never junctions, which keeps that case rare. The watcher does not follow links (a linked dataset can hold millions of files), so changes inside a linked folder show after Refresh Explorer rather than live.

@@ -39,6 +39,9 @@ log.transports.file.resolvePathFn = () => join(app.getPath('userData'), 'logs', 
 log.initialize();
 // A forgotten promise must still leave a trace in the log file.
 process.on('unhandledRejection', (reason) => log.error('[main] unhandled rejection', reason));
+// Electron would show its raw "JavaScript error in the main process" box and carry on; carry
+// on too, but with the stack in the log where a bug report can point to it.
+process.on('uncaughtException', (error) => log.error('[main] uncaught exception', error));
 registerAppScheme();
 if (process.platform === 'win32') app.setAppUserModelId(APP_ID);
 
@@ -112,6 +115,8 @@ async function start(): Promise<void> {
 			log.warn('[store] invalid value, using default', { key, issues: issues.slice(0, 300) }),
 		250,
 		(error) => log.error('[store] saving settings failed, will retry', error),
+		(error) =>
+			log.error('[store] settings.json could not be read; defaults until it can be', error),
 	);
 	const settings = store;
 	const secrets = createSecretsService();
@@ -133,6 +138,10 @@ async function start(): Promise<void> {
 		},
 	});
 	watcher = ws.watcher;
+	// Before the features start, so they see the folder from the first call.
+	const restored = await ws.workspace.restore();
+	if (restored === 'timeout') log.warn('[workspace] last folder did not answer; not reopened');
+	// After the restore: a folder or file Anvil was started with replaces the last folder.
 	applyLaunchPath(ws.workspace);
 
 	const started = await startFeatures(

@@ -161,7 +161,10 @@ export function EditorBridge(): null {
 		[],
 	);
 
-	useAnvilEvent('fs:changed', ({ files }) => onExternalChange(files));
+	useAnvilEvent('fs:changed', ({ files, overflow }) =>
+		// Too many changes to list: check every open file against the disk.
+		onExternalChange(overflow ? useEditorStore.getState().files.map((f) => f.path) : files),
+	);
 	useAnvilEvent('git:changed', () => invalidateGitLines());
 
 	// New folder: close the old folder's tabs, forget its places, compare pick and HEAD

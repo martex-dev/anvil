@@ -14,6 +14,7 @@ vi.mock('@shared/ipc/contract', async () => {
 			output: z.object({ n: z.number() }),
 		},
 		'test:void': { input: z.void(), output: z.string() },
+		'test:throwingSchema': { input: z.string(), output: z.string() },
 	};
 	return {
 		ipcContract: contract,
@@ -24,6 +25,13 @@ vi.mock('@shared/ipc/contract', async () => {
 const contract = {
 	'test:echo': { input: z.object({ n: z.number().int() }), output: z.object({ n: z.number() }) },
 	'test:void': { input: z.void(), output: z.string() },
+	// A refine that throws instead of reporting an issue (a bug, but it must not escape).
+	'test:throwingSchema': {
+		input: z.string().refine(() => {
+			throw new Error('schema bug');
+		}),
+		output: z.string(),
+	},
 } as unknown as IpcContract;
 
 function makeRouter(): {
@@ -45,6 +53,18 @@ describe('IpcRouter', () => {
 			ok: true,
 			data: { n: 42 },
 		});
+	});
+
+	it('turns an input schema that throws into an error Result', async () => {
+		const { router, logger } = makeRouter();
+		const handler = vi.fn(() => 'unreachable');
+		router.handle(ch('test:throwingSchema'), handler as never);
+		await expect(router.dispatch('test:throwingSchema', 'x')).resolves.toMatchObject({
+			ok: false,
+			error: { code: 'HANDLER_ERROR' },
+		});
+		expect(handler).not.toHaveBeenCalled();
+		expect(logger.error).toHaveBeenCalled();
 	});
 
 	it('supports void input', async () => {

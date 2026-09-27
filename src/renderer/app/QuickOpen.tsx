@@ -84,8 +84,9 @@ export function QuickOpen(): JSX.Element {
 		enabled: Boolean(info.root),
 		staleTime: 15_000,
 	});
-	useAnvilEvent('fs:changed', ({ dirs }) => {
-		if (dirs.length > 0) void client.invalidateQueries({ queryKey: ['search', 'files'] });
+	useAnvilEvent('fs:changed', ({ dirs, overflow }) => {
+		if (dirs.length > 0 || overflow)
+			void client.invalidateQueries({ queryKey: ['search', 'files'] });
 	});
 
 	const mode = quickOpenMode(value);

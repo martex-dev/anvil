@@ -4,6 +4,7 @@ import { type JSX, type KeyboardEvent, useEffect, useMemo, useRef } from 'react'
 
 import { getCommands, runCommand } from '../../app/commands/run';
 import { cn } from '../../lib/cn';
+import { touchesFile } from '../../lib/fs-batch';
 import { call, IpcCallError } from '../../lib/ipc';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { toast } from '../../stores/toast-store';
@@ -90,8 +91,8 @@ export function DataViewer({ path }: { path: string }): JSX.Element {
 		}
 	};
 
-	useAnvilEvent('fs:changed', ({ files }) => {
-		if (files.includes(path)) void reload(true);
+	useAnvilEvent('fs:changed', (batch) => {
+		if (touchesFile(batch, path)) void reload(true);
 	});
 
 	// Parquet, feather and xlsx need a Python env with polars or pandas; let the user pick one

@@ -1,10 +1,24 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type * as JsonFileModule from '../store/json-file';
 import { type Encryptor, SecretsService } from './secrets-service';
+
+// Lets a test make secrets.json unreadable, like a file a scanner or backup tool holds open.
+const lock = vi.hoisted(() => ({ error: null as Error | null }));
+vi.mock('../store/json-file', async (importOriginal) => {
+	const actual = await importOriginal<typeof JsonFileModule>();
+	return {
+		...actual,
+		readJsonFile: (path: string): JsonFileModule.JsonFile => {
+			if (lock.error) throw lock.error;
+			return actual.readJsonFile(path, []);
+		},
+	};
+});
 
 // Reversible fake that visibly transforms the value so plaintext never appears on disk.
 const fakeEncryptor: Encryptor = {
@@ -21,7 +35,12 @@ beforeEach(() => {
 	dir = mkdtempSync(join(tmpdir(), 'anvil-secrets-'));
 	file = join(dir, 'secrets.json');
 });
-afterEach(() => rmSync(dir, { recursive: true, force: true }));
+afterEach(() => {
+	lock.error = null;
+	rmSync(dir, { recursive: true, force: true });
+});
+
+const corruptCopies = (): string[] => readdirSync(dir).filter((n) => n.includes('.corrupt-'));
 
 const allowed = (key: string): boolean => key === 'github.token';
 
@@ -76,9 +95,40 @@ describe('SecretsService', () => {
 		let resets = 0;
 		const svc = new SecretsService(file, fakeEncryptor, allowed, () => resets++);
 		expect(svc.savedKeys()).toEqual([]);
-		expect(existsSync(`${file}.corrupt`)).toBe(true);
+		expect(corruptCopies()).toHaveLength(1);
 		svc.set('github.token', SECRET);
 		expect(new SecretsService(file, fakeEncryptor, allowed).get('github.token')).toBe(SECRET);
 		expect(resets).toBe(1);
+	});
+
+	it('does not report a key as saved when writing the file failed', () => {
+		const svc = new SecretsService(file, fakeEncryptor, allowed);
+		// A folder where the temp file goes makes the write fail.
+		mkdirSync(`${file}.tmp`);
+		expect(() => svc.set('github.token', SECRET)).toThrow(
+			expect.objectContaining({ code: 'SECRETS_SAVE_FAILED' }),
+		);
+		expect(svc.has('github.token')).toBe(false);
+	});
+
+	it('leaves a locked file alone and reads it once it is free', () => {
+		new SecretsService(file, fakeEncryptor, allowed).set('github.token', SECRET);
+		const resets = vi.fn();
+		const svc = new SecretsService(file, fakeEncryptor, allowed, resets);
+		lock.error = Object.assign(new Error('EBUSY: locked'), { code: 'EBUSY' });
+		expect(() => svc.savedKeys()).toThrow(
+			expect.objectContaining({ code: 'SECRETS_UNREADABLE' }),
+		);
+		expect(corruptCopies()).toEqual([]);
+		expect(resets).not.toHaveBeenCalled();
+		lock.error = null;
+		expect(svc.get('github.token')).toBe(SECRET);
+	});
+
+	it('reads a file saved with a UTF-8 BOM', () => {
+		new SecretsService(file, fakeEncryptor, allowed).set('github.token', SECRET);
+		writeFileSync(file, `\ufeff${readFileSync(file, 'utf8')}`, 'utf8');
+		expect(new SecretsService(file, fakeEncryptor, allowed).get('github.token')).toBe(SECRET);
+		expect(corruptCopies()).toEqual([]);
 	});
 });
