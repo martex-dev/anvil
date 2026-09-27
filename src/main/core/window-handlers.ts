@@ -18,6 +18,8 @@ const stateOf = (win: BrowserWindow): WindowState => ({
  */
 let unsaved = 0;
 let allowUnload = false;
+/** The page stopped answering: it can't show the prompt, so closing must not wait for it. */
+let unresponsive = false;
 let pendingIntent: 'close' | 'reload' = 'close';
 
 /** Lets the next close through without asking (restart to update, after the page asked). */
@@ -26,7 +28,7 @@ export function allowNextUnload(): void {
 }
 
 function holdBack(intent: 'close' | 'reload'): boolean {
-	if (allowUnload || unsaved === 0) return false;
+	if (allowUnload || unsaved === 0 || unresponsive) return false;
 	pendingIntent = intent;
 	emitEvent('window:closeRequested', { intent });
 	return true;
@@ -83,6 +85,12 @@ export function watchWindowState(win: BrowserWindow): void {
 	});
 	win.webContents.on('render-process-gone', () => {
 		unsaved = 0;
+	});
+	win.on('unresponsive', () => {
+		unresponsive = true;
+	});
+	win.on('responsive', () => {
+		unresponsive = false;
 	});
 	const push = (): void => {
 		if (!win.isDestroyed()) emitEvent('window:changed', stateOf(win));
