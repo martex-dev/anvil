@@ -1,80 +1,71 @@
 import { type SimpleGit, simpleGit } from 'simple-git';
 
+import { gitEnv } from '../../core/git-env';
+
 /**
- * Environment for git: an allowlist of what git and Git Credential Manager need. Inheriting
- * everything would leak other tools' hooks (GIT_ASKPASS from VS Code, EDITOR, PAGER…), which
- * simple-git also refuses to run with.
+ * - `read`: status, diff, show, log, blame. Runs with GIT_OPTIONAL_LOCKS=0, the environment form
+ *   of `--no-optional-locks` (simple-git's status() can't take a global flag): the 5 s status
+ *   poll then never takes index.lock, so it can't collide with a commit in a terminal.
+ * - `write`: quick local mutations (stage, checkout, stash) with a 60 s safety timeout.
+ * - `long`: commit, pull, push, fetch. No timeout: a slow pre-commit hook or a first Git
+ *   Credential Manager sign-in can be silent for minutes, and killing it loses the operation.
  */
-const ENV_ALLOW = new Set(
-	[
-		'PATH',
-		'PATHEXT',
-		'SystemRoot',
-		'SystemDrive',
-		'windir',
-		'ComSpec',
-		'TEMP',
-		'TMP',
-		'HOME',
-		'HOMEDRIVE',
-		'HOMEPATH',
-		'USERPROFILE',
-		'USERNAME',
-		'USERDOMAIN',
-		'APPDATA',
-		'LOCALAPPDATA',
-		'ProgramData',
-		'ProgramFiles',
-		'ProgramFiles(x86)',
-		'ProgramW6432',
-		'CommonProgramFiles',
-		'LANG',
-		'SSH_AUTH_SOCK',
-		// The user's SSH client (PuTTY's plink via GIT_SSH, set by TortoiseGit/PuTTY installers).
-		'GIT_SSH',
-		'GIT_SSH_COMMAND',
-		'GIT_SSH_VARIANT',
-		// Where git (and GPG for signed commits) find the user's config and identity on Linux.
-		'XDG_CONFIG_HOME',
-		'GNUPGHOME',
-		// Git Credential Manager / askpass windows on Linux.
-		'DISPLAY',
-		'WAYLAND_DISPLAY',
-		'HTTP_PROXY',
-		'HTTPS_PROXY',
-		'NO_PROXY',
-		'http_proxy',
-		'https_proxy',
-		'no_proxy',
-	].map((k) => k.toLowerCase()),
-);
+export type GitKind = 'read' | 'write' | 'long';
 
-export function gitEnv(env: NodeJS.ProcessEnv): Record<string, string> {
-	const out: Record<string, string> = {};
-	for (const [key, value] of Object.entries(env)) {
-		if (value === undefined) continue;
-		// Windows env names are case-insensitive; GCM_* configures Git Credential Manager.
-		if (ENV_ALLOW.has(key.toLowerCase()) || key.startsWith('GCM_') || key.startsWith('LC_')) {
-			out[key] = value;
-		}
-	}
-	// Anvil parses git's messages ("not a git repository"), so they must stay in English.
-	// LC_ALL would override LC_MESSAGES; keep its character set as LC_CTYPE so non-ASCII paths
-	// are still encoded the same way.
-	const all = out['LC_ALL'];
-	delete out['LC_ALL'];
-	if (all !== undefined && out['LC_CTYPE'] === undefined) out['LC_CTYPE'] = all;
-	return { ...out, LC_MESSAGES: 'C', GIT_TERMINAL_PROMPT: '0' };
-}
+/**
+ * simple-git refuses GIT_SSH, GIT_SSH_COMMAND, GIT_CONFIG_GLOBAL, GIT_PROXY_COMMAND and
+ * GIT_TEMPLATE_DIR in the environment unless allowed. Here they come from the user's own
+ * environment (the same trust as their terminal), and plink or a custom config needs them.
+ * Anvil never builds `-c` options from untrusted input, which is what these checks guard.
+ */
+const UNSAFE = {
+	allowUnsafeSshCommand: true,
+	allowUnsafeConfigPaths: true,
+	allowUnsafeGitProxy: true,
+	allowUnsafeTemplateDir: true,
+};
 
-export function git(baseDir: string): SimpleGit {
+const BLOCK_TIMEOUT_MS = 60_000;
+
+export function git(
+	baseDir: string,
+	kind: GitKind = 'read',
+	extraEnv: Record<string, string> = {},
+): SimpleGit {
 	return simpleGit({
 		baseDir,
 		maxConcurrentProcesses: 4,
-		timeout: { block: 60_000 },
-		// GIT_TERMINAL_PROMPT=0: never hang on a prompt in an invisible terminal; Git
-		// Credential Manager still shows its own window when credentials are needed.
-	}).env(gitEnv(process.env));
+		unsafe: UNSAFE,
+		...(kind === 'long' ? {} : { timeout: { block: BLOCK_TIMEOUT_MS } }),
+	}).env({
+		...gitEnv(process.env),
+		...(kind === 'read' ? { GIT_OPTIONAL_LOCKS: '0' } : {}),
+		...extraEnv,
+	});
+}
+
+export type GitLane = 'index' | 'remote';
+
+const tails = new Map<string, Promise<void>>();
+
+/**
+ * Runs mutating operations on one repository one at a time. Two at once (stage while a pull
+ * merges) fight over index.lock, and one fails with "Another git process seems to be running".
+ * Remote operations get their own lane so staging stays responsive during a long push.
+ */
+export function queued<T>(root: string, lane: GitLane, op: () => Promise<T>): Promise<T> {
+	const key = `${process.platform === 'win32' ? root.toLowerCase() : root}|${lane}`;
+	const previous = tails.get(key) ?? Promise.resolve();
+	const result = previous.then(op);
+	const tail = result.then(
+		() => undefined,
+		() => undefined,
+	);
+	tails.set(key, tail);
+	void tail.then(() => {
+		if (tails.get(key) === tail) tails.delete(key);
+	});
+	return result;
 }
 
 /**

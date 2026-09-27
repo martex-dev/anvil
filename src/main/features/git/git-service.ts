@@ -16,6 +16,7 @@ import {
 	isMissingPathError,
 	isNotARepo,
 	isUnbornHead,
+	queued,
 } from './git-process';
 import { mapStatus } from './status-map';
 
@@ -32,12 +33,6 @@ const NOT_A_REPO: GitStatus = {
 };
 
 const isBinary = (s: string): boolean => s.includes('\0');
-
-export function pullSummary(s: { changes: number; insertions: number; deletions: number }): string {
-	if (s.changes === 0) return 'Already up to date';
-	const files = `${s.changes} file${s.changes === 1 ? '' : 's'}`;
-	return `${files} changed, +${s.insertions} −${s.deletions}`;
-}
 
 /** Git for the open folder, via the system git (simple-git). The repo root may be above it. */
 export class GitService {
@@ -64,10 +59,17 @@ export class GitService {
 		return root;
 	}
 
-	private async requireRepo(): Promise<{ root: string; g: SimpleGit }> {
+	/** The repo root; throws GIT_NOT_A_REPO when there is none. */
+	async repo(): Promise<string> {
 		const root = await this.repoRoot();
 		if (!root)
 			throw new AnvilError('GIT_NOT_A_REPO', 'The open folder is not a git repository');
+		return root;
+	}
+
+	/** The repo root and a read-only git there (reads never take optional locks). */
+	private async requireRepo(): Promise<{ root: string; g: SimpleGit }> {
+		const root = await this.repo();
 		return { root, g: git(root) };
 	}
 
@@ -149,68 +151,44 @@ export class GitService {
 	}
 
 	async stage(paths: string[]): Promise<void> {
-		const { root, g } = await this.requireRepo();
+		const { root } = await this.requireRepo();
 		for (const p of paths) toAbsolute(root, p);
-		for (const batch of batchPaths(paths)) await g.add(['--', ...batch]);
+		const g = git(root, 'write');
+		await queued(root, 'index', async () => {
+			for (const batch of batchPaths(paths)) await g.add(['--', ...batch]);
+		});
 	}
 
 	async unstage(paths: string[]): Promise<void> {
-		const { root, g } = await this.requireRepo();
+		const { root } = await this.requireRepo();
 		for (const p of paths) toAbsolute(root, p);
-		const born = await hasHead(g);
-		for (const batch of batchPaths(paths)) {
-			if (born) await g.raw(['restore', '--staged', '--', ...batch]);
-			// Before the first commit there is no HEAD to restore from ("could not resolve HEAD"),
-			// so take the paths out of the index; they become untracked again. --cached never
-			// touches the working tree, -r lets a folder through, and -f skips the "staged content
-			// differs from the file" check: dropping the staged copy is exactly what unstage means.
-			else await g.raw(['rm', '--cached', '-r', '-f', '-q', '--', ...batch]);
-		}
+		const g = git(root, 'write');
+		await queued(root, 'index', async () => {
+			const born = await hasHead(g);
+			for (const batch of batchPaths(paths)) {
+				if (born) await g.raw(['restore', '--staged', '--', ...batch]);
+				// Before the first commit there is no HEAD to restore from ("could not resolve
+				// HEAD"), so take the paths out of the index; they become untracked again. --cached
+				// never touches the working tree, -r lets a folder through, and -f skips the "staged
+				// content differs from the file" check: dropping the staged copy is what unstage means.
+				else await g.raw(['rm', '--cached', '-r', '-f', '-q', '--', ...batch]);
+			}
+		});
 	}
 
 	async commit(message: string): Promise<{ hash: string }> {
-		const { g } = await this.requireRepo();
-		const status = await g.status();
-		const anyStaged = status.files.some((f) => f.index !== ' ' && f.index !== '?');
-		if (!anyStaged) throw new AnvilError('GIT_NOTHING_STAGED', 'Nothing is staged to commit');
-		const result = await g.commit(message);
-		if (!result.commit)
-			throw new AnvilError('GIT_COMMIT_FAILED', 'git did not create a commit');
-		return { hash: result.commit };
-	}
-
-	async pull(): Promise<{ summary: string }> {
-		const { g } = await this.requireRepo();
-		const r = await g.pull();
-		return { summary: pullSummary(r.summary) };
-	}
-
-	async push(): Promise<{ summary: string }> {
-		const { g } = await this.requireRepo();
-		const s = await g.status();
-		if (!s.current || s.detached)
-			throw new AnvilError('GIT_DETACHED', 'Check out a branch before pushing');
-		if (s.tracking) {
-			await g.push();
-			return { summary: `Pushed ${s.current} → ${s.tracking}` };
-		}
-		// First push of a new branch: publish it and set upstream.
-		await g.push(['-u', 'origin', s.current]);
-		return { summary: `Published ${s.current} to origin` };
-	}
-
-	async branches(): Promise<{ current: string | null; local: string[] }> {
-		const { g } = await this.requireRepo();
-		const b = await g.branchLocal();
-		return { current: b.current || null, local: b.all };
-	}
-
-	async checkout(branch: string, create: boolean): Promise<void> {
-		const { g } = await this.requireRepo();
-		if (!/^[\w./-]+$/.test(branch) || branch.startsWith('-'))
-			throw new AnvilError('GIT_BAD_BRANCH', `Invalid branch name: ${branch}`);
-		if (create) await g.checkoutLocalBranch(branch);
-		else await g.checkout(branch);
+		const { root, g } = await this.requireRepo();
+		return queued(root, 'index', async () => {
+			const status = await g.status();
+			const anyStaged = status.files.some((f) => f.index !== ' ' && f.index !== '?');
+			if (!anyStaged)
+				throw new AnvilError('GIT_NOTHING_STAGED', 'Nothing is staged to commit');
+			// 'long': a pre-commit hook or a GPG passphrase prompt may take minutes.
+			const result = await git(root, 'long').commit(message);
+			if (!result.commit)
+				throw new AnvilError('GIT_COMMIT_FAILED', 'git did not create a commit');
+			return { hash: result.commit };
+		});
 	}
 
 	async log(limit: number): Promise<GitCommit[]> {

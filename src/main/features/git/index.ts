@@ -1,5 +1,6 @@
 import { AnvilError } from '../../core/errors';
 import type { MainFeature } from '../../core/features';
+import { branches, checkout, pull, push } from './git-remote';
 import { GitService } from './git-service';
 
 /** git prints useful reasons on stderr; keep the first lines, drop noise and hints. */
@@ -37,11 +38,12 @@ export const gitFeature: MainFeature = {
 		ctx.ipc.handle('git:stage', (paths) => run(() => service.stage(paths)));
 		ctx.ipc.handle('git:unstage', (paths) => run(() => service.unstage(paths)));
 		ctx.ipc.handle('git:commit', ({ message }) => run(() => service.commit(message)));
-		ctx.ipc.handle('git:pull', () => run(() => service.pull()));
-		ctx.ipc.handle('git:push', () => run(() => service.push()));
-		ctx.ipc.handle('git:branches', () => run(() => service.branches(), false));
+		const repo = (): Promise<string> => service.repo();
+		ctx.ipc.handle('git:pull', () => run(async () => pull(await repo())));
+		ctx.ipc.handle('git:push', () => run(async () => push(await repo())));
+		ctx.ipc.handle('git:branches', () => run(async () => branches(await repo()), false));
 		ctx.ipc.handle('git:checkout', ({ branch, create }) =>
-			run(() => service.checkout(branch, create)),
+			run(async () => checkout(await repo(), branch, create)),
 		);
 		ctx.ipc.handle('git:log', ({ limit }) => run(() => service.log(limit), false));
 		ctx.ipc.handle('git:blame', ({ path, line }) =>

@@ -5,8 +5,9 @@ import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { batchPaths, gitEnv, isMissingPathError, isUnbornHead } from './git-process';
-import { GitService, pullSummary } from './git-service';
+import { batchPaths, isMissingPathError, isUnbornHead } from './git-process';
+import { pullSummary } from './git-remote';
+import { GitService } from './git-service';
 
 // Integration test against the real system git in a throwaway repository.
 let repo: string;
@@ -168,22 +169,6 @@ describe('GitService', { timeout: 30_000 }, () => {
 		});
 	});
 
-	it('keeps git messages untranslated but preserves the character set', () => {
-		expect(
-			gitEnv({
-				LANG: 'de_DE.UTF-8',
-				LANGUAGE: 'de',
-				LC_ALL: 'de_DE.UTF-8',
-				LC_MESSAGES: 'de_DE.UTF-8',
-			}),
-		).toEqual({
-			LANG: 'de_DE.UTF-8',
-			LC_CTYPE: 'de_DE.UTF-8',
-			LC_MESSAGES: 'C',
-			GIT_TERMINAL_PROMPT: '0',
-		});
-	});
-
 	it('stages and unstages many files across several command lines', async () => {
 		const git = new GitService(() => repo);
 		writeFileSync(join(repo, 'first.txt'), 'x');
@@ -260,30 +245,5 @@ describe('GitService', { timeout: 30_000 }, () => {
 		expect(pullSummary({ changes: 3, insertions: 5, deletions: 4 })).toBe(
 			'3 files changed, +5 −4',
 		);
-	});
-
-	it('passes git only an allowlisted environment', () => {
-		const env = gitEnv({
-			Path: 'C:/bin',
-			USERPROFILE: 'C:/Users/marto',
-			GCM_INTERACTIVE: 'auto',
-			GIT_SSH: 'C:/Program Files/PuTTY/plink.exe',
-			GIT_SSH_COMMAND: 'ssh -i ~/.ssh/work',
-			XDG_CONFIG_HOME: '/home/marto/.config',
-			GIT_ASKPASS: 'C:/other-app/askpass.exe',
-			VSCODE_GIT_IPC_HANDLE: 'pipe',
-			EDITOR: 'code --wait',
-			SOME_SECRET_TOKEN: 'nope',
-		});
-		expect(env).toEqual({
-			Path: 'C:/bin',
-			USERPROFILE: 'C:/Users/marto',
-			GCM_INTERACTIVE: 'auto',
-			GIT_SSH: 'C:/Program Files/PuTTY/plink.exe',
-			GIT_SSH_COMMAND: 'ssh -i ~/.ssh/work',
-			XDG_CONFIG_HOME: '/home/marto/.config',
-			LC_MESSAGES: 'C',
-			GIT_TERMINAL_PROMPT: '0',
-		});
 	});
 });
