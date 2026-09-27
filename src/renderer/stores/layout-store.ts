@@ -29,6 +29,11 @@ export interface LayoutState {
 	zen: boolean;
 	/** Width share of the left editor group when split, 0.2 – 0.8. */
 	splitRatio: number;
+	/**
+	 * The skin shows the side bar as a drawer over the editor. Set by the workbench from the
+	 * look, never persisted: a drawer starts put away and takes no width from the editor.
+	 */
+	sideDrawer: boolean;
 }
 
 interface LayoutActions {
@@ -45,9 +50,12 @@ interface LayoutActions {
 	resize: (
 		patch: Partial<Pick<LayoutState, 'sideWidth' | 'panelHeight' | 'aiWidth' | 'splitRatio'>>,
 	) => void;
+	/** Applies a saved layout; under a drawer skin the side bar stays put away. */
 	hydrate: (saved: Partial<LayoutState>) => void;
-	/** Re-fits the side and AI panes after the window was resized. */
+	/** Re-fits the side, AI and bottom panes after the window was resized. */
 	fitToViewport: () => void;
+	/** The skin switched between a docked side bar and a drawer; a drawer starts closed. */
+	setSideDrawer: (drawer: boolean) => void;
 }
 
 export const LAYOUT_DEFAULTS: LayoutState = {
@@ -62,6 +70,7 @@ export const LAYOUT_DEFAULTS: LayoutState = {
 	aiWidth: 380,
 	zen: false,
 	splitRatio: 0.5,
+	sideDrawer: false,
 };
 
 const clamp = (n: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, n));
@@ -81,8 +90,40 @@ export const PANE_LIMITS = {
 	splitRatio: { min: 0.2, max: 0.8 },
 } as const;
 
-const viewportWidth = (): number =>
-	typeof window === 'undefined' ? Number.POSITIVE_INFINITY : window.innerWidth;
+/** Title bar, status bar and the panel's tab strip, in px. */
+const CHROME_HEIGHT = 110;
+/** The editor keeps a few lines visible however tall the bottom panel was saved. */
+export const MIN_EDITOR_HEIGHT = 160;
+
+export interface Viewport {
+	width: number;
+	height: number;
+}
+
+// Unit tests run without a window: nothing to fit against.
+const currentViewport = (): Viewport =>
+	typeof window === 'undefined'
+		? { width: Number.POSITIVE_INFINITY, height: Number.POSITIVE_INFINITY }
+		: { width: window.innerWidth, height: window.innerHeight };
+
+/**
+ * Caps the bottom panel so the editor above it keeps MIN_EDITOR_HEIGHT in a window `height` px
+ * tall: a panel saved at 900 px on a 1440p monitor would otherwise leave no editor on a
+ * 1366x768 laptop. Never below the panel's own minimum.
+ */
+export function fitPanelHeight(s: LayoutState, height: number): Partial<LayoutState> {
+	const max = Math.max(PANE_LIMITS.panelHeight.min, height - CHROME_HEIGHT - MIN_EDITOR_HEIGHT);
+	return s.panelHeight > max ? { panelHeight: max } : {};
+}
+
+/** Width and height fits together, for every change and every window resize. */
+export function fitPanes(
+	s: LayoutState,
+	view: Viewport,
+	first: 'side' | 'ai' = 'ai',
+): Partial<LayoutState> {
+	return { ...fitWidths(s, view.width, first), ...fitPanelHeight(s, view.height) };
+}
 
 /**
  * Shrinks the visible side and AI panes so the editor column keeps MIN_EDITOR_WIDTH in a window
@@ -96,7 +137,9 @@ export function fitWidths(
 	first: 'side' | 'ai' = 'ai',
 ): Partial<LayoutState> {
 	if (s.zen) return {};
-	let side = s.sideOpen ? s.sideWidth : 0;
+	// A drawer floats over the editor, so it takes no width from it.
+	const sideDocked = s.sideOpen && !s.sideDrawer;
+	let side = sideDocked ? s.sideWidth : 0;
 	let ai = s.aiOpen ? s.aiWidth : 0;
 	let over = side + ai + CHROME_WIDTH + MIN_EDITOR_WIDTH - viewport;
 	if (over <= 0) return {};
@@ -107,13 +150,13 @@ export function fitWidths(
 	};
 	if (first === 'ai') {
 		if (s.aiOpen) ai = shrink(ai, MIN_AI);
-		if (s.sideOpen) side = shrink(side, MIN_SIDE);
+		if (sideDocked) side = shrink(side, MIN_SIDE);
 	} else {
-		if (s.sideOpen) side = shrink(side, MIN_SIDE);
+		if (sideDocked) side = shrink(side, MIN_SIDE);
 		if (s.aiOpen) ai = shrink(ai, MIN_AI);
 	}
 	const out: Partial<LayoutState> = {};
-	if (s.sideOpen && side !== s.sideWidth) out.sideWidth = side;
+	if (sideDocked && side !== s.sideWidth) out.sideWidth = side;
 	if (s.aiOpen && ai !== s.aiWidth) out.aiWidth = ai;
 	return out;
 }
@@ -152,7 +195,7 @@ export const useLayoutStore = create<LayoutState & LayoutActions>((rawSet, get) 
 	const set = (fn: (s: LayoutState) => Partial<LayoutState>, first: 'side' | 'ai' = 'ai'): void =>
 		rawSet((s) => {
 			const patch = fn(s);
-			return { ...patch, ...fitWidths({ ...s, ...patch }, viewportWidth(), first) };
+			return { ...patch, ...fitPanes({ ...s, ...patch }, currentViewport(), first) };
 		});
 	return {
 		...LAYOUT_DEFAULTS,
@@ -197,11 +240,24 @@ export const useLayoutStore = create<LayoutState & LayoutActions>((rawSet, get) 
 				},
 				patch.sideWidth !== undefined ? 'side' : 'ai',
 			),
-		hydrate: (saved) => set(() => saved),
+		hydrate: (saved) =>
+			set((s) => {
+				// Restoring an open side bar under a drawer skin would cover the editor at every
+				// launch: the drawer's close-on-mount runs before the saved layout arrives.
+				if (!s.sideDrawer) return saved;
+				const rest = { ...saved };
+				delete rest.sideOpen;
+				return rest;
+			}),
 		fitToViewport: () => {
 			// Only write when something changes: window resizes fire continuously.
-			const fit = fitWidths(get(), viewportWidth());
+			const fit = fitPanes(get(), currentViewport());
 			if (Object.keys(fit).length > 0) rawSet(fit);
 		},
+		setSideDrawer: (drawer) =>
+			set((s) => {
+				if (s.sideDrawer === drawer) return {};
+				return drawer ? { sideDrawer: true, sideOpen: false } : { sideDrawer: false };
+			}),
 	};
 });

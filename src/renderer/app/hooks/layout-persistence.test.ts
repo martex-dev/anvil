@@ -32,6 +32,25 @@ describe('layout persistence', () => {
 		stop();
 	});
 
+	it('keeps the drawer closed and the docked choice saved under a drawer skin', async () => {
+		// The workbench switches to the drawer before persistence starts (child effects run first).
+		useLayoutStore.getState().setSideDrawer(true);
+		const save = vi.fn(() => Promise.resolve());
+		const stop = installLayoutPersistence({
+			store: useLayoutStore,
+			load: () => Promise.resolve({ sideOpen: true, panelHeight: 300 }),
+			save,
+			warn: vi.fn(),
+		});
+		await flush();
+		expect(useLayoutStore.getState().sideOpen).toBe(false);
+		useLayoutStore.getState().toggleSide();
+		useLayoutStore.getState().toggleSide();
+		await vi.advanceTimersByTimeAsync(400);
+		expect(save).toHaveBeenLastCalledWith(expect.objectContaining({ sideOpen: true }));
+		stop();
+	});
+
 	it('logs a failed save instead of dropping it silently', async () => {
 		const warn = vi.fn();
 		const stop = installLayoutPersistence({
