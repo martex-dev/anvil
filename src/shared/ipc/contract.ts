@@ -1,7 +1,7 @@
 import type { z } from 'zod';
 
 import { aiChannels, aiEvents } from './channels/ai';
-import { appChannels } from './channels/app';
+import { appChannels, appEvents } from './channels/app';
 import { dataChannels } from './channels/data';
 import { fsChannels, fsEvents } from './channels/fs';
 import { gitChannels, gitEvents } from './channels/git';
@@ -41,6 +41,7 @@ export const ipcContract = {
 
 /** Push events main → renderer. Payloads are validated in main before sending. */
 export const eventContract = defineEvents({
+	...appEvents,
 	...settingsEvents,
 	...secretEvents,
 	...workspaceEvents,

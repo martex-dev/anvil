@@ -90,10 +90,17 @@ export async function openFile(monaco: MonacoApi, root: string, path: string): P
  */
 const saving = new Map<string, Promise<boolean>>();
 
-/** Saves one file if it has unsaved edits. With `force`, writes it even if it changed on disk. */
-export function saveFile(path: string, force = false): Promise<boolean> {
+/**
+ * Saves one file if it has unsaved edits. With `force`, writes it even if it changed on disk.
+ * `format: false` skips format-on-save (auto save: code must not jump while you type).
+ */
+export function saveFile(
+	path: string,
+	force = false,
+	options: { format?: boolean } = {},
+): Promise<boolean> {
 	const previous = saving.get(path) ?? Promise.resolve(true);
-	const run = (): Promise<boolean> => writeBuffer(path, force);
+	const run = (): Promise<boolean> => writeBuffer(path, force, options.format ?? true);
 	const next = previous.then(run, run);
 	saving.set(path, next);
 	const settle = (): void => {
@@ -103,7 +110,7 @@ export function saveFile(path: string, force = false): Promise<boolean> {
 	return next;
 }
 
-async function writeBuffer(path: string, force: boolean): Promise<boolean> {
+async function writeBuffer(path: string, force: boolean, format: boolean): Promise<boolean> {
 	const store = useEditorStore.getState();
 	const t = tracked.get(path);
 	const known = store.files.find((f) => f.path === path);
@@ -113,7 +120,7 @@ async function writeBuffer(path: string, force: boolean): Promise<boolean> {
 	// Nothing to write: a habitual Ctrl+S must not touch the file (mtime, watcher, git status,
 	// local history) or reformat code nobody edited.
 	if (!known.dirty && !force) return true;
-	if (getSettings().formatOnSave && path.endsWith('.py'))
+	if (format && getSettings().formatOnSave && path.endsWith('.py'))
 		await formatPython(path, t.model, { onSave: true });
 	// Closed while ruff ran: nothing left to save.
 	const file = useEditorStore.getState().files.find((f) => f.path === path);

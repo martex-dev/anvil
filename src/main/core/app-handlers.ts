@@ -13,6 +13,7 @@ import { emitEvent, router } from './ipc';
 import { openExternalSafely } from './security';
 import type { SettingsStore } from './store/json-store';
 import { applyWindowChrome } from './window';
+import { reloadWindow } from './window-handlers';
 
 const UiStateSchema = z.record(z.string(), z.unknown());
 
@@ -44,7 +45,9 @@ export function registerAppHandlers(
 	router.handle('app:getVersion', () => app.getVersion());
 	router.handle('app:getPlatform', () => process.platform);
 	router.handle('app:reloadWindow', () => {
-		window()?.webContents.reload();
+		const win = window();
+		// Unsaved files get their Save / Don't Save prompt first (window-handlers.ts).
+		if (win) reloadWindow(win);
 	});
 	router.handle('app:toggleFullScreen', () => {
 		const win = window();

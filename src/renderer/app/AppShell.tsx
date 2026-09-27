@@ -18,6 +18,7 @@ import { useFeatureErrors } from './hooks/use-feature-errors';
 import { useFitPanesToWindow } from './hooks/use-fit-panes';
 import { useFocusRescue } from './hooks/use-focus-rescue';
 import { useFsInvalidation } from './hooks/use-fs-invalidation';
+import { useLaunchRequests } from './hooks/use-launch-requests';
 import { useLayoutPersistence } from './hooks/use-layout-persistence';
 import { useMonacoExtras } from './hooks/use-monaco-extras';
 import { useSecretsReset } from './hooks/use-secrets-reset';
@@ -44,6 +45,7 @@ function Ambient(): JSX.Element {
  */
 export function AppShell(): JSX.Element {
 	useGlobalShortcuts();
+	useLaunchRequests();
 	useApplySettings();
 	useFsInvalidation();
 	useFocusRescue();

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { _electron as electron, expect, test } from '@playwright/test';
 
-import { makeProject, openProject, quickOpen } from './fixtures';
+import { closeDiscardingUnsaved, makeProject, openProject, quickOpen } from './fixtures';
 
 const EXE = join(__dirname, '..', 'release', 'win-unpacked', 'Anvil.exe');
 
@@ -49,7 +49,7 @@ test('packaged app: language server, search and terminal work from the installed
 			timeout: 30_000,
 		});
 	} finally {
-		await app.close();
+		await closeDiscardingUnsaved(app);
 		rmSync(userData, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 		project.cleanup();
 	}

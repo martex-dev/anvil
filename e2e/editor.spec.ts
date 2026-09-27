@@ -88,3 +88,32 @@ test('CSV opens in the data viewer', async ({ page }) => {
 		project.cleanup();
 	}
 });
+
+test('closing the window with unsaved files asks first, then saves', async ({ page }) => {
+	const project = makeProject({ 'a.py': 'x = 1\n' });
+	try {
+		await openProject(page, project.dir);
+		await quickOpen(page, 'a.py');
+		const editor = page.locator('[data-editor-host] .monaco-editor').first();
+		await expect(editor).toBeVisible({ timeout: 45_000 });
+		await editor.locator('.view-line').first().click();
+		await page.keyboard.press('End');
+		await page.keyboard.type('0');
+
+		const close = page.locator("[data-part='window-button'][data-action='close']").first();
+		await close.click();
+		const dialog = page.getByRole('dialog', { name: /Save changes to a\.py/ });
+		await expect(dialog).toBeVisible();
+		await dialog.getByRole('button', { name: 'Cancel' }).click();
+		await expect(dialog).toBeHidden();
+		await expect(editor).toBeVisible();
+
+		await close.click();
+		const closed = page.waitForEvent('close');
+		await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+		await closed;
+		expect(readFileSync(join(project.dir, 'a.py'), 'utf8')).toBe('x = 10\n');
+	} finally {
+		project.cleanup();
+	}
+});

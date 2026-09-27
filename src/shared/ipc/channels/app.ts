@@ -21,7 +21,19 @@ export type WindowChrome = z.infer<typeof WindowChromeSchema>;
 export const FeatureFailureSchema = z.object({ id: z.string(), message: z.string() });
 export type FeatureFailure = z.infer<typeof FeatureFailureSchema>;
 
+/**
+ * A folder or file Anvil was launched with (`Anvil.exe C:\proj`, "Open with Anvil", a second
+ * start). `folder` null means the current one; `file` is relative to the folder it opens in.
+ */
+export const LaunchRequestSchema = z.object({
+	folder: z.string().nullable(),
+	file: z.string().nullable(),
+});
+export type LaunchRequest = z.infer<typeof LaunchRequestSchema>;
+
 export const appChannels = defineChannels({
+	/** The file this process was launched with, once (the page asks after it loads). */
+	'app:takeLaunchRequest': { input: z.void(), output: LaunchRequestSchema.nullable() },
 	'app:getVersion': { input: z.void(), output: z.string() },
 	'app:getPlatform': { input: z.void(), output: z.string() },
 	'app:reloadWindow': { input: z.void(), output: z.void() },
@@ -52,3 +64,8 @@ export const appChannels = defineChannels({
 		output: z.void(),
 	},
 });
+
+export const appEvents = {
+	/** A second start asked for a folder or file; the page confirms unsaved work, then opens it. */
+	'app:launchRequest': LaunchRequestSchema,
+};

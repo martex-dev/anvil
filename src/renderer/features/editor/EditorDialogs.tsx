@@ -5,6 +5,7 @@ import { Dialog } from '../../ui/Dialog';
 import { useEditorStore } from './editor-store';
 import { reloadFromDisk, saveFile } from './file-ops';
 import { finishClose, refocusGroup } from './open';
+import { UnsavedDialog } from './UnsavedDialog';
 
 export function EditorDialogs(): JSX.Element {
 	// Closing several dirty tabs asks about each in turn; Cancel stops the whole close.
@@ -23,6 +24,7 @@ export function EditorDialogs(): JSX.Element {
 
 	return (
 		<>
+			<UnsavedDialog />
 			<Dialog
 				open={closing !== null}
 				onOpenChange={(open) => !open && clearClosing()}

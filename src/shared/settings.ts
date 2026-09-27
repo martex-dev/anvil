@@ -33,6 +33,18 @@ export const SettingsSchema = z.object({
 	wordWrap: z.boolean().default(false),
 	minimap: z.boolean().default(true),
 	formatOnSave: z.boolean().default(false),
+	/**
+	 * Save without Ctrl+S: a moment after you stop typing, or when focus leaves the file or the
+	 * window. Auto saves skip format-on-save so code doesn't jump while you type.
+	 */
+	autoSave: z.enum(['off', 'afterDelay', 'onFocusChange']).default('off'),
+	autoSaveDelayMs: z.number().int().min(200).max(60_000).default(1000),
+	/**
+	 * How strictly basedpyright checks Python. 'standard' matches Pylance; basedpyright's own
+	 * default flags every untyped return in plain research code. A project's pyrightconfig.json
+	 * or [tool.basedpyright] / [tool.pyright] in pyproject.toml overrides it.
+	 */
+	pythonTypeChecking: z.enum(['off', 'basic', 'standard', 'strict']).default('standard'),
 	trimTrailingWhitespace: z.boolean().default(false),
 	insertFinalNewline: z.boolean().default(false),
 	/** Save a snapshot on every save so files can be rolled back from the History view. */

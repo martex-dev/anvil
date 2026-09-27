@@ -10,6 +10,7 @@ import { SettingStepper } from './SettingStepper';
 import { SettingToggle } from './SettingToggle';
 
 const LINE_HEIGHTS = ['1.3', '1.45', '1.55', '1.65', '1.8', '2'];
+const AUTO_SAVE_DELAYS = [500, 1000, 2000, 5000, 10_000];
 
 export function EditorSettings({
 	s,
@@ -134,6 +135,36 @@ export function EditorSettings({
 				value={s.minimap}
 				onChange={(minimap) => update({ minimap })}
 			/>
+			<SettingRow
+				label='Auto save'
+				description='After a delay: a moment after you stop typing. On focus change: when you switch files or leave the window.'
+			>
+				<Select
+					aria-label='Auto save'
+					value={s.autoSave}
+					onValueChange={(v) => update({ autoSave: v as Settings['autoSave'] })}
+					options={[
+						{ value: 'off', label: 'Off' },
+						{ value: 'afterDelay', label: 'After a delay' },
+						{ value: 'onFocusChange', label: 'On focus change' },
+					]}
+				/>
+			</SettingRow>
+			{s.autoSave === 'afterDelay' && (
+				<SettingRow label='Auto save delay' description='After the last keystroke.'>
+					<Select
+						aria-label='Auto save delay'
+						value={String(s.autoSaveDelayMs)}
+						onValueChange={(v) => update({ autoSaveDelayMs: Number(v) })}
+						options={[...new Set([...AUTO_SAVE_DELAYS, s.autoSaveDelayMs])]
+							.sort((a, b) => a - b)
+							.map((ms) => ({
+								value: String(ms),
+								label: ms < 1000 ? `${ms} ms` : `${ms / 1000} s`,
+							}))}
+					/>
+				</SettingRow>
+			)}
 			<SettingToggle
 				label='Trim trailing whitespace on save'
 				value={s.trimTrailingWhitespace}
@@ -145,6 +176,24 @@ export function EditorSettings({
 				value={s.insertFinalNewline}
 				onChange={(insertFinalNewline) => update({ insertFinalNewline })}
 			/>
+			<SettingRow
+				label='Python type checking'
+				description="basedpyright's strictness. A pyrightconfig.json or [tool.basedpyright] in the project wins. Applies when the language server restarts."
+			>
+				<Select
+					aria-label='Python type checking'
+					value={s.pythonTypeChecking}
+					onValueChange={(v) =>
+						update({ pythonTypeChecking: v as Settings['pythonTypeChecking'] })
+					}
+					options={[
+						{ value: 'off', label: 'Off (syntax and imports only)' },
+						{ value: 'basic', label: 'Basic' },
+						{ value: 'standard', label: 'Standard' },
+						{ value: 'strict', label: 'Strict' },
+					]}
+				/>
+			</SettingRow>
 			<SettingToggle
 				label='Format Python on save'
 				description='Runs ruff format from the selected environment (or PATH).'

@@ -95,7 +95,7 @@ function release(tab: Tab): void {
  * Opens a tab. When it replaces the group's preview, a dirty preview is kept (pinned) so its
  * edits keep a tab, and a clean one that no group shows any more is released.
  */
-function openTab(tab: Tab, group: number | undefined): void {
+function openTab(tab: Tab, group: number | undefined, background = false): void {
 	const tabs = useTabsStore.getState();
 	const target = tabs.groups.find((g) => g.id === (group ?? tabs.focused));
 	const oldId = tab.preview ? target?.tabIds.find((id) => tabs.tabs[id]?.preview) : undefined;
@@ -105,7 +105,10 @@ function openTab(tab: Tab, group: number | undefined): void {
 		if (useEditorStore.getState().files.some((f) => f.path === path && f.dirty))
 			tabs.pin(old.id);
 	}
-	tabs.open(tab, group === undefined ? {} : { group });
+	tabs.open(tab, {
+		...(group === undefined ? {} : { group }),
+		...(background ? { background: true } : {}),
+	});
 	if (old && !useTabsStore.getState().tabs[old.id]) release(old);
 }
 
@@ -126,7 +129,7 @@ export async function openPath(root: string, request: OpenFileRequest): Promise<
 	}
 	const tab = tabFor(request.path, kind, request.preview ?? false);
 	if (kind !== 'code') {
-		openTab(tab, group);
+		openTab(tab, group, request.background);
 		return;
 	}
 	const focus = request.focus ?? !request.preview;
@@ -150,7 +153,7 @@ export async function openPath(root: string, request: OpenFileRequest): Promise<
 				}
 			: null,
 	);
-	openTab(tab, group);
+	openTab(tab, group, request.background);
 	let monaco: MonacoApi;
 	try {
 		monaco = await loadMonaco(editorPrefs());
@@ -184,6 +187,23 @@ export async function openUnloadedFiles(monaco: MonacoApi): Promise<void> {
 	);
 }
 
+/** Recently closed file tabs, newest last, for Reopen Closed Tab (Ctrl+Shift+T). */
+const closedTabs: Array<{ path: string; kind: TabKind }> = [];
+
+function rememberClosed(tab: Tab): void {
+	if (!tab.path || tab.kind === 'diff' || tab.kind === 'welcome' || isScratch(tab.path)) return;
+	closedTabs.push({ path: tab.path, kind: tab.kind });
+	if (closedTabs.length > 30) closedTabs.shift();
+}
+
+/** Pops the most recently closed file tab that isn't open again already. */
+export function takeClosedTab(): { path: string; kind: TabKind } | null {
+	const open = new Set(Object.keys(useTabsStore.getState().tabs));
+	for (let entry = closedTabs.pop(); entry; entry = closedTabs.pop())
+		if (!open.has(tabFor(entry.path, entry.kind).id)) return entry;
+	return null;
+}
+
 /**
  * Closes a tab in one group. A code buffer is released only when no group shows it any more,
  * and a dirty one asks first (EditorDialogs).
@@ -200,10 +220,12 @@ export function closeTab(group: number, id: string): void {
 			return;
 		}
 		tabs.close(group, id);
+		rememberClosed(tab);
 		closeFile(tab.path);
 		return;
 	}
 	const gone = tabs.close(group, id);
+	if (gone) rememberClosed(tab);
 	// The other group may still show the table: keep its cached data until the last tab goes.
 	if (gone && tab.kind === 'data') release(tab);
 }
@@ -211,6 +233,8 @@ export function closeTab(group: number, id: string): void {
 /** Called once a dirty buffer is saved or discarded from the close dialog. */
 export function finishClose(path: string): void {
 	const id = codeTabId(path);
+	const tab = useTabsStore.getState().tabs[id];
+	if (tab) rememberClosed(tab);
 	for (const g of useTabsStore.getState().groups) {
 		if (g.tabIds.includes(id)) useTabsStore.getState().close(g.id, id);
 	}
