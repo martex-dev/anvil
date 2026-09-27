@@ -7,7 +7,13 @@ import type { FileContent, FsEntry, FsStat, TextEncoding } from '@shared/ipc/cha
 import { AnvilError } from '../errors';
 import { writeFileAtomic } from './atomic-write';
 import { mapFsError } from './fs-errors';
-import { assertRealInside, toAbsolute, toRelative, validateName } from './fs-guard';
+import {
+	assertRealInside,
+	isWorkspaceRoot,
+	toAbsolute,
+	toRelative,
+	validateName,
+} from './fs-guard';
 import { decodeText, encodeText } from './text-codec';
 
 export const MAX_EDITABLE_BYTES = 5 * 1024 * 1024;
@@ -199,7 +205,9 @@ export class FsService {
 		validateName(newName);
 		const root = this.root();
 		const from = toAbsolute(root, rel);
-		if (from === root) throw new AnvilError('FS_BAD_PATH', 'Cannot rename the workspace root');
+		if (isWorkspaceRoot(root, from)) {
+			throw new AnvilError('FS_BAD_PATH', 'Cannot rename the workspace root');
+		}
 		// A link itself may be renamed, but not a file reached through a link that leaves the
 		// folder (that would change files outside it). Reads through links stay allowed.
 		assertRealInside(root, dirname(from));
@@ -220,7 +228,9 @@ export class FsService {
 	async trash(rel: string): Promise<void> {
 		const root = this.root();
 		const abs = toAbsolute(root, rel);
-		if (abs === root) throw new AnvilError('FS_BAD_PATH', 'Cannot delete the workspace root');
+		if (isWorkspaceRoot(root, abs)) {
+			throw new AnvilError('FS_BAD_PATH', 'Cannot delete the workspace root');
+		}
 		// Same rule as rename: trashing a link is fine, trashing through one is not.
 		assertRealInside(root, dirname(abs));
 		await this.host.trash(abs);

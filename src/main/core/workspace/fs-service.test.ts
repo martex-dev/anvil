@@ -8,7 +8,7 @@ import {
 	writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -162,6 +162,23 @@ describe('FsService', () => {
 		expect(trash).toHaveBeenCalledWith(join(root, 'src', 'b.ts'));
 		await expect(fs.trash('')).rejects.toThrow();
 	});
+
+	it.runIf(process.platform === 'win32')(
+		'recognises the root in any spelling Windows accepts',
+		async () => {
+			// Windows compares paths case-insensitively; so must the "never the root" guard.
+			const upper = `../${basename(root).toUpperCase()}`;
+			const lowerDrive = root.charAt(0).toLowerCase() + root.slice(1);
+			for (const spelling of [upper, lowerDrive, `src/..`]) {
+				await expect(fs.trash(spelling)).rejects.toMatchObject({ code: 'FS_BAD_PATH' });
+				await expect(fs.rename(spelling, 'other')).rejects.toMatchObject({
+					code: 'FS_BAD_PATH',
+				});
+			}
+			expect(trash).not.toHaveBeenCalled();
+			expect(existsSync(root)).toBe(true);
+		},
+	);
 
 	it('errors clearly when no folder is open', async () => {
 		const none = new FsService({ getRoot: () => null, trash, reveal: vi.fn() });
