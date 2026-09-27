@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { GitChange } from '@shared/ipc/channels/git';
 
-import { capRows, refocusIndex, togglePaths, togglePathsAll } from './change-rows';
+import { capRows, discardPlan, refocusIndex, togglePaths, togglePathsAll } from './change-rows';
 
 describe('capRows', () => {
 	it('keeps short lists whole', () => {
@@ -49,5 +49,23 @@ describe('togglePaths', () => {
 		// An 'RM' file's working-tree row carries `from` too, but only the new path is modified.
 		expect(togglePaths({ ...rename, kind: 'modified' }, false)).toEqual(['new.txt']);
 		expect(togglePaths(edit, true)).toEqual(['a.txt']);
+	});
+});
+
+describe('discardPlan', () => {
+	it('restores tracked files, deletes untracked ones and leaves conflicts alone', () => {
+		const change = (path: string, kind: GitChange['kind']): GitChange => ({
+			path,
+			kind,
+			workspacePath: path,
+		});
+		expect(
+			discardPlan([
+				change('a.py', 'modified'),
+				change('b.py', 'deleted'),
+				change('new.py', 'untracked'),
+				change('c.py', 'conflicted'),
+			]),
+		).toEqual({ tracked: ['a.py', 'b.py'], untracked: ['new.py'] });
 	});
 });

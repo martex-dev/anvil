@@ -4,15 +4,15 @@ import { isAbsolute, join, relative, sep } from 'node:path';
 
 import type { SimpleGit, StatusResult } from 'simple-git';
 
-import type { GitBlame, GitCommit, GitStatus } from '@shared/ipc/channels/git';
+import type { GitStatus } from '@shared/ipc/channels/git';
 import { scanUnifiedDiff, type SecretFinding } from '@shared/secret-scan';
 
 import { AnvilError } from '../../core/errors';
 import { toAbsolute } from '../../core/workspace/fs-guard';
-import { batchPaths, git, isMissingPathError, isNotARepo, isUnbornHead } from './git-process';
+import { isBinary, MAX_TEXT_BYTES as MAX_DIFF_BYTES } from './git-history';
+import { batchPaths, git, hasHead, isMissingPathError, isNotARepo, queued } from './git-process';
 import { mapStatus } from './status-map';
 
-const MAX_DIFF_BYTES = 5 * 1024 * 1024;
 const NOT_A_REPO: GitStatus = {
 	isRepo: false,
 	branch: null,
@@ -24,13 +24,8 @@ const NOT_A_REPO: GitStatus = {
 	unstaged: [],
 };
 
-const isBinary = (s: string): boolean => s.includes('\0');
-
-export function pullSummary(s: { changes: number; insertions: number; deletions: number }): string {
-	if (s.changes === 0) return 'Already up to date';
-	const files = `${s.changes} file${s.changes === 1 ? '' : 's'}`;
-	return `${files} changed, +${s.insertions} −${s.deletions}`;
-}
+/** A line starting a conflict side (`<<<<<<< ours`), the divider, or the end (`>>>>>>> theirs`). */
+const CONFLICT_MARKER = /^(?:<{7}|>{7})(?: |\r?$)|^={7}\r?$/m;
 
 /** Git for the open folder, via the system git (simple-git). The repo root may be above it. */
 export class GitService {
@@ -57,10 +52,17 @@ export class GitService {
 		return root;
 	}
 
-	private async requireRepo(): Promise<{ root: string; g: SimpleGit }> {
+	/** The repo root; throws GIT_NOT_A_REPO when there is none. */
+	async repo(): Promise<string> {
 		const root = await this.repoRoot();
 		if (!root)
 			throw new AnvilError('GIT_NOT_A_REPO', 'The open folder is not a git repository');
+		return root;
+	}
+
+	/** The repo root and a read-only git there (reads never take optional locks). */
+	private async requireRepo(): Promise<{ root: string; g: SimpleGit }> {
+		const root = await this.repo();
 		return { root, g: git(root) };
 	}
 
@@ -142,136 +144,129 @@ export class GitService {
 	}
 
 	async stage(paths: string[]): Promise<void> {
-		const { root, g } = await this.requireRepo();
+		const { root } = await this.requireRepo();
 		for (const p of paths) toAbsolute(root, p);
-		for (const batch of batchPaths(paths)) await g.add(['--', ...batch]);
+		const g = git(root, 'write');
+		await queued(root, 'index', async () => {
+			for (const batch of batchPaths(paths)) await g.add(['--', ...batch]);
+		});
 	}
 
 	async unstage(paths: string[]): Promise<void> {
-		const { root, g } = await this.requireRepo();
+		const { root } = await this.requireRepo();
 		for (const p of paths) toAbsolute(root, p);
-		// `restore --staged` also works before the first commit, unlike `reset HEAD`.
-		for (const batch of batchPaths(paths)) await g.raw(['restore', '--staged', '--', ...batch]);
-	}
-
-	async commit(message: string): Promise<{ hash: string }> {
-		const { g } = await this.requireRepo();
-		const status = await g.status();
-		const anyStaged = status.files.some((f) => f.index !== ' ' && f.index !== '?');
-		if (!anyStaged) throw new AnvilError('GIT_NOTHING_STAGED', 'Nothing is staged to commit');
-		const result = await g.commit(message);
-		if (!result.commit)
-			throw new AnvilError('GIT_COMMIT_FAILED', 'git did not create a commit');
-		return { hash: result.commit };
-	}
-
-	async pull(): Promise<{ summary: string }> {
-		const { g } = await this.requireRepo();
-		const r = await g.pull();
-		return { summary: pullSummary(r.summary) };
-	}
-
-	async push(): Promise<{ summary: string }> {
-		const { g } = await this.requireRepo();
-		const s = await g.status();
-		if (!s.current || s.detached)
-			throw new AnvilError('GIT_DETACHED', 'Check out a branch before pushing');
-		if (s.tracking) {
-			await g.push();
-			return { summary: `Pushed ${s.current} → ${s.tracking}` };
-		}
-		// First push of a new branch: publish it and set upstream.
-		await g.push(['-u', 'origin', s.current]);
-		return { summary: `Published ${s.current} to origin` };
-	}
-
-	async branches(): Promise<{ current: string | null; local: string[] }> {
-		const { g } = await this.requireRepo();
-		const b = await g.branchLocal();
-		return { current: b.current || null, local: b.all };
-	}
-
-	async checkout(branch: string, create: boolean): Promise<void> {
-		const { g } = await this.requireRepo();
-		if (!/^[\w./-]+$/.test(branch) || branch.startsWith('-'))
-			throw new AnvilError('GIT_BAD_BRANCH', `Invalid branch name: ${branch}`);
-		if (create) await g.checkoutLocalBranch(branch);
-		else await g.checkout(branch);
-	}
-
-	async log(limit: number): Promise<GitCommit[]> {
-		const { g } = await this.requireRepo();
-		try {
-			const out = await g.raw([
-				'log',
-				`-n${limit}`,
-				'--date=unix',
-				'--pretty=format:%H%x1f%an%x1f%ad%x1f%D%x1f%s%x1e',
-			]);
-			return out
-				.split('\x1e')
-				.map((r) => r.trim())
-				.filter(Boolean)
-				.map((r) => {
-					const [hash = '', author = '', date = '0', refs = '', message = ''] =
-						r.split('\x1f');
-					return { hash, author, date: Number(date) * 1000, refs, message };
-				});
-		} catch (error) {
-			// A repo without commits has no log; anything else is a real failure to report.
-			if (isUnbornHead(error)) return [];
-			throw error;
-		}
+		const g = git(root, 'write');
+		await queued(root, 'index', async () => {
+			const born = await hasHead(g);
+			for (const batch of batchPaths(paths)) {
+				if (born) await g.raw(['restore', '--staged', '--', ...batch]);
+				// Before the first commit there is no HEAD to restore from ("could not resolve
+				// HEAD"), so take the paths out of the index; they become untracked again. --cached
+				// never touches the working tree, -r lets a folder through, and -f skips the "staged
+				// content differs from the file" check: dropping the staged copy is what unstage means.
+				else await g.raw(['rm', '--cached', '-r', '-f', '-q', '--', ...batch]);
+			}
+		});
 	}
 
 	/**
-	 * Repo-relative path of a path relative to the open folder, which may be a subfolder of the
-	 * repo. Goes through the real workspace path: git reports long names, the folder may have
-	 * been opened via an 8.3 short name.
+	 * Throws away working-tree changes. Tracked files go back to their index version, so for a
+	 * file staged and then edited only the later, unstaged edits are lost (VS Code's Discard
+	 * Changes). Untracked files are deleted; git has no copy of them, so the UI asks first.
 	 */
-	private repoPathOfWorkspacePath(root: string, path: string): string {
+	async discard(tracked: string[], untracked: string[]): Promise<void> {
+		const root = await this.repo();
+		for (const p of [...tracked, ...untracked]) toAbsolute(root, p);
+		const g = git(root, 'write');
+		await queued(root, 'index', async () => {
+			for (const batch of batchPaths(tracked))
+				await g.raw(['restore', '--worktree', '--', ...batch]);
+			// clean never touches tracked or ignored files, whatever paths it is given.
+			for (const batch of batchPaths(untracked))
+				await g.raw(['clean', '-f', '-q', '--', ...batch]);
+		});
+	}
+
+	/** `git init` in the open folder itself, not in a parent repository it may sit in. */
+	async init(): Promise<void> {
 		const workspace = this.getWorkspaceRoot();
-		if (!workspace) throw new AnvilError('GIT_NOT_A_REPO', 'No folder is open');
-		const abs = toAbsolute(realpathSync.native(workspace), path);
-		return relative(root, abs).split(sep).join('/');
+		if (!workspace) throw new AnvilError('GIT_NO_FOLDER', 'Open a folder first');
+		if (await this.repoRoot())
+			throw new AnvilError(
+				'GIT_ALREADY_A_REPO',
+				'The open folder is already in a repository',
+			);
+		await git(workspace, 'write').init();
+		this.reset();
 	}
 
-	/** `path` is relative to the open folder (the editor's view), not to the repo root. */
-	async blame(path: string, line: number): Promise<GitBlame | null> {
+	/**
+	 * Paths (of those given) whose working copy still has conflict markers. Staging a conflicted
+	 * file is how git marks it resolved, so a forgotten `<<<<<<<` would be committed as is.
+	 */
+	async conflictMarkers(paths: string[]): Promise<string[]> {
+		const root = await this.repo();
+		const hits: string[] = [];
+		for (const p of paths) {
+			const text = await readFile(toAbsolute(root, p), 'utf8').catch(
+				(error: NodeJS.ErrnoException) => {
+					// Deleted on one side of the conflict: nothing to scan.
+					if (error.code === 'ENOENT' || error.code === 'EISDIR') return '';
+					throw error;
+				},
+			);
+			if (CONFLICT_MARKER.test(text)) hits.push(p);
+		}
+		return hits;
+	}
+
+	/**
+	 * Commits what is staged. `amend` replaces the last commit instead (its message, plus
+	 * anything staged now), so it needs no staged changes but does need a commit to amend.
+	 */
+	async commit(message: string, amend = false): Promise<{ hash: string }> {
 		const { root, g } = await this.requireRepo();
-		const repoPath = this.repoPathOfWorkspacePath(root, path);
-		let out: string;
-		try {
-			out = await g.raw(['blame', '--porcelain', '-L', `${line},${line}`, '--', repoPath]);
-		} catch (error) {
-			// Untracked file, no commits yet, or a line past the committed end: nothing to blame.
-			if (isMissingPathError(error)) return null;
-			throw error;
-		}
-		const hash = out.slice(0, 40);
-		if (!/^[0-9a-f]{40}$/.test(hash) || /^0+$/.test(hash)) return null;
-		const field = (name: string): string =>
-			new RegExp(`^${name} (.*)$`, 'm').exec(out)?.[1]?.trim() ?? '';
-		return {
-			hash,
-			author: field('author'),
-			date: Number(field('author-time')) * 1000,
-			summary: field('summary'),
-		};
+		return queued(root, 'index', async () => {
+			if (amend) {
+				if (!(await hasHead(g)))
+					throw new AnvilError('GIT_NOTHING_TO_AMEND', 'There is no commit to amend yet');
+			} else {
+				const status = await g.status();
+				const anyStaged = status.files.some((f) => f.index !== ' ' && f.index !== '?');
+				if (!anyStaged)
+					throw new AnvilError('GIT_NOTHING_STAGED', 'Nothing is staged to commit');
+			}
+			// 'long': a pre-commit hook or a GPG passphrase prompt may take minutes.
+			const result = await git(root, 'long').commit(
+				message,
+				undefined,
+				amend ? { '--amend': null } : {},
+			);
+			if (!result.commit)
+				throw new AnvilError('GIT_COMMIT_FAILED', 'git did not create a commit');
+			return { hash: result.commit };
+		});
 	}
 
-	/** `path` is relative to the open folder (the editor's view), not to the repo root. */
-	async headContent(path: string): Promise<string | null> {
+	/**
+	 * A path relative to the open folder (what editor tabs use) as the repo root plus the same
+	 * file relative to it; they differ when the folder is a subfolder of the repository. Goes
+	 * through the real workspace path: git reports long names, and the folder may have been
+	 * opened via an 8.3 short name (PCGAME~1). Null when there is no repository.
+	 */
+	async locate(workspacePath: string): Promise<{ root: string; repoPath: string } | null> {
+		const workspace = this.getWorkspaceRoot();
 		const root = await this.repoRoot();
-		if (!root) return null;
-		const repoPath = this.repoPathOfWorkspacePath(root, path);
-		try {
-			const text = await git(root).show([`HEAD:${repoPath}`]);
-			return isBinary(text) || text.length > MAX_DIFF_BYTES ? null : text;
-		} catch (error) {
-			if (isMissingPathError(error)) return null;
-			throw error;
-		}
+		if (!workspace || !root) return null;
+		const abs = toAbsolute(realpathSync.native(workspace), workspacePath);
+		return { root, repoPath: relative(root, abs).split(sep).join('/') };
+	}
+
+	/** HEAD's full message, to prefill an amend; null before the first commit. */
+	async lastCommitMessage(): Promise<string | null> {
+		const { g } = await this.requireRepo();
+		if (!(await hasHead(g))) return null;
+		return (await g.raw(['log', '-1', '--format=%B'])).trimEnd();
 	}
 
 	async scanStaged(): Promise<SecretFinding[]> {

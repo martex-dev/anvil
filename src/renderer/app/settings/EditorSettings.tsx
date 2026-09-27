@@ -125,6 +125,12 @@ export function EditorSettings({
 				onChange={(inlineBlame) => update({ inlineBlame })}
 			/>
 			<SettingToggle
+				label='Git auto-fetch'
+				description='Fetch from the remotes every 5 minutes, so ahead/behind counts stay current.'
+				value={s.gitAutoFetch}
+				onChange={(gitAutoFetch) => update({ gitAutoFetch })}
+			/>
+			<SettingToggle
 				label='Word wrap'
 				description='Alt+Z toggles it from the editor.'
 				value={s.wordWrap}

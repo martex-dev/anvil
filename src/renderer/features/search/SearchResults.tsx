@@ -1,4 +1,4 @@
-import { ChevronDown, FileText } from 'lucide-react';
+import { ChevronDown, FileText, Replace, ReplaceAll } from 'lucide-react';
 import { type JSX, useState } from 'react';
 
 import type { SearchFile, SearchMatch } from '@shared/ipc/channels/search';
@@ -6,6 +6,7 @@ import type { SearchFile, SearchMatch } from '@shared/ipc/channels/search';
 import { cn } from '../../lib/cn';
 import { rovingKeyDown } from '../../lib/roving';
 import { requestOpenFile } from '../../stores/workbench-store';
+import { IconButton } from '../../ui/IconButton';
 import { fileMatchCount } from './search-count';
 
 function Highlighted({ match }: { match: SearchMatch }): JSX.Element {
@@ -24,12 +25,23 @@ function Highlighted({ match }: { match: SearchMatch }): JSX.Element {
 	return <>{parts}</>;
 }
 
+/** Replace buttons on each file and line, shown while the replace row is open. */
+export interface ResultReplace {
+	disabled: boolean;
+	onFile: (file: SearchFile) => void;
+	onLine: (file: SearchFile, line: number) => void;
+}
+
+const replaceButton = 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100';
+
 export function SearchResults({
 	files,
 	className,
+	replace,
 }: {
 	files: SearchFile[];
 	className?: string;
+	replace?: ResultReplace | undefined;
 }): JSX.Element {
 	const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set());
 	const toggle = (path: string): void => {
@@ -64,43 +76,60 @@ export function SearchResults({
 				const slash = file.path.lastIndexOf('/');
 				return (
 					<li key={file.path} data-search-file={file.path}>
-						<button
-							type='button'
-							onClick={() => toggle(file.path)}
-							aria-expanded={open}
-							title={file.path}
-							data-roving
-							{...rowProps(`f:${file.path}`)}
-							className='flex h-6 w-full items-center gap-1 px-2 text-left text-13 hover:bg-bg-2 focus-visible:shadow-glow focus-visible:outline-none'
-						>
-							<ChevronDown
-								size={12}
-								className={cn(
-									'shrink-0 text-fg-2 transition-transform transition-fast',
-									!open && '-rotate-90',
-								)}
-							/>
-							<FileText size={13} className='shrink-0 text-fg-2' />
-							<span className='truncate text-fg-0'>{file.path.slice(slash + 1)}</span>
-							<span className='truncate text-11 text-fg-2'>
-								{slash > 0 ? file.path.slice(0, slash) : ''}
-							</span>
-							<span
-								className='num ml-auto shrink-0 rounded-full bg-bg-3 px-1.5 text-11 text-fg-1'
-								title={
-									file.capped
-										? 'Only the first matching lines of this file are listed'
-										: undefined
-								}
+						<div className='group flex items-center hover:bg-bg-2'>
+							<button
+								type='button'
+								onClick={() => toggle(file.path)}
+								aria-expanded={open}
+								title={file.path}
+								data-roving
+								{...rowProps(`f:${file.path}`)}
+								className='flex h-6 min-w-0 flex-1 items-center gap-1 px-2 text-left text-13 focus-visible:shadow-glow focus-visible:outline-none'
 							>
-								{fileMatchCount(file)}
-								{file.capped && '+'}
-							</span>
-						</button>
+								<ChevronDown
+									size={12}
+									className={cn(
+										'shrink-0 text-fg-2 transition-transform transition-fast',
+										!open && '-rotate-90',
+									)}
+								/>
+								<FileText size={13} className='shrink-0 text-fg-2' />
+								<span className='truncate text-fg-0'>
+									{file.path.slice(slash + 1)}
+								</span>
+								<span className='truncate text-11 text-fg-2'>
+									{slash > 0 ? file.path.slice(0, slash) : ''}
+								</span>
+								<span
+									className='num ml-auto shrink-0 rounded-full bg-bg-3 px-1.5 text-11 text-fg-1'
+									title={
+										file.capped
+											? 'Only the first matching lines of this file are listed'
+											: undefined
+									}
+								>
+									{fileMatchCount(file)}
+									{file.capped && '+'}
+								</span>
+							</button>
+							{replace && (
+								<IconButton
+									size='sm'
+									label={`Replace in ${file.path.slice(slash + 1)}`}
+									icon={<ReplaceAll size={12} />}
+									disabled={replace.disabled}
+									className={cn('mr-1 shrink-0', replaceButton)}
+									onClick={() => replace.onFile(file)}
+								/>
+							)}
+						</div>
 						{open && (
 							<ul>
 								{file.matches.map((m) => (
-									<li key={`${m.line}:${m.column}`}>
+									<li
+										key={`${m.line}:${m.column}`}
+										className='group flex items-center hover:bg-bg-2'
+									>
 										<button
 											type='button'
 											onClick={() =>
@@ -113,8 +142,8 @@ export function SearchResults({
 												})
 											}
 											className={cn(
-												'flex w-full items-baseline gap-2 py-0.5 pr-2 pl-9 text-left text-12',
-												'hover:bg-bg-2 focus-visible:shadow-glow focus-visible:outline-none',
+												'flex min-w-0 flex-1 items-baseline gap-2 py-0.5 pr-2 pl-9 text-left text-12',
+												'focus-visible:shadow-glow focus-visible:outline-none',
 											)}
 											title={`${file.path}:${m.line}`}
 											data-search-match={`${file.path}:${m.line}`}
@@ -128,6 +157,16 @@ export function SearchResults({
 												<Highlighted match={m} />
 											</span>
 										</button>
+										{replace && (
+											<IconButton
+												size='sm'
+												label={`Replace on line ${m.line}`}
+												icon={<Replace size={12} />}
+												disabled={replace.disabled}
+												className={cn('mr-1 shrink-0', replaceButton)}
+												onClick={() => replace.onLine(file, m.line)}
+											/>
+										)}
 									</li>
 								))}
 							</ul>

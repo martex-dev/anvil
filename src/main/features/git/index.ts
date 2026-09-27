@@ -1,18 +1,9 @@
-import { AnvilError } from '../../core/errors';
 import type { MainFeature } from '../../core/features';
+import { gitError } from './git-errors';
+import { blame, headContent, log, show } from './git-history';
+import { branches, checkout, deleteBranch, fetchRemotes, pull, push } from './git-remote';
 import { GitService } from './git-service';
-
-/** git prints useful reasons on stderr; keep the first lines, drop noise and hints. */
-function gitError(error: unknown): AnvilError {
-	if (error instanceof AnvilError) return error;
-	const raw = error instanceof Error ? error.message : String(error);
-	const message = raw
-		.split(/\r?\n/)
-		.filter((l) => l.trim() && !l.startsWith('hint:'))
-		.slice(0, 4)
-		.join('\n');
-	return new AnvilError('GIT_FAILED', message || 'git failed', error);
-}
+import { stash, stashCommand, stashList } from './git-stash';
 
 export const gitFeature: MainFeature = {
 	id: 'git',
@@ -36,19 +27,79 @@ export const gitFeature: MainFeature = {
 		);
 		ctx.ipc.handle('git:stage', (paths) => run(() => service.stage(paths)));
 		ctx.ipc.handle('git:unstage', (paths) => run(() => service.unstage(paths)));
-		ctx.ipc.handle('git:commit', ({ message }) => run(() => service.commit(message)));
-		ctx.ipc.handle('git:pull', () => run(() => service.pull()));
-		ctx.ipc.handle('git:push', () => run(() => service.push()));
-		ctx.ipc.handle('git:branches', () => run(() => service.branches(), false));
-		ctx.ipc.handle('git:checkout', ({ branch, create }) =>
-			run(() => service.checkout(branch, create)),
+		ctx.ipc.handle('git:init', () => run(() => service.init()));
+		ctx.ipc.handle('git:discard', ({ tracked, untracked }) =>
+			run(() => service.discard(tracked, untracked)),
 		);
-		ctx.ipc.handle('git:log', ({ limit }) => run(() => service.log(limit), false));
+		ctx.ipc.handle('git:conflictMarkers', (paths) =>
+			run(() => service.conflictMarkers(paths), false),
+		);
+		ctx.ipc.handle('git:commit', ({ message, amend }) =>
+			run(() => service.commit(message, amend ?? false)),
+		);
+		ctx.ipc.handle('git:lastCommitMessage', () =>
+			run(async () => ({ message: await service.lastCommitMessage() }), false),
+		);
+		const repo = (): Promise<string> => service.repo();
+		ctx.ipc.handle('git:pull', () => run(async () => pull(await repo())));
+		ctx.ipc.handle('git:push', () => run(async () => push(await repo())));
+		ctx.ipc.handle('git:fetch', ({ background }) =>
+			run(async () => {
+				try {
+					return await fetchRemotes(await repo(), background ?? false);
+				} catch (error) {
+					// A background fetch fails often (offline, VPN, expired token) and on its own
+					// schedule; it is logged here and the renderer stays quiet about it.
+					if (background)
+						ctx.log.warn('background fetch failed', { error: gitError(error).message });
+					throw error;
+				}
+			}),
+		);
+		ctx.ipc.handle('git:stash', ({ message }) =>
+			run(async () => stash(await repo(), message || undefined)),
+		);
+		ctx.ipc.handle('git:stashList', () => run(async () => stashList(await repo()), false));
+		ctx.ipc.handle('git:stashApply', ({ index }) =>
+			run(async () => stashCommand(await repo(), 'apply', index)),
+		);
+		ctx.ipc.handle('git:stashPop', ({ index }) =>
+			run(async () => stashCommand(await repo(), 'pop', index)),
+		);
+		ctx.ipc.handle('git:stashDrop', ({ index }) =>
+			run(async () => stashCommand(await repo(), 'drop', index)),
+		);
+		ctx.ipc.handle('git:branches', () => run(async () => branches(await repo()), false));
+		ctx.ipc.handle('git:checkout', ({ branch, create, remote }) =>
+			run(async () => checkout(await repo(), branch, create, remote ?? false)),
+		);
+		ctx.ipc.handle('git:deleteBranch', ({ branch, force }) =>
+			run(async () => deleteBranch(await repo(), branch, force)),
+		);
+		ctx.ipc.handle('git:log', ({ limit, path }) =>
+			run(async () => {
+				if (path === undefined) return log(await repo(), limit);
+				const located = await service.locate(path);
+				return located ? log(located.root, limit, located.repoPath) : [];
+			}, false),
+		);
+		ctx.ipc.handle('git:show', ({ hash, path, parent }) =>
+			run(async () => show(await repo(), hash, path, parent ?? false), false),
+		);
+		// Editor paths are relative to the open folder, which may be a subfolder of the repo.
 		ctx.ipc.handle('git:blame', ({ path, line }) =>
-			run(() => service.blame(path, line), false),
+			run(async () => {
+				const located = await service.locate(path);
+				return located ? blame(located.root, located.repoPath, line) : null;
+			}, false),
 		);
 		ctx.ipc.handle('git:headContent', (path) =>
-			run(async () => ({ content: await service.headContent(path) }), false),
+			run(async () => {
+				const located = await service.locate(path);
+				return {
+					content: located ? await headContent(located.root, located.repoPath) : null,
+				};
+			}, false),
 		);
 		ctx.ipc.handle('git:scanStaged', () => run(() => service.scanStaged(), false));
 	},

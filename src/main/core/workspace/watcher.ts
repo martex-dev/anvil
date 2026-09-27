@@ -30,13 +30,6 @@ const VENV_NAME = 'venv';
 /** Folder names that are build output in JS/Python projects, but often data folders elsewhere. */
 const BUILD_OUTPUT = ['out', 'dist', 'build'];
 
-/** Everything search skips (it has no per-project context, and build output is noise there). */
-export const IGNORED_DIRS: ReadonlySet<string> = new Set([
-	...ALWAYS_IGNORED,
-	VENV_NAME,
-	...BUILD_OUTPUT,
-]);
-
 /**
  * More changed paths than this in one batch (a checkout, an unzip, a training run's
  * checkpoints) are sent as a single "refresh everything" signal instead of a huge message.

@@ -1,12 +1,13 @@
-import { Check, Sparkles } from 'lucide-react';
+import { Check, Sparkles, Square } from 'lucide-react';
 import { type JSX, useEffect, useRef, useState } from 'react';
 
+import { call } from '../../lib/ipc';
 import { toast } from '../../stores/toast-store';
 import { Button } from '../../ui/Button';
 import { Dialog } from '../../ui/Dialog';
 import { IconButton } from '../../ui/IconButton';
 import { Kbd } from '../../ui/Kbd';
-import { generateCommitMessage } from '../ai/actions';
+import { cancelCommitMessage, generateCommitMessage } from '../ai/actions';
 import { useCommitDrafts } from './commit-draft-store';
 import { useCommitFocus } from './commit-focus';
 
@@ -16,7 +17,7 @@ interface CommitBoxProps {
 	branch: string | null;
 	stagedCount: number;
 	busy: boolean;
-	onCommit: (message: string) => Promise<boolean>;
+	onCommit: (message: string, amend: boolean) => Promise<boolean>;
 }
 
 export function CommitBox({
@@ -32,6 +33,10 @@ export function CommitBox({
 	const writing = useCommitDrafts((s) => s.writingRoot === root);
 	const setWritingRoot = useCommitDrafts((s) => s.setWritingRoot);
 	const [confirmReplace, setConfirmReplace] = useState(false);
+	const amending = useCommitDrafts((s) => s.amending[root] ?? false);
+	const setAmending = useCommitDrafts((s) => s.setAmending);
+	// The message the Amend checkbox filled in, so unticking it can take that text back out.
+	const prefilled = useRef<string | null>(null);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const commitRef = useRef<HTMLButtonElement>(null);
 
@@ -65,12 +70,46 @@ export function CommitBox({
 		else generate();
 	};
 	// Not while the AI is still streaming: that would commit a half-written message.
-	const canCommit = message.trim().length > 0 && stagedCount > 0 && !busy && !writing;
+	// An amend may only reword the last commit, so it needs no staged changes.
+	const canCommit =
+		message.trim().length > 0 && (stagedCount > 0 || amending) && !busy && !writing;
+
+	const toggleAmend = (on: boolean): void => {
+		setAmending(root, on);
+		if (!on) {
+			if (prefilled.current !== null && message === prefilled.current) setMessage('');
+			prefilled.current = null;
+			return;
+		}
+		// A message the user already typed is theirs; only an empty box gets the last one.
+		if (message.trim()) return;
+		call('git:lastCommitMessage')
+			.then(({ message: last }) => {
+				if (last === null) {
+					toast.info('Nothing to amend', 'This repository has no commits yet.');
+					setAmending(root, false);
+					return;
+				}
+				if (useCommitDrafts.getState().drafts[root]) return;
+				prefilled.current = last;
+				setMessage(last);
+			})
+			.catch((error: unknown) =>
+				toast.error(
+					'Could not read the last commit message',
+					error instanceof Error ? error.message : undefined,
+				),
+			);
+	};
 
 	const submit = (): void => {
 		if (!canCommit) return;
-		void onCommit(message.trim()).then((ok) => {
-			if (ok) setMessage('');
+		void onCommit(message.trim(), amending).then((ok) => {
+			if (ok) {
+				setMessage('');
+				setAmending(root, false);
+				prefilled.current = null;
+			}
 			// The Commit button is disabled while committing (and stays so once the message is
 			// cleared), which drops focus to <body>. Hand it back to the message box, unless the
 			// user has already moved on to something else.
@@ -91,6 +130,11 @@ export function CommitBox({
 					aria-busy={writing || undefined}
 					onChange={(e) => setMessage(e.target.value)}
 					onKeyDown={(e) => {
+						if (e.key === 'Escape' && writing) {
+							e.preventDefault();
+							cancelCommitMessage();
+							return;
+						}
 						if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
 							e.preventDefault();
 							submit();
@@ -104,15 +148,36 @@ export function CommitBox({
 					}
 					className={`selectable w-full resize-y rounded-md border border-border-strong bg-bg-2/60 py-1.5 pr-8 pl-2 text-12 text-fg-0 outline-none placeholder:text-fg-2 focus:border-accent focus:shadow-glow ${writing ? 'shimmer' : ''}`}
 				/>
-				<IconButton
-					size='sm'
-					label='Write the message with AI (from staged changes)'
-					icon={<Sparkles size={12} className='text-accent-2' />}
-					disabled={writing}
-					onClick={requestGenerate}
-					className='absolute top-1 right-1'
-				/>
+				{writing ? (
+					// Stopping keeps what was written so far, editable (generateCommitMessage resolves
+					// with the partial text), so a message going the wrong way can be cut short.
+					<IconButton
+						size='sm'
+						label='Stop writing the message'
+						icon={<Square size={11} className='fill-current text-accent-2' />}
+						onClick={() => cancelCommitMessage()}
+						className='absolute top-1 right-1'
+					/>
+				) : (
+					<IconButton
+						size='sm'
+						label='Write the message with AI (from staged changes)'
+						icon={<Sparkles size={12} className='text-accent-2' />}
+						onClick={requestGenerate}
+						className='absolute top-1 right-1'
+					/>
+				)}
 			</div>
+			<label className='flex w-fit cursor-pointer items-center gap-1.5 text-11 text-fg-1 select-none'>
+				<input
+					type='checkbox'
+					checked={amending}
+					disabled={busy || writing}
+					onChange={(e) => toggleAmend(e.target.checked)}
+					className='size-3 accent-accent focus-visible:shadow-glow focus-visible:outline-none'
+				/>
+				Amend last commit
+			</label>
 			<Button
 				ref={commitRef}
 				variant='primary'
@@ -121,9 +186,11 @@ export function CommitBox({
 				disabled={!canCommit}
 				loading={busy}
 				onClick={submit}
-				title={stagedCount === 0 ? 'Stage changes first' : undefined}
+				title={stagedCount === 0 && !amending ? 'Stage changes first' : undefined}
 			>
-				Commit{stagedCount > 0 ? ` ${stagedCount} file${stagedCount === 1 ? '' : 's'}` : ''}
+				{amending
+					? 'Amend Last Commit'
+					: `Commit${stagedCount > 0 ? ` ${stagedCount} file${stagedCount === 1 ? '' : 's'}` : ''}`}
 				<Kbd keys='Ctrl+Enter' className='ml-1 opacity-70' />
 			</Button>
 			<Dialog

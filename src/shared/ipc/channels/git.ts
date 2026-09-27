@@ -37,6 +37,11 @@ export const GitStatusSchema = z.object({
 export type GitStatus = z.infer<typeof GitStatusSchema>;
 
 const RepoPath = z.string().min(1).max(4096);
+/**
+ * Path lists go to git in command-line-sized batches, so Stage All on a fresh checkout with tens
+ * of thousands of files works.
+ */
+const RepoPaths = z.array(RepoPath).max(100_000);
 
 export const GitCommitSchema = z.object({
 	hash: z.string(),
@@ -45,8 +50,22 @@ export const GitCommitSchema = z.object({
 	date: z.number(),
 	message: z.string(),
 	refs: z.string(),
+	/** File history only: the file's repo path in this commit, and its old path if renamed here. */
+	path: z.string().optional(),
+	from: z.string().optional(),
 });
 export type GitCommit = z.infer<typeof GitCommitSchema>;
+
+export const GitStashSchema = z.object({
+	/** n of stash@{n}; 0 is the newest. */
+	index: z.number().int(),
+	message: z.string(),
+	/** Epoch ms. */
+	date: z.number(),
+});
+export type GitStash = z.infer<typeof GitStashSchema>;
+
+const StashIndex = z.object({ index: z.number().int().min(0).max(10_000) });
 
 export const GitBlameSchema = z.object({
 	hash: z.string(),
@@ -69,26 +88,99 @@ export const gitChannels = defineChannels({
 			binary: z.boolean(),
 		}),
 	},
-	'git:stage': { input: z.array(RepoPath).min(1).max(5000), output: z.void() },
-	'git:unstage': { input: z.array(RepoPath).min(1).max(5000), output: z.void() },
+	'git:stage': { input: RepoPaths.min(1), output: z.void() },
+	/** Pass a staged rename's `from` too, or the old path's deletion stays staged. */
+	'git:unstage': { input: RepoPaths.min(1), output: z.void() },
+	/**
+	 * Throws away working-tree changes: `tracked` files go back to their staged (index) version,
+	 * `untracked` files are deleted.
+	 */
+	'git:discard': {
+		input: z
+			.object({ tracked: RepoPaths, untracked: RepoPaths })
+			.refine((d) => d.tracked.length + d.untracked.length > 0, 'No paths to discard'),
+		output: z.void(),
+	},
+	/** `git init` in the open folder. */
+	'git:init': { input: z.void(), output: z.void() },
+	/** Which of these files still contain conflict markers (<<<<<<<, =======, >>>>>>>). */
+	'git:conflictMarkers': { input: RepoPaths.min(1).max(5000), output: z.array(z.string()) },
 	'git:commit': {
-		input: z.object({ message: z.string().trim().min(1).max(20_000) }),
+		input: z.object({
+			message: z.string().trim().min(1).max(20_000),
+			/** Replace the last commit (message and staged changes) instead of adding one. */
+			amend: z.boolean().optional(),
+		}),
 		output: z.object({ hash: z.string() }),
+	},
+	/** Full message of HEAD (to prefill an amend); null before the first commit. */
+	'git:lastCommitMessage': {
+		input: z.void(),
+		output: z.object({ message: z.string().nullable() }),
 	},
 	'git:pull': { input: z.void(), output: z.object({ summary: z.string() }) },
 	'git:push': { input: z.void(), output: z.object({ summary: z.string() }) },
+	/**
+	 * `git fetch --all --prune`. `background` (the periodic auto-fetch) never opens a sign-in
+	 * window; a fetch that needs credentials just fails.
+	 */
+	'git:fetch': {
+		input: z.object({ background: z.boolean().optional() }),
+		output: z.object({ summary: z.string() }),
+	},
+	/** Stashes every change, untracked files included (VS Code's "Stash (Include Untracked)"). */
+	'git:stash': {
+		input: z.object({ message: z.string().trim().max(500).optional() }),
+		output: z.void(),
+	},
+	'git:stashList': { input: z.void(), output: z.array(GitStashSchema) },
+	'git:stashApply': { input: StashIndex, output: z.void() },
+	'git:stashPop': { input: StashIndex, output: z.void() },
+	'git:stashDrop': { input: StashIndex, output: z.void() },
 	'git:branches': {
 		input: z.void(),
-		output: z.object({ current: z.string().nullable(), local: z.array(z.string()) }),
+		output: z.object({
+			current: z.string().nullable(),
+			local: z.array(z.string()),
+			/** Remote-tracking branches, e.g. "origin/feature" (without origin/HEAD). */
+			remote: z.array(z.string()),
+		}),
 	},
 	'git:checkout': {
-		input: z.object({ branch: z.string().min(1).max(255), create: z.boolean() }),
+		input: z.object({
+			branch: z.string().min(1).max(255),
+			create: z.boolean(),
+			/** `branch` is a remote branch ("origin/x"): switch to a local branch tracking it. */
+			remote: z.boolean().optional(),
+		}),
+		/** The local branch now checked out. */
+		output: z.object({ branch: z.string() }),
+	},
+	/** `git branch -d`; `force` (-D) also deletes a branch that isn't merged. */
+	'git:deleteBranch': {
+		input: z.object({ branch: z.string().min(1).max(255), force: z.boolean() }),
 		output: z.void(),
 	},
 	/** Recent commits of HEAD, newest first. */
 	'git:log': {
-		input: z.object({ limit: z.number().int().min(1).max(500) }),
+		input: z.object({
+			limit: z.number().int().min(1).max(500),
+			/** Relative to the open folder: only commits touching that file, following renames. */
+			path: z.string().min(1).max(4096).optional(),
+		}),
 		output: z.array(GitCommitSchema),
+	},
+	/**
+	 * A file (repo path) as it was in a commit, or in the commit's first parent. null when it
+	 * didn't exist there; binary or oversized files come back as `binary`.
+	 */
+	'git:show': {
+		input: z.object({
+			hash: z.string().regex(/^[0-9a-f]{4,64}$/, 'Not a commit hash'),
+			path: RepoPath,
+			parent: z.boolean().optional(),
+		}),
+		output: z.object({ content: z.string().nullable(), binary: z.boolean() }),
 	},
 	/** Who last touched this line (1-based); null for uncommitted lines. */
 	'git:blame': {

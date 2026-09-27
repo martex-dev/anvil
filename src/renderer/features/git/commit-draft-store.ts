@@ -4,6 +4,9 @@ interface CommitDraftState {
 	/** Unsent commit message per workspace root. */
 	drafts: Record<string, string>;
 	setDraft: (root: string, message: string) => void;
+	/** Roots whose next commit amends the last one (the Amend checkbox). */
+	amending: Record<string, boolean>;
+	setAmending: (root: string, on: boolean) => void;
 	/**
 	 * Root whose message the AI is streaming, if any. Kept here, not in the component, so a
 	 * view switch mid-stream doesn't hand back an editable, committable half-written message.
@@ -25,6 +28,8 @@ export const useCommitDrafts = create<CommitDraftState>((set) => ({
 				...(message ? [[root, message] as const] : []),
 			]),
 		})),
+	amending: {},
+	setAmending: (root, on) => set((s) => ({ amending: { ...s.amending, [root]: on } })),
 	writingRoot: null,
 	setWritingRoot: (root) => set({ writingRoot: root }),
 }));

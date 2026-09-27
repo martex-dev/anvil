@@ -1,11 +1,19 @@
 import {
+	Archive,
+	ArchiveRestore,
 	ArrowDown,
 	ArrowDownUp,
 	ArrowUp,
+	CloudDownload,
+	FileClock,
 	FileDiff,
+	FolderGit2,
 	GitBranch,
+	GitBranchMinus,
 	GitCommitHorizontal,
 	History,
+	Trash2,
+	Undo2,
 } from 'lucide-react';
 
 import type { Command } from '../../app/commands/types';
@@ -14,36 +22,12 @@ import { useLayoutStore } from '../../stores/layout-store';
 import { focusedTab, useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
 import { quickPick } from '../../ui/QuickPick';
+import { deleteBranch, switchBranch } from './branch-actions';
 import { useCommitFocus } from './commit-focus';
-import { refreshGit, runRemote } from './git-ops';
-
-async function switchBranch(): Promise<void> {
-	const picked = await quickPick({
-		title: 'branch',
-		placeholder: 'Switch to a branch, or type a new name to create it',
-		loadErrorTitle: 'Could not list branches',
-		items: call('git:branches').then((b) =>
-			b.local.map((name) => ({
-				id: name,
-				label: name,
-				current: name === b.current,
-				icon: <GitBranch size={13} />,
-			})),
-		),
-		allowCustom: { label: (text) => `Create branch "${text}" and switch to it` },
-	});
-	if (!picked) return;
-	const create = picked.startsWith('custom:');
-	const branch = create ? picked.slice(7) : picked;
-	try {
-		await call('git:checkout', { branch, create });
-		toast.success(create ? 'Branch created' : 'Switched branch', branch);
-	} catch (error) {
-		toast.error('Checkout failed', error instanceof Error ? error.message : undefined);
-	} finally {
-		void refreshGit();
-	}
-}
+import { showFileHistory } from './file-history';
+import { discardChanges, initRepository, pickStash, stashChanges } from './git-actions';
+import { runRemote } from './git-ops';
+import { openDiff } from './open-diff';
 
 async function showLog(): Promise<void> {
 	const hash = await quickPick({
@@ -93,7 +77,6 @@ async function diffActiveFile(): Promise<void> {
 		toast.info('No changes', `${tab.path} matches HEAD.`);
 		return;
 	}
-	const { openDiff } = await import('./GitPanel');
 	await openDiff(change, status.staged.includes(change));
 }
 
@@ -117,6 +100,13 @@ export const GIT_COMMANDS: Command[] = [
 		run: switchBranch,
 	},
 	{
+		id: 'git.deleteBranch',
+		title: 'Delete Branch…',
+		category: 'Git',
+		icon: GitBranchMinus,
+		run: deleteBranch,
+	},
+	{
 		id: 'git.pull',
 		title: 'Pull',
 		category: 'Git',
@@ -135,6 +125,16 @@ export const GIT_COMMANDS: Command[] = [
 		},
 	},
 	{
+		id: 'git.fetch',
+		title: 'Fetch',
+		category: 'Git',
+		keywords: ['prune', 'remote'],
+		icon: CloudDownload,
+		run: async () => {
+			await runRemote('fetch', { announce: true });
+		},
+	},
+	{
 		id: 'git.sync',
 		title: 'Sync (Pull then Push)',
 		category: 'Git',
@@ -145,7 +145,74 @@ export const GIT_COMMANDS: Command[] = [
 				await runRemote('push', { announce: true });
 		},
 	},
+	{
+		id: 'git.discardAll',
+		title: 'Discard All Changes…',
+		category: 'Git',
+		keywords: ['revert', 'reset', 'clean'],
+		icon: Undo2,
+		run: async () => {
+			const status = await call('git:status').catch((error: unknown) => {
+				toast.error(
+					'Could not read git status',
+					error instanceof Error ? error.message : undefined,
+				);
+				return null;
+			});
+			if (!status?.isRepo) return;
+			if (status.unstaged.length === 0) {
+				toast.info('Nothing to discard', 'There are no unstaged changes.');
+				return;
+			}
+			await discardChanges(status.unstaged);
+		},
+	},
+	{
+		id: 'git.stash',
+		title: 'Stash (Include Untracked)…',
+		category: 'Git',
+		keywords: ['shelve', 'save changes'],
+		icon: Archive,
+		run: stashChanges,
+	},
+	{
+		id: 'git.stashPop',
+		title: 'Pop Stash…',
+		category: 'Git',
+		icon: ArchiveRestore,
+		run: () => pickStash('pop'),
+	},
+	{
+		id: 'git.stashApply',
+		title: 'Apply Stash…',
+		category: 'Git',
+		icon: ArchiveRestore,
+		run: () => pickStash('apply'),
+	},
+	{
+		id: 'git.stashDrop',
+		title: 'Drop Stash…',
+		category: 'Git',
+		icon: Trash2,
+		run: () => pickStash('drop'),
+	},
+	{
+		id: 'git.init',
+		title: 'Initialize Repository',
+		category: 'Git',
+		keywords: ['init', 'create repository'],
+		icon: FolderGit2,
+		run: initRepository,
+	},
 	{ id: 'git.log', title: 'Show Recent Commits', category: 'Git', icon: History, run: showLog },
+	{
+		id: 'git.fileHistory',
+		title: 'File History',
+		category: 'Git',
+		keywords: ['log', 'blame', 'commits', 'timeline'],
+		icon: FileClock,
+		run: showFileHistory,
+	},
 	{
 		id: 'git.diffFile',
 		title: 'Diff Active File',

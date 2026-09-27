@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { useCommitDrafts } from './commit-draft-store';
 
-beforeEach(() => useCommitDrafts.setState({ drafts: {}, writingRoot: null }));
+beforeEach(() => useCommitDrafts.setState({ drafts: {}, amending: {}, writingRoot: null }));
 
 describe('commit drafts', () => {
 	it('keeps one draft per workspace root', () => {
@@ -29,5 +29,13 @@ describe('commit drafts', () => {
 		expect(useCommitDrafts.getState().writingRoot).toBe('C:\\work\\alpha');
 		setWritingRoot(null);
 		expect(useCommitDrafts.getState().writingRoot).toBeNull();
+	});
+
+	it('keeps the amend choice per workspace root', () => {
+		const { setAmending } = useCommitDrafts.getState();
+		setAmending('C:\\work\\alpha', true);
+		expect(useCommitDrafts.getState().amending).toEqual({ 'C:\\work\\alpha': true });
+		setAmending('C:\\work\\alpha', false);
+		expect(useCommitDrafts.getState().amending['C:\\work\\alpha']).toBe(false);
 	});
 });

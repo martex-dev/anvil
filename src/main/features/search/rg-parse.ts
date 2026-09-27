@@ -99,9 +99,13 @@ export class ResultCollector {
 		return true;
 	}
 
+	/** Files sorted by path: ripgrep searches in parallel, so its order changes from run to run. */
 	result(): SearchFile[] {
+		const files = [...this.files.values()].sort((a, b) =>
+			a.path < b.path ? -1 : a.path > b.path ? 1 : 0,
+		);
 		// rg stops a file at the per-file cap silently; a full file may have had more lines.
-		return [...this.files.values()].map((f) =>
+		return files.map((f) =>
 			f.matches.length >= this.perFileLimit ? { ...f, capped: true } : f,
 		);
 	}
