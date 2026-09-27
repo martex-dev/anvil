@@ -4,6 +4,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ActiveEditor } from './editor-context';
 
 const streamOnce = vi.fn<(options: { signal?: AbortSignal }) => Promise<string>>();
+const fileContext = vi.fn((_: { model: Monaco.editor.ITextModel }) => ({
+	kind: 'file',
+	label: 'a.py',
+	language: 'python',
+	text: '',
+}));
 let active: ActiveEditor | null = null;
 
 vi.mock('./requests', () => ({ streamOnce: (o: { signal?: AbortSignal }) => streamOnce(o) }));
@@ -11,7 +17,7 @@ vi.mock('../../lib/monaco/load', () => ({ getLoadedMonaco: () => null }));
 vi.mock('../../stores/toast-store', () => ({ toast: { info: vi.fn(), error: vi.fn() } }));
 vi.mock('./editor-context', () => ({
 	activeEditor: () => active,
-	fileContext: () => ({ kind: 'file', label: 'a.py', language: 'python', text: '' }),
+	fileContext: (e: { model: Monaco.editor.ITextModel }) => fileContext(e),
 	problemsContext: () => null,
 }));
 
@@ -190,6 +196,43 @@ describe('inline edit', () => {
 		editor.layout({ contentLeft: 40, contentWidth: 400, verticalScrollbarWidth: 14 });
 
 		expect(host?.style).toMatchObject({ left: '40px', width: '362px' });
+	});
+
+	it('sends its own file when focus has moved to another editor', async () => {
+		const m = open('x = 1\n', range(1, 1, 1, 6));
+		const other = fakeModel('y = 2\n');
+		active = {
+			path: 'b.py',
+			language: 'python',
+			editor: fakeEditor(other.model, range(1, 1, 1, 1)).editor,
+			model: other.model,
+			selection: null,
+		};
+		fileContext.mockClear();
+		streamOnce.mockResolvedValue('x = 10');
+
+		await submitInlineEdit('bump');
+
+		expect(fileContext.mock.calls[0]?.[0].model).toBe(m.model);
+		expect(m.text()).toBe('x = 10\n');
+		expect(other.text()).toBe('y = 2\n');
+	});
+
+	it('refuses to apply over code that was edited while the AI was writing', async () => {
+		const m = open('def f():\n    return 1\n', range(1, 1, 2, 13));
+		streamOnce.mockImplementation(() => {
+			// The user fixes line 2 by hand while the reply streams.
+			m.model.pushEditOperations([], [{ range: range(2, 12, 2, 13), text: '2' }], () => null);
+			return Promise.resolve('def f():\n    return 3');
+		});
+
+		await submitInlineEdit('return 3');
+
+		expect(m.text()).toBe('def f():\n    return 2\n');
+		expect(useInlineEdit.getState()).toMatchObject({
+			phase: 'prompt',
+			error: expect.stringContaining('changed while the AI was writing') as unknown,
+		});
 	});
 
 	it('rejects an insert as its own undo step, keeping the text after the cursor', async () => {

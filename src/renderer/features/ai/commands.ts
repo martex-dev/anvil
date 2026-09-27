@@ -117,7 +117,7 @@ export const AI_COMMANDS: Command[] = [
 		id: 'ai.stop',
 		title: 'Stop Generating',
 		category: 'AI',
-		keywords: ['cancel', 'abort'],
+		keywords: ['cancel', 'abort', 'commit message'],
 		icon: Square,
 		run: stopGenerating,
 	},

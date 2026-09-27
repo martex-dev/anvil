@@ -5,6 +5,8 @@ import type { AiContext, AiModelRef } from '@shared/ipc/channels/ai';
 import { call } from '../../lib/ipc';
 import { toast } from '../../stores/toast-store';
 import { buildContext, buildHistory, MAX_CONTEXT } from './chat-history';
+import { loadChat, saveChat, stoppedReply } from './chat-persist';
+import { safeContext } from './secret-filter';
 
 export interface ChatMessage {
 	id: string;
@@ -55,34 +57,16 @@ interface ChatState {
 		truncated?: boolean,
 	) => void;
 	onError: (requestId: string, message: string) => void;
+	/**
+	 * The open folder, whose conversation is shown; undefined until it is known, and then
+	 * nothing is saved (an empty chat must not overwrite a folder's history).
+	 */
+	workspace: string | null | undefined;
+	/** Switches to the conversation of the folder just opened (null: no folder). */
+	openWorkspace: (root: string | null) => void;
 }
 
-const KEY = 'anvil.chat';
 const MAX_LABEL = 500;
-
-/** A reply that will get no more text; one without any says so as its error. */
-function stoppedReply(m: ChatMessage): ChatMessage {
-	return { ...m, streaming: false, stopped: true, ...(m.content ? {} : { error: 'Stopped' }) };
-}
-
-function load(): ChatMessage[] {
-	try {
-		const raw = JSON.parse(localStorage.getItem(KEY) ?? '[]') as unknown;
-		return Array.isArray(raw)
-			? (raw as ChatMessage[])
-					.filter(
-						(m) =>
-							m &&
-							typeof m.content === 'string' &&
-							(m.role === 'user' || m.role === 'assistant'),
-					)
-					// A reply still streaming when the app closed never finished.
-					.map((m) => (m.streaming ? stoppedReply(m) : m))
-			: [];
-	} catch {
-		return [];
-	}
-}
 
 export const useChat = create<ChatState>((set, get) => {
 	/** Appends `user` and a streaming reply after `before`, and sends the request. */
@@ -115,14 +99,26 @@ export const useChat = create<ChatState>((set, get) => {
 	};
 
 	return {
-		messages: load(),
+		messages: [],
+		workspace: undefined,
+		openWorkspace: (root) => {
+			if (get().workspace === root) return;
+			// The previous folder's latest messages are still waiting for the debounced save.
+			flushSave();
+			// A reply still streaming belongs to the folder being left; it is saved as stopped.
+			get().stop();
+			set({ workspace: root, messages: loadChat(root), activeRequest: null, attached: [] });
+		},
 		activeRequest: null,
 		attached: [],
 		draft: '',
 		setDraft: (draft) => set({ draft }),
 		attach: (raw) => {
+			// Every chat attachment passes here, so this is where secrets are masked: the model
+			// can explain or fix code without ever seeing a key's value.
+			const { item: safe, hidden } = safeContext(raw);
 			// Labels are capped by the ai:send schema; a longer one would fail the whole request.
-			const item = { ...raw, label: raw.label.slice(0, MAX_LABEL) };
+			const item = { ...safe, label: safe.label.slice(0, MAX_LABEL) };
 			// One item per kind+label: re-attaching the same file refreshes it.
 			const others = get().attached.filter(
 				(a) => !(a.kind === item.kind && a.label === item.label),
@@ -135,6 +131,11 @@ export const useChat = create<ChatState>((set, get) => {
 				return;
 			}
 			set({ attached: [...others, item] });
+			if (hidden > 0)
+				toast.info(
+					'Secrets kept out of the chat',
+					`${item.label}: ${hidden === 1 ? 'one secret was' : `${hidden} secrets were`} masked before sending.`,
+				);
 		},
 		detach: (index) => set((s) => ({ attached: s.attached.filter((_, i) => i !== index) })),
 		send: (text, model) => {
@@ -224,19 +225,23 @@ export const useChat = create<ChatState>((set, get) => {
 	};
 });
 
-// Keep the conversation across restarts, without the (possibly large) attached context.
+// Keep each folder's conversation across restarts. Saves are debounced (a reply streams in
+// many small updates) and bound to the folder they belong to when scheduled.
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
-useChat.subscribe((s) => {
+let pendingSave: (() => void) | null = null;
+
+function flushSave(): void {
 	if (saveTimer) clearTimeout(saveTimer);
-	saveTimer = setTimeout(() => {
-		try {
-			const slim = s.messages.slice(-80).map(({ context, ...m }) => ({
-				...m,
-				...(context ? { context: context.map((c) => ({ ...c, text: '' })) } : {}),
-			}));
-			localStorage.setItem(KEY, JSON.stringify(slim));
-		} catch {
-			// Storage full: the chat just won't be restored.
-		}
-	}, 500);
+	saveTimer = null;
+	const save = pendingSave;
+	pendingSave = null;
+	save?.();
+}
+
+useChat.subscribe((s, prev) => {
+	if (s.workspace === undefined || s.messages === prev.messages) return;
+	const { workspace, messages } = s;
+	pendingSave = () => saveChat(workspace, messages);
+	if (saveTimer) clearTimeout(saveTimer);
+	saveTimer = setTimeout(flushSave, 500);
 });

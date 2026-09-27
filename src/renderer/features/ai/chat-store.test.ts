@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { useToastStore } from '../../stores/toast-store';
 import { useChat } from './chat-store';
@@ -11,6 +11,33 @@ describe('chat send', () => {
 		expect(useChat.getState().send('second', model)).toBe(false);
 		expect(useChat.getState().messages.filter((m) => m.role === 'user')).toHaveLength(1);
 		expect(useChat.getState().send('   ', model)).toBe(false);
+	});
+});
+
+describe('chat per folder', () => {
+	it('switches to the opened folder’s conversation and drops the old attachments', () => {
+		const saved = new Map<string, string>([
+			['anvil.chat:C:\\b', JSON.stringify([{ id: 'b1', role: 'user', content: 'about b' }])],
+		]);
+		vi.stubGlobal('localStorage', {
+			getItem: (k: string) => saved.get(k) ?? null,
+			setItem: (k: string, v: string) => void saved.set(k, v),
+			removeItem: (k: string) => void saved.delete(k),
+		});
+		useChat.setState({
+			workspace: 'C:\\a',
+			activeRequest: null,
+			messages: [{ id: 'a1', role: 'user', content: 'about a' }],
+			attached: [{ kind: 'file', label: 'a.py', language: null, text: 'x' }],
+		});
+
+		useChat.getState().openWorkspace('C:\\b');
+
+		expect(useChat.getState().messages.map((m) => m.content)).toEqual(['about b']);
+		expect(useChat.getState().attached).toEqual([]);
+		// Folder A's conversation was saved on the way out.
+		expect(saved.get('anvil.chat:C:\\a')).toContain('about a');
+		vi.unstubAllGlobals();
 	});
 });
 
@@ -132,6 +159,20 @@ describe('chat attach', () => {
 		expect(useToastStore.getState().toasts.at(-1)?.title).toBe('Up to 20 attachments');
 		useChat.getState().attach(file('f3.py'));
 		expect(useChat.getState().attached.at(-1)?.label).toBe('f3.py');
+	});
+
+	it('masks secrets in what it attaches and says so', () => {
+		const key = `sk-ant-${'a1B2'.repeat(10)}`;
+		useToastStore.setState({ toasts: [] });
+		useChat.setState({ attached: [] });
+		useChat.getState().attach({
+			kind: 'file',
+			label: 'app.py',
+			language: 'python',
+			text: `client = Anthropic(api_key="${key}")`,
+		});
+		expect(useChat.getState().attached[0]?.text).not.toContain(key);
+		expect(useToastStore.getState().toasts.at(-1)?.title).toBe('Secrets kept out of the chat');
 	});
 
 	it('clamps a label to what the request allows', () => {

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { call } from '../../lib/ipc';
 import { useToastStore } from '../../stores/toast-store';
+import { getModel } from '../editor/file-ops';
 import {
 	addDocstring,
 	askAiAboutProblem,
@@ -23,6 +24,7 @@ vi.mock('./ai-settings', () => ({
 
 vi.mock('../../lib/ipc', () => ({ call: vi.fn(() => Promise.reject(new Error('no ipc'))) }));
 vi.mock('../../stores/workbench-store', () => ({ requestOpenFile: vi.fn() }));
+vi.mock('../editor/file-ops', () => ({ getModel: vi.fn(() => null) }));
 vi.mock('./inline-edit', () => ({ startInlineEdit: vi.fn() }));
 vi.mock('../../lib/monaco/load', () => ({ getLoadedMonaco: () => ({}) }));
 vi.mock('./editor-context', async (original) => ({
@@ -159,5 +161,27 @@ describe('feedback instead of silence', () => {
 			.toasts.find((t) => t.title === 'Sent without the file');
 		expect(warn?.description).toContain('EACCES');
 		expect(useChat.getState().messages[0]?.context?.map((c) => c.kind)).toEqual(['problems']);
+	});
+
+	it('sends the unsaved buffer the problem was found in, not the file on disk', async () => {
+		vi.mocked(call).mockClear();
+		vi.mocked(getModel).mockReturnValueOnce({
+			getValue: () => 'import os\nx = undefined_name\n',
+		} as unknown as ReturnType<typeof getModel>);
+		await askAiAboutProblem({
+			path: 'a.py',
+			line: 2,
+			column: 5,
+			message: '"undefined_name" is not defined',
+			severity: 'error',
+			source: 'basedpyright',
+		});
+		expect(call).not.toHaveBeenCalledWith('fs:readFile', 'a.py');
+		const context = useChat.getState().messages[0]?.context;
+		expect(context?.[0]).toMatchObject({
+			kind: 'file',
+			label: 'a.py',
+			text: 'import os\nx = undefined_name\n',
+		});
 	});
 });

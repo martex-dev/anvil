@@ -10,6 +10,7 @@ import { bindInlineEditKeys } from './inline-edit-keys';
 import { appliedRange, currentRange, trackRange } from './inline-range';
 import { extractCode, lineCount, withCursor } from './inline-text';
 import { streamOnce } from './requests';
+import { isSecretFile, maskSecrets, safeContext } from './secret-filter';
 
 export type InlinePhase = 'prompt' | 'generating' | 'review';
 
@@ -205,30 +206,32 @@ export async function submitInlineEdit(instruction: string): Promise<void> {
 	const s = session;
 	if (!s || !instruction.trim() || !refreshRange(s)) return;
 	const monaco = getLoadedMonaco();
-	const ctx = activeEditor();
 	const insert =
 		s.range.startLineNumber === s.range.endLineNumber &&
 		s.range.startColumn === s.range.endColumn;
 	const path = useInlineEdit.getState().path;
-	const context: AiContext[] = [];
-	if (ctx) {
-		const file = fileContext(ctx);
-		if (insert) {
-			const offset = s.model.getOffsetAt({
-				lineNumber: s.range.startLineNumber,
-				column: s.range.startColumn,
-			});
-			file.text = withCursor(s.model.getValue(), offset);
-		}
-		context.push(file);
-		const problems = monaco
-			? problemsContext(monaco, ctx, {
-					start: s.range.startLineNumber,
-					end: s.range.endLineNumber,
-				})
-			: null;
-		if (problems) context.push(problems);
+	// The session's own model, not the focused editor's: in a split, focus may have moved to
+	// the other group (another file) since the box opened.
+	const target = { path, language: s.model.getLanguageId(), model: s.model };
+	// The rest of the file is background: its secrets are masked (a key file is withheld). The
+	// selection below goes as it is, since the reply has to fit back in its place.
+	const file = safeContext(fileContext(target)).item;
+	if (insert && !isSecretFile(path)) {
+		const offset = s.model.getOffsetAt({
+			lineNumber: s.range.startLineNumber,
+			column: s.range.startColumn,
+		});
+		// Masking keeps the length, so the cursor offset still points at the same spot.
+		file.text = withCursor(maskSecrets(s.model.getValue(), path).text, offset);
 	}
+	const context: AiContext[] = [file];
+	const problems = monaco
+		? problemsContext(monaco, target, {
+				start: s.range.startLineNumber,
+				end: s.range.endLineNumber,
+			})
+		: null;
+	if (problems) context.push(problems);
 	if (!insert)
 		context.push({
 			kind: 'selection',
@@ -236,6 +239,8 @@ export async function submitInlineEdit(instruction: string): Promise<void> {
 			language: s.model.getLanguageId(),
 			text: s.original,
 		});
+	/** The code the reply is written for; if the file's copy changes meanwhile, it is stale. */
+	const sent = s.original;
 	s.abort = new AbortController();
 	useInlineEdit.setState({ phase: 'generating', partial: '', error: null });
 	try {
@@ -265,6 +270,14 @@ export async function submitInlineEdit(instruction: string): Promise<void> {
 		}
 		// Edits made while it generated moved the code: replace it where it is now.
 		if (!refreshRange(s)) return;
+		// Edits inside it would be silently overwritten by a reply written for the old text.
+		if (!insert && s.original !== sent) {
+			useInlineEdit.setState({
+				phase: 'prompt',
+				error: 'The code changed while the AI was writing. Press Enter to run it on the new code.',
+			});
+			return;
+		}
 		if (!insert && s.original.endsWith('\n') === false && code.endsWith('\n'))
 			code = code.replace(/\n+$/, '');
 		s.ownEdit = true;
