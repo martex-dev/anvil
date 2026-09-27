@@ -26,11 +26,23 @@ export const useSearchRequest = create<{
 	tick: number;
 	query: string | null;
 	request: (query: string) => void;
+	/** Bumped by "Replace in Files": the panel opens its replace row and focuses it. */
+	replaceTick: number;
+	requestReplace: () => void;
 }>((set) => ({
 	tick: 0,
 	query: null,
 	request: (query) => set((s) => ({ tick: s.tick + 1, query })),
+	replaceTick: 0,
+	requestReplace: () => set((s) => ({ replaceTick: s.replaceTick + 1 })),
 }));
+
+/** "Replace in Files" (Ctrl+Shift+H): the Search view with its replace row open and focused. */
+export function replaceInFiles(): void {
+	useSearchParams.getState().setParams({ replaceOpen: true });
+	useLayoutStore.getState().showView('search');
+	useSearchRequest.getState().requestReplace();
+}
 
 /**
  * Opens the Search view with `query` as a literal search (e.g. a clicked Markdown #tag). The panel
