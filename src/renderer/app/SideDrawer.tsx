@@ -2,7 +2,7 @@ import { type JSX, useEffect } from 'react';
 
 import { cn } from '../lib/cn';
 import { useLayoutStore } from '../stores/layout-store';
-import { useRegisterOverlay } from '../stores/overlay-store';
+import { useOverlayStore, useRegisterOverlay } from '../stores/overlay-store';
 import { SideBar } from './SideBar';
 
 /**
@@ -16,7 +16,11 @@ export function SideDrawer({ side }: { side: 'left' | 'right' }): JSX.Element {
 	useEffect(() => {
 		if (!open) return;
 		const onKey = (e: KeyboardEvent): void => {
-			if (e.key === 'Escape') useLayoutStore.getState().toggleSide();
+			if (e.key !== 'Escape' || e.defaultPrevented) return;
+			// The drawer counts itself as an overlay; anything more is a dialog, menu or picker
+			// on top of it, and this Escape belongs to that.
+			if (useOverlayStore.getState().open.size > 1) return;
+			useLayoutStore.getState().toggleSide();
 		};
 		window.addEventListener('keydown', onKey);
 		return () => window.removeEventListener('keydown', onKey);
@@ -26,6 +30,9 @@ export function SideDrawer({ side }: { side: 'left' | 'right' }): JSX.Element {
 			data-part='drawer'
 			data-open={open}
 			data-side={side}
+			// Closed, it stays mounted for the slide animation: inert keeps Tab and screen readers
+			// out of it, which pointer-events alone does not.
+			inert={!open}
 			className={cn('absolute inset-0 z-30', !open && 'pointer-events-none')}
 		>
 			<div
