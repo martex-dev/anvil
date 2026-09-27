@@ -1,6 +1,4 @@
-import { existsSync } from 'node:fs';
-
-import { candidates } from './envs';
+import { candidates, interpreterExists } from './envs';
 
 /**
  * The Python every feature uses for the open folder: Run, the REPL, the language server,
@@ -61,7 +59,7 @@ class InterpreterState {
 		const key = root.toLowerCase();
 		if (!this.picked.has(key)) this.picked.set(key, this.loadPick(root));
 		const path = this.picked.get(key) ?? null;
-		return path && existsSync(path) ? path : null;
+		return path && interpreterExists(path) ? path : null;
 	}
 
 	/** Resolved interpreter for a folder (or for no folder at all). Null if none is installed. */
@@ -70,7 +68,7 @@ class InterpreterState {
 			const explicit = this.explicit(root);
 			if (explicit) return explicit;
 		}
-		return candidates(root)[0]?.path ?? this.system.find((p) => existsSync(p)) ?? null;
+		return candidates(root)[0]?.path ?? this.system.find((p) => interpreterExists(p)) ?? null;
 	}
 }
 

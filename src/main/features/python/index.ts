@@ -10,7 +10,7 @@ import { AnvilError, errorMessage } from '../../core/errors';
 import type { MainFeature } from '../../core/features';
 import { psQuote, shQuote } from '../../core/shell-quote';
 import { toAbsolute } from '../../core/workspace/fs-guard';
-import { discoverEnvs, envDirOf, findEnv } from './envs';
+import { discoverEnvs, envDirOf, findEnv, interpreterExists } from './envs';
 import { activatedEnv, interpreter, setReplSupport } from './interpreter';
 import { runRuffFormat } from './ruff-format';
 import { cellCommand, CellStager, removeCellFiles, REPL_STARTUP, stagedCode } from './staged-cells';
@@ -150,7 +150,7 @@ export const pythonFeature: MainFeature = {
 			if (!root)
 				throw new AnvilError('PY_NO_FOLDER', 'Open a folder to pick its interpreter');
 			if (path !== null) {
-				if (!existsSync(path))
+				if (!interpreterExists(path))
 					throw new AnvilError('PY_NOT_FOUND', `Interpreter not found: ${path}`);
 				// Only a discovered interpreter: every REPL, Run and tool call spawns this path.
 				// Rediscover once in case the env was created after the list was cached.
