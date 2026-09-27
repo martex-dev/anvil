@@ -11,6 +11,8 @@ export interface OpenFileRequest {
 	as?: 'code' | 'data' | 'markdown';
 	/** Open in the other editor group (split). */
 	side?: boolean;
+	/** Add the tab without switching to it (files a refactoring touched). */
+	background?: boolean;
 	/**
 	 * Move keyboard focus into the editor. Defaults to true, except for previews (single clicks
 	 * in a list keep focus in the list). Session restore passes false.

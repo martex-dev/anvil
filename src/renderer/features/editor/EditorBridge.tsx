@@ -8,17 +8,19 @@ import { useWorkspace, WORKSPACE_KEY } from '../../app/hooks/use-workspace';
 import { rememberRecentFile } from '../../app/quick-open';
 import { call } from '../../lib/ipc';
 import { rlog } from '../../lib/log';
+import { setBulkEditOpener } from '../../lib/monaco/bulk-edit-opener';
 import { refreshEditorConfiguration } from '../../lib/monaco/load';
 import { REDUCED_MOTION_QUERY } from '../../lib/monaco/theme';
 import { setMonacoWorkspaceRoot } from '../../lib/monaco/workspace-root';
 import { useAnvilEvent } from '../../lib/use-anvil-event';
 import { focusedTab, type Tab, useTabsStore } from '../../stores/tabs-store';
 import { confirmLeave, takePendingOpen, useWorkbenchStore } from '../../stores/workbench-store';
+import { startAutoSave } from './auto-save';
 import { clearCompareSelection } from './compare';
 import { dirtyCount, useEditorStore } from './editor-store';
 import { setBookmarksRoot } from './extras/bookmarks';
 import { invalidateGitLines } from './extras/git-lines';
-import { onExternalChange } from './file-ops';
+import { getModel, onExternalChange } from './file-ops';
 import { navHistory } from './nav-history';
 import { closeAllTabs, openPath, remembersRecent } from './open';
 import { askToSave, dirtyPaths } from './unsaved';
@@ -89,6 +91,22 @@ export function EditorBridge(): null {
 		setMonacoWorkspaceRoot(root);
 		setBookmarksRoot(root);
 	}, [root]);
+	// Refactorings (rename, quick fixes) edit files that aren't open through background tabs.
+	useEffect(() => {
+		if (!root) return;
+		setBulkEditOpener(async (path) => {
+			await openPath(root, {
+				path,
+				as: 'code',
+				background: true,
+				focus: false,
+				remember: false,
+			});
+			return getModel(path);
+		});
+		return () => setBulkEditOpener(null);
+	}, [root]);
+	useEffect(() => startAutoSave(), []);
 
 	useEffect(() => {
 		const { setOpenFileHandler } = useWorkbenchStore.getState();

@@ -22,6 +22,7 @@ import { focusedTab, useTabsStore } from '../../stores/tabs-store';
 import { toast } from '../../stores/toast-store';
 import { requestOpenFile } from '../../stores/workbench-store';
 import { nextBookmarkLine, toggleBookmarkAt } from './extras/bookmarks';
+import { FILE_COMMANDS } from './file-commands';
 import { isScratch, saveAll, saveFile } from './file-ops';
 import { newFile } from './new-file';
 import { closeTab } from './open';
@@ -33,6 +34,7 @@ function activePath(): string | null {
 }
 
 export const EDITOR_COMMANDS: Command[] = [
+	...FILE_COMMANDS,
 	{
 		id: 'file.save',
 		title: 'Save',

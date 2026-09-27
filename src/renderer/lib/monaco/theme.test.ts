@@ -19,6 +19,7 @@ const prefs = (reduceMotion: boolean): EditorPrefs => ({
 	editorLineHeight: 1.5,
 	cursorStyle: 'line',
 	colorSwatches: true,
+	pythonTypeChecking: 'standard',
 });
 
 const motion = (reduceMotion: boolean): Record<string, unknown> => {
@@ -81,5 +82,23 @@ describe('buildUserConfiguration colors', () => {
 		const colors = config['workbench.colorCustomizations'];
 		expect(colors['editor.background']).toBe('color(--editor-surface)');
 		expect(colors['editorGutter.background']).toBe('color(--editor-surface)');
+	});
+});
+
+describe('python analysis settings', () => {
+	beforeEach(() => {
+		vi.stubGlobal('document', { documentElement: { dataset: {} } });
+		vi.stubGlobal('getComputedStyle', () => ({ getPropertyValue: () => '' }));
+		vi.stubGlobal('window', { matchMedia: () => ({ matches: false }) });
+	});
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('passes the type checking level to basedpyright', () => {
+		const config = JSON.parse(
+			buildUserConfiguration({ ...prefs(false), pythonTypeChecking: 'basic' }),
+		) as Record<string, unknown>;
+		expect(config['basedpyright.analysis.typeCheckingMode']).toBe('basic');
 	});
 });
