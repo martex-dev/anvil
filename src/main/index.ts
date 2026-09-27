@@ -22,6 +22,7 @@ import { createWorkspace } from './core/workspace';
 import type { WorkspaceWatcher } from './core/workspace/watcher';
 import { aiFeature } from './features/ai';
 import { dataFeature } from './features/data';
+import { debugFeature } from './features/debug';
 import { gitFeature } from './features/git';
 import { createHistory, historyFeature } from './features/history';
 import { lspFeature } from './features/lsp';
@@ -105,6 +106,7 @@ async function start(): Promise<void> {
 			terminalFeature,
 			pythonFeature,
 			dataFeature,
+			debugFeature,
 			historyFeature(history),
 			tasksFeature,
 			templatesFeature,
