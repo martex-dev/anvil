@@ -1,6 +1,7 @@
-import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { renameSync, rmSync, writeFileSync } from 'node:fs';
 
 import { AnvilError } from '../errors';
+import { moveAside, readJsonFile } from '../store/json-file';
 
 /** The subset of Electron's safeStorage we use; injectable so tests don't need Electron. */
 export interface Encryptor {
@@ -28,8 +29,11 @@ export class SecretsService {
 		private readonly filePath: string,
 		private readonly encryptor: Encryptor,
 		private readonly isAllowedKey: (key: string) => boolean,
-		/** Called once when an unreadable file was moved aside; saved keys must be re-entered. */
-		private readonly onReset: () => void = () => undefined,
+		/**
+		 * Called once when a corrupt file was set aside (with the rename's error if even that
+		 * failed); saved keys must be re-entered.
+		 */
+		private readonly onReset: (moveError?: unknown) => void = () => undefined,
 	) {}
 
 	has(key: string): boolean {
@@ -45,8 +49,12 @@ export class SecretsService {
 		if (value.length === 0) throw new AnvilError('SECRET_EMPTY', 'Secret value is empty');
 		this.assertAvailable();
 		const file = this.load();
-		file.entries[key] = this.encryptor.encryptString(value).toString('base64');
-		this.save(file);
+		// A copy: if the save fails, the cache must not claim the key is stored.
+		const entries = {
+			...file.entries,
+			[key]: this.encryptor.encryptString(value).toString('base64'),
+		};
+		this.save({ ...file, entries });
 	}
 
 	delete(key: string): void {
@@ -92,37 +100,68 @@ export class SecretsService {
 
 	private load(): SecretsFile {
 		if (this.cache) return this.cache;
-		if (!existsSync(this.filePath)) {
+		let file;
+		try {
+			file = readJsonFile(this.filePath);
+		} catch (error) {
+			// Locked (a scanner or backup tool) or a failing disk: the file may be fine, so it is
+			// neither cached nor replaced. The next call reads it again.
+			throw new AnvilError(
+				'SECRETS_UNREADABLE',
+				'Saved API keys could not be read right now; try again in a moment',
+				error,
+			);
+		}
+		if (file.kind === 'missing') {
 			this.cache = { version: 1, entries: {} };
 			return this.cache;
 		}
-		try {
-			const parsed = JSON.parse(readFileSync(this.filePath, 'utf8')) as Partial<SecretsFile>;
-			const entries =
-				parsed && typeof parsed.entries === 'object' && parsed.entries !== null
-					? parsed.entries
-					: {};
-			this.cache = { version: 1, entries: { ...entries } };
-		} catch {
-			// Unreadable (truncated write, disk error): refusing every call would leave no way to
-			// re-save a key, so keep the file for inspection and start empty. The parse error is
-			// not passed on because its message can quote file contents.
-			try {
-				renameSync(this.filePath, `${this.filePath}.corrupt`);
-			} catch {
-				// Best effort only; the next save replaces the file anyway.
-			}
-			this.cache = { version: 1, entries: {} };
-			this.onReset();
+		const entries = file.kind === 'ok' ? entriesOf(file.value) : null;
+		if (entries) {
+			this.cache = { version: 1, entries };
+			return this.cache;
 		}
+		// Unparseable (a truncated write): refusing every call would leave no way to re-save a
+		// key, so keep the file for inspection and start empty. The parse error is not passed on
+		// because its message can quote file contents.
+		let moveError: unknown;
+		try {
+			moveAside(this.filePath);
+		} catch (error) {
+			moveError = error;
+		}
+		this.cache = { version: 1, entries: {} };
+		this.onReset(moveError);
 		return this.cache;
 	}
 
 	private save(file: SecretsFile): void {
 		// Write-then-rename so a crash mid-write can't leave a truncated file.
 		const tmp = `${this.filePath}.tmp`;
-		writeFileSync(tmp, JSON.stringify(file), { encoding: 'utf8', mode: 0o600 });
-		renameSync(tmp, this.filePath);
+		try {
+			writeFileSync(tmp, JSON.stringify(file), { encoding: 'utf8', mode: 0o600 });
+			renameSync(tmp, this.filePath);
+		} catch (error) {
+			try {
+				rmSync(tmp, { force: true });
+			} catch {
+				// A leftover temp file is harmless (the next save replaces it); the save's own
+				// error is the one to report.
+			}
+			throw new AnvilError('SECRETS_SAVE_FAILED', 'API keys could not be saved', error);
+		}
 		this.cache = file;
 	}
+}
+
+/** The saved entries, or null when the file isn't a secrets file at all. */
+function entriesOf(value: unknown): Record<string, string> | null {
+	if (typeof value !== 'object' || value === null) return null;
+	const entries: unknown = (value as { entries?: unknown }).entries;
+	if (typeof entries !== 'object' || entries === null || Array.isArray(entries)) return null;
+	return Object.fromEntries(
+		Object.entries(entries).filter(
+			(entry): entry is [string, string] => typeof entry[1] === 'string',
+		),
+	);
 }

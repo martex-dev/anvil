@@ -19,8 +19,10 @@ export function createSecretsService(): SecretsService {
 		join(app.getPath('userData'), 'secrets.json'),
 		safeStorage,
 		isDeclaredKey,
-		() => {
-			log.warn('[secrets] secrets file was unreadable; moved it aside and started empty');
+		(moveError) => {
+			if (moveError === undefined)
+				log.warn('[secrets] secrets file was corrupt; moved it aside and started empty');
+			else log.error('[secrets] secrets file was corrupt and could not be moved', moveError);
 			emitEvent('secrets:reset', {});
 		},
 	);
