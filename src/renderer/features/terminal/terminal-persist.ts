@@ -13,6 +13,7 @@ const StoredTabSchema = z.object({
 	title: z.string().min(1).max(200),
 	role: z.string().min(1).optional(),
 	root: z.string().optional(),
+	cwd: z.string().min(1).max(4096).optional(),
 });
 
 export interface StoredTerminals {
@@ -33,13 +34,14 @@ export function parseStoredTerminals(raw: unknown): StoredTerminals {
 	for (const entry of Array.isArray(list) ? list : []) {
 		const parsed = StoredTabSchema.safeParse(entry);
 		if (!parsed.success || tabs.some((t) => t.id === parsed.data.id)) continue;
-		const { id, preset, title, role, root } = parsed.data;
+		const { id, preset, title, role, root, cwd } = parsed.data;
 		tabs.push({
 			id,
 			preset,
 			title,
 			...(role ? { role } : {}),
 			...(root !== undefined ? { root } : {}),
+			...(cwd ? { cwd } : {}),
 		});
 	}
 	return { tabs, active: tabs.find((t) => t.id === active)?.id ?? tabs[0]?.id ?? null };
@@ -56,12 +58,13 @@ export function loadTerminals(): StoredTerminals {
 
 export function saveTerminals({ tabs, active }: StoredTerminals): void {
 	try {
-		const stored = tabs.map(({ id, preset, title, role, root }) => ({
+		const stored = tabs.map(({ id, preset, title, role, root, cwd }) => ({
 			id,
 			preset,
 			title,
 			role,
 			root,
+			cwd,
 		}));
 		localStorage.setItem(KEY, JSON.stringify({ tabs: stored, active }));
 	} catch {

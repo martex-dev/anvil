@@ -267,6 +267,7 @@ export function useXterm(
 			rows: Math.max(term.rows, 2),
 			...(initialCommand ? { initialCommand } : {}),
 			...(role ? { role } : {}),
+			...(cwd ? { cwd } : {}),
 		})
 			.then((res) => {
 				if (disposed) return;

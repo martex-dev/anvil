@@ -23,6 +23,8 @@ export interface TermTab {
 	root?: string;
 	/** Typed once when the session starts; cleared after. */
 	initialCommand?: string;
+	/** Workspace-relative folder the shell starts in (Open in Terminal); the root when absent. */
+	cwd?: string;
 }
 
 interface TerminalState {
@@ -72,6 +74,7 @@ export const useTerminalStore = create<TerminalState>((set) => ({
 							title: t.title,
 							...(t.role ? { role: t.role } : {}),
 							...(t.root !== undefined ? { root: t.root } : {}),
+							...(t.cwd ? { cwd: t.cwd } : {}),
 						}
 					: t,
 			),
@@ -112,10 +115,11 @@ export function uniqueTitle(taken: readonly string[], base: string, numbered: bo
 	}
 }
 
-export function newTerminal(preset: TerminalPresetId, title?: string): void {
+/** Opens a new terminal tab; `cwd` (workspace-relative) starts it in a subfolder. */
+export function newTerminal(preset: TerminalPresetId, title?: string, cwd?: string): void {
 	const taken = useTerminalStore.getState().tabs.map((t) => t.title);
 	const name = uniqueTitle(taken, title ?? PRESET_LABEL[preset], title === undefined);
-	useTerminalStore.getState().add({ id: newId(), preset, title: name });
+	useTerminalStore.getState().add({ id: newId(), preset, title: name, ...(cwd ? { cwd } : {}) });
 	useLayoutStore.getState().showPanel('terminal');
 }
 
