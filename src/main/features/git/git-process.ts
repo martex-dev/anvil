@@ -119,6 +119,15 @@ export function isMissingPathError(error: unknown): boolean {
 	return MISSING_PATH.test(message);
 }
 
+/**
+ * False while HEAD is unborn (a fresh `git init`, no commits yet). `rev-parse --verify -q` exits
+ * 1 silently then, which simple-git resolves as empty output; real failures write to stderr and
+ * still reject.
+ */
+export async function hasHead(g: SimpleGit): Promise<boolean> {
+	return (await g.raw(['rev-parse', '--verify', '-q', 'HEAD'])).trim() !== '';
+}
+
 /** `git log` in a repo without commits (older git says "bad default revision 'HEAD'"). */
 export function isUnbornHead(error: unknown): boolean {
 	const message = error instanceof Error ? error.message : String(error);

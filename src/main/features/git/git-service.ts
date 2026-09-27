@@ -9,7 +9,14 @@ import { scanUnifiedDiff, type SecretFinding } from '@shared/secret-scan';
 
 import { AnvilError } from '../../core/errors';
 import { toAbsolute } from '../../core/workspace/fs-guard';
-import { batchPaths, git, isMissingPathError, isNotARepo, isUnbornHead } from './git-process';
+import {
+	batchPaths,
+	git,
+	hasHead,
+	isMissingPathError,
+	isNotARepo,
+	isUnbornHead,
+} from './git-process';
 import { mapStatus } from './status-map';
 
 const MAX_DIFF_BYTES = 5 * 1024 * 1024;
@@ -150,8 +157,15 @@ export class GitService {
 	async unstage(paths: string[]): Promise<void> {
 		const { root, g } = await this.requireRepo();
 		for (const p of paths) toAbsolute(root, p);
-		// `restore --staged` also works before the first commit, unlike `reset HEAD`.
-		for (const batch of batchPaths(paths)) await g.raw(['restore', '--staged', '--', ...batch]);
+		const born = await hasHead(g);
+		for (const batch of batchPaths(paths)) {
+			if (born) await g.raw(['restore', '--staged', '--', ...batch]);
+			// Before the first commit there is no HEAD to restore from ("could not resolve HEAD"),
+			// so take the paths out of the index; they become untracked again. --cached never
+			// touches the working tree, -r lets a folder through, and -f skips the "staged content
+			// differs from the file" check: dropping the staged copy is exactly what unstage means.
+			else await g.raw(['rm', '--cached', '-r', '-f', '-q', '--', ...batch]);
+		}
 	}
 
 	async commit(message: string): Promise<{ hash: string }> {

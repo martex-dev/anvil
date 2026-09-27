@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -110,6 +110,24 @@ describe('GitService', { timeout: 30_000 }, () => {
 			'new.txt:untracked',
 			'old.txt:deleted',
 		]);
+	});
+
+	it('unstages before the first commit, keeping the file on disk', async () => {
+		const git = new GitService(() => repo);
+		mkdirSync(join(repo, 'src'));
+		writeFileSync(join(repo, 'a.txt'), 'a\n');
+		writeFileSync(join(repo, 'src', 'b.py'), 'b\n');
+		await git.stage(['a.txt', 'src/b.py']);
+		// Edited after staging: the index and the working tree now differ.
+		writeFileSync(join(repo, 'a.txt'), 'a2\n');
+		await git.unstage(['a.txt', 'src']);
+		const status = await git.status();
+		expect(status.staged).toEqual([]);
+		expect(status.unstaged.map((c) => `${c.path}:${c.kind}`)).toEqual([
+			'a.txt:untracked',
+			'src/b.py:untracked',
+		]);
+		expect(readFileSync(join(repo, 'a.txt'), 'utf8')).toBe('a2\n');
 	});
 
 	it('refuses to commit with nothing staged and rejects paths outside the repo', async () => {
